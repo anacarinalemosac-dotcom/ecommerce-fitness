@@ -37,6 +37,7 @@ export default function SellerPortalPage() {
 
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
   const [registrationPendingNotice, setRegistrationPendingNotice] = useState<{ name: string; coupon: string } | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [registerData, setRegisterData] = useState({
     name: '',
     email: '',
@@ -118,6 +119,12 @@ export default function SellerPortalPage() {
     setLoading(true);
     setErrorMsg('');
 
+    if (!termsAccepted) {
+      setErrorMsg('Você deve ler e aceitar o Termo de Conduta Ética e Tolerância Zero para solicitar o cadastro.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/backoffice/sellers', {
         method: 'POST',
@@ -125,6 +132,7 @@ export default function SellerPortalPage() {
         body: JSON.stringify({
           action: 'register',
           ...registerData,
+          accepted_ethics_terms: true,
         }),
       });
 
@@ -140,6 +148,7 @@ export default function SellerPortalPage() {
         coupon: registerData.coupon_code.toUpperCase(),
       });
       setAuthTab('login');
+      setTermsAccepted(false);
       setRegisterData({
         name: '',
         email: '',
@@ -510,14 +519,81 @@ export default function SellerPortalPage() {
                 />
               </div>
 
+              {/* =========================================================================
+                  CÓDIGO DE ÉTICA & TERMO DE REPRESENTAÇÃO DA MARCA (ANA FITNESS WEAR LLC)
+                 ========================================================================= */}
+              <div className="p-4 sm:p-5 bg-neutral-900 text-white border-2 border-gold space-y-3.5 shadow-luxury">
+                <div className="flex items-center justify-between border-b border-gold/40 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-gold shrink-0" />
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-gold block">
+                        CÓDIGO DE ÉTICA & INTEGRIDADE
+                      </span>
+                      <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white">
+                        TERMO DE CONDUTA ÉTICA E REPRESENTAÇÃO DA MARCA
+                      </h4>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 bg-gold/20 text-gold text-[9px] font-black uppercase border border-gold shrink-0">
+                    ANA FITNESS WEAR LLC
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-neutral-300 leading-relaxed">
+                  A <strong>ANA FITNESS WEAR LLC</strong> é uma empresa regida por princípios inegociáveis de saúde, dignidade humana, integridade moral e respeito. Nossas vendedoras e embaixadoras representam a honra e a imagem pública da nossa marca.
+                </p>
+
+                <div className="p-3 bg-black/60 border border-neutral-700 space-y-2 text-[10.5px] text-neutral-200 leading-snug">
+                  <p className="font-bold text-gold uppercase tracking-wider text-[10px]">
+                    ✦ DIRETRIZES FUNDAMENTAIS & TOLERÂNCIA ZERO:
+                  </p>
+                  <ul className="space-y-1.5 list-disc list-inside text-neutral-300">
+                    <li>
+                      <strong className="text-white">Tolerância Zero a Drogas Ilícitas:</strong> É expressamente proibido qualquer vínculo da marca ou uso do cupom associado ao consumo, porte, comercialização ou apologia a drogas ou substâncias ilícitas.
+                    </li>
+                    <li>
+                      <strong className="text-white">Proibição de Exploração Sexual & Prostituição:</strong> A marca jamais poderá ser veiculada ou promovida em atividades ou ambientes ligados à prostituição, pornografia, comércio sexual ou exploração adulta.
+                    </li>
+                    <li>
+                      <strong className="text-white">Proteção Absoluta a Crianças e Adolescentes:</strong> Mantemos tolerância zero absoluta a qualquer forma de exploração infantil, trabalho de menores ou violação aos direitos da infância.
+                    </li>
+                    <li>
+                      <strong className="text-white">Respeito Irrestrito à Dignidade Humana:</strong> Repudiamos veementemente qualquer conduta discriminatória, racista, preconceituosa, abusiva, violenta ou que desrespeite qualquer ser humano.
+                    </li>
+                    <li>
+                      <strong className="text-white">Rescisão Imediata:</strong> O descumprimento de qualquer uma dessas diretrizes acarretará o <strong>cancelamento instantâneo do cupom</strong>, exclusão imediata do programa e as devidas medidas judiciais cabíveis.
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Checkbox Obrigatório */}
+                <label className="flex items-start gap-3 p-3 bg-gold/15 border border-gold cursor-pointer hover:bg-gold/25 transition">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 accent-gold cursor-pointer shrink-0"
+                  />
+                  <span className="text-xs text-white font-bold leading-tight select-none">
+                    Li, compreendi e concordo integralmente com o Termo de Conduta Ética e Tolerância Zero da ANA FITNESS WEAR LLC. *
+                  </span>
+                </label>
+              </div>
+
               <div className="p-3 bg-deep-black/5 border border-deep-black/10 text-[10px] text-deep-black/80 uppercase font-medium leading-snug">
-                ℹ️ Ao clicar abaixo, seus dados serão enviados diretamente para o painel de aprovação de <strong>Ana Carina</strong>. Seu cupom será ativado assim que a solicitação for aprovada.
+                ℹ️ Ao clicar abaixo, seus dados e o seu aceite do termo ético serão enviados para o painel de aprovação de <strong>Ana Carina</strong>. Seu cupom será ativado assim que aprovado.
               </div>
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full py-4 bg-gold hover:bg-deep-black hover:text-white text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
+                disabled={loading || !termsAccepted}
+                className={`w-full py-4 text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow ${
+                  termsAccepted
+                    ? 'bg-gold hover:bg-deep-black hover:text-white text-deep-black cursor-pointer'
+                    : 'bg-neutral-200 text-neutral-500 cursor-not-allowed border border-neutral-300'
+                }`}
               >
                 {loading ? (
                   <span>ENVIANDO SOLICITAÇÃO...</span>

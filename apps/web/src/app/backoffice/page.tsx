@@ -2322,6 +2322,11 @@ export default function BackofficeDashboard() {
                       )}
                     </div>
 
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-300 text-green-900 text-[10px] font-bold">
+                      <ShieldCheck className="w-3.5 h-3.5 text-green-700 shrink-0" />
+                      <span>Termo de Conduta Ética & Tolerância Zero: ACEITO</span>
+                    </div>
+
                     <div className="flex items-center justify-end gap-2 pt-1">
                       <button
                         type="button"
@@ -3012,6 +3017,10 @@ export default function BackofficeDashboard() {
                     <span className="font-mono font-bold text-deep-black">
                       {approvingSeller.payout_method || 'ZELLE'}: {approvingSeller.payout_key || 'Não informado'}
                     </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-300 text-green-900 text-[10px] font-bold">
+                    <ShieldCheck className="w-3.5 h-3.5 text-green-700 shrink-0" />
+                    <span>Termo de Conduta Ética e Tolerância Zero: ACEITO PELA CANDIDATA</span>
                   </div>
                 </div>
 

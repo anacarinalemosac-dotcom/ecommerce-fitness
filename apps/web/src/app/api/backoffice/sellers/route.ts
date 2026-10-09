@@ -20,6 +20,8 @@ export interface SellerRecord {
   payout_method: 'ZELLE' | 'VENMO' | 'CASHAPP' | 'PIX' | 'BANK';
   payout_key: string; // Chave PIX, E-mail ou Telefone Zelle, @Venmo, etc.
   payout_beneficiary?: string; // Nome do titular da conta
+  accepted_ethics_terms?: boolean;
+  accepted_ethics_terms_at?: string;
   total_sales_count: number;
   total_revenue_generated: number;
   total_commission_earned: number;
@@ -263,6 +265,8 @@ export async function POST(req: NextRequest) {
         payout_method: payout_method as any,
         payout_key: payout_key || phone || '',
         payout_beneficiary: payout_beneficiary || name.trim(),
+        accepted_ethics_terms: true,
+        accepted_ethics_terms_at: new Date().toISOString(),
         total_sales_count: 0,
         total_revenue_generated: 0,
         total_commission_earned: 0,
