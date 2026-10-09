@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   DollarSign,
@@ -46,7 +46,16 @@ import {
   Copy,
   Key,
   Share2,
+  Volume2,
+  VolumeX,
+  Bell,
+  BellRing,
+  MapPin,
+  Smartphone,
+  Laptop,
+  Radio,
 } from 'lucide-react';
+import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
 
 interface ProductProfit {
@@ -387,11 +396,173 @@ export default function BackofficeDashboard() {
     setTimeout(() => setCopiedCouponLink(null), 3000);
   };
 
+  // Notificações e Radar de Clientes Online (Estilo Wix)
+  const [liveFeed, setLiveFeed] = useState<{
+    activeCount: number;
+    activeVisitors: any[];
+    topCities: { city: string; count: number }[];
+    recentEvents: any[];
+  }>({
+    activeCount: 4,
+    activeVisitors: [],
+    topCities: [],
+    recentEvents: [],
+  });
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [browserNotificationsActive, setBrowserNotificationsActive] = useState(false);
+  const [toasts, setToasts] = useState<any[]>([]);
+  const processedEventIdsRef = useRef<Set<string>>(new Set());
+
+  const addToast = (toast: {
+    id: string;
+    type: 'visitor' | 'order';
+    title: string;
+    desc: string;
+    city: string;
+    amount?: number;
+    orderId?: string;
+  }) => {
+    setToasts((prev) => [toast, ...prev.slice(0, 4)]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== toast.id));
+    }, 7000);
+  };
+
+  const handleEnableBrowserNotifications = async () => {
+    const granted = await requestNotificationPermission();
+    setBrowserNotificationsActive(granted);
+    if (granted) {
+      sendBrowserNotification('✅ Notificações Ativadas!', {
+        body: 'Você será avisada de novos clientes online e compras mesmo com o navegador em segundo plano.',
+      });
+    } else {
+      alert('As notificações foram negadas pelo navegador. Você pode liberá-las clicando no cadeado ao lado da barra de endereço.');
+    }
+  };
+
+  const fetchLiveFeed = async () => {
+    try {
+      const res = await fetch('/api/live/feed');
+      if (res.ok) {
+        const data = await res.json();
+        setLiveFeed(data);
+        setOnlineCount(data.activeCount || 0);
+
+        if (Array.isArray(data.recentEvents)) {
+          data.recentEvents.forEach((evt: any) => {
+            if (!processedEventIdsRef.current.has(evt.id)) {
+              processedEventIdsRef.current.add(evt.id);
+
+              // Dispara se o evento tiver acontecido há menos de 30 segundos
+              if (Date.now() - evt.timestamp < 30000) {
+                if (evt.type === 'NEW_VISITOR') {
+                  if (soundEnabled) soundManager.playVisitorDing();
+                  sendBrowserNotification('🔔 Novo Cliente Online!', {
+                    body: evt.description,
+                  });
+                  addToast({
+                    id: evt.id,
+                    type: 'visitor',
+                    title: 'CLIENTE ONLINE AGORA!',
+                    desc: evt.description,
+                    city: evt.city,
+                  });
+                } else if (evt.type === 'NEW_ORDER') {
+                  if (soundEnabled) soundManager.playCashRegister();
+                  sendBrowserNotification(`💰 NOVA VENDA: $${Number(evt.amount).toFixed(2)}!`, {
+                    body: evt.description,
+                  });
+                  addToast({
+                    id: evt.id,
+                    type: 'order',
+                    title: 'NOVA VENDA CONFIRMADA!',
+                    desc: evt.description,
+                    city: evt.city,
+                    amount: evt.amount,
+                    orderId: evt.orderId,
+                  });
+                  fetchSalesData();
+                  fetchSellers();
+                }
+              }
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao consultar feed ao vivo:', e);
+    }
+  };
+
+  // Simulações de teste para Ana Carina testar os sons e alertas imediatamente
+  const simulateLiveVisitor = async () => {
+    const testCities = ['Boston', 'Leominster', 'Worcester', 'Framingham', 'Miami'];
+    const randomCity = testCities[Math.floor(Math.random() * testCities.length)];
+    try {
+      await fetch('/api/live/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: `vis-test-${Date.now()}`,
+          page: '/produto/samanta-romper',
+          pageTitle: 'SAMANTA ROMPER • Macaquinho',
+          device: 'iPhone (Apple)',
+          userCity: randomCity,
+          userRegion: 'MA',
+        }),
+      });
+      fetchLiveFeed();
+    } catch (e) {
+      console.warn('Erro ao simular visitante:', e);
+    }
+  };
+
+  const simulateLiveOrder = async () => {
+    const testId = `ANA-${Math.floor(100000 + Math.random() * 900000)}`;
+    try {
+      await fetch('/api/backoffice/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: testId,
+          channel: 'ONLINE',
+          customer_name: 'Cliente VIP Teste',
+          customer_email: 'vip@teste.com',
+          customer_phone: '+1 978 313-9452',
+          seller_name: 'Camila Santos',
+          coupon_code: 'CAMILA10',
+          payment_method: 'CARD',
+          subtotal_products: 44.90,
+          discount_amount: 4.49,
+          shipping_fee: 9.99,
+          items: [
+            {
+              title: 'SAMANTA ROMPER',
+              size: 'M',
+              color: 'Preto Ônix',
+              sku: 'SAM-BLK-M',
+              quantity: 1,
+              unit_price: 44.90,
+              cost_price: 16.0,
+            },
+          ],
+        }),
+      });
+      fetchLiveFeed();
+    } catch (e) {
+      console.warn('Erro ao simular venda:', e);
+    }
+  };
+
   useEffect(() => {
     fetchSupabaseProducts();
     fetchSalesData();
     fetchSellers();
-  }, []);
+    fetchLiveFeed();
+
+    const liveInterval = setInterval(fetchLiveFeed, 3500);
+    return () => clearInterval(liveInterval);
+  }, [soundEnabled]);
 
   const handleDeleteSupabaseProduct = async (id: string, title: string) => {
     if (!confirm(`Deseja realmente excluir o produto "${title}" e todas as suas variações do Supabase?`)) {
@@ -484,7 +655,52 @@ export default function BackofficeDashboard() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10 space-y-8 bg-white selection:bg-deep-black selection:text-gold">
+    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10 space-y-8 bg-white selection:bg-deep-black selection:text-gold relative">
+      {/* =========================================================================
+          NOTIFICAÇÕES FLUTUANTES EM TEMPO REAL (ESTILO WIX LIVE NOTIFIER)
+         ========================================================================= */}
+      <div className="fixed top-6 right-6 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`pointer-events-auto p-4 border-2 shadow-2xl transition-all transform animate-fadeIn ${
+              toast.type === 'order'
+                ? 'bg-deep-black text-white border-gold'
+                : 'bg-white text-deep-black border-deep-black'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-gold"></span>
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-gold">
+                  {toast.title}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+                className="text-xs hover:text-gold transition text-white/70"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-xs font-bold uppercase mt-1 leading-snug">
+              {toast.desc}
+            </p>
+            <div className="mt-2 pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px] uppercase font-mono">
+              <span className="flex items-center gap-1 text-gold font-bold">
+                <MapPin className="w-3 h-3 text-gold" />
+                <span>{toast.city}</span>
+              </span>
+              <span className="text-white/60">AGORA MESMO</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Header do ERP Backoffice */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-deep-black text-white p-6 sm:p-8 border border-gold/30 shadow-luxury">
         <div className="space-y-1">
@@ -504,26 +720,52 @@ export default function BackofficeDashboard() {
           </p>
         </div>
 
-        {/* Visitantes Online & Atalhos */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <Link
-            href="/pos"
-            className="px-4 py-2.5 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center gap-2 shadow"
+        {/* Visitantes Online & Controles de Som/Notificação Wix */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5">
+          {/* Botão de Som On/Off */}
+          <button
+            type="button"
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className={`p-2.5 border transition flex items-center gap-1.5 text-xs font-black uppercase tracking-wider ${
+              soundEnabled
+                ? 'bg-gold text-deep-black border-gold shadow'
+                : 'bg-white/10 text-white/70 border-white/20 hover:text-white'
+            }`}
+            title={soundEnabled ? 'Som ativado (clique para silenciar)' : 'Som desativado (clique para ativar)'}
           >
-            <CreditCard className="w-4 h-4 text-deep-black" />
-            <span>ABRIR TERMINAL PDV</span>
-          </Link>
+            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            <span className="hidden md:inline">{soundEnabled ? 'SOM ATIVO' : 'MUDO'}</span>
+          </button>
 
-          <div className="flex items-center gap-3 bg-white/10 border border-gold/30 px-4 py-2.5">
+          {/* Botão de Notificações do Navegador */}
+          <button
+            type="button"
+            onClick={handleEnableBrowserNotifications}
+            className={`p-2.5 border transition flex items-center gap-1.5 text-xs font-black uppercase tracking-wider ${
+              browserNotificationsActive
+                ? 'bg-gold text-deep-black border-gold'
+                : 'bg-white/10 text-white/70 border-white/20 hover:text-white'
+            }`}
+            title="Receber notificações no computador/celular"
+          >
+            {browserNotificationsActive ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+            <span className="hidden md:inline">{browserNotificationsActive ? 'ALERTAS ATIVOS' : 'ALERTAS PUSH'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('live')}
+            className="flex items-center gap-3 bg-white/10 border border-gold/30 px-3.5 py-2 hover:border-gold transition cursor-pointer"
+          >
             <span className="relative flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-gold"></span>
             </span>
             <div className="text-left text-xs uppercase tracking-wider">
-              <span className="text-[9px] text-white/60 block font-bold">ONLINE AGORA:</span>
-              <span className="text-sm font-black text-gold">{onlineCount} VISITANTES</span>
+              <span className="text-[9px] text-white/60 block font-bold">RADAR AO VIVO:</span>
+              <span className="text-sm font-black text-gold font-mono">{liveFeed.activeCount} VISITANTES</span>
             </div>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -1533,22 +1775,288 @@ export default function BackofficeDashboard() {
       )}
 
       {/* =========================================================================
-          TAB 3: VISITANTES ONLINE
+          TAB 3: VISITANTES ONLINE EM TEMPO REAL & RADAR WIX
          ========================================================================= */}
       {activeTab === 'live' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
-              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">ONLINE AGORA</span>
-              <p className="text-3xl font-black text-deep-black font-mono">{onlineCount} CLIENTES</p>
+        <div className="space-y-8 animate-fadeIn">
+          {/* Banner de Status do Radar Wix */}
+          <div className="bg-deep-black text-white p-6 sm:p-8 border-2 border-gold shadow-luxury flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 bg-white/10 text-[9px] font-black uppercase tracking-widest text-gold border border-gold/40">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
+                <span>RADAR WIX EM TEMPO REAL • ATUALIZANDO A CADA 3.5s</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-white flex items-center gap-2">
+                <Radio className="w-6 h-6 text-gold animate-pulse" />
+                <span>MONITORAMENTO DE CLIENTES ONLINE & CIDADES</span>
+              </h2>
+              <p className="text-xs text-white/70 uppercase tracking-wider">
+                Você é avisada com som de sino quando um novo cliente entra e som de caixa registradora quando uma compra acontece.
+              </p>
             </div>
-            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
-              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">ORIGEM PRINCIPAL</span>
-              <p className="text-3xl font-black text-deep-black">BOSTON & LEOMINSTER</p>
+
+            {/* Ações de Teste de Som e Notificações */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => soundManager.playVisitorDing()}
+                className="px-3 py-2 bg-white/10 hover:bg-gold hover:text-deep-black text-white text-[10px] font-black uppercase tracking-wider transition border border-white/20 flex items-center gap-1.5"
+                title="Tocar o som de sino que toca quando um cliente entra"
+              >
+                <Bell className="w-3.5 h-3.5 text-gold" />
+                <span>TESTAR SINO WIX 🔔</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => soundManager.playCashRegister()}
+                className="px-3 py-2 bg-gold hover:bg-white text-deep-black text-[10px] font-black uppercase tracking-wider transition shadow flex items-center gap-1.5"
+                title="Tocar o som de caixa registradora de venda"
+              >
+                <DollarSign className="w-3.5 h-3.5 text-deep-black" />
+                <span>TESTAR SOM VENDA 💰</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={simulateLiveVisitor}
+                className="px-3 py-2 bg-white text-deep-black hover:bg-gold text-[10px] font-black uppercase tracking-wider transition border border-deep-black flex items-center gap-1.5"
+                title="Simular a entrada de um cliente online para testar a notificação"
+              >
+                <span>+ SIMULAR VISITANTE</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={simulateLiveOrder}
+                className="px-3 py-2 bg-deep-black text-gold hover:bg-gold hover:text-deep-black text-[10px] font-black uppercase tracking-wider transition border border-gold flex items-center gap-1.5"
+                title="Simular uma nova compra para testar o alerta de venda"
+              >
+                <span>+ SIMULAR COMPRA</span>
+              </button>
             </div>
+          </div>
+
+          {/* Cards de Métricas em Tempo Real */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
-              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">CONVERSÃO ESTIMADA</span>
-              <p className="text-3xl font-black text-gold font-mono">4.2%</p>
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 block">
+                ONLINE NO SITE AGORA
+              </span>
+              <div className="flex items-center gap-3">
+                <span className="w-3 h-3 rounded-full bg-green-500 animate-ping" />
+                <p className="text-3xl font-black text-deep-black font-mono">
+                  {liveFeed.activeCount} CLIENTES
+                </p>
+              </div>
+              <span className="text-[9px] text-green-700 uppercase font-black block">
+                Navegando em anafitwear.com
+              </span>
+            </div>
+
+            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 block">
+                CIDADES CONECTADAS
+              </span>
+              <p className="text-xl font-black text-deep-black truncate">
+                {liveFeed.topCities.length > 0
+                  ? liveFeed.topCities.map((c) => c.city).slice(0, 2).join(' • ')
+                  : 'LEOMINSTER & BOSTON'}
+              </p>
+              <span className="text-[9px] text-deep-black/60 uppercase font-bold block">
+                {liveFeed.topCities.length} localidades ativas
+              </span>
+            </div>
+
+            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 block">
+                ALERTA SONORO (WIX CHIME)
+              </span>
+              <p className="text-xl font-black text-gold">
+                {soundEnabled ? '🔔 ATIVO (TOCANDO)' : '🔇 SILENCIADO'}
+              </p>
+              <button
+                type="button"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className="text-[9px] underline uppercase font-black text-deep-black hover:text-gold"
+              >
+                {soundEnabled ? 'Clique para desativar som' : 'Clique para ativar som'}
+              </button>
+            </div>
+
+            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 block">
+                NOTIFICAÇÕES PUSH
+              </span>
+              <p className="text-xl font-black text-deep-black">
+                {browserNotificationsActive ? '📲 AUTORIZADAS' : '⚠️ PENDENTE'}
+              </p>
+              <button
+                type="button"
+                onClick={handleEnableBrowserNotifications}
+                className="text-[9px] underline uppercase font-black text-gold hover:text-deep-black"
+              >
+                {browserNotificationsActive ? 'Ativo no navegador' : 'Ativar no computador/celular'}
+              </button>
+            </div>
+          </div>
+
+          {/* Tabela de Visitantes Online com Cidade e Página */}
+          <div className="bg-white border-2 border-deep-black overflow-x-auto shadow-sm">
+            <div className="p-4 bg-deep-black text-white flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-xs font-black uppercase tracking-wider">
+                  VISITANTES CONECTADOS NESTE MOMENTO (ÚLTIMOS 3 MINUTOS)
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-gold uppercase font-bold">
+                {liveFeed.activeVisitors.length} DETECTADOS
+              </span>
+            </div>
+
+            <table className="w-full text-left text-xs uppercase tracking-wider">
+              <thead className="bg-deep-black/5 text-[10px] font-black text-deep-black border-b border-deep-black/20">
+                <tr>
+                  <th className="p-4">CIDADE & ESTADO</th>
+                  <th className="p-4">PÁGINA SENDO VISTA</th>
+                  <th className="p-4">DISPOSITIVO</th>
+                  <th className="p-4">TEMPO NO SITE</th>
+                  <th className="p-4 text-right">STATUS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-deep-black/10">
+                {liveFeed.activeVisitors.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-deep-black/50 font-bold">
+                      Aguardando novos visitantes. Acesse anafitwear.com no celular para se ver online aqui!
+                    </td>
+                  </tr>
+                ) : (
+                  liveFeed.activeVisitors.map((vis) => {
+                    const isCheckout = vis.page.includes('/checkout');
+                    const elapsedSec = Math.floor((Date.now() - vis.firstSeen) / 1000);
+                    const elapsedMin = Math.floor(elapsedSec / 60);
+
+                    return (
+                      <tr key={vis.id} className="hover:bg-deep-black/5">
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-gold shrink-0" />
+                            <div>
+                              <span className="font-black text-deep-black block text-sm">
+                                {vis.city}, {vis.region}
+                              </span>
+                              <span className="text-[9px] text-deep-black/50 font-mono">
+                                Estados Unidos (US)
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="p-4">
+                          <span className="font-bold text-deep-black block">
+                            {vis.pageTitle}
+                          </span>
+                          <span className="text-[10px] text-deep-black/50 font-mono block">
+                            {vis.page}
+                          </span>
+                        </td>
+
+                        <td className="p-4">
+                          <span className="px-2 py-1 bg-deep-black/5 border border-deep-black/10 font-mono text-[10px] font-bold text-deep-black">
+                            {vis.device}
+                          </span>
+                        </td>
+
+                        <td className="p-4 font-mono font-bold text-deep-black">
+                          {elapsedMin > 0 ? `${elapsedMin} min atrás` : `${elapsedSec}s atrás`}
+                        </td>
+
+                        <td className="p-4 text-right">
+                          <span
+                            className={`px-2.5 py-1 text-[9px] font-black uppercase border ${
+                              isCheckout
+                                ? 'bg-gold text-deep-black border-gold animate-pulse'
+                                : 'bg-green-100 text-green-800 border-green-400'
+                            }`}
+                          >
+                            {isCheckout ? '🛒 FINALIZANDO COMPRA' : '🟢 NAVEGANDO AGORA'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Feed de Eventos Recentes (Estilo Linha do Tempo ao Vivo Wix) */}
+          <div className="bg-white border-2 border-deep-black p-6 space-y-4 shadow-sm">
+            <div className="flex justify-between items-center border-b border-deep-black/10 pb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-gold" />
+                <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-deep-black">
+                  HISTÓRICO RECENTE DE EVENTOS & COMPRAS
+                </h3>
+              </div>
+              <span className="text-[10px] uppercase font-mono text-deep-black/60 font-bold">
+                ÚLTIMOS EVENTOS
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {liveFeed.recentEvents.length === 0 ? (
+                <p className="text-xs text-deep-black/50 uppercase py-4">Nenhum evento registrado ainda.</p>
+              ) : (
+                liveFeed.recentEvents.slice(0, 10).map((evt) => {
+                  const isOrder = evt.type === 'NEW_ORDER';
+                  return (
+                    <div
+                      key={evt.id}
+                      className={`p-3.5 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+                        isOrder
+                          ? 'bg-deep-black text-white border-gold'
+                          : 'bg-deep-black/5 text-deep-black border-deep-black/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-base">{isOrder ? '💰' : '🔔'}</span>
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-black uppercase tracking-wider text-[11px] text-gold">
+                              {evt.title}
+                            </span>
+                            <span className="text-[9px] opacity-60 font-mono">
+                              • {evt.city}
+                            </span>
+                          </div>
+                          <p className="font-medium uppercase text-[11px]">
+                            {evt.description}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 self-end sm:self-auto">
+                        <span className="text-[10px] font-mono opacity-60">
+                          {new Date(evt.timestamp).toLocaleTimeString('pt-BR')}
+                        </span>
+                        {isOrder && (
+                          <a
+                            href={`https://wa.me/19783139452?text=${encodeURIComponent(`🎉 Notificação de Pedido #${evt.orderId}: ${evt.description} (Cidade: ${evt.city})`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2.5 py-1 bg-gold text-deep-black font-black text-[9px] uppercase hover:bg-white transition"
+                          >
+                            NOTIFICAR NO WHATSAPP
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

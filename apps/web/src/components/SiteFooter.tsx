@@ -150,13 +150,13 @@ export function SiteFooter() {
           </div>
         </div>
 
-        {/* Linha Final de Copyright */}
-        <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-white/50 uppercase tracking-widest">
-          <p>&copy; 2026 ANA FITNESS WEAR LLC • LEOMINSTER, MA 01453 • ALL RIGHTS RESERVED.</p>
-          <div className="flex items-center gap-6">
-            <span>SSL SECURE CHECKOUT</span>
-            <span>•</span>
-            <span className="text-gold font-bold">✨WEAR YOUR STRENGTH✨</span>
+        {/* Rodapé - Seção Interna / Colaboradores */}
+        <div className="pt-8 mt-8 border-t border-neutral-800 text-xs text-neutral-400 flex flex-wrap gap-4 items-center justify-between">
+          <p>© {new Date().getFullYear()} Ana Fitness Wear LLC • Leominster, MA. All rights reserved.</p>
+          <div className="flex flex-wrap gap-4 text-[11px]">
+            <Link href="/admin" className="hover:text-gold transition-colors">Acesso Lojista (ERP)</Link>
+            <Link href="/pos" className="hover:text-gold transition-colors">PDV Vendedoras</Link>
+            <Link href="/vendedora" className="hover:text-gold transition-colors">Portal da Vendedora</Link>
           </div>
         </div>
       </div>

@@ -1,31 +1,29 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
-import { ShoppingBag, Tablet, LayoutDashboard, Sparkles, Globe, Search, Heart, ShieldAlert, Package } from 'lucide-react';
+import {
+  ShoppingBag,
+  Sparkles,
+  Globe,
+  Search,
+  Package,
+  Menu,
+  X,
+  ChevronRight,
+} from 'lucide-react';
 
 export function SiteHeader() {
   const { lang, setLang, t } = useLanguage();
-  const { siteInfo, siteImages, adminUser } = useStoreSettings();
+  const { siteInfo, siteImages } = useStoreSettings();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
     <>
-      {/* Barra de Notificação quando Administrador está conectado */}
-      {adminUser.isLoggedIn && (
-        <div className="bg-gold text-deep-black text-[10px] font-black tracking-widest uppercase py-1.5 px-4 flex items-center justify-between border-b border-deep-black/20 shadow-sm">
-          <span className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-deep-black animate-pulse" />
-            <span>👑 PERFIL ADMINISTRADOR MASTER ATIVO ({adminUser.name.toUpperCase()})</span>
-          </span>
-          <Link href="/admin" className="underline hover:text-white font-black flex items-center gap-1">
-            <span>GERENCIAR PRODUTOS & SITE</span>
-            <span>→</span>
-          </Link>
-        </div>
-      )}
-
       {/* Ticker Superior de Luxo (Preto e Dourado) */}
       <div className="bg-deep-black text-white text-[11px] font-bold tracking-widest uppercase py-2 px-4 border-b border-gold/20">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -74,19 +72,31 @@ export function SiteHeader() {
         </div>
       </div>
 
-      {/* Header Principal com Logotipo Oficial em Dourado Metalizado */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-deep-black/10 transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-8 h-24 flex items-center justify-between">
-          {/* Logo Oficial ANA FITNESS WEAR Dinâmico */}
-          <Link href="/" className="group flex items-center gap-3">
+      {/* Header Fixo/Colado no Topo (100% focado no cliente final) */}
+      <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-deep-black/10 transition-all">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 h-20 sm:h-24 flex items-center justify-between">
+          {/* Botão de Menu Hambúrguer Mobile (Topo à Esquerda) */}
+          <div className="flex items-center lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 -ml-2 text-deep-black hover:text-gold transition focus:outline-none"
+              aria-label="Abrir menu de navegação"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
+
+          {/* Logo Oficial ANA FITNESS WEAR */}
+          <Link href="/" onClick={closeMobileMenu} className="group flex items-center gap-3">
             <img
               src={siteImages.logoUrl || '/logo-ana-fitness.png'}
               alt={siteInfo.storeName || 'ANA FITNESS WEAR'}
-              className="h-14 sm:h-16 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+              className="h-12 sm:h-16 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
             />
           </Link>
 
-          {/* Menu de Categorias em Caixa Alta (Estilo Gymshark) */}
+          {/* Menu de Categorias Desktop em Caixa Alta */}
           <nav className="hidden lg:flex items-center gap-7 text-xs font-black tracking-widest uppercase">
             <Link
               href="/#vitrine"
@@ -127,24 +137,8 @@ export function SiteHeader() {
             </Link>
           </nav>
 
-          {/* Ações Rápidas: Pesquisa, ADMIN, PDV, ERP e Sacola */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Chaveador compacto mobile */}
-            <div className="flex lg:hidden items-center border border-deep-black/20 text-[9px] font-black">
-              <button
-                onClick={() => setLang('en')}
-                className={`px-1.5 py-1 ${lang === 'en' ? 'bg-deep-black text-gold' : 'text-deep-black'}`}
-              >
-                EN
-              </button>
-              <button
-                onClick={() => setLang('pt')}
-                className={`px-1.5 py-1 ${lang === 'pt' ? 'bg-deep-black text-gold' : 'text-deep-black'}`}
-              >
-                PT
-              </button>
-            </div>
-
+          {/* Ações do Cliente: Meus Pedidos, Pesquisa e Sacola */}
+          <div className="flex items-center gap-2 sm:gap-4">
             <Link
               href="/#vitrine"
               className="p-2 text-deep-black hover:text-gold transition hidden sm:flex items-center"
@@ -153,55 +147,17 @@ export function SiteHeader() {
               <Search className="w-4 h-4" />
             </Link>
 
-            <Link
-              href="/#vitrine"
-              className="p-2 text-deep-black hover:text-gold transition hidden sm:flex items-center"
-              title="Wishlist"
-            >
-              <Heart className="w-4 h-4" />
-            </Link>
-
-            {/* BOTÃO DEDICADO DO PORTAL ADMINISTRADOR DE ANA */}
-            <Link
-              href="/admin"
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition border ${
-                adminUser.isLoggedIn
-                  ? 'bg-gold text-deep-black border-gold shadow-sm hover:bg-deep-black hover:text-gold'
-                  : 'bg-white text-deep-black border-deep-black hover:bg-gold hover:text-deep-black'
-              }`}
-              title="Portal Administrador (Cadastrar Produtos, Editar Imagens e Informações)"
-            >
-              <span>👑 ADMIN</span>
-            </Link>
-
-            <Link
-              href="/pos"
-              className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider bg-white text-deep-black border border-deep-black hover:bg-deep-black hover:text-gold transition"
-              title="Acesso Rápido ao Terminal de Vendas Balcão"
-            >
-              <Tablet className="w-3.5 h-3.5 text-gold" />
-              <span>{t('nav.pos')}</span>
-            </Link>
-
-            <Link
-              href="/backoffice"
-              className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider bg-deep-black text-white hover:bg-gold hover:text-deep-black transition"
-              title="Painel Financeiro"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>{t('nav.erp')}</span>
-            </Link>
-
-            {/* Link Meus Pedidos / Track Order */}
+            {/* Rastrear Pedido (USPS) */}
             <Link
               href="/pedidos"
               className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider bg-white text-deep-black border border-deep-black/30 hover:border-gold hover:text-gold transition"
-              title="Track Order / Consultar Meus Pedidos"
+              title="Track Order / Rastrear Pedidos"
             >
               <Package className="w-3.5 h-3.5 text-gold" />
-              <span className="hidden md:inline">{lang === 'pt' ? 'MEUS PEDIDOS' : 'TRACK ORDER'}</span>
+              <span className="hidden sm:inline">{lang === 'pt' ? 'MEUS PEDIDOS' : 'TRACK ORDER'}</span>
             </Link>
 
+            {/* Sacola de Compras */}
             <Link
               href="/checkout"
               className="relative p-2.5 bg-deep-black text-white hover:bg-gold hover:text-deep-black transition shadow-sm"
@@ -214,6 +170,97 @@ export function SiteHeader() {
             </Link>
           </div>
         </div>
+
+        {/* Menu Dropdown Mobile no Topo (Aberto pelo Hambúrguer) */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-deep-black/10 bg-white/98 backdrop-blur-md px-6 py-6 space-y-4 shadow-luxury animate-fadeIn">
+            <nav className="flex flex-col space-y-3 text-xs font-black tracking-widest uppercase">
+              <Link
+                href="/#vitrine"
+                onClick={closeMobileMenu}
+                className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black"
+              >
+                <span>{t('nav.new')}</span>
+                <ChevronRight className="w-4 h-4 text-gold" />
+              </Link>
+              <Link
+                href="/#vitrine"
+                onClick={closeMobileMenu}
+                className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black"
+              >
+                <span>{t('nav.sets')}</span>
+                <ChevronRight className="w-4 h-4 text-gold" />
+              </Link>
+              <Link
+                href="/#vitrine"
+                onClick={closeMobileMenu}
+                className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black"
+              >
+                <span>{t('nav.jumpsuits')}</span>
+                <ChevronRight className="w-4 h-4 text-gold" />
+              </Link>
+              <Link
+                href="/#vitrine"
+                onClick={closeMobileMenu}
+                className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black"
+              >
+                <span>{t('nav.rompers')}</span>
+                <ChevronRight className="w-4 h-4 text-gold" />
+              </Link>
+              <Link
+                href="/#vitrine"
+                onClick={closeMobileMenu}
+                className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black"
+              >
+                <span>{t('nav.tops')}</span>
+                <ChevronRight className="w-4 h-4 text-gold" />
+              </Link>
+              <Link
+                href="/#vitrine"
+                onClick={closeMobileMenu}
+                className="flex items-center justify-between py-2 border-b border-deep-black/5 text-gold font-black transition"
+              >
+                <span className="flex items-center gap-2">
+                  <span>{t('nav.preorder')}</span>
+                  <span className="w-2 h-2 rounded-full bg-gold animate-ping"></span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-gold" />
+              </Link>
+              <Link
+                href="/pedidos"
+                onClick={closeMobileMenu}
+                className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black"
+              >
+                <span className="flex items-center gap-2">
+                  <Package className="w-3.5 h-3.5 text-gold" />
+                  <span>{lang === 'pt' ? 'RASTREAR MEU PEDIDO (USPS)' : 'TRACK MY ORDER (USPS)'}</span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-gold" />
+              </Link>
+            </nav>
+
+            {/* Chaveador de Idioma no Menu Mobile */}
+            <div className="pt-2 flex items-center justify-between text-[10px] font-black uppercase text-deep-black/60">
+              <span>{lang === 'pt' ? 'IDIOMA DA LOJA:' : 'STORE LANGUAGE:'}</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setLang('en')}
+                  className={`px-3 py-1.5 ${lang === 'en' ? 'bg-deep-black text-gold' : 'bg-gray-100 text-deep-black'}`}
+                >
+                  🇺🇸 ENGLISH
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLang('pt')}
+                  className={`px-3 py-1.5 ${lang === 'pt' ? 'bg-deep-black text-gold' : 'bg-gray-100 text-deep-black'}`}
+                >
+                  🇧🇷 PORTUGUÊS
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
     </>
   );

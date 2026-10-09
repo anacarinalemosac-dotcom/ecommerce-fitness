@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
+import { recordOrderEvent } from '@/lib/liveStore';
 import fs from 'fs';
 import path from 'path';
 
@@ -490,6 +491,19 @@ export async function POST(req: NextRequest) {
     const saved = readSavedSales();
     const updated = [newSale, ...saved];
     writeSavedSales(updated);
+
+    // 1.1 Dispara evento em tempo real para o radar Wix do Backoffice
+    try {
+      recordOrderEvent({
+        orderId: newSale.order_id,
+        customerName: newSale.customer_name,
+        city: isPOS ? 'Leominster, MA (Loja Física)' : 'Online (EUA)',
+        amount: newSale.subtotal_products + newSale.shipping_fee - newSale.discount_amount,
+        itemsSummary: (newSale.items || []).map((i: any) => `${i.title} (${i.size})`).join(', '),
+      });
+    } catch (e) {
+      console.warn('Erro ao disparar evento de live order:', e);
+    }
 
     // 2. Tenta gravar no Supabase orders se disponível
     try {
