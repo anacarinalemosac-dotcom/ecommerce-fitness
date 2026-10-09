@@ -32,6 +32,16 @@ export default function SellerPortalPage() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [sellerSales, setSellerSales] = useState<any[]>([]);
 
+  const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
+  const [registerData, setRegisterData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    instagram: '',
+    password: '',
+    coupon_code: '',
+  });
+
   // Carrega vendas vinculadas à vendedora ao logar
   const fetchSellerSales = async (couponCode: string, sellerName: string) => {
     try {
@@ -81,6 +91,36 @@ export default function SellerPortalPage() {
     }
   };
 
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      const res = await fetch('/api/backoffice/sellers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'register',
+          ...registerData,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Falha ao realizar cadastro.');
+      }
+
+      const data = await res.json();
+      setLoggedSeller(data.seller);
+      fetchSellerSales(data.seller.coupon_code, data.seller.name);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Erro ao criar cadastro.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     setLoggedSeller(null);
     setIdentifier('');
@@ -97,10 +137,10 @@ export default function SellerPortalPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-8 py-12 space-y-10 bg-white selection:bg-deep-black selection:text-gold min-h-[85vh]">
       {/* =========================================================================
-          CASO 1: VENDEDORA NÃO LOGADA (TELA DE LOGIN SEGURO)
+          CASO 1: VENDEDORA NÃO LOGADA (LOGIN OU AUTO-CADASTRO)
          ========================================================================= */}
       {!loggedSeller ? (
-        <div className="max-w-md mx-auto space-y-8 animate-fadeIn pt-6">
+        <div className="max-w-lg mx-auto space-y-8 animate-fadeIn pt-4">
           <div className="text-center space-y-2">
             <div className="w-14 h-14 bg-deep-black text-gold rounded-full flex items-center justify-center mx-auto shadow-luxury border border-gold">
               <Users className="w-7 h-7 text-gold" />
@@ -109,71 +149,231 @@ export default function SellerPortalPage() {
               PORTAL DA EQUIPE & EMBAIXADORAS
             </span>
             <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-deep-black">
-              ACESSO DA VENDEDORA
+              PORTAL DA VENDEDORA
             </h1>
             <p className="text-xs uppercase tracking-wider text-deep-black/60 font-medium">
-              Consulte suas vendas comissionadas, saldo acumulado e seu link exclusivo de divulgação.
+              Acompanhe suas vendas comissionadas em dólares ($ USD), saldo acumulado e seu link exclusivo.
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="bg-white border-2 border-deep-black p-6 sm:p-8 space-y-5 shadow-luxury">
-            {errorMsg && (
-              <div className="p-3 bg-red-50 border border-red-400 text-red-700 text-xs font-black uppercase tracking-wider">
-                ⚠ {errorMsg}
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
-                SEU E-MAIL OU CÓDIGO DO CUPOM:
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="EX: CAMILA10 OU JULIANA10"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                className="w-full px-3.5 py-3 text-xs uppercase tracking-wider font-mono font-bold border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                autoFocus
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
-                SUA SENHA DE ACESSO:
-              </label>
-              <input
-                type="password"
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3.5 py-3 text-xs font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
-              />
-            </div>
-
+          {/* Abas Alternadoras: Entrar vs Quero me Cadastrar */}
+          <div className="flex border-b-2 border-deep-black text-xs font-black uppercase tracking-widest">
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
+              type="button"
+              onClick={() => {
+                setAuthTab('login');
+                setErrorMsg('');
+              }}
+              className={`flex-1 py-3 text-center transition ${
+                authTab === 'login'
+                  ? 'bg-deep-black text-gold'
+                  : 'bg-white text-deep-black/60 hover:text-deep-black'
+              }`}
             >
-              {loading ? (
-                <span>ENTRANDO...</span>
-              ) : (
-                <>
-                  <Lock className="w-4 h-4 text-gold" />
-                  <span>ENTRAR NO MEU PAINEL</span>
-                </>
-              )}
+              JÁ TENHO CADASTRO (ENTRAR)
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthTab('register');
+                setErrorMsg('');
+              }}
+              className={`flex-1 py-3 text-center transition ${
+                authTab === 'register'
+                  ? 'bg-deep-black text-gold'
+                  : 'bg-white text-deep-black/60 hover:text-deep-black'
+              }`}
+            >
+              QUERO ME CADASTRAR ✦
+            </button>
+          </div>
 
-            {/* Credenciais Rápidas de Teste para Ana Carina */}
-            <div className="pt-4 border-t border-deep-black/10 space-y-1.5 text-[10px] text-deep-black/60 uppercase">
-              <p className="font-black text-deep-black">CREDENCIAIS CADASTRADAS:</p>
-              <p>• Camila: Cupom <code className="font-bold text-gold font-mono">CAMILA10</code> • Senha <code className="font-mono">camila123</code></p>
-              <p>• Juliana: Cupom <code className="font-bold text-gold font-mono">JULIANA10</code> • Senha <code className="font-mono">juliana123</code></p>
-            </div>
-          </form>
+          {/* FORMULÁRIO 1: LOGIN */}
+          {authTab === 'login' && (
+            <form onSubmit={handleLogin} className="bg-white border-2 border-deep-black p-6 sm:p-8 space-y-5 shadow-luxury">
+              {errorMsg && (
+                <div className="p-3 bg-red-50 border border-red-400 text-red-700 text-xs font-black uppercase tracking-wider">
+                  ⚠ {errorMsg}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                  SEU E-MAIL OU CÓDIGO DO CUPOM:
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="EX: CAMILA10 OU JULIANA10"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  className="w-full px-3.5 py-3 text-xs uppercase tracking-wider font-mono font-bold border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                  SUA SENHA DE ACESSO:
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3.5 py-3 text-xs font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
+              >
+                {loading ? (
+                  <span>ENTRANDO...</span>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 text-gold" />
+                    <span>ENTRAR NO MEU PAINEL</span>
+                  </>
+                )}
+              </button>
+
+              {/* Informação sobre como obter cadastro */}
+              <div className="pt-4 border-t border-deep-black/10 text-center space-y-1 text-[10px] text-deep-black/60 uppercase">
+                <p>Ainda não tem cupom cadastrado?</p>
+                <button
+                  type="button"
+                  onClick={() => setAuthTab('register')}
+                  className="text-gold font-black underline hover:text-deep-black"
+                >
+                  Clique aqui para criar seu cupom de vendedora
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* FORMULÁRIO 2: CADASTRO DE NOVA VENDEDORA / AFILIADA */}
+          {authTab === 'register' && (
+            <form onSubmit={handleRegister} className="bg-white border-2 border-deep-black p-6 sm:p-8 space-y-5 shadow-luxury animate-fadeIn">
+              <div className="p-3 bg-gold/10 border border-gold text-[11px] text-deep-black uppercase leading-relaxed font-bold">
+                ✨ Cadastre-se em segundos! Você ganha <strong>10% de comissão em dólares ($ USD)</strong> sobre todas as vendas realizadas com o seu cupom.
+              </div>
+
+              {errorMsg && (
+                <div className="p-3 bg-red-50 border border-red-400 text-red-700 text-xs font-black uppercase tracking-wider">
+                  ⚠ {errorMsg}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                  SEU NOME COMPLETO *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="EX: CAROLINA MENDES"
+                  value={registerData.name}
+                  onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })}
+                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider font-bold border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                    WHATSAPP / TELEFONE *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="+1 (978) 000-0000"
+                    value={registerData.phone}
+                    onChange={(e) => setRegisterData({ ...registerData, phone: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-xs font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                    INSTAGRAM / REDE SOCIAL
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="@seu_instagram"
+                    value={registerData.instagram}
+                    onChange={(e) => setRegisterData({ ...registerData, instagram: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-xs border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                  SEU E-MAIL DE ACESSO *
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="seuemail@exemplo.com"
+                  value={registerData.email}
+                  onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
+                  className="w-full px-3.5 py-2.5 text-xs font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                />
+              </div>
+
+              {/* Cupom Desejado */}
+              <div className="space-y-1.5 p-3.5 bg-deep-black/5 border border-deep-black/10">
+                <label className="text-[10px] font-black uppercase tracking-widest text-deep-black flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-gold" />
+                  <span>CUPOM QUE VOCÊ DESEJA USAR *</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="EX: CAROL10 OU CAROLFIT"
+                  value={registerData.coupon_code}
+                  onChange={(e) => setRegisterData({ ...registerData, coupon_code: e.target.value.toUpperCase() })}
+                  className="w-full px-3.5 py-2.5 text-sm uppercase tracking-wider font-mono font-black border border-deep-black/30 focus:outline-none focus:border-deep-black"
+                />
+                <span className="text-[9px] text-deep-black/60 uppercase block">
+                  As pessoas usarão este código na sacola para gerar suas comissões.
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                  CRIE UMA SENHA DE ACESSO *
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Mínimo 4 caracteres"
+                  value={registerData.password}
+                  onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+                  className="w-full px-3.5 py-2.5 text-xs font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 bg-gold hover:bg-deep-black hover:text-white text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
+              >
+                {loading ? (
+                  <span>ATIVANDO CONTA...</span>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    <span>CRIAR MEU CADASTRO & ATIVAR CUPOM</span>
+                  </>
+                )}
+              </button>
+            </form>
+          )}
         </div>
       ) : (
         /* =========================================================================

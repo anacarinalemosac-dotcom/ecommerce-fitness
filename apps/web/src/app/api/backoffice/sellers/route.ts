@@ -198,6 +198,47 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 1.1 Ação de Auto-Cadastro de Vendedora / Embaixadora pelo site
+    if (body.action === 'register') {
+      const { name, email, phone, password, coupon_code, instagram } = body;
+      if (!name || !password || !coupon_code) {
+        return NextResponse.json({ error: 'Nome, senha e código do cupom desejado são obrigatórios.' }, { status: 400 });
+      }
+
+      const cleanCoupon = coupon_code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (cleanCoupon.length < 3) {
+        return NextResponse.json({ error: 'O cupom deve ter pelo menos 3 letras ou números.' }, { status: 400 });
+      }
+
+      const existing = sellers.find((s) => s.coupon_code.toUpperCase() === cleanCoupon);
+      if (existing) {
+        return NextResponse.json({ error: `O cupom ${cleanCoupon} já está em uso por outra vendedora. Escolha outro código.` }, { status: 400 });
+      }
+
+      const newSeller: SellerRecord = {
+        id: `seller-${Date.now()}`,
+        name: name.trim(),
+        email: email ? email.trim().toLowerCase() : `${cleanCoupon.toLowerCase()}@anafitnesswear.com`,
+        phone: phone ? phone.trim() : (instagram ? `@${instagram.replace('@', '')}` : ''),
+        password: password.trim(),
+        coupon_code: cleanCoupon,
+        commission_pct: 10.0, // Comissão padrão inicial de 10%
+        customer_discount_pct: 0.0, // Cliente paga preço normal da loja
+        channel: 'ALL',
+        active: true,
+        total_sales_count: 0,
+        total_revenue_generated: 0,
+        total_commission_earned: 0,
+        total_commission_paid: 0,
+        created_at: new Date().toISOString(),
+      };
+
+      const newList = [newSeller, ...sellers];
+      writeSellers(newList);
+
+      return NextResponse.json({ success: true, seller: newSeller });
+    }
+
     // 2. Ação de Login da Vendedora no Portal
     if (body.action === 'login') {
       const { identifier, password } = body;
