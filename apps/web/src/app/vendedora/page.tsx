@@ -20,6 +20,9 @@ import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
+  X,
+  CreditCard,
+  Edit3,
 } from 'lucide-react';
 
 export default function SellerPortalPage() {
@@ -40,7 +43,20 @@ export default function SellerPortalPage() {
     instagram: '',
     password: '',
     coupon_code: '',
+    payout_method: 'ZELLE',
+    payout_key: '',
+    payout_beneficiary: '',
   });
+
+  // Modal para a vendedora editar seus dados de recebimento
+  const [showEditPayoutModal, setShowEditPayoutModal] = useState(false);
+  const [payoutFormData, setPayoutFormData] = useState({
+    payout_method: 'ZELLE',
+    payout_key: '',
+    payout_beneficiary: '',
+  });
+  const [savingPayout, setSavingPayout] = useState(false);
+  const [payoutSuccessMsg, setPayoutSuccessMsg] = useState(false);
 
   // Carrega vendas vinculadas à vendedora ao logar
   const fetchSellerSales = async (couponCode: string, sellerName: string) => {
@@ -83,6 +99,11 @@ export default function SellerPortalPage() {
 
       const data = await res.json();
       setLoggedSeller(data.seller);
+      setPayoutFormData({
+        payout_method: data.seller.payout_method || 'ZELLE',
+        payout_key: data.seller.payout_key || data.seller.phone || '',
+        payout_beneficiary: data.seller.payout_beneficiary || data.seller.name || '',
+      });
       fetchSellerSales(data.seller.coupon_code, data.seller.name);
     } catch (err: any) {
       setErrorMsg(err.message || 'Falha no login.');
@@ -113,11 +134,49 @@ export default function SellerPortalPage() {
 
       const data = await res.json();
       setLoggedSeller(data.seller);
+      setPayoutFormData({
+        payout_method: data.seller.payout_method || registerData.payout_method || 'ZELLE',
+        payout_key: data.seller.payout_key || registerData.payout_key || '',
+        payout_beneficiary: data.seller.payout_beneficiary || registerData.payout_beneficiary || '',
+      });
       fetchSellerSales(data.seller.coupon_code, data.seller.name);
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao criar cadastro.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSavePayout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loggedSeller) return;
+    setSavingPayout(true);
+
+    try {
+      const res = await fetch('/api/backoffice/sellers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_payout',
+          seller_id: loggedSeller.id,
+          ...payoutFormData,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setLoggedSeller(data.seller);
+        setShowEditPayoutModal(false);
+        setPayoutSuccessMsg(true);
+        setTimeout(() => setPayoutSuccessMsg(false), 4000);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Erro ao atualizar dados de pagamento.');
+      }
+    } catch (err: any) {
+      alert(`Falha ao salvar: ${err.message}`);
+    } finally {
+      setSavingPayout(false);
     }
   };
 
@@ -344,6 +403,51 @@ export default function SellerPortalPage() {
                 </span>
               </div>
 
+              {/* Onde a dona deve pagar a comissão */}
+              <div className="space-y-3 p-3.5 bg-deep-black/5 border border-deep-black/10">
+                <label className="text-[10px] font-black uppercase tracking-widest text-deep-black flex items-center gap-1.5">
+                  <DollarSign className="w-3.5 h-3.5 text-gold" />
+                  <span>POR ONDE VOCÊ PREFERE RECEBER SUAS COMISSÕES? *</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[9px] font-bold text-deep-black/70 uppercase block mb-1">MÉTODO PREFERIDO:</label>
+                    <select
+                      value={registerData.payout_method}
+                      onChange={(e) => setRegisterData({ ...registerData, payout_method: e.target.value as any })}
+                      className="w-full px-3 py-2 text-xs font-bold uppercase border border-deep-black/20 focus:outline-none focus:border-deep-black bg-white"
+                    >
+                      <option value="ZELLE">ZELLE (EUA)</option>
+                      <option value="VENMO">VENMO (EUA)</option>
+                      <option value="CASHAPP">CASH APP (EUA)</option>
+                      <option value="PIX">PIX (BANCO BRASIL)</option>
+                      <option value="BANK">CONTA BANCÁRIA (EUA)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold text-deep-black/70 uppercase block mb-1">CHAVE / CONTA / E-MAIL / @USUÁRIO: *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Telefone Zelle, @Venmo ou Chave Pix"
+                      value={registerData.payout_key}
+                      onChange={(e) => setRegisterData({ ...registerData, payout_key: e.target.value })}
+                      className="w-full px-3 py-2 text-xs font-mono font-bold border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold text-deep-black/70 uppercase block mb-1">NOME DO TITULAR DA CONTA (OPCIONAL):</label>
+                  <input
+                    type="text"
+                    placeholder="Nome completo do titular cadastrado no Zelle / Pix"
+                    value={registerData.payout_beneficiary}
+                    onChange={(e) => setRegisterData({ ...registerData, payout_beneficiary: e.target.value })}
+                    className="w-full px-3 py-2 text-xs uppercase border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
                   CRIE UMA SENHA DE ACESSO *
@@ -479,6 +583,146 @@ export default function SellerPortalPage() {
               </span>
             </div>
           </div>
+
+          {/* Cartão de Dados de Recebimento de Comissões */}
+          <div className="bg-white border-2 border-deep-black p-6 sm:p-8 space-y-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-deep-black/10 pb-4">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-gold" />
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                    ONDE VOCÊ RECEBE SUAS COMISSÕES
+                  </span>
+                  <h3 className="text-base font-black uppercase tracking-wider text-deep-black">
+                    SEUS DADOS PARA PAGAMENTO PELA LOJA
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditPayoutModal(true)}
+                className="px-4 py-2.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition self-start sm:self-auto shadow"
+              >
+                EDITAR DADOS DE PAGAMENTO
+              </button>
+            </div>
+
+            {payoutSuccessMsg && (
+              <div className="p-3 bg-green-50 border border-green-500 text-green-800 text-xs font-black uppercase tracking-wider">
+                ✓ Seus dados de recebimento foram atualizados com sucesso! A loja utilizará esta chave para repassar suas comissões.
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs uppercase">
+              <div className="p-3.5 bg-deep-black/5 border border-deep-black/10 space-y-1">
+                <span className="text-[9px] font-black text-deep-black/60 block">MÉTODO ESCOLHIDO:</span>
+                <span className="text-sm font-black text-deep-black">{loggedSeller.payout_method || 'ZELLE'}</span>
+              </div>
+              <div className="p-3.5 bg-deep-black/5 border border-deep-black/10 space-y-1">
+                <span className="text-[9px] font-black text-deep-black/60 block">SUA CHAVE / CONTA / @USUÁRIO:</span>
+                <span className="text-sm font-mono font-black text-gold">
+                  {loggedSeller.payout_key || loggedSeller.phone || 'Não informada'}
+                </span>
+              </div>
+              <div className="p-3.5 bg-deep-black/5 border border-deep-black/10 space-y-1">
+                <span className="text-[9px] font-black text-deep-black/60 block">NOME DO TITULAR:</span>
+                <span className="text-sm font-bold text-deep-black">
+                  {loggedSeller.payout_beneficiary || loggedSeller.name}
+                </span>
+              </div>
+            </div>
+            <p className="text-[10px] text-deep-black/60 uppercase">
+              ✓ É por esta conta que a Ana Carina (proprietária da loja) fará os depósitos das suas comissões em dólares ($ USD).
+            </p>
+          </div>
+
+          {/* Modal de Edição de Dados de Pagamento */}
+          {showEditPayoutModal && (
+            <div className="fixed inset-0 z-50 bg-deep-black/80 flex items-center justify-center p-4 animate-fadeIn">
+              <div className="bg-white border-2 border-deep-black w-full max-w-md p-6 sm:p-8 space-y-6 shadow-luxury">
+                <div className="flex justify-between items-center border-b border-deep-black/10 pb-3">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                      CONFIGURAÇÃO DE RECEBIMENTO
+                    </span>
+                    <h3 className="text-lg font-black uppercase tracking-wider text-deep-black">
+                      DADOS DE PAGAMENTO
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPayoutModal(false)}
+                    className="p-1 hover:text-gold transition text-deep-black"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSavePayout} className="space-y-4 text-xs">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                      MÉTODO DE PAGAMENTO PREFERIDO *
+                    </label>
+                    <select
+                      value={payoutFormData.payout_method}
+                      onChange={(e) => setPayoutFormData({ ...payoutFormData, payout_method: e.target.value as any })}
+                      className="w-full px-3 py-2 text-xs font-bold uppercase border border-deep-black/30 focus:outline-none focus:border-deep-black bg-white"
+                    >
+                      <option value="ZELLE">ZELLE (EUA)</option>
+                      <option value="VENMO">VENMO (EUA)</option>
+                      <option value="CASHAPP">CASH APP (EUA)</option>
+                      <option value="PIX">PIX (BANCO BRASIL)</option>
+                      <option value="BANK">CONTA BANCÁRIA (EUA)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                      SUA CHAVE / TELEFONE / E-MAIL / @USUÁRIO *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Telefone Zelle, @Venmo ou Chave Pix"
+                      value={payoutFormData.payout_key}
+                      onChange={(e) => setPayoutFormData({ ...payoutFormData, payout_key: e.target.value })}
+                      className="w-full px-3 py-2 text-xs font-mono font-bold border border-deep-black/30 focus:outline-none focus:border-deep-black"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                      NOME DO TITULAR DA CONTA
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Nome completo do titular cadastrado no Zelle / Pix"
+                      value={payoutFormData.payout_beneficiary}
+                      onChange={(e) => setPayoutFormData({ ...payoutFormData, payout_beneficiary: e.target.value })}
+                      className="w-full px-3 py-2 text-xs uppercase border border-deep-black/30 focus:outline-none focus:border-deep-black"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowEditPayoutModal(false)}
+                      className="px-4 py-2.5 border border-deep-black/30 hover:border-deep-black text-deep-black font-black uppercase tracking-wider text-xs transition"
+                    >
+                      CANCELAR
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingPayout}
+                      className="px-6 py-2.5 bg-gold hover:bg-gold/90 text-deep-black font-black uppercase tracking-widest text-xs transition shadow"
+                    >
+                      {savingPayout ? 'SALVANDO...' : 'SALVAR DADOS'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           {/* Extrato Detalhado das Vendas da Vendedora */}
           <div className="bg-white border-2 border-deep-black overflow-x-auto shadow-sm">

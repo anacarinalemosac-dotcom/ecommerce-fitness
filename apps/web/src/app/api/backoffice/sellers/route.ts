@@ -15,6 +15,9 @@ export interface SellerRecord {
   customer_discount_pct: number; // ex: 10% de desconto pro cliente (ou 0% se for sem desconto)
   channel: 'ALL' | 'ONLINE' | 'POS_COUNTER';
   active: boolean;
+  payout_method: 'ZELLE' | 'VENMO' | 'CASHAPP' | 'PIX' | 'BANK';
+  payout_key: string; // Chave PIX, E-mail ou Telefone Zelle, @Venmo, etc.
+  payout_beneficiary?: string; // Nome do titular da conta
   total_sales_count: number;
   total_revenue_generated: number;
   total_commission_earned: number;
@@ -34,6 +37,9 @@ const INITIAL_SELLERS: SellerRecord[] = [
     customer_discount_pct: 10.0,
     channel: 'ALL',
     active: true,
+    payout_method: 'ZELLE',
+    payout_key: '+1 (508) 772-1100',
+    payout_beneficiary: 'Camila Santos',
     total_sales_count: 14,
     total_revenue_generated: 1420.50,
     total_commission_earned: 142.05,
@@ -51,6 +57,9 @@ const INITIAL_SELLERS: SellerRecord[] = [
     customer_discount_pct: 0.0, // Cliente paga valor cheio, vendedora ganha 10%
     channel: 'POS_COUNTER',
     active: true,
+    payout_method: 'ZELLE',
+    payout_key: '+1 (978) 400-3321',
+    payout_beneficiary: 'Juliana Silva',
     total_sales_count: 22,
     total_revenue_generated: 2890.00,
     total_commission_earned: 289.00,
@@ -68,6 +77,9 @@ const INITIAL_SELLERS: SellerRecord[] = [
     customer_discount_pct: 5.0, // Cliente ganha 5%, influenciadora ganha 12%
     channel: 'ONLINE',
     active: true,
+    payout_method: 'VENMO',
+    payout_key: '@beatriz_fit',
+    payout_beneficiary: 'Beatriz Lima',
     total_sales_count: 8,
     total_revenue_generated: 840.00,
     total_commission_earned: 100.80,
@@ -144,6 +156,9 @@ export async function POST(req: NextRequest) {
         customer_discount_pct = 10,
         channel = 'ALL',
         active = true,
+        payout_method = 'ZELLE',
+        payout_key = '',
+        payout_beneficiary = '',
       } = body.seller;
 
       if (!name || !coupon_code) {
@@ -167,6 +182,9 @@ export async function POST(req: NextRequest) {
               customer_discount_pct: Number(customer_discount_pct),
               channel,
               active,
+              payout_method: payout_method || s.payout_method || 'ZELLE',
+              payout_key: payout_key !== undefined ? payout_key : (s.payout_key || ''),
+              payout_beneficiary: payout_beneficiary !== undefined ? payout_beneficiary : (s.payout_beneficiary || ''),
             };
           }
           return s;
@@ -186,6 +204,9 @@ export async function POST(req: NextRequest) {
           customer_discount_pct: Number(customer_discount_pct),
           channel,
           active: true,
+          payout_method: payout_method || 'ZELLE',
+          payout_key: payout_key || phone || '',
+          payout_beneficiary: payout_beneficiary || name,
           total_sales_count: 0,
           total_revenue_generated: 0,
           total_commission_earned: 0,
@@ -200,7 +221,7 @@ export async function POST(req: NextRequest) {
 
     // 1.1 Ação de Auto-Cadastro de Vendedora / Embaixadora pelo site
     if (body.action === 'register') {
-      const { name, email, phone, password, coupon_code, instagram } = body;
+      const { name, email, phone, password, coupon_code, instagram, payout_method = 'ZELLE', payout_key = '', payout_beneficiary = '' } = body;
       if (!name || !password || !coupon_code) {
         return NextResponse.json({ error: 'Nome, senha e código do cupom desejado são obrigatórios.' }, { status: 400 });
       }
@@ -226,6 +247,9 @@ export async function POST(req: NextRequest) {
         customer_discount_pct: 0.0, // Cliente paga preço normal da loja
         channel: 'ALL',
         active: true,
+        payout_method: payout_method as any,
+        payout_key: payout_key || phone || '',
+        payout_beneficiary: payout_beneficiary || name.trim(),
         total_sales_count: 0,
         total_revenue_generated: 0,
         total_commission_earned: 0,
@@ -237,6 +261,25 @@ export async function POST(req: NextRequest) {
       writeSellers(newList);
 
       return NextResponse.json({ success: true, seller: newSeller });
+    }
+
+    // 1.2 Ação de Atualizar Dados de Pagamento/Repasse pela Vendedora
+    if (body.action === 'update_payout') {
+      const { seller_id, payout_method = 'ZELLE', payout_key = '', payout_beneficiary = '' } = body;
+      const updatedList = sellers.map((s) => {
+        if (s.id === seller_id) {
+          return {
+            ...s,
+            payout_method: payout_method as any,
+            payout_key: payout_key.trim(),
+            payout_beneficiary: payout_beneficiary.trim(),
+          };
+        }
+        return s;
+      });
+      writeSellers(updatedList);
+      const updated = updatedList.find((s) => s.id === seller_id);
+      return NextResponse.json({ success: true, seller: updated });
     }
 
     // 2. Ação de Login da Vendedora no Portal
@@ -259,7 +302,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Retorna os dados seguros da vendedora (sem dados sigilosos da empresa)
+      // Retorna os dados seguros da vendedora (incluindo método de repasse para ela editar)
       return NextResponse.json({
         seller: {
           id: matched.id,
@@ -269,6 +312,9 @@ export async function POST(req: NextRequest) {
           coupon_code: matched.coupon_code,
           commission_pct: matched.commission_pct,
           customer_discount_pct: matched.customer_discount_pct,
+          payout_method: matched.payout_method || 'ZELLE',
+          payout_key: matched.payout_key || '',
+          payout_beneficiary: matched.payout_beneficiary || '',
           total_sales_count: matched.total_sales_count,
           total_revenue_generated: matched.total_revenue_generated,
           total_commission_earned: matched.total_commission_earned,

@@ -251,12 +251,23 @@ export default function BackofficeDashboard() {
     customer_discount_pct: 0,
     channel: 'ALL' as 'ALL' | 'ONLINE' | 'POS_COUNTER',
     active: true,
+    payout_method: 'ZELLE' as 'ZELLE' | 'VENMO' | 'CASHAPP' | 'PIX' | 'BANK',
+    payout_key: '',
+    payout_beneficiary: '',
   });
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [payoutSeller, setPayoutSeller] = useState<any | null>(null);
   const [payoutAmount, setPayoutAmount] = useState<string>('');
   const [payoutMethod, setPayoutMethod] = useState<'ZELLE' | 'VENMO' | 'CASHAPP' | 'PIX' | 'CASH'>('ZELLE');
   const [copiedCouponLink, setCopiedCouponLink] = useState<string | null>(null);
+  const [copiedPayoutKey, setCopiedPayoutKey] = useState<string | null>(null);
+
+  const handleCopyPayoutKey = (key: string, id: string) => {
+    if (!key) return;
+    navigator.clipboard.writeText(key);
+    setCopiedPayoutKey(id);
+    setTimeout(() => setCopiedPayoutKey(null), 3000);
+  };
 
   const fetchSellers = async () => {
     setLoadingSellers(true);
@@ -287,6 +298,9 @@ export default function BackofficeDashboard() {
       customer_discount_pct: 0,
       channel: 'ALL',
       active: true,
+      payout_method: 'ZELLE',
+      payout_key: '',
+      payout_beneficiary: '',
     });
     setShowSellerModal(true);
   };
@@ -303,6 +317,9 @@ export default function BackofficeDashboard() {
       customer_discount_pct: seller.customer_discount_pct,
       channel: seller.channel || 'ALL',
       active: seller.active,
+      payout_method: seller.payout_method || 'ZELLE',
+      payout_key: seller.payout_key || '',
+      payout_beneficiary: seller.payout_beneficiary || '',
     });
     setShowSellerModal(true);
   };
@@ -357,6 +374,7 @@ export default function BackofficeDashboard() {
     const pending = Math.max(0, (seller.total_commission_earned || 0) - (seller.total_commission_paid || 0));
     setPayoutSeller(seller);
     setPayoutAmount(pending.toFixed(2));
+    setPayoutMethod((seller.payout_method as any) || 'ZELLE');
     setShowPayoutModal(true);
   };
 
@@ -2232,6 +2250,7 @@ export default function BackofficeDashboard() {
                   <th className="p-4">VENDEDORA</th>
                   <th className="p-4">SENHA</th>
                   <th className="p-4">CUPOM & REGRAS</th>
+                  <th className="p-4">DADOS DE REPASSE (RECEBIMENTO)</th>
                   <th className="p-4">FATURAMENTO</th>
                   <th className="p-4">COMISSÃO</th>
                   <th className="p-4">JÁ PAGO</th>
@@ -2243,7 +2262,7 @@ export default function BackofficeDashboard() {
               <tbody className="divide-y divide-deep-black/10">
                 {sellers.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="p-8 text-center text-deep-black/50 font-bold">
+                    <td colSpan={10} className="p-8 text-center text-deep-black/50 font-bold">
                       Nenhuma vendedora cadastrada no momento. Clique no botão acima para adicionar.
                     </td>
                   </tr>
@@ -2284,6 +2303,36 @@ export default function BackofficeDashboard() {
                               </span>
                             )}
                           </div>
+                        </td>
+
+                        <td className="p-4 space-y-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="px-1.5 py-0.5 bg-deep-black text-gold font-black text-[9px] uppercase tracking-wider">
+                              {seller.payout_method || 'ZELLE'}
+                            </span>
+                            {seller.payout_key ? (
+                              <button
+                                type="button"
+                                onClick={() => handleCopyPayoutKey(seller.payout_key, seller.id)}
+                                className="px-1.5 py-0.5 border border-deep-black/30 hover:border-deep-black text-[9px] font-bold text-deep-black flex items-center gap-1 bg-white transition"
+                                title="Copiar chave de pagamento"
+                              >
+                                {copiedPayoutKey === seller.id ? (
+                                  <Check className="w-2.5 h-2.5 text-gold" />
+                                ) : (
+                                  <Copy className="w-2.5 h-2.5 text-deep-black/60" />
+                                )}
+                                <span className="font-mono">{copiedPayoutKey === seller.id ? 'COPIADA!' : seller.payout_key}</span>
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-deep-black/40 italic">Não informada</span>
+                            )}
+                          </div>
+                          {seller.payout_beneficiary && (
+                            <span className="text-[9px] text-deep-black/60 block truncate max-w-[160px]">
+                              Titular: {seller.payout_beneficiary}
+                            </span>
+                          )}
                         </td>
 
                         <td className="p-4">
@@ -2513,6 +2562,61 @@ export default function BackofficeDashboard() {
                     </div>
                   </div>
 
+                  {/* Dados de Repasse / Pagamento */}
+                  <div className="p-4 bg-gold/10 border border-gold/40 space-y-4">
+                    <div className="flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-gold" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                        DADOS BANCÁRIOS / REPASSE DA COMISSÃO
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                          MÉTODO PREFERIDO DE REPASSE
+                        </label>
+                        <select
+                          value={sellerFormData.payout_method}
+                          onChange={(e) => setSellerFormData({ ...sellerFormData, payout_method: e.target.value as any })}
+                          className="w-full px-3 py-2 border border-deep-black/30 text-xs font-bold uppercase focus:outline-none focus:border-deep-black bg-white"
+                        >
+                          <option value="ZELLE">ZELLE (Telefone ou E-mail)</option>
+                          <option value="VENMO">VENMO (@usuario)</option>
+                          <option value="CASHAPP">CASH APP ($cashtag)</option>
+                          <option value="PIX">PIX (Banco Brasileiro)</option>
+                          <option value="BANK">CONTA BANCÁRIA (Routing/Account)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                          CHAVE / TELEFONE / E-MAIL DE RECEBIMENTO
+                        </label>
+                        <input
+                          type="text"
+                          value={sellerFormData.payout_key}
+                          onChange={(e) => setSellerFormData({ ...sellerFormData, payout_key: e.target.value })}
+                          placeholder="Ex: +1 (508) 000-0000 ou @venmo"
+                          className="w-full px-3 py-2 border border-deep-black/30 text-xs font-mono font-bold focus:outline-none focus:border-deep-black bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                        NOME DO TITULAR DA CONTA (BENEFICIÁRIO)
+                      </label>
+                      <input
+                        type="text"
+                        value={sellerFormData.payout_beneficiary}
+                        onChange={(e) => setSellerFormData({ ...sellerFormData, payout_beneficiary: e.target.value })}
+                        placeholder="Nome exato cadastrado no banco ou Zelle"
+                        className="w-full px-3 py-2 border border-deep-black/30 text-xs font-bold uppercase focus:outline-none focus:border-deep-black bg-white"
+                      />
+                    </div>
+                  </div>
+
                   <div className="pt-2 flex justify-end gap-3">
                     <button
                       type="button"
@@ -2568,10 +2672,64 @@ export default function BackofficeDashboard() {
                   </div>
                   <div className="flex justify-between text-gold font-black border-t border-deep-black/10 pt-2">
                     <span>SALDO PENDENTE ATUAL:</span>
-                    <span className="font-mono text-sm">
+                    <span className="font-mono text-sm font-black">
                       ${Math.max(0, (Number(payoutSeller.total_commission_earned) || 0) - (Number(payoutSeller.total_commission_paid) || 0)).toFixed(2)}
                     </span>
                   </div>
+                </div>
+
+                {/* Bloco Dourado: Chave de Recebimento da Vendedora */}
+                <div className="p-4 bg-gold/15 border-2 border-gold space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-deep-black flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-gold" />
+                      COMO ELA RECEBE AS COMISSÕES
+                    </span>
+                    <span className="px-2 py-0.5 bg-deep-black text-gold font-black text-[9px] uppercase tracking-wider">
+                      {payoutSeller.payout_method || 'ZELLE'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-bold uppercase text-deep-black/60 block">
+                      CHAVE CADASTRADA PELA VENDEDORA:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 px-3 py-2 bg-white border border-deep-black/20 font-mono font-black text-xs text-deep-black truncate select-all">
+                        {payoutSeller.payout_key || payoutSeller.phone || 'Chave não informada'}
+                      </div>
+                      {(payoutSeller.payout_key || payoutSeller.phone) && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyPayoutKey(payoutSeller.payout_key || payoutSeller.phone, 'modal')}
+                          className="px-3 py-2 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 shadow whitespace-nowrap"
+                        >
+                          {copiedPayoutKey === 'modal' ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-gold" />
+                              <span>COPIADA!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>COPIAR</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {payoutSeller.payout_beneficiary && (
+                    <div className="text-[10px] text-deep-black font-bold flex justify-between pt-0.5">
+                      <span className="text-deep-black/60">TITULAR:</span>
+                      <span className="font-mono">{payoutSeller.payout_beneficiary}</span>
+                    </div>
+                  )}
+
+                  <p className="text-[9px] text-deep-black/70 italic leading-snug pt-1 border-t border-gold/30">
+                    👉 Copie a chave acima, faça o envio pelo app do seu banco (Chase, BoA, Zelle ou Venmo) e confirme o registro abaixo.
+                  </p>
                 </div>
 
                 <form onSubmit={handleConfirmPayout} className="space-y-4 text-xs">
