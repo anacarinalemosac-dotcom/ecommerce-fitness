@@ -403,7 +403,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [adminUser, setAdminUser] = useState<AdminUser>({
     isLoggedIn: false,
     name: 'Ana Carina',
-    email: 'ana@anafitwear.com',
+    email: 'anafitweareua@gmail.com',
     role: 'owner',
   });
 
@@ -573,7 +573,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     const user: AdminUser = {
       isLoggedIn: true,
       name: 'Ana Carina',
-      email: email || 'ana@anafitwear.com',
+      email: email || 'anafitweareua@gmail.com',
       role: 'owner',
     };
     setAdminUser(user);

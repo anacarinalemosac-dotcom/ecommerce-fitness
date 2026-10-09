@@ -47,7 +47,7 @@ export default function AdminPortalPage() {
   } = useStoreSettings();
 
   const [activeTab, setActiveTab] = useState<'products' | 'images' | 'info'>('products');
-  const [loginEmail, setLoginEmail] = useState('ana@anafitwear.com');
+  const [loginEmail, setLoginEmail] = useState('anafitweareua@gmail.com');
   const [loginPass, setLoginPass] = useState('');
   const [loginError, setLoginError] = useState('');
   const [savedSuccessMessage, setSavedSuccessMessage] = useState<string | null>(null);
@@ -124,7 +124,7 @@ export default function AdminPortalPage() {
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
                 className="w-full p-3 border-2 border-deep-black font-bold text-xs focus:outline-none focus:border-gold"
-                placeholder="ana@anafitwear.com"
+                placeholder="anafitweareua@gmail.com"
               />
             </div>
 

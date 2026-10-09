@@ -187,7 +187,7 @@ const INITIAL_CATALOG: CatalogProduct[] = [
 
 export default function BackofficeDashboard() {
   const { adminUser, loginAdmin, logoutAdmin } = useStoreSettings();
-  const [authEmail, setAuthEmail] = useState('ana@anafitwear.com');
+  const [authEmail, setAuthEmail] = useState('anafitweareua@gmail.com');
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState<'catalog' | 'sales' | 'margins' | 'live' | 'backorders' | 'commissions' | 'theme'>('sales');
@@ -803,7 +803,7 @@ export default function BackofficeDashboard() {
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
                 className="w-full p-3 border-2 border-deep-black font-bold text-xs focus:outline-none focus:border-gold"
-                placeholder="ana@anafitwear.com"
+                placeholder="anafitweareua@gmail.com"
               />
             </div>
 

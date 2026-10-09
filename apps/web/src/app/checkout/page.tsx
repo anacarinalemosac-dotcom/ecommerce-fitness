@@ -553,7 +553,7 @@ export default function CheckoutPage() {
                   {lang === 'pt'
                     ? 'Envie o valor total para o Zelle oficial da loja: '
                     : 'Send the total amount to the official store Zelle: '}
-                  <strong className="text-deep-black font-mono font-bold">+1 (978) 313-9452</strong> ou <strong className="text-deep-black font-mono">orders@anafitwear.com</strong>.
+                  <strong className="text-deep-black font-mono font-bold">+1 (978) 313-9452</strong> ou <strong className="text-deep-black font-mono">anafitweareua@gmail.com</strong>.
                 </p>
                 <p className="text-[10px] text-deep-black/60 uppercase">
                   {lang === 'pt'
