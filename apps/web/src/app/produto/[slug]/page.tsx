@@ -1,0 +1,924 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { useLanguage } from '../../../context/LanguageContext';
+import { useStoreSettings } from '../../../context/StoreSettingsContext';
+import {
+  Star,
+  ShieldCheck,
+  Truck,
+  RotateCcw,
+  Sparkles,
+  Tag,
+  CheckCircle2,
+  Clock,
+  Heart,
+  ZoomIn,
+  ArrowRight,
+  ShoppingBag,
+  Ruler,
+  Droplets,
+  Layers,
+  Shield,
+  Activity,
+  Scissors,
+  Check,
+  Sun,
+  Wind,
+  Phone,
+} from 'lucide-react';
+
+interface Variant {
+  id: string;
+  sku: string;
+  size: string;
+  color: string;
+  colorNamePt: string;
+  colorNameEn: string;
+  colorHex: string;
+  price: number;
+  originalPrice?: number;
+  stock: number;
+  allowBackorder: boolean;
+  productionDays: number;
+  image?: string;
+}
+
+const CATALOG_ITEMS: Record<string, any> = {
+  'samanta-romper': {
+    title: 'SAMANTA ROMPER',
+    categoryPt: 'MACAQUINHOS • ALTA PERFORMANCE',
+    categoryEn: 'ROMPERS • HIGH PERFORMANCE',
+    price: 44.9,
+    originalPrice: 49.9,
+    descriptionPt:
+      'O Samanta Romper é a definição de liberdade e elegância nos treinos. Desenvolvido em malha nobre de poliamida com toque amanteigado e elasticidade 4-way stretch. Conta com suporte reforçado, zero transparência e opção para bojo removível para o ajuste perfeito.',
+    descriptionEn:
+      'The Samanta Romper is the pinnacle of luxury mobility. Engineered in premium buttery-soft polyamide with 4-way stretch elasticity. Features built-in contour support, verified zero see-through, and removable bra cups for the ideal silhouette.',
+    media: [
+      { type: 'image', url: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&q=85', label: 'Onyx Black Front', color: 'Preto Ônix' },
+      { type: 'image', url: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=1200&q=85', label: 'Side Profile', color: 'Preto Ônix' },
+      { type: 'image', url: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=1200&q=85', label: 'Champagne Gold Front', color: 'Champagne Gold' },
+      { type: 'image', url: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1200&q=85', label: 'Pure White Front', color: 'Pure White' },
+      { type: 'video', url: 'https://assets.mixkit.co/videos/preview/mixkit-woman-doing-squats-in-a-gym-40502-large.mp4', label: 'Movement Video', color: 'all' },
+    ],
+    colors: [
+      { name: 'Preto Ônix', hex: '#0A0A0A' },
+      { name: 'Champagne Gold', hex: '#D4AF37' },
+      { name: 'Pure White', hex: '#FFFFFF' },
+    ],
+    sizes: ['S', 'M', 'L'],
+    variants: [
+      // Preto Ônix
+      { id: 'v-sam-blk-s', sku: 'SAM-BLK-S', size: 'S', color: 'Preto Ônix', colorNamePt: 'Preto Ônix', colorNameEn: 'Onyx Black', colorHex: '#0A0A0A', price: 44.9, stock: 8, allowBackorder: true, productionDays: 5, image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&q=85' },
+      { id: 'v-sam-blk-m', sku: 'SAM-BLK-M', size: 'M', color: 'Preto Ônix', colorNamePt: 'Preto Ônix', colorNameEn: 'Onyx Black', colorHex: '#0A0A0A', price: 44.9, stock: 6, allowBackorder: true, productionDays: 5, image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&q=85' },
+      { id: 'v-sam-blk-l', sku: 'SAM-BLK-L', size: 'L', color: 'Preto Ônix', colorNamePt: 'Preto Ônix', colorNameEn: 'Onyx Black', colorHex: '#0A0A0A', price: 44.9, stock: 4, allowBackorder: true, productionDays: 5, image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&q=85' },
+      // Champagne Gold
+      { id: 'v-sam-gld-s', sku: 'SAM-GLD-S', size: 'S', color: 'Champagne Gold', colorNamePt: 'Champagne Gold', colorNameEn: 'Champagne Gold', colorHex: '#D4AF37', price: 44.9, stock: 5, allowBackorder: true, productionDays: 5, image: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=1200&q=85' },
+      { id: 'v-sam-gld-m', sku: 'SAM-GLD-M', size: 'M', color: 'Champagne Gold', colorNamePt: 'Champagne Gold', colorNameEn: 'Champagne Gold', colorHex: '#D4AF37', price: 44.9, stock: 7, allowBackorder: true, productionDays: 5, image: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=1200&q=85' },
+      { id: 'v-sam-gld-l', sku: 'SAM-GLD-l', size: 'L', color: 'Champagne Gold', colorNamePt: 'Champagne Gold', colorNameEn: 'Champagne Gold', colorHex: '#D4AF37', price: 44.9, stock: 0, allowBackorder: true, productionDays: 5, image: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=1200&q=85' },
+      // Pure White
+      { id: 'v-sam-wht-s', sku: 'SAM-WHT-S', size: 'S', color: 'Pure White', colorNamePt: 'Pure White', colorNameEn: 'Pure White', colorHex: '#FFFFFF', price: 44.9, stock: 4, allowBackorder: true, productionDays: 5, image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1200&q=85' },
+      { id: 'v-sam-wht-m', sku: 'SAM-WHT-M', size: 'M', color: 'Pure White', colorNamePt: 'Pure White', colorNameEn: 'Pure White', colorHex: '#FFFFFF', price: 44.9, stock: 3, allowBackorder: true, productionDays: 5, image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1200&q=85' },
+      { id: 'v-sam-wht-l', sku: 'SAM-WHT-L', size: 'L', color: 'Pure White', colorNamePt: 'Pure White', colorNameEn: 'Pure White', colorHex: '#FFFFFF', price: 44.9, stock: 2, allowBackorder: true, productionDays: 5, image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1200&q=85' },
+    ],
+  },
+  'blusa-bailarina': {
+    title: 'BEST SELLER BAILARINA TOP',
+    categoryPt: 'TOPS & BLUSAS • ALTA SUSTENTAÇÃO',
+    categoryEn: 'TOPS & BRAS • MAXIMUM SUPPORT',
+    price: 34.9,
+    descriptionPt:
+      'Top Bailarina Best Seller com decote delicado nas costas e sustentação perfeita para musculação, corrida e pilates. Confeccionado com bojo removível e tecnologia Dry-Fit respirável.',
+    descriptionEn:
+      'Best Seller Bailarina Top featuring an elegant cross-back design and maximum support for weightlifting, running, and pilates. Fitted with removable bra cups and breathable Dry-Fit technology.',
+    media: [
+      { type: 'image', url: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=1200&q=85', label: 'Front', color: 'Preto Ônix' },
+      { type: 'image', url: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&q=85', label: 'Back Design', color: 'Preto Ônix' },
+      { type: 'image', url: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=1200&q=85', label: 'Fabric Close-up', color: 'Champagne Gold' },
+    ],
+    colors: [
+      { name: 'Preto Ônix', hex: '#0A0A0A' },
+      { name: 'Champagne Gold', hex: '#D4AF37' },
+    ],
+    sizes: ['S', 'M', 'L'],
+    variants: [
+      { id: 'v-bai-blk-s', sku: 'BAI-BLK-S', size: 'S', color: 'Preto Ônix', colorNamePt: 'Preto Ônix', colorNameEn: 'Onyx Black', colorHex: '#0A0A0A', price: 34.9, stock: 12, allowBackorder: true, productionDays: 5 },
+      { id: 'v-bai-blk-m', sku: 'BAI-BLK-M', size: 'M', color: 'Preto Ônix', colorNamePt: 'Preto Ônix', colorNameEn: 'Onyx Black', colorHex: '#0A0A0A', price: 34.9, stock: 10, allowBackorder: true, productionDays: 5 },
+      { id: 'v-bai-blk-l', sku: 'BAI-BLK-L', size: 'L', color: 'Preto Ônix', colorNamePt: 'Preto Ônix', colorNameEn: 'Onyx Black', colorHex: '#0A0A0A', price: 34.9, stock: 5, allowBackorder: true, productionDays: 5 },
+      { id: 'v-bai-gld-s', sku: 'BAI-GLD-S', size: 'S', color: 'Champagne Gold', colorNamePt: 'Champagne Gold', colorNameEn: 'Champagne Gold', colorHex: '#D4AF37', price: 34.9, stock: 6, allowBackorder: true, productionDays: 5 },
+      { id: 'v-bai-gld-m', sku: 'BAI-GLD-M', size: 'M', color: 'Champagne Gold', colorNamePt: 'Champagne Gold', colorNameEn: 'Champagne Gold', colorHex: '#D4AF37', price: 34.9, stock: 4, allowBackorder: true, productionDays: 5 },
+      { id: 'v-bai-gld-l', sku: 'BAI-GLD-L', size: 'L', color: 'Champagne Gold', colorNamePt: 'Champagne Gold', colorNameEn: 'Champagne Gold', colorHex: '#D4AF37', price: 34.9, stock: 0, allowBackorder: true, productionDays: 5 },
+    ],
+  },
+  'conjunto-calca-kely': {
+    title: 'KELY PANTS SET (PRE-ORDER)',
+    categoryPt: 'CONJUNTOS • EXCLUSIVO SOB ENCOMENDA',
+    categoryEn: 'SETS • MADE-TO-ORDER EXCLUSIVE',
+    price: 39.9,
+    originalPrice: 49.9,
+    descriptionPt:
+      'Conjunto completo de calça legging cós anatômico + top de sustentação. Atualmente esgotado para pronta entrega e disponível exclusivamente sob encomenda sob medida na nossa confecção (5 a 7 dias úteis).',
+    descriptionEn:
+      'Complete luxury set featuring sculpting leggings with double anatomical waistband and matching support top. Currently sold out for ready stock, available exclusively via made-to-order pre-order (5 to 7 business days).',
+    media: [
+      { type: 'image', url: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=1200&q=85', label: 'Set Overview', color: 'Preto Ônix' },
+      { type: 'image', url: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=1200&q=85', label: 'Side Fit', color: 'Preto Ônix' },
+    ],
+    colors: [
+      { name: 'Preto Ônix', hex: '#0A0A0A' },
+      { name: 'Vinho Marsala', hex: '#800020' },
+    ],
+    sizes: ['S', 'M', 'L'],
+    variants: [
+      { id: 'v-kel-blk-s', sku: 'KEL-BLK-S', size: 'S', color: 'Preto Ônix', colorNamePt: 'Preto Ônix', colorNameEn: 'Onyx Black', colorHex: '#0A0A0A', price: 39.9, stock: 0, allowBackorder: true, productionDays: 7 },
+      { id: 'v-kel-blk-m', sku: 'KEL-BLK-M', size: 'M', color: 'Preto Ônix', colorNamePt: 'Preto Ônix', colorNameEn: 'Onyx Black', colorHex: '#0A0A0A', price: 39.9, stock: 0, allowBackorder: true, productionDays: 7 },
+      { id: 'v-kel-blk-l', sku: 'KEL-BLK-L', size: 'L', color: 'Preto Ônix', colorNamePt: 'Preto Ônix', colorNameEn: 'Onyx Black', colorHex: '#0A0A0A', price: 39.9, stock: 0, allowBackorder: true, productionDays: 7 },
+      { id: 'v-kel-vin-s', sku: 'KEL-VIN-S', size: 'S', color: 'Vinho Marsala', colorNamePt: 'Vinho Marsala', colorNameEn: 'Marsala Wine', colorHex: '#800020', price: 39.9, stock: 0, allowBackorder: true, productionDays: 7 },
+      { id: 'v-kel-vin-m', sku: 'KEL-VIN-M', size: 'M', color: 'Vinho Marsala', colorNamePt: 'Vinho Marsala', colorNameEn: 'Marsala Wine', colorHex: '#800020', price: 39.9, stock: 0, allowBackorder: true, productionDays: 7 },
+      { id: 'v-kel-vin-l', sku: 'KEL-VIN-L', size: 'L', color: 'Vinho Marsala', colorNamePt: 'Vinho Marsala', colorNameEn: 'Marsala Wine', colorHex: '#800020', price: 39.9, stock: 0, allowBackorder: true, productionDays: 7 },
+    ],
+  },
+};
+
+export default function ProductDetailPage({ params }: { params: { slug: string } }) {
+  const { lang, t } = useLanguage();
+  const { products: storeProducts } = useStoreSettings();
+  const slug = params.slug || 'samanta-romper';
+
+  // Localiza produto cadastrado ou editado no Backoffice/Supabase
+  const dynamicProduct = storeProducts.find((p) => p.slug === slug || p.id === slug);
+
+  let productData = CATALOG_ITEMS[slug] || CATALOG_ITEMS['samanta-romper'];
+
+  if (dynamicProduct) {
+    const mediaList: Array<{ type: 'image' | 'video'; url: string; label: string; color?: string }> = [
+      { type: 'image', url: dynamicProduct.primaryImage, label: 'Front', color: dynamicProduct.colors[0]?.name || 'all' },
+    ];
+    if (dynamicProduct.secondaryImage) {
+      mediaList.push({ type: 'image', url: dynamicProduct.secondaryImage, label: 'Back / Hover', color: dynamicProduct.colors[0]?.name || 'all' });
+    }
+    if (dynamicProduct.galleryImages && dynamicProduct.galleryImages.length > 0) {
+      dynamicProduct.galleryImages.forEach((img, idx) => {
+        if (img && !mediaList.some((m) => m.url === img)) {
+          mediaList.push({ type: 'image', url: img, label: `Detail ${idx + 1}`, color: 'all' });
+        }
+      });
+    }
+
+    // Se temos variantes completas salvas no Supabase, mapeamos diretamente
+    let variantsList: Variant[] = [];
+
+    if (Array.isArray(dynamicProduct.variants) && dynamicProduct.variants.length > 0) {
+      variantsList = dynamicProduct.variants.map((v: any, idx: number) => {
+        const cName = v.color || 'Preto Ônix';
+        const defaultHex =
+          cName.toLowerCase().includes('ouro') || cName.toLowerCase().includes('gold') ? '#D4AF37' :
+          cName.toLowerCase().includes('amarel') ? '#FBBF24' :
+          cName.toLowerCase().includes('branc') || cName.toLowerCase().includes('white') ? '#FFFFFF' :
+          cName.toLowerCase().includes('vinho') || cName.toLowerCase().includes('marsala') ? '#800020' :
+          cName.toLowerCase().includes('verd') ? '#2E4F4F' : '#0A0A0A';
+
+        const varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
+        if (varImg && !mediaList.some((m) => m.url === varImg)) {
+          mediaList.push({ type: 'image', url: varImg, label: `${cName} Foto`, color: cName });
+        }
+
+        return {
+          id: v.id || `v-${dynamicProduct.id}-${idx}`,
+          sku: v.sku || `${dynamicProduct.title.slice(0, 3).toUpperCase()}-${cName.slice(0, 3).toUpperCase()}-${v.size}`,
+          size: v.size || 'M',
+          color: cName,
+          colorNamePt: cName,
+          colorNameEn: cName,
+          colorHex: v.color_hex || defaultHex,
+          price: Number(v.price) || dynamicProduct.price,
+          originalPrice: dynamicProduct.originalPrice,
+          stock: Number(v.stock_quantity ?? v.stock ?? 0),
+          allowBackorder: Boolean(v.allow_backorder),
+          productionDays: Number(v.estimated_production_days) || dynamicProduct.productionDays || 7,
+          image: varImg || dynamicProduct.primaryImage,
+        };
+      });
+    } else {
+      // Gera grade combinatória com todas as cores e tamanhos
+      const colorsToUse = dynamicProduct.colors && dynamicProduct.colors.length > 0
+        ? dynamicProduct.colors
+        : [{ name: 'Preto Ônix', hex: '#0A0A0A' }];
+      const sizesToUse = dynamicProduct.sizes && dynamicProduct.sizes.length > 0
+        ? dynamicProduct.sizes
+        : ['S', 'M', 'L'];
+
+      colorsToUse.forEach((c) => {
+        sizesToUse.forEach((sz) => {
+          const stockQty = dynamicProduct.sizeStock
+            ? dynamicProduct.sizeStock[sz] ?? 0
+            : Math.round(dynamicProduct.stock / (sizesToUse.length || 3));
+
+          variantsList.push({
+            id: `v-${dynamicProduct.id}-${c.name}-${sz}`,
+            sku: `${dynamicProduct.sku || 'ANA'}-${c.name.slice(0, 3).toUpperCase()}-${sz}`,
+            size: sz,
+            color: c.name,
+            colorNamePt: c.name,
+            colorNameEn: c.name,
+            colorHex: c.hex,
+            price: dynamicProduct.price,
+            originalPrice: dynamicProduct.originalPrice,
+            stock: stockQty,
+            allowBackorder: dynamicProduct.allowBackorder,
+            productionDays: dynamicProduct.productionDays,
+            image: dynamicProduct.primaryImage,
+          });
+        });
+      });
+    }
+
+    productData = {
+      title: dynamicProduct.title,
+      categoryPt: `${dynamicProduct.categoryPt} • ALTA PERFORMANCE`,
+      categoryEn: `${dynamicProduct.categoryEn} • HIGH PERFORMANCE`,
+      price: dynamicProduct.price,
+      originalPrice: dynamicProduct.originalPrice,
+      descriptionPt: dynamicProduct.fitPt || `${dynamicProduct.title} com modelagem de alta compressão e corte anatômico da Ana Fitness Wear. Tecido testado e aprovado com 100% zero transparência e toque amanteigado.`,
+      descriptionEn: dynamicProduct.fitEn || `${dynamicProduct.title} crafted with anatomical contour support and 4-way stretch fabric. Lab-verified zero see-through athletic luxury fit.`,
+      media: mediaList,
+      variants: variantsList,
+    };
+  }
+
+  // Lista de cores únicas extraídas das variantes
+  const availableColorsMap = new Map<string, { name: string; hex: string; image?: string }>();
+  (productData.variants || []).forEach((v: Variant) => {
+    if (v.color && !availableColorsMap.has(v.color.toLowerCase())) {
+      availableColorsMap.set(v.color.toLowerCase(), {
+        name: v.color,
+        hex: v.colorHex || '#0A0A0A',
+        image: v.image,
+      });
+    }
+  });
+  const availableColors = Array.from(availableColorsMap.values());
+
+  // Lista de tamanhos únicos
+  const availableSizesSet = new Set<string>();
+  (productData.variants || []).forEach((v: Variant) => {
+    if (v.size) availableSizesSet.add(v.size);
+  });
+  const availableSizes = Array.from(availableSizesSet);
+
+  // Estados de seleção
+  const [selectedColor, setSelectedColor] = useState(
+    availableColors[0]?.name || 'Preto Ônix'
+  );
+  const [selectedSize, setSelectedSize] = useState(
+    availableSizes[0] || 'S'
+  );
+  const [selectedMediaIdx, setSelectedMediaIdx] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [cartFeedback, setCartFeedback] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'desc' | 'sizing' | 'care' | 'preorder'>('desc');
+
+  // Localiza a variante exata (Cor Selecionada + Tamanho Selecionado)
+  const currentVariant: Variant =
+    (productData.variants || []).find(
+      (v: Variant) =>
+        v.color.toLowerCase() === selectedColor.toLowerCase() &&
+        v.size.toLowerCase() === selectedSize.toLowerCase()
+    ) ||
+    (productData.variants || []).find(
+      (v: Variant) => v.color.toLowerCase() === selectedColor.toLowerCase()
+    ) ||
+    productData.variants[0];
+
+  const isBackorder = currentVariant?.stock === 0 && Boolean(currentVariant?.allowBackorder);
+  const isOutOfStock = currentVariant?.stock === 0 && !currentVariant?.allowBackorder;
+
+  // Troca de Cor com atualização visual de foto vinculada
+  const handleSelectColor = (colorName: string) => {
+    setSelectedColor(colorName);
+    // Tenta encontrar foto vinculada a essa cor na galeria
+    const colorMediaIdx = productData.media.findIndex(
+      (m: any) => m.color && m.color.toLowerCase() === colorName.toLowerCase()
+    );
+    if (colorMediaIdx >= 0) {
+      setSelectedMediaIdx(colorMediaIdx);
+    }
+  };
+
+  // Troca de Tamanho
+  const handleSelectSize = (sz: string) => {
+    setSelectedSize(sz);
+  };
+
+  // Ação de Compra / Adicionar à Sacola
+  const handleActionClick = () => {
+    if (isOutOfStock) return;
+
+    const cartItemToSave = {
+      title: productData.title,
+      slug: slug,
+      size: selectedSize,
+      color: selectedColor,
+      sku: currentVariant?.sku || `${slug}-${selectedColor.slice(0, 3)}-${selectedSize}`,
+      price: currentVariant?.price || productData.price,
+      quantity: 1,
+      image: currentVariant?.image || productData.media[selectedMediaIdx]?.url || productData.media[0]?.url,
+      isBackorder: isBackorder,
+      productionDays: currentVariant?.productionDays || 7,
+    };
+
+    try {
+      localStorage.setItem('ana_cart_item', JSON.stringify(cartItemToSave));
+    } catch (e) {}
+
+    setCartFeedback(isBackorder ? 'backorder' : 'added');
+    setTimeout(() => setCartFeedback(null), 4000);
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10 space-y-16 bg-white">
+      {/* Breadcrumb */}
+      <nav className="text-[10px] font-black uppercase tracking-widest text-deep-black/50 flex items-center gap-2">
+        <Link href="/" className="hover:text-deep-black transition">HOME</Link>
+        <span>/</span>
+        <Link href="/#vitrine" className="hover:text-deep-black transition">
+          {lang === 'pt' ? productData.categoryPt : productData.categoryEn}
+        </Link>
+        <span>/</span>
+        <span className="text-deep-black font-black">{productData.title}</span>
+      </nav>
+
+      {/* Grid Principal: Galeria Lateral + Painel de Compra */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
+        {/* GALERIA LATERAL */}
+        <div className="lg:col-span-7 flex flex-col-reverse sm:flex-row gap-4">
+          <div className="flex sm:flex-col gap-3 overflow-x-auto sm:overflow-visible shrink-0 pb-2 sm:pb-0">
+            {productData.media.map((item: any, idx: number) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  setSelectedMediaIdx(idx);
+                  setIsZoomed(false);
+                }}
+                className={`w-16 h-20 sm:w-20 sm:h-24 overflow-hidden border-2 transition-all relative shrink-0 ${
+                  selectedMediaIdx === idx
+                    ? 'border-deep-black ring-2 ring-gold'
+                    : 'border-deep-black/10 opacity-70 hover:opacity-100'
+                }`}
+              >
+                {item.type === 'video' ? (
+                  <div className="w-full h-full bg-deep-black flex items-center justify-center text-gold text-[9px] font-bold">
+                    VIDEO
+                  </div>
+                ) : (
+                  <img src={item.url} alt={item.label} className="w-full h-full object-cover" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex-1 relative aspect-[3/4] bg-deep-black/5 overflow-hidden border border-deep-black/10 group">
+            {productData.media[selectedMediaIdx]?.type === 'video' ? (
+              <video
+                src={productData.media[selectedMediaIdx].url}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <img
+                src={productData.media[selectedMediaIdx]?.url}
+                alt={productData.title}
+                className={`w-full h-full object-cover transition-transform duration-500 cursor-zoom-in ${
+                  isZoomed ? 'scale-150' : 'group-hover:scale-105'
+                }`}
+                onClick={() => setIsZoomed(!isZoomed)}
+              />
+            )}
+
+            {/* Selos de Destaque */}
+            <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
+              <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-gold text-deep-black shadow-sm">
+                BEST SELLER
+              </span>
+              {isBackorder && (
+                <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-deep-black text-gold border border-gold">
+                  {lang === 'pt' ? 'PRÉ-VENDA EXCLUSIVA' : 'PRE-ORDER EXCLUSIVE'}
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={() => setIsZoomed(!isZoomed)}
+              className="absolute bottom-4 right-4 p-2.5 bg-deep-black/80 hover:bg-gold hover:text-deep-black text-white backdrop-blur-md transition"
+              title="Zoom"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* DETALHES DA PEÇA & COMPRA (DÓLAR $) */}
+        <div className="lg:col-span-5 space-y-7 bg-white">
+          <div className="space-y-3 border-b border-deep-black/10 pb-6">
+            <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+              {lang === 'pt' ? productData.categoryPt : productData.categoryEn}
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-deep-black leading-tight">
+              {productData.title}
+            </h1>
+
+            <div className="flex items-center gap-3 pt-1">
+              <div className="flex text-gold">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-gold text-gold" />
+                ))}
+              </div>
+              <span className="text-xs font-black uppercase tracking-wider text-deep-black">
+                5.0 (VERIFIED REVIEWS)
+              </span>
+            </div>
+
+            {/* PREÇO EM DÓLAR ($) */}
+            <div className="flex items-baseline gap-3 pt-3">
+              <span className="text-3xl sm:text-4xl font-black text-deep-black uppercase tracking-wider font-mono">
+                ${productData.price.toFixed(2)}
+              </span>
+              {productData.originalPrice && (
+                <span className="text-sm font-bold text-deep-black/40 line-through uppercase tracking-wider font-mono">
+                  ${productData.originalPrice.toFixed(2)}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Banner de Frete Fixo $9.99 */}
+          <div className="p-3.5 bg-deep-black text-white border border-gold flex items-center justify-between text-xs font-bold uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-gold">
+              <Truck className="w-4 h-4 text-gold shrink-0" />
+              <span>FLAT RATE SHIPPING: $9.99 (ALL US)</span>
+            </div>
+            <Link href="/politica-de-envio" className="text-[10px] text-white/70 hover:text-gold underline">
+              {lang === 'pt' ? 'VER REGRAS' : 'DETAILS'}
+            </Link>
+          </div>
+
+          {/* Seletor de Cores com Swatches Hexadecimais e Nome da Cor */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider">
+              <span className="flex items-center gap-1.5">
+                <span>{lang === 'pt' ? 'COR:' : 'COLOR:'}</span>
+                <span className="text-gold font-bold">{selectedColor}</span>
+              </span>
+              <span className="text-[10px] text-deep-black/60 font-bold">
+                {availableColors.length} {lang === 'pt' ? 'CORES DISPONÍVEIS' : 'COLORS AVAILABLE'}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              {availableColors.map((col) => {
+                const isSelected = selectedColor.toLowerCase() === col.name.toLowerCase();
+                return (
+                  <button
+                    key={col.name}
+                    type="button"
+                    onClick={() => handleSelectColor(col.name)}
+                    className={`group flex items-center gap-2 px-3 py-2 border text-xs font-black uppercase tracking-wider transition-all relative ${
+                      isSelected
+                        ? 'border-deep-black bg-deep-black text-white ring-2 ring-gold shadow-sm'
+                        : 'border-deep-black/20 hover:border-deep-black text-deep-black bg-white'
+                    }`}
+                  >
+                    <span
+                      className="w-3.5 h-3.5 rounded-full border border-black/30 shrink-0 shadow-inner"
+                      style={{ backgroundColor: col.hex }}
+                    />
+                    <span>{col.name}</span>
+                    {isSelected && (
+                      <Check className="w-3 h-3 text-gold stroke-[3]" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Seletor de Tamanhos (P / M / G com equivalência US) */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider">
+              <span className="flex items-center gap-1.5">
+                <span>{lang === 'pt' ? 'TAMANHO:' : 'SIZE:'}</span>
+                <span className="text-gold font-bold">{selectedSize}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('sizing');
+                  document.getElementById('product-tabs')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-[10px] text-deep-black/60 underline hover:text-gold transition cursor-pointer font-bold"
+              >
+                {t('tab.sizing')}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              {availableSizes.map((sz: string) => {
+                const isSelected = sz.toLowerCase() === selectedSize.toLowerCase();
+                const matchedVariant = (productData.variants || []).find(
+                  (v: Variant) =>
+                    v.color.toLowerCase() === selectedColor.toLowerCase() &&
+                    v.size.toLowerCase() === sz.toLowerCase()
+                );
+                const stockQty = matchedVariant ? matchedVariant.stock : 0;
+                const canBackorder = matchedVariant ? matchedVariant.allowBackorder : false;
+                const hasStock = stockQty > 0;
+
+                return (
+                  <button
+                    key={sz}
+                    onClick={() => handleSelectSize(sz)}
+                    className={`py-3 text-xs font-black uppercase tracking-wider border transition-all relative flex flex-col items-center justify-center gap-0.5 ${
+                      isSelected
+                        ? 'border-deep-black bg-deep-black text-white ring-2 ring-gold'
+                        : hasStock || canBackorder
+                        ? 'border-deep-black/20 hover:border-gold text-deep-black bg-white'
+                        : 'border-deep-black/10 text-deep-black/30 bg-deep-black/5 opacity-60'
+                    }`}
+                  >
+                    <span>{sz}</span>
+                    <span
+                      className={`text-[8px] font-black tracking-widest ${
+                        hasStock ? (isSelected ? 'text-white/80' : 'text-deep-black/70') : 'text-gold'
+                      }`}
+                    >
+                      {hasStock ? `${stockQty} IN STOCK` : canBackorder ? 'PRE-ORDER' : 'OUT OF STOCK'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Código SKU Ativo */}
+            <div className="flex items-center justify-between text-[10px] font-mono text-deep-black/60 pt-1">
+              <span>SKU: {currentVariant?.sku || `${slug}-${selectedColor.slice(0, 3)}-${selectedSize}`}</span>
+              {currentVariant?.price && currentVariant.price !== productData.price && (
+                <span className="text-gold font-bold font-mono">
+                  ${currentVariant.price.toFixed(2)}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Status do Estoque */}
+          <div className="p-4 border-2 border-deep-black bg-white">
+            {isBackorder ? (
+              <div className="flex items-start gap-3 text-deep-black">
+                <Clock className="w-5 h-5 text-gold shrink-0 mt-0.5" />
+                <div className="space-y-1 text-xs">
+                  <p className="font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-gold" />
+                    {lang === 'pt' ? 'PRODUÇÃO SOB ENCOMENDA (PRÉ-VENDA)' : 'MADE-TO-ORDER PRE-ORDER'}
+                  </p>
+                  <p className="text-deep-black/70 font-medium">
+                    {lang === 'pt'
+                      ? `Confeccionada sob medida em até ${currentVariant.productionDays} dias úteis com envio prioritário via USPS.`
+                      : `Handcrafted in our atelier within ${currentVariant.productionDays} business days followed by priority USPS shipping.`}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3 text-deep-black">
+                <CheckCircle2 className="w-5 h-5 text-deep-black shrink-0 mt-0.5" />
+                <div className="space-y-1 text-xs">
+                  <p className="font-black uppercase tracking-wider text-deep-black">
+                    {lang === 'pt' ? 'EM ESTOQUE • PRONTA ENTREGA' : 'IN STOCK • READY TO SHIP'}
+                  </p>
+                  <p className="text-deep-black/70 font-medium">
+                    {lang === 'pt'
+                      ? 'Despacho express a partir de Leominster, MA em 1 a 5 dias úteis com código de rastreamento.'
+                      : 'Ships from Leominster, MA within 1 to 5 business days with full online tracking.'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Formas de Pagamento dos EUA */}
+          <div className="space-y-2 border-t border-deep-black/10 pt-4">
+            <span className="text-[10px] font-black uppercase tracking-wider text-deep-black block">
+              {lang === 'pt' ? 'PAGAMENTOS ACEITOS:' : 'ACCEPTED PAYMENT METHODS:'}
+            </span>
+            <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase text-deep-black">
+              <span className="px-2.5 py-1 bg-deep-black text-white font-mono">APPLE PAY</span>
+              <span className="px-2.5 py-1 bg-gold text-deep-black font-mono">ZELLE</span>
+              <span className="px-2.5 py-1 bg-deep-black text-gold font-mono">VENMO</span>
+              <span className="px-2.5 py-1 border border-deep-black/30">CREDIT CARD</span>
+              <span className="px-2.5 py-1 border border-deep-black/30">DEBIT CARD</span>
+            </div>
+          </div>
+
+          {/* BOTÃO INTELIGENTE DE COMPRA OU PRÉ-VENDA */}
+          <div className="space-y-3">
+            <button
+              onClick={handleActionClick}
+              className={`w-full py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-luxury ${
+                isBackorder
+                  ? 'bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black'
+                  : 'bg-deep-black hover:bg-gold hover:text-deep-black text-white'
+              }`}
+            >
+              {isBackorder ? (
+                <>
+                  <Sparkles className="w-4 h-4 text-deep-black" />
+                  <span>{t('prod.orderPreorder')}</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>{t('prod.addToBag')}</span>
+                </>
+              )}
+            </button>
+
+            {cartFeedback && (
+              <div className="p-3 bg-deep-black text-white border border-gold text-xs font-bold uppercase tracking-wider flex items-center justify-between animate-fadeIn">
+                <span>
+                  {cartFeedback === 'backorder'
+                    ? (lang === 'pt' ? '✓ Peça adicionada como Encomenda Prioritária!' : '✓ Added as Priority Pre-Order!')
+                    : (lang === 'pt' ? '✓ Peça adicionada à sacola!' : '✓ Added to your bag!')}
+                </span>
+                <Link href="/checkout" className="text-gold underline hover:text-white font-bold">
+                  CHECKOUT
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Garantias */}
+          <div className="grid grid-cols-3 gap-2 pt-4 border-t border-deep-black/10 text-center text-[10px] font-bold uppercase tracking-wider text-deep-black/70">
+            <div className="space-y-1">
+              <Truck className="w-4 h-4 mx-auto text-gold" />
+              <span>Flat $9.99</span>
+            </div>
+            <div className="space-y-1">
+              <RotateCcw className="w-4 h-4 mx-auto text-gold" />
+              <span>30-Day Returns</span>
+            </div>
+            <div className="space-y-1">
+              <ShieldCheck className="w-4 h-4 mx-auto text-gold" />
+              <span>Zero See-Through</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          MÓDULO DE ABAS (DESCRIÇÃO, MEDIDAS, CUIDADOS, PRÉ-VENDA)
+         ========================================================================= */}
+      <section id="product-tabs" className="border-t border-deep-black/10 pt-16 space-y-8 scroll-mt-24">
+        <div className="flex border-b border-deep-black/15 overflow-x-auto no-scrollbar gap-2 sm:gap-6">
+          {[
+            { id: 'desc', label: t('tab.desc'), icon: Sparkles },
+            { id: 'sizing', label: t('tab.sizing'), icon: Ruler },
+            { id: 'care', label: t('tab.care'), icon: Droplets },
+            { id: 'preorder', label: t('tab.preorder'), icon: Clock },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-2 py-4 px-3 sm:px-4 text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap border-b-2 -mb-[2px] ${
+                  isActive
+                    ? 'border-deep-black text-deep-black bg-white'
+                    : 'border-transparent text-deep-black/40 hover:text-deep-black hover:border-gold/50'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? 'text-gold' : 'text-deep-black/30'}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="pt-2">
+          {/* ABA 1: PERFORMANCE */}
+          {activeTab === 'desc' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+              <div className="lg:col-span-7 space-y-6">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                    ANA FITNESS WEAR • ATELIER
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-deep-black mt-1">
+                    {lang === 'pt' ? 'COMPRESSÃO ANATÔMICA & TOQUE AMANTEIGADO' : 'ANATOMICAL COMPRESSION & BUTTERY-SOFT FEEL'}
+                  </h3>
+                </div>
+
+                <p className="text-sm text-deep-black/80 font-medium uppercase tracking-wide leading-relaxed">
+                  {lang === 'pt' ? productData.descriptionPt : productData.descriptionEn}
+                </p>
+
+                <div className="p-5 border border-deep-black/10 bg-white space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-gold" />
+                    {lang === 'pt' ? 'ZERO TRANSPARÊNCIA COMPROVADA' : 'VERIFIED ZERO SEE-THROUGH'}
+                  </h4>
+                  <p className="text-xs text-deep-black/70 font-medium uppercase tracking-wide leading-relaxed">
+                    {lang === 'pt'
+                      ? 'Nossas peças são rigorosamente testadas sob iluminação direta e flexão máxima. Segurança absoluta para agachar sem preocupações.'
+                      : 'Every silhouette is rigorously tested under high-intensity gym lighting and 90-degree deep squats. Absolute peace of mind.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                {[
+                  {
+                    title: lang === 'pt' ? 'BOJO REMOVÍVEL' : 'REMOVABLE BRA CUPS',
+                    desc: lang === 'pt' ? 'Modelos com suporte versátil para personalizar o caimento do busto conforme sua preferência.' : 'Built-in slots allowing effortless insertion or removal of padding.',
+                    icon: Sparkles,
+                  },
+                  {
+                    title: lang === 'pt' ? 'ELASTICIDADE 4-WAY STRETCH' : '4-WAY STRETCH RECOVERY',
+                    desc: lang === 'pt' ? 'Fibras elásticas de alta recuperação que acompanham cada repetição sem deformar.' : 'High-recovery spandex fibers that stretch multidirectionally without sagging.',
+                    icon: Activity,
+                  },
+                  {
+                    title: lang === 'pt' ? 'CÓS DUPLO ANTI-ROLAMENTO' : 'ANTI-ROLL DOUBLE WAISTBAND',
+                    desc: lang === 'pt' ? 'Firmeza e sustentação abdominal que dispensam puxões a cada série de exercícios.' : 'Double-layered waist contour that stays securely in place during cardio and lifting.',
+                    icon: Layers,
+                  },
+                  {
+                    title: lang === 'pt' ? 'DRY-FIT & PROTEÇÃO SOLAR' : 'DRY-FIT & UV 50+ DEFENSE',
+                    desc: lang === 'pt' ? 'Secagem acelerada e bloqueio de raios UV para treinos internos e ao ar livre.' : 'Instant sweat wicking with UV 50+ protection for indoor and outdoor endurance.',
+                    icon: Sun,
+                  },
+                ].map((feat, i) => {
+                  const FIcon = feat.icon;
+                  return (
+                    <div key={i} className="p-4 border border-deep-black/10 bg-white hover:border-gold transition space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <FIcon className="w-4 h-4 text-gold" />
+                        <h5 className="text-xs font-black uppercase tracking-wider text-deep-black">
+                          {feat.title}
+                        </h5>
+                      </div>
+                      <p className="text-[11px] text-deep-black/70 font-medium uppercase tracking-wide leading-relaxed">
+                        {feat.desc}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ABA 2: TABELA DE MEDIDAS (US SIZES) */}
+          {activeTab === 'sizing' && (
+            <div className="space-y-8">
+              <div className="max-w-3xl space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                  {lang === 'pt' ? 'GUIA DE TAMANHOS OFICIAL' : 'OFFICIAL SIZING GUIDE'}
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-deep-black">
+                  {lang === 'pt' ? 'ENCONTRE O SEU CAIMENTO IDEAL' : 'FIND YOUR PERFECT FIT'}
+                </h3>
+                <p className="text-xs text-deep-black/70 font-medium uppercase tracking-wide leading-relaxed">
+                  {lang === 'pt'
+                    ? 'Nossas peças possuem bastante elasticidade e se adaptam perfeitamente ao corpo. Se tiver qualquer dúvida, fale conosco pelo WhatsApp (+1 978 313-9452)!'
+                    : 'Our fabrics offer generous elasticity and mold seamlessly to your silhouette. Reach out via WhatsApp (+1 978 313-9452) for concierge sizing guidance!'}
+                </p>
+              </div>
+
+              <div className="overflow-x-auto border border-deep-black/15">
+                <table className="w-full text-left border-collapse text-xs uppercase tracking-wider">
+                  <thead>
+                    <tr className="bg-deep-black text-white text-[11px] font-black">
+                      <th className="py-3 px-4 border-b border-deep-black/20">SIZE</th>
+                      <th className="py-3 px-4 border-b border-deep-black/20">US SIZING</th>
+                      <th className="py-3 px-4 border-b border-deep-black/20">BUST (INCHES)</th>
+                      <th className="py-3 px-4 border-b border-deep-black/20">WAIST (INCHES)</th>
+                      <th className="py-3 px-4 border-b border-deep-black/20">HIPS (INCHES)</th>
+                      <th className="py-3 px-4 border-b border-deep-black/20 text-gold">AVAILABILITY</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-deep-black/10 font-bold">
+                    {[
+                      { size: 'P (S)', us: 'US 2 - 4', bust: '32 - 34"', waist: '25 - 27"', hip: '35 - 37"', stock: 'IN STOCK' },
+                      { size: 'M (M)', us: 'US 6 - 8', bust: '35 - 37"', waist: '28 - 30"', hip: '38 - 40"', stock: 'IN STOCK' },
+                      { size: 'G (L)', us: 'US 10 - 12', bust: '38 - 40"', waist: '31 - 33"', hip: '41 - 43"', stock: 'PRE-ORDER (7 DAYS)' },
+                    ].map((row, idx) => (
+                      <tr key={idx} className="hover:bg-deep-black/5 transition">
+                        <td className="py-3.5 px-4 font-black text-deep-black">{row.size}</td>
+                        <td className="py-3.5 px-4 text-deep-black/80">{row.us}</td>
+                        <td className="py-3.5 px-4 text-deep-black/80">{row.bust}</td>
+                        <td className="py-3.5 px-4 text-deep-black/80">{row.waist}</td>
+                        <td className="py-3.5 px-4 text-deep-black/80">{row.hip}</td>
+                        <td className="py-3.5 px-4 text-[10px] font-black text-gold">{row.stock}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ABA 3: CUIDADOS & LAVAGEM */}
+          {activeTab === 'care' && (
+            <div className="space-y-8">
+              <div className="max-w-3xl space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                  GARMENT PRESERVATION
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-deep-black">
+                  {lang === 'pt' ? 'INSTRUÇÕES DE LAVAGEM' : 'WASH & CARE INSTRUCTIONS'}
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  {
+                    title: lang === 'pt' ? 'ÁGUA FRIA' : 'COLD WATER WASH',
+                    desc: lang === 'pt' ? 'Lavar em água fria no ciclo delicado e com a peça virada do avesso.' : 'Gentle cycle with cold water, inside-out.',
+                    icon: Droplets,
+                  },
+                  {
+                    title: lang === 'pt' ? 'SEM AMACIANTE' : 'NO FABRIC SOFTENERS',
+                    desc: lang === 'pt' ? 'Amaciantes impermeabilizam os microporos respiráveis.' : 'Softeners damage the breathable Dry-Fit fibers.',
+                    icon: Shield,
+                  },
+                  {
+                    title: lang === 'pt' ? 'SECAGEM NATURAL' : 'NATURAL AIR DRY',
+                    desc: lang === 'pt' ? 'Secar à sombra. Não usar secadora de alta temperatura.' : 'Air dry in shade. Avoid high-heat tumble dryers.',
+                    icon: Wind,
+                  },
+                  {
+                    title: lang === 'pt' ? 'NÃO PASSAR A FERRO' : 'NO IRONING',
+                    desc: lang === 'pt' ? 'O tecido não amassa e o calor excessivo prejudica o elastano.' : 'Fabric is naturally wrinkle-free. Protect the spandex.',
+                    icon: Scissors,
+                  },
+                ].map((c, i) => {
+                  const CIcon = c.icon;
+                  return (
+                    <div key={i} className="p-5 border border-deep-black/15 bg-white space-y-2.5">
+                      <div className="w-10 h-10 rounded-full bg-deep-black text-gold flex items-center justify-center">
+                        <CIcon className="w-5 h-5" />
+                      </div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-deep-black">
+                        {c.title}
+                      </h4>
+                      <p className="text-[11px] text-deep-black/70 font-medium uppercase tracking-wide leading-relaxed">
+                        {c.desc}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ABA 4: PRÉ-VENDA */}
+          {activeTab === 'preorder' && (
+            <div className="space-y-8">
+              <div className="max-w-3xl space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                  MADE-TO-ORDER
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-deep-black">
+                  {lang === 'pt' ? 'COMO FUNCIONA O PRE-ORDER' : 'HOW PRE-ORDER WORKS'}
+                </h3>
+                <p className="text-xs text-deep-black/70 font-medium uppercase tracking-wide leading-relaxed">
+                  {lang === 'pt'
+                    ? 'Quando um modelo esgota na pronta entrega, ativamos a confecção sob medida exclusiva para você em 5 a 7 dias úteis.'
+                    : 'When inventory sells out, we tailor your silhouette on-demand within 5 to 7 business days, backed by our 30-day return policy.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                {[
+                  { step: '01', title: 'ORDER CONFIRMED', desc: 'Placed in tailored queue.' },
+                  { step: '02', title: 'CUT & SEW (5-7 DAYS)', desc: 'Precision artisanal crafting.' },
+                  { step: '03', title: 'QUALITY INSPECTION', desc: 'Scrutinized & packaged.' },
+                  { step: '04', title: 'DISPATCHED VIA USPS', desc: 'Tracking sent to your phone.' },
+                ].map((st, i) => (
+                  <div key={i} className="p-5 border border-deep-black/15 bg-white space-y-2">
+                    <span className="text-2xl font-black text-gold">{st.step}</span>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-deep-black">{st.title}</h4>
+                    <p className="text-[11px] text-deep-black/70 font-medium uppercase tracking-wide">{st.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}

@@ -1,0 +1,1518 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import {
+  DollarSign,
+  Activity,
+  Factory,
+  Users,
+  Palette,
+  ShieldAlert,
+  ArrowRight,
+  Sparkles,
+  TrendingUp,
+  AlertCircle,
+  Eye,
+  CheckCircle2,
+  Upload,
+  Package,
+  PlusCircle,
+  Image as ImageIcon,
+  Tag,
+  Barcode,
+  Check,
+  Truck,
+  ShieldCheck,
+  Star,
+  ExternalLink,
+  Edit3,
+  Trash2,
+  Grid,
+  RefreshCw,
+  BarChart3,
+  CreditCard,
+  QrCode,
+  Banknote,
+  Search,
+  Filter,
+  FileSpreadsheet,
+  Receipt,
+  X,
+  ChevronRight,
+  Percent,
+  Store,
+} from 'lucide-react';
+import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
+
+interface ProductProfit {
+  sku: string;
+  title: string;
+  costPrice: number;
+  salePrice: number;
+  sellerCommissionRate: number; // ex: 10%
+  gatewayRate: number; // ex: 2.9%
+}
+
+interface CatalogProduct {
+  id: string;
+  title: string;
+  slug: string;
+  category: string;
+  price: number;
+  originalPrice?: number;
+  costPrice: number;
+  badge: 'BEST SELLER' | 'LANÇAMENTO' | 'PRÉ-VENDA';
+  fit: string;
+  primaryImage: string;
+  secondaryImage: string;
+  stock: number;
+  allowBackorder: boolean;
+  productionDays: number;
+  zeroTransparency: boolean;
+  removableCups: boolean;
+  sizes: string[];
+  colorName: string;
+  colorHex: string;
+  sku: string;
+  barcode: string;
+}
+
+const INITIAL_CATALOG: CatalogProduct[] = [
+  {
+    id: 'p1',
+    title: 'SAMANTA ROMPER',
+    slug: 'samanta-romper',
+    category: 'MACAQUINHOS',
+    price: 44.9,
+    originalPrice: 49.9,
+    costPrice: 16.0,
+    badge: 'LANÇAMENTO',
+    fit: 'ALTA SUSTENTAÇÃO • SEAMLESS SCULPT',
+    primaryImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80',
+    secondaryImage: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=900&q=80',
+    stock: 10,
+    allowBackorder: true,
+    productionDays: 5,
+    zeroTransparency: true,
+    removableCups: true,
+    sizes: ['S', 'M', 'L'],
+    colorName: 'Preto Ônix',
+    colorHex: '#0A0A0A',
+    sku: 'SAM-BLK-S',
+    barcode: '789100000001',
+  },
+  {
+    id: 'p2',
+    title: 'BAILARINA TOP',
+    slug: 'blusa-bailarina',
+    category: 'TOPS & BLUSAS',
+    price: 34.9,
+    costPrice: 12.0,
+    badge: 'BEST SELLER',
+    fit: 'MÉDIO IMPACTO • BOJO REMOVÍVEL',
+    primaryImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=900&q=80',
+    secondaryImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80',
+    stock: 15,
+    allowBackorder: true,
+    productionDays: 5,
+    zeroTransparency: true,
+    removableCups: true,
+    sizes: ['S', 'M', 'L'],
+    colorName: 'Preto Ônix',
+    colorHex: '#0A0A0A',
+    sku: 'BAI-BLK-S',
+    barcode: '789100000002',
+  },
+  {
+    id: 'p3',
+    title: 'MONIQUE FLARE PANTS SET',
+    slug: 'monique-flare-pants-set',
+    category: 'CONJUNTOS',
+    price: 49.9,
+    costPrice: 19.0,
+    badge: 'BEST SELLER',
+    fit: 'CÓS DUPLO ANATÔMICO • ZERO TRANSPARÊNCIA',
+    primaryImage: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=900&q=80',
+    secondaryImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=900&q=80',
+    stock: 7,
+    allowBackorder: true,
+    productionDays: 5,
+    zeroTransparency: true,
+    removableCups: true,
+    sizes: ['S', 'M', 'L'],
+    colorName: 'Champagne Gold',
+    colorHex: '#D4AF37',
+    sku: 'MON-GLD-M',
+    barcode: '789100000003',
+  },
+  {
+    id: 'p4',
+    title: 'KELY PANTS SET',
+    slug: 'conjunto-calca-kely',
+    category: 'CONJUNTOS',
+    price: 39.9,
+    originalPrice: 49.9,
+    costPrice: 16.0,
+    badge: 'PRÉ-VENDA',
+    fit: 'CONFECCIONADO SOB MEDIDA (5-7 DIAS)',
+    primaryImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=900&q=80',
+    secondaryImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=900&q=80',
+    stock: 0,
+    allowBackorder: true,
+    productionDays: 7,
+    zeroTransparency: true,
+    removableCups: true,
+    sizes: ['S', 'M', 'L'],
+    colorName: 'Preto Ônix',
+    colorHex: '#0A0A0A',
+    sku: 'KEL-BLK-M',
+    barcode: '789100000004',
+  },
+];
+
+export default function BackofficeDashboard() {
+  const [activeTab, setActiveTab] = useState<'catalog' | 'sales' | 'margins' | 'live' | 'backorders' | 'commissions' | 'theme'>('catalog');
+  const [onlineCount, setOnlineCount] = useState(8);
+
+  // Catálogo de produtos
+  const [products, setProducts] = useState<CatalogProduct[]>(INITIAL_CATALOG);
+  const [supabaseProducts, setSupabaseProducts] = useState<any[]>([]);
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [loadingSupabase, setLoadingSupabase] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState(false);
+
+  // Relatório de Vendas e Lucro Real
+  const [salesData, setSalesData] = useState<any | null>(null);
+  const [loadingSales, setLoadingSales] = useState(false);
+  const [salesChannelFilter, setSalesChannelFilter] = useState<'ALL' | 'ONLINE' | 'POS_COUNTER'>('ALL');
+  const [salesPaymentFilter, setSalesPaymentFilter] = useState<'ALL' | 'CARD' | 'ZELLE' | 'VENMO' | 'CASH'>('ALL');
+  const [salesSearch, setSalesSearch] = useState('');
+  const [selectedSaleDetail, setSelectedSaleDetail] = useState<any | null>(null);
+
+  const fetchSupabaseProducts = async () => {
+    setLoadingSupabase(true);
+    try {
+      const res = await fetch('/api/backoffice/products');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.products)) {
+          setSupabaseProducts(data.products);
+        }
+      }
+    } catch (err) {
+      console.warn('Erro ao buscar produtos do Supabase:', err);
+    } finally {
+      setLoadingSupabase(false);
+    }
+  };
+
+  const fetchSalesData = async () => {
+    setLoadingSales(true);
+    try {
+      const res = await fetch('/api/backoffice/sales');
+      if (res.ok) {
+        const data = await res.json();
+        setSalesData(data);
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar dados de vendas:', err);
+    } finally {
+      setLoadingSales(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSupabaseProducts();
+    fetchSalesData();
+  }, []);
+
+  const handleDeleteSupabaseProduct = async (id: string, title: string) => {
+    if (!confirm(`Deseja realmente excluir o produto "${title}" e todas as suas variações do Supabase?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/backoffice/products?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setSaveSuccessMessage(true);
+        setTimeout(() => setSaveSuccessMessage(false), 4000);
+        fetchSupabaseProducts();
+      } else {
+        const data = await res.json();
+        alert(`Erro ao excluir: ${data.error || 'Erro no servidor'}`);
+      }
+    } catch (err: any) {
+      alert(`Falha na exclusão: ${err.message}`);
+    }
+  };
+
+  const [productsMargin, setProductsMargin] = useState<ProductProfit[]>([
+    {
+      sku: 'SAM-BLK-P',
+      title: 'Samanta Romper (Lançamento)',
+      costPrice: 16.0,
+      salePrice: 44.9,
+      sellerCommissionRate: 10.0,
+      gatewayRate: 2.9,
+    },
+    {
+      sku: 'BAI-BLK-P',
+      title: 'Best Seller Bailarina Top',
+      costPrice: 12.0,
+      salePrice: 34.9,
+      sellerCommissionRate: 10.0,
+      gatewayRate: 2.9,
+    },
+    {
+      sku: 'MON-BLK-M',
+      title: 'Monique Flare Pants - Set',
+      costPrice: 19.0,
+      salePrice: 49.9,
+      sellerCommissionRate: 10.0,
+      gatewayRate: 2.9,
+    },
+    {
+      sku: 'KEL-BLK-M',
+      title: 'Kely Pants Set (Pré-venda Sob Medida)',
+      costPrice: 16.0,
+      salePrice: 39.9,
+      sellerCommissionRate: 10.0,
+      gatewayRate: 2.9,
+    },
+  ]);
+
+  const updateCost = (sku: string, newCost: number) => {
+    setProductsMargin((prev) =>
+      prev.map((p) => (p.sku === sku ? { ...p, costPrice: newCost } : p))
+    );
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setOnlineCount((prev) => Math.max(4, prev + (Math.random() > 0.5 ? 1 : -1)));
+    }, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Filtragem da lista de vendas
+  const filteredSalesList = (salesData?.sales || []).filter((s: any) => {
+    // Filtro por Canal
+    if (salesChannelFilter !== 'ALL' && s.channel !== salesChannelFilter) {
+      return false;
+    }
+    // Filtro por Meio de Pagamento
+    if (salesPaymentFilter !== 'ALL' && s.payment_method !== salesPaymentFilter) {
+      return false;
+    }
+    // Filtro de Busca
+    if (salesSearch) {
+      const q = salesSearch.toLowerCase();
+      const matchOrder = s.order_id?.toLowerCase().includes(q);
+      const matchCustomer = s.customer_name?.toLowerCase().includes(q);
+      const matchItem = s.items?.some((i: any) => i.title?.toLowerCase().includes(q) || i.sku?.toLowerCase().includes(q));
+      if (!matchOrder && !matchCustomer && !matchItem) return false;
+    }
+    return true;
+  });
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10 space-y-8 bg-white selection:bg-deep-black selection:text-gold">
+      {/* Header do ERP Backoffice */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-deep-black text-white p-6 sm:p-8 border border-gold/30 shadow-luxury">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 bg-white/10 text-[10px] font-black uppercase tracking-widest text-gold border border-gold/30 mb-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
+            <span>PAINEL MASTER • ANA CARINA</span>
+          </div>
+          <span className="text-[10px] uppercase font-black text-gold tracking-widest flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" /> GESTÃO OFICIAL: CATÁLOGO, VENDAS, LUCRO REAL & ESTOQUE (USD)
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wider flex items-center gap-3">
+            <img src="/symbol-ana-fitness.png" alt="Ana Fitness" className="w-8 h-8 object-contain" />
+            <span>ERP BACKOFFICE ANA FITNESS WEAR</span>
+          </h1>
+          <p className="text-xs text-white/60 uppercase tracking-wider">
+            Sede em Leominster, MA • Moeda oficial Dólar ($ USD) • Frete Fixo $9.99 (USPS).
+          </p>
+        </div>
+
+        {/* Visitantes Online & Atalhos */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <Link
+            href="/pos"
+            className="px-4 py-2.5 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center gap-2 shadow"
+          >
+            <CreditCard className="w-4 h-4 text-deep-black" />
+            <span>ABRIR TERMINAL PDV</span>
+          </Link>
+
+          <div className="flex items-center gap-3 bg-white/10 border border-gold/30 px-4 py-2.5">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-gold"></span>
+            </span>
+            <div className="text-left text-xs uppercase tracking-wider">
+              <span className="text-[9px] text-white/60 block font-bold">ONLINE AGORA:</span>
+              <span className="text-sm font-black text-gold">{onlineCount} VISITANTES</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs de Navegação do Backoffice */}
+      <div className="flex border-b-2 border-deep-black/10 gap-2 sm:gap-4 text-xs font-black uppercase tracking-widest overflow-x-auto pb-1 scrollbar-none">
+        <button
+          onClick={() => setActiveTab('catalog')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'catalog'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Package className="w-4 h-4 text-gold" />
+          <span>GESTÃO DE PRODUTOS ({supabaseProducts.length || products.length})</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('sales');
+            fetchSalesData();
+          }}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'sales'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 text-gold" />
+          <span>📊 RELATÓRIO DE VENDAS & LUCRO (USD)</span>
+          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
+            REAL
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('margins')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'margins'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <DollarSign className="w-4 h-4 text-gold" /> CUSTOS & MARGEM UNITÁRIA
+        </button>
+
+        <button
+          onClick={() => setActiveTab('live')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'live'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Activity className="w-4 h-4 text-gold" /> VISITANTES ONLINE
+        </button>
+
+        <button
+          onClick={() => setActiveTab('backorders')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'backorders'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Factory className="w-4 h-4 text-gold" /> PRÉ-VENDAS SOB MEDIDA
+        </button>
+
+        <button
+          onClick={() => setActiveTab('commissions')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'commissions'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Users className="w-4 h-4 text-gold" /> COMISSÕES DE VENDEDORAS
+        </button>
+
+        <button
+          onClick={() => setActiveTab('theme')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'theme'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Palette className="w-4 h-4 text-gold" /> CORES & DESIGN
+        </button>
+      </div>
+
+      {/* Notificação de Sucesso */}
+      {saveSuccessMessage && (
+        <div className="p-4 bg-deep-black text-white border-2 border-gold flex items-center justify-between text-xs font-black uppercase tracking-wider animate-fadeIn">
+          <div className="flex items-center gap-2 text-gold">
+            <CheckCircle2 className="w-5 h-5 text-gold" />
+            <span>✓ Produto atualizado com sucesso no Supabase e refletido na Loja Virtual e no PDV!</span>
+          </div>
+          <Link href="/#vitrine" className="text-white hover:text-gold underline flex items-center gap-1">
+            <span>Ver na Loja</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
+
+      {/* =========================================================================
+          TAB 0: CATÁLOGO & CADASTRO ÚNICO DE PRODUTOS COM GRADE
+         ========================================================================= */}
+      {activeTab === 'catalog' && (
+        <div className="space-y-8">
+          {/* Barra de Ações Superior */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border-2 border-deep-black p-5">
+            <div>
+              <h2 className="text-lg font-black uppercase tracking-wider text-deep-black flex items-center gap-2">
+                <Package className="w-5 h-5 text-gold" />
+                <span>CENTRAL OFICIAL DE PRODUTOS • SUPABASE INTEGRADO</span>
+              </h2>
+              <p className="text-xs text-deep-black/70 uppercase tracking-wide mt-0.5">
+                Tela única oficial para gerenciar dados de vitrine, fotos, custos, fornecedores e matriz SKU (Cor × Tamanho).
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={fetchSupabaseProducts}
+                className="px-3 py-3 border-2 border-deep-black hover:bg-deep-black hover:text-white text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5"
+                title="Recarregar produtos do Supabase"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingSupabase ? 'animate-spin' : ''}`} />
+                <span>Atualizar</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setEditingProduct(null);
+                  setShowAddForm(!showAddForm);
+                }}
+                className="px-5 py-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border border-gold/40"
+              >
+                <PlusCircle className="w-4 h-4 text-gold group-hover:text-deep-black" />
+                <span>{showAddForm ? 'FECHAR FORMULÁRIO' : '+ CADASTRAR NOVO PRODUTO COM GRADE'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* FORMULÁRIO DE CADASTRO E EDIÇÃO COM GRADE DE VARIAÇÕES (MATRIZ COR X TAMANHO) */}
+          {showAddForm && (
+            <div className="bg-white border-2 border-deep-black p-6 sm:p-8 shadow-luxury space-y-6 animate-fadeIn">
+              <div className="flex items-center justify-between border-b border-deep-black/10 pb-4">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                    {editingProduct ? 'EDITANDO PRODUTO E MATRIZ SKU NO SUPABASE' : 'NOVO CADASTRO DE PRODUTO & GRADE DE VARIAÇÕES'}
+                  </span>
+                  <h3 className="text-xl font-black uppercase tracking-wider text-deep-black mt-1">
+                    {editingProduct ? `EDITANDO: ${editingProduct.title}` : 'CADASTRO DE PRODUTO COM GRADE (MATRIZ COR × TAMANHO)'}
+                  </h3>
+                  <p className="text-xs text-deep-black/60 uppercase">
+                    Gravação direta no banco de dados Supabase (tabelas <strong>'products'</strong> e <strong>'product_variants'</strong>).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setEditingProduct(null);
+                  }}
+                  className="text-xs font-black uppercase px-3.5 py-1.5 border border-deep-black hover:bg-deep-black hover:text-white transition"
+                >
+                  ✕ FECHAR
+                </button>
+              </div>
+
+              {/* Componente Modular de Grade de Variações */}
+              <ProductVariantMatrixForm
+                initialProduct={editingProduct}
+                onSaveSuccess={(saved) => {
+                  setShowAddForm(false);
+                  setEditingProduct(null);
+                  setSaveSuccessMessage(true);
+                  setTimeout(() => setSaveSuccessMessage(false), 5000);
+                  fetchSupabaseProducts();
+                }}
+                onCancel={() => {
+                  setShowAddForm(false);
+                  setEditingProduct(null);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Tabela de Produtos Cadastrados no Catálogo */}
+          <div className="bg-white border-2 border-deep-black overflow-x-auto shadow-sm">
+            <div className="p-4 bg-deep-black/5 border-b border-deep-black/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Grid className="w-4 h-4 text-gold" />
+                <span className="text-xs font-black uppercase tracking-wider text-deep-black">
+                  PRODUTOS CADASTRADOS NO ERP (TABELAS 'PRODUCTS' & 'PRODUCT_VARIANTS')
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-deep-black/60 uppercase font-bold">
+                {supabaseProducts.length > 0
+                  ? `${supabaseProducts.length} PRODUTOS REGISTRADOS NO SUPABASE`
+                  : `${products.length} PRODUTOS NO CATÁLOGO LOCAL`}
+              </span>
+            </div>
+
+            <table className="w-full text-left text-xs uppercase tracking-wider">
+              <thead className="bg-deep-black text-white text-[10px] font-black">
+                <tr>
+                  <th className="p-4">FOTO</th>
+                  <th className="p-4">PRODUTO & FORNECEDOR</th>
+                  <th className="p-4">GRADE DE VARIAÇÕES (COR × TAMANHO)</th>
+                  <th className="p-4">PREÇO DE VENDA</th>
+                  <th className="p-4">CUSTO</th>
+                  <th className="p-4">ESTOQUE TOTAL</th>
+                  <th className="p-4">STATUS</th>
+                  <th className="p-4 text-right">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-deep-black/10">
+                {(supabaseProducts.length > 0 ? supabaseProducts : products).map((item: any) => {
+                  const itemVariants = item.variants || (item.sizes ? item.sizes.map((sz: string) => ({
+                    size: sz,
+                    color: item.colorName || 'Preto Ônix',
+                    sku: `${item.sku || 'PROD'}-${sz}`,
+                    stock_quantity: Math.round((item.stock || 0) / item.sizes.length),
+                  })) : []);
+
+                  const totalStock = item.total_stock ?? item.stock ?? itemVariants.reduce((s: number, v: any) => s + (v.stock_quantity || 0), 0);
+                  const firstImage = itemVariants[0]?.images?.[0] || item.primaryImage || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
+                  const supplierName = item.suppliers?.company_name || 'Confecções FitPro Brasil';
+                  const categoryName = item.categories?.name || item.category || 'CONJUNTOS';
+                  const basePrice = itemVariants[0]?.price ?? item.price ?? 44.9;
+                  const baseCost = itemVariants[0]?.cost_price ?? item.costPrice ?? 16.0;
+
+                  return (
+                    <tr key={item.id} className="hover:bg-deep-black/5">
+                      <td className="p-4">
+                        <div className="w-12 aspect-[4/5] bg-deep-black/10 overflow-hidden border border-deep-black/20 relative">
+                          <img src={firstImage} alt={item.title} className="w-full h-full object-cover" />
+                          {itemVariants.length > 1 && (
+                            <span className="absolute bottom-0 right-0 bg-deep-black text-gold text-[7px] font-black px-1">
+                              {itemVariants.length}v
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="p-4">
+                        <span className="font-black text-deep-black block">{item.title}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] text-gold font-bold">{categoryName}</span>
+                          <span className="text-deep-black/30">•</span>
+                          <span className="text-[9px] text-deep-black/60 font-bold truncate max-w-[140px]" title={supplierName}>
+                            {supplierName}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="p-4">
+                        <div className="flex flex-wrap gap-1.5 max-w-xs">
+                          {itemVariants.map((vr: any, vIdx: number) => (
+                            <span
+                              key={vIdx}
+                              className={`text-[8px] font-mono font-black px-1.5 py-0.5 border flex items-center gap-1 ${
+                                (vr.stock_quantity || 0) > 0
+                                    ? 'bg-deep-black/5 text-deep-black border-deep-black/20'
+                                    : 'bg-gold/10 text-deep-black border-gold/40'
+                              }`}
+                              title={`SKU: ${vr.sku || 'N/A'} | Estoque: ${vr.stock_quantity ?? 0} unid`}
+                            >
+                              <span>{vr.color?.slice(0, 4) || 'COR'}-{vr.size}</span>
+                              <span className="text-deep-black/50">({vr.stock_quantity ?? 0})</span>
+                            </span>
+                          ))}
+                          {itemVariants.length === 0 && (
+                            <span className="text-[9px] text-deep-black/40">Sem grade gerada</span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="p-4 font-mono font-black text-deep-black">
+                        ${Number(basePrice).toFixed(2)}
+                      </td>
+
+                      <td className="p-4 font-mono text-deep-black/70">
+                        ${Number(baseCost).toFixed(2)}
+                      </td>
+
+                      <td className="p-4 font-mono font-bold">
+                        <span className={totalStock > 0 ? 'text-deep-black' : 'text-gold'}>
+                          {totalStock} UNID.
+                        </span>
+                      </td>
+
+                      <td className="p-4">
+                        {totalStock > 0 ? (
+                          <span className="px-2 py-0.5 bg-deep-black text-white text-[9px] font-black border border-deep-black inline-block">
+                            PRONTA ENTREGA
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-deep-black text-gold text-[9px] font-black border border-gold inline-block">
+                            PRÉ-VENDA (5-7 DIAS)
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingProduct(item);
+                              setShowAddForm(true);
+                              window.scrollTo({ top: 300, behavior: 'smooth' });
+                            }}
+                            className="p-1.5 border border-deep-black hover:bg-deep-black hover:text-white transition flex items-center gap-1 text-[10px] font-black"
+                            title="Editar Produto e Grade no Supabase"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-gold" />
+                            <span>EDITAR</span>
+                          </button>
+
+                          {item.id && !item.id.startsWith('p') && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSupabaseProduct(item.id, item.title)}
+                              className="p-1.5 border border-red-300 text-red-600 hover:bg-red-600 hover:text-white transition"
+                              title="Excluir do Supabase"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          <Link
+                            href={`/produto/${item.slug || 'samanta-romper'}`}
+                            target="_blank"
+                            className="p-1.5 bg-white border border-deep-black hover:bg-gold hover:text-deep-black text-deep-black font-black text-[10px] transition inline-flex items-center gap-1"
+                            title="Ver produto na vitrine pública"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          TAB 1: RELATÓRIO DE VENDAS & LUCRO REAL (RESPOSTA DIRETA AO ITEM 4 DA ANA CARINA)
+         ========================================================================= */}
+      {activeTab === 'sales' && (
+        <div className="space-y-8 animate-fadeIn">
+          {/* Banner Conceitual de Transparência Financeira */}
+          <div className="bg-deep-black text-white border-2 border-gold p-6 sm:p-8 space-y-3 shadow-luxury">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                  DEMONSTRATIVO FINANCEIRO CONSOLIDADO (DRE SIMPLIFICADO • USD)
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-white flex items-center gap-2">
+                  <BarChart3 className="w-6 h-6 text-gold" />
+                  <span>RELATÓRIO DE VENDAS & LUCRO LÍQUIDO REAL</span>
+                </h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={fetchSalesData}
+                  className="px-3 py-2 border border-gold hover:bg-gold hover:text-deep-black text-gold text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingSales ? 'animate-spin' : ''}`} />
+                  <span>ATUALIZAR DADOS</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-2 bg-white/10 hover:bg-white hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>IMPRIMIR RELATÓRIO</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-2 text-xs text-white/80 uppercase font-mono tracking-wide leading-relaxed bg-white/5 p-4 border border-white/10">
+              <span className="text-gold font-black">FÓRMULA EXATA DE LUCRO LÍQUIDO NO SEU BOLSO: </span>
+              <span>
+                (Receita de Peças + Fretes Cobrados $9.99) - Custo das Peças (COGS) - Taxas Gateway (Stripe/Venmo) - Custo Envio USPS ($7.50) - Comissões Vendedoras (10%) ={' '}
+              </span>
+              <strong className="text-gold font-black underline">LUCRO LÍQUIDO REAL ($ USD)</strong>
+            </div>
+          </div>
+
+          {/* 6 KPIS FINANCEIROS PRINCIPAIS */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            {/* 1. Faturamento Bruto */}
+            <div className="bg-white border-2 border-deep-black p-4 space-y-1 shadow-sm">
+              <span className="text-[9px] font-black uppercase tracking-widest text-deep-black/60 block">
+                FATURAMENTO BRUTO
+              </span>
+              <p className="text-xl sm:text-2xl font-black text-deep-black font-mono">
+                ${(salesData?.summary?.totalGrossRevenue || 0).toFixed(2)}
+              </p>
+              <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
+                {salesData?.summary?.ordersCount || 0} pedidos faturados
+              </span>
+            </div>
+
+            {/* 2. Lucro Líquido Real (Destaque Principal) */}
+            <div className="bg-deep-black border-2 border-gold p-4 space-y-1 text-white shadow-luxury">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase tracking-widest text-gold block">
+                  LUCRO LÍQUIDO REAL
+                </span>
+                <span className="w-2 h-2 rounded-full bg-gold animate-pulse" />
+              </div>
+              <p className="text-xl sm:text-2xl font-black text-gold font-mono">
+                ${(salesData?.summary?.totalNetProfit || 0).toFixed(2)}
+              </p>
+              <div className="inline-flex items-center gap-1 bg-gold/20 px-1.5 py-0.5 text-[8px] font-black text-gold uppercase border border-gold/40">
+                <Percent className="w-2.5 h-2.5" />
+                <span>{salesData?.summary?.averageMarginPct || 0}% MARGEM LÍQUIDA</span>
+              </div>
+            </div>
+
+            {/* 3. Custo de Confecção / Mercadorias (COGS) */}
+            <div className="bg-white border-2 border-deep-black p-4 space-y-1 shadow-sm">
+              <span className="text-[9px] font-black uppercase tracking-widest text-deep-black/60 block">
+                CUSTO DAS PEÇAS (COGS)
+              </span>
+              <p className="text-xl sm:text-2xl font-black text-deep-black font-mono">
+                ${(salesData?.summary?.totalCostOfGoods || 0).toFixed(2)}
+              </p>
+              <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
+                Investimento confecção
+              </span>
+            </div>
+
+            {/* 4. Fretes Recolhidos vs Custo USPS */}
+            <div className="bg-white border-2 border-deep-black p-4 space-y-1 shadow-sm">
+              <span className="text-[9px] font-black uppercase tracking-widest text-deep-black/60 block">
+                FRETES COBRADOS (USPS)
+              </span>
+              <p className="text-xl sm:text-2xl font-black text-deep-black font-mono">
+                ${(salesData?.summary?.totalShippingCollected || 0).toFixed(2)}
+              </p>
+              <span className="text-[9px] text-deep-black/60 uppercase font-mono block">
+                Custo USPS: ${(salesData?.summary?.totalShippingCost || 0).toFixed(2)}
+              </span>
+            </div>
+
+            {/* 5. Taxas de Meios de Pagamento */}
+            <div className="bg-white border-2 border-deep-black p-4 space-y-1 shadow-sm">
+              <span className="text-[9px] font-black uppercase tracking-widest text-deep-black/60 block">
+                TAXAS MEIOS DE PGTO
+              </span>
+              <p className="text-xl sm:text-2xl font-black text-red-600 font-mono">
+                -${(salesData?.summary?.totalPaymentFees || 0).toFixed(2)}
+              </p>
+              <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
+                Gateways & operadoras
+              </span>
+            </div>
+
+            {/* 6. Comissões Pagas à Equipe */}
+            <div className="bg-white border-2 border-deep-black p-4 space-y-1 shadow-sm">
+              <span className="text-[9px] font-black uppercase tracking-widest text-deep-black/60 block">
+                COMISSÕES VENDEDORAS
+              </span>
+              <p className="text-xl sm:text-2xl font-black text-deep-black font-mono">
+                -${(salesData?.summary?.totalCommissions || 0).toFixed(2)}
+              </p>
+              <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
+                10% balcão & afiliados
+              </span>
+            </div>
+          </div>
+
+          {/* PAINÉIS DE BREAKDOWN ANALÍTICO: FORMAS DE PAGAMENTO & CANAIS */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Breakdown por Forma de Pagamento nos EUA */}
+            <div className="lg:col-span-7 bg-white border-2 border-deep-black p-6 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-deep-black/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-gold" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-deep-black">
+                    BREAKDOWN POR FORMA DE PAGAMENTO (EUA)
+                  </h3>
+                </div>
+                <span className="text-[10px] text-deep-black/60 uppercase font-mono font-bold">
+                  TAXAS DEDUZIDAS NA FONTE
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* ZELLE */}
+                <div className="p-3 bg-deep-black/5 border border-deep-black/20 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-deep-black">ZELLE</span>
+                    <span className="text-[8px] bg-green-100 text-green-800 font-black px-1 border border-green-300">
+                      0% TAXA
+                    </span>
+                  </div>
+                  <p className="text-base font-black text-deep-black font-mono">
+                    ${(salesData?.paymentBreakdown?.ZELLE?.total || 0).toFixed(2)}
+                  </p>
+                  <p className="text-[9px] text-deep-black/60 uppercase font-bold">
+                    Líquido: ${(salesData?.paymentBreakdown?.ZELLE?.net || 0).toFixed(2)}
+                  </p>
+                  <span className="text-[8px] text-deep-black/40 block font-mono">
+                    {salesData?.paymentBreakdown?.ZELLE?.count || 0} pedidos
+                  </span>
+                </div>
+
+                {/* VENMO */}
+                <div className="p-3 bg-deep-black/5 border border-deep-black/20 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-deep-black">VENMO</span>
+                    <span className="text-[8px] bg-blue-100 text-blue-800 font-black px-1 border border-blue-300">
+                      1.9% TAXA
+                    </span>
+                  </div>
+                  <p className="text-base font-black text-deep-black font-mono">
+                    ${(salesData?.paymentBreakdown?.VENMO?.total || 0).toFixed(2)}
+                  </p>
+                  <p className="text-[9px] text-red-600 uppercase font-bold">
+                    Taxas: -${(salesData?.paymentBreakdown?.VENMO?.fees || 0).toFixed(2)}
+                  </p>
+                  <span className="text-[8px] text-deep-black/40 block font-mono">
+                    {salesData?.paymentBreakdown?.VENMO?.count || 0} pedidos
+                  </span>
+                </div>
+
+                {/* CARD / STRIPE */}
+                <div className="p-3 bg-deep-black/5 border border-deep-black/20 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-deep-black">CARTÃO</span>
+                    <span className="text-[8px] bg-amber-100 text-amber-900 font-black px-1 border border-amber-300">
+                      2.9%+$0.30
+                    </span>
+                  </div>
+                  <p className="text-base font-black text-deep-black font-mono">
+                    ${(salesData?.paymentBreakdown?.CARD?.total || 0).toFixed(2)}
+                  </p>
+                  <p className="text-[9px] text-red-600 uppercase font-bold">
+                    Taxas: -${(salesData?.paymentBreakdown?.CARD?.fees || 0).toFixed(2)}
+                  </p>
+                  <span className="text-[8px] text-deep-black/40 block font-mono">
+                    {salesData?.paymentBreakdown?.CARD?.count || 0} pedidos
+                  </span>
+                </div>
+
+                {/* CASH */}
+                <div className="p-3 bg-deep-black/5 border border-deep-black/20 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-deep-black">CASH (ESPÉCIE)</span>
+                    <span className="text-[8px] bg-green-100 text-green-800 font-black px-1 border border-green-300">
+                      0% TAXA
+                    </span>
+                  </div>
+                  <p className="text-base font-black text-deep-black font-mono">
+                    ${(salesData?.paymentBreakdown?.CASH?.total || 0).toFixed(2)}
+                  </p>
+                  <p className="text-[9px] text-deep-black/60 uppercase font-bold">
+                    Líquido: ${(salesData?.paymentBreakdown?.CASH?.net || 0).toFixed(2)}
+                  </p>
+                  <span className="text-[8px] text-deep-black/40 block font-mono">
+                    {salesData?.paymentBreakdown?.CASH?.count || 0} pedidos
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Breakdown por Canal de Venda */}
+            <div className="lg:col-span-5 bg-white border-2 border-deep-black p-6 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-deep-black/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Store className="w-5 h-5 text-gold" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-deep-black">
+                    CANAIS DE VENDA
+                  </h3>
+                </div>
+                <span className="text-[10px] text-gold font-black uppercase">
+                  ONLINE VS SHOWROOM
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Loja Online */}
+                <div className="p-3.5 border border-deep-black/20 bg-deep-black text-white space-y-1.5">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-gold block">
+                    LOJA ONLINE (E-COMMERCE)
+                  </span>
+                  <p className="text-lg font-black font-mono text-white">
+                    ${(salesData?.channelBreakdown?.ONLINE?.revenue || 0).toFixed(2)}
+                  </p>
+                  <div className="text-[9px] text-white/70 uppercase space-y-0.5 pt-1 border-t border-white/20">
+                    <div>Lucro Líquido: <strong className="text-gold font-mono">${(salesData?.channelBreakdown?.ONLINE?.profit || 0).toFixed(2)}</strong></div>
+                    <div>{salesData?.channelBreakdown?.ONLINE?.count || 0} pedidos online</div>
+                    <div className="text-[8px] text-white/50">Frete cliente: $9.99 fixo</div>
+                  </div>
+                </div>
+
+                {/* PDV Balcão Showroom */}
+                <div className="p-3.5 border border-deep-black/20 bg-white text-deep-black space-y-1.5">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-deep-black/60 block">
+                    PDV SHOWROOM BALCÃO
+                  </span>
+                  <p className="text-lg font-black font-mono text-deep-black">
+                    ${(salesData?.channelBreakdown?.POS_COUNTER?.revenue || 0).toFixed(2)}
+                  </p>
+                  <div className="text-[9px] text-deep-black/70 uppercase space-y-0.5 pt-1 border-t border-deep-black/10">
+                    <div>Lucro Líquido: <strong className="text-deep-black font-mono">${(salesData?.channelBreakdown?.POS_COUNTER?.profit || 0).toFixed(2)}</strong></div>
+                    <div>{salesData?.channelBreakdown?.POS_COUNTER?.count || 0} vendas balcão</div>
+                    <div className="text-[8px] text-gold font-bold">10% comissão vendedora</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* FILTROS E BUSCA DE PEDIDOS */}
+          <div className="bg-white border-2 border-deep-black p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-sm">
+            <div className="relative flex-1 max-w-sm">
+              <input
+                type="text"
+                placeholder="BUSCAR POR CLIENTE, PEDIDO OU SKU..."
+                value={salesSearch}
+                onChange={(e) => setSalesSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black font-mono"
+              />
+              <Search className="w-4 h-4 text-deep-black/40 absolute left-2.5 top-2.5" />
+            </div>
+
+            <div className="flex items-center gap-2 overflow-x-auto">
+              <div className="flex items-center gap-1 border border-deep-black/20 px-2 py-1 text-xs">
+                <Filter className="w-3.5 h-3.5 text-gold" />
+                <span className="text-[10px] font-black uppercase text-deep-black/60">CANAL:</span>
+                <select
+                  value={salesChannelFilter}
+                  onChange={(e) => setSalesChannelFilter(e.target.value as any)}
+                  className="text-xs font-black uppercase bg-transparent border-0 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">TODOS</option>
+                  <option value="ONLINE">LOJA ONLINE</option>
+                  <option value="POS_COUNTER">PDV BALCÃO</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1 border border-deep-black/20 px-2 py-1 text-xs">
+                <span className="text-[10px] font-black uppercase text-deep-black/60">PGTO:</span>
+                <select
+                  value={salesPaymentFilter}
+                  onChange={(e) => setSalesPaymentFilter(e.target.value as any)}
+                  className="text-xs font-black uppercase bg-transparent border-0 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">TODOS</option>
+                  <option value="ZELLE">ZELLE</option>
+                  <option value="VENMO">VENMO</option>
+                  <option value="CARD">CARTÃO</option>
+                  <option value="CASH">CASH</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* TABELA DETALHADA DE VENDAS & PEDIDOS */}
+          <div className="bg-white border-2 border-deep-black overflow-x-auto shadow-sm">
+            <div className="p-4 bg-deep-black text-white flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-gold" />
+                <span className="text-xs font-black uppercase tracking-wider">
+                  EXTRATO INDIVIDUAL DE PEDIDOS ({filteredSalesList.length} REGISTROS)
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-gold uppercase font-black">
+                VALORES LÍQUIDOS CALCULADOS AUTOMATICAMENTE
+              </span>
+            </div>
+
+            <table className="w-full text-left text-xs uppercase tracking-wider">
+              <thead className="bg-deep-black/5 text-[9px] font-black text-deep-black border-b border-deep-black/20">
+                <tr>
+                  <th className="p-3">PEDIDO # / DATA</th>
+                  <th className="p-3">CANAL & OPERADORA</th>
+                  <th className="p-3">CLIENTE</th>
+                  <th className="p-3">ITENS & GRADE (COR/TAM)</th>
+                  <th className="p-3">PGTO</th>
+                  <th className="p-3 text-right">TOTAL PAGO</th>
+                  <th className="p-3 text-right">FRETE CLI.</th>
+                  <th className="p-3 text-right">TAXA PGTO</th>
+                  <th className="p-3 text-right">COMISSÃO</th>
+                  <th className="p-3 text-right">CUSTO PEÇAS</th>
+                  <th className="p-3 text-right">LUCRO REAL</th>
+                  <th className="p-3 text-center">RAIO-X</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-deep-black/10">
+                {filteredSalesList.map((sale: any) => {
+                  const isOnline = sale.channel === 'ONLINE';
+                  return (
+                    <tr key={sale.id || sale.order_id} className="hover:bg-deep-black/5">
+                      {/* Pedido & Data */}
+                      <td className="p-3 font-mono">
+                        <span className="font-black text-deep-black block">{sale.order_id}</span>
+                        <span className="text-[9px] text-deep-black/50">
+                          {new Date(sale.created_at).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </td>
+
+                      {/* Canal & Operadora */}
+                      <td className="p-3">
+                        <span className={`inline-block px-1.5 py-0.5 text-[8px] font-black border uppercase ${
+                          isOnline
+                            ? 'bg-deep-black text-white border-deep-black'
+                            : 'bg-gold/20 text-deep-black border-gold/40'
+                        }`}>
+                          {isOnline ? 'LOJA ONLINE' : 'PDV BALCÃO'}
+                        </span>
+                        <span className="text-[9px] text-deep-black/60 block font-bold truncate max-w-[120px] mt-0.5" title={sale.seller_name}>
+                          {sale.seller_name}
+                        </span>
+                      </td>
+
+                      {/* Cliente */}
+                      <td className="p-3 font-bold text-deep-black">
+                        <span>{sale.customer_name}</span>
+                        {sale.customer_phone && (
+                          <span className="text-[9px] text-deep-black/50 block font-mono">
+                            {sale.customer_phone}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Itens e Grade */}
+                      <td className="p-3">
+                        <div className="space-y-1 max-w-xs">
+                          {(sale.items || []).map((it: any, iIdx: number) => (
+                            <div key={iIdx} className="text-[10px] leading-tight">
+                              <span className="font-black text-deep-black">{it.title}</span>
+                              <span className="text-gold font-bold ml-1 font-mono">
+                                ({it.color} • TAM {it.size}) ×{it.quantity}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+
+                      {/* Forma de Pagamento */}
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 text-[8px] font-black font-mono border inline-block ${
+                          sale.payment_method === 'ZELLE'
+                            ? 'bg-green-100 text-green-800 border-green-300'
+                            : sale.payment_method === 'VENMO'
+                            ? 'bg-blue-100 text-blue-800 border-blue-300'
+                            : sale.payment_method === 'CARD'
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-gray-100 text-gray-800 border-gray-300'
+                        }`}>
+                          {sale.payment_method}
+                        </span>
+                      </td>
+
+                      {/* Total Pago */}
+                      <td className="p-3 text-right font-mono font-black text-deep-black">
+                        ${(Number(sale.subtotal_products) + Number(sale.shipping_fee)).toFixed(2)}
+                      </td>
+
+                      {/* Frete Cobrado */}
+                      <td className="p-3 text-right font-mono text-deep-black/70">
+                        ${Number(sale.shipping_fee).toFixed(2)}
+                      </td>
+
+                      {/* Taxa Gateway */}
+                      <td className="p-3 text-right font-mono text-red-600">
+                        -${Number(sale.payment_fee).toFixed(2)}
+                      </td>
+
+                      {/* Comissão Vendedora */}
+                      <td className="p-3 text-right font-mono text-deep-black/70">
+                        -${Number(sale.commission_amount).toFixed(2)}
+                      </td>
+
+                      {/* Custo Peças */}
+                      <td className="p-3 text-right font-mono text-deep-black/70">
+                        ${Number(sale.cost_of_goods).toFixed(2)}
+                      </td>
+
+                      {/* Lucro Líquido Real */}
+                      <td className="p-3 text-right font-mono font-black text-gold bg-deep-black/5">
+                        ${Number(sale.net_profit).toFixed(2)}
+                        <span className="text-[8px] text-deep-black/50 block font-normal">
+                          {sale.profit_margin_pct}%
+                        </span>
+                      </td>
+
+                      {/* Botão Raio-X */}
+                      <td className="p-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSaleDetail(sale)}
+                          className="px-2 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black uppercase transition tracking-wider"
+                          title="Ver Raio-X Detalhado do Lucro"
+                        >
+                          VER RAIO-X
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* MODAL RAIO-X FINANCEIRO DO PEDIDO SELECIONADO */}
+          {selectedSaleDetail && (
+            <div className="fixed inset-0 z-50 bg-deep-black/80 flex items-center justify-center p-4">
+              <div className="bg-white border-4 border-gold p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl animate-fadeIn">
+                <div className="flex items-center justify-between border-b border-deep-black/10 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="w-5 h-5 text-gold" />
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                        RAIO-X FINANCEIRO DA VENDA
+                      </span>
+                      <h3 className="text-base font-black uppercase tracking-wider text-deep-black">
+                        PEDIDO #{selectedSaleDetail.order_id}
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSaleDetail(null)}
+                    className="p-1.5 text-deep-black hover:text-gold transition font-black"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Dados da Venda */}
+                <div className="grid grid-cols-2 gap-3 text-xs uppercase tracking-wider bg-deep-black/5 p-3 border border-deep-black/10">
+                  <div>
+                    <span className="text-[9px] text-deep-black/50 font-bold block">CLIENTE:</span>
+                    <strong className="text-deep-black">{selectedSaleDetail.customer_name}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-deep-black/50 font-bold block">CANAL & MEIO:</span>
+                    <strong className="text-deep-black">
+                      {selectedSaleDetail.channel} • {selectedSaleDetail.payment_method}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Memória de Cálculo Passo a Passo */}
+                <div className="space-y-2 text-xs uppercase tracking-wider">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-deep-black block">
+                    MEMÓRIA DE CÁLCULO DO LUCRO LÍQUIDO REAL:
+                  </span>
+
+                  <div className="space-y-1.5 bg-white border border-deep-black/20 p-4">
+                    <div className="flex justify-between text-deep-black">
+                      <span>(+) PREÇO DAS PEÇAS:</span>
+                      <span className="font-mono font-bold">${Number(selectedSaleDetail.subtotal_products).toFixed(2)}</span>
+                    </div>
+
+                    <div className="flex justify-between text-deep-black">
+                      <span>(+) FRETE COBRADO DO CLIENTE:</span>
+                      <span className="font-mono font-bold">${Number(selectedSaleDetail.shipping_fee).toFixed(2)}</span>
+                    </div>
+
+                    {selectedSaleDetail.discount_amount > 0 && (
+                      <div className="flex justify-between text-red-600">
+                        <span>(-) DESCONTO CONCEDIDO:</span>
+                        <span className="font-mono font-bold">-${Number(selectedSaleDetail.discount_amount).toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between font-black text-deep-black border-t border-deep-black/10 pt-1.5">
+                      <span>(=) FATURAMENTO BRUTO:</span>
+                      <span className="font-mono">
+                        ${(Number(selectedSaleDetail.subtotal_products) + Number(selectedSaleDetail.shipping_fee) - Number(selectedSaleDetail.discount_amount || 0)).toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="border-t border-deep-black/10 pt-1.5 space-y-1 text-red-600">
+                      <div className="flex justify-between">
+                        <span>(-) CUSTO DE CONFECÇÃO (COGS):</span>
+                        <span className="font-mono">-${Number(selectedSaleDetail.cost_of_goods).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>(-) TAXA MEIO PGTO ({selectedSaleDetail.payment_method}):</span>
+                        <span className="font-mono">-${Number(selectedSaleDetail.payment_fee).toFixed(2)}</span>
+                      </div>
+                      {selectedSaleDetail.shipping_cost > 0 && (
+                        <div className="flex justify-between">
+                          <span>(-) CUSTO ETIQUETA USPS:</span>
+                          <span className="font-mono">-${Number(selectedSaleDetail.shipping_cost).toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span>(-) COMISSÃO VENDEDORA ({selectedSaleDetail.seller_name}):</span>
+                        <span className="font-mono">-${Number(selectedSaleDetail.commission_amount).toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    {/* Resultado Líquido Final */}
+                    <div className="flex justify-between items-center text-sm font-black bg-deep-black text-gold p-3 mt-3 border border-gold">
+                      <span>(=) LUCRO LÍQUIDO REAL NO BOLSO:</span>
+                      <span className="text-base font-mono">${Number(selectedSaleDetail.net_profit).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSaleDetail(null)}
+                    className="w-full py-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition"
+                  >
+                    FECHAR DETALHES
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* =========================================================================
+          TAB 2: CUSTOS & MARGEM UNITÁRIA
+         ========================================================================= */}
+      {activeTab === 'margins' && (
+        <div className="space-y-6">
+          <div className="bg-white border-2 border-deep-black p-5 space-y-2">
+            <div className="flex items-center gap-2 text-deep-black font-black text-xs uppercase tracking-wider">
+              <ShieldAlert className="w-4 h-4 text-gold" />
+              <span>COLUNA PROTEGIDA (cost_price): SEUS CLIENTES NUNCA TÊM ACESSO A ESTES DADOS</span>
+            </div>
+            <p className="text-xs text-deep-black/70 uppercase tracking-wide">
+              Insira o valor em dólares ($) que você pagou para a confecção em cada peça. O sistema calcula automaticamente:
+              <strong> Preço de Venda - Custo da Peça - Comissão da Vendedora - Taxas de Cartão/Zelle = LUCRO LÍQUIDO REAL</strong>.
+            </p>
+          </div>
+
+          <div className="bg-white border-2 border-deep-black overflow-x-auto shadow-sm">
+            <table className="w-full text-left text-xs uppercase tracking-wider">
+              <thead className="bg-deep-black text-white text-[10px] font-black">
+                <tr>
+                  <th className="p-4">SKU</th>
+                  <th className="p-4">PEÇA FITNESS</th>
+                  <th className="p-4">CUSTO CONFECÇÃO ($)</th>
+                  <th className="p-4">PREÇO VENDA ($)</th>
+                  <th className="p-4">COMISSÃO (10%)</th>
+                  <th className="p-4">TAXA CARTÃO (2.9%)</th>
+                  <th className="p-4">LUCRO LÍQUIDO ($)</th>
+                  <th className="p-4">MARGEM REAL</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-deep-black/10">
+                {productsMargin.map((item) => {
+                  const comm = item.salePrice * (item.sellerCommissionRate / 100);
+                  const gateway = item.salePrice * (item.gatewayRate / 100);
+                  const netProfit = item.salePrice - item.costPrice - comm - gateway;
+                  const marginPct = ((netProfit / item.salePrice) * 100).toFixed(1);
+
+                  return (
+                    <tr key={item.sku} className="hover:bg-deep-black/5">
+                      <td className="p-4 font-mono font-bold text-deep-black">{item.sku}</td>
+                      <td className="p-4 font-black text-deep-black">{item.title}</td>
+                      <td className="p-4">
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={item.costPrice}
+                          onChange={(e) => updateCost(item.sku, parseFloat(e.target.value) || 0)}
+                          className="w-20 p-1.5 border border-deep-black/30 text-xs font-mono font-bold bg-white focus:outline-none focus:border-deep-black"
+                        />
+                      </td>
+                      <td className="p-4 font-mono font-bold">${item.salePrice.toFixed(2)}</td>
+                      <td className="p-4 font-mono text-deep-black/70">-${comm.toFixed(2)}</td>
+                      <td className="p-4 font-mono text-deep-black/70">-${gateway.toFixed(2)}</td>
+                      <td className="p-4 font-mono font-black text-gold">${netProfit.toFixed(2)}</td>
+                      <td className="p-4 font-mono font-black">
+                        <span className="px-2 py-0.5 bg-deep-black text-white text-[10px]">
+                          {marginPct}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          TAB 3: VISITANTES ONLINE
+         ========================================================================= */}
+      {activeTab === 'live' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">ONLINE AGORA</span>
+              <p className="text-3xl font-black text-deep-black font-mono">{onlineCount} CLIENTES</p>
+            </div>
+            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">ORIGEM PRINCIPAL</span>
+              <p className="text-3xl font-black text-deep-black">BOSTON & LEOMINSTER</p>
+            </div>
+            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">CONVERSÃO ESTIMADA</span>
+              <p className="text-3xl font-black text-gold font-mono">4.2%</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          TAB 4: PRÉ-VENDAS SOB MEDIDA
+         ========================================================================= */}
+      {activeTab === 'backorders' && (
+        <div className="space-y-6">
+          <div className="bg-white border-2 border-deep-black p-5 space-y-2">
+            <div className="flex items-center gap-2 text-deep-black font-black text-xs uppercase tracking-wider">
+              <Factory className="w-4 h-4 text-gold" />
+              <span>PEDIDOS EM CONFECÇÃO SOB MEDIDA (PRAZO 5 A 7 DIAS ÚTEIS)</span>
+            </div>
+            <p className="text-xs text-deep-black/70 uppercase tracking-wide">
+              Pedidos que o cliente comprou mesmo quando o estoque estava zerado (allow_backorder ativo).
+            </p>
+          </div>
+
+          <div className="bg-white border-2 border-deep-black overflow-x-auto shadow-sm">
+            <table className="w-full text-left text-xs uppercase tracking-wider">
+              <thead className="bg-deep-black text-white text-[10px] font-black">
+                <tr>
+                  <th className="p-4">PEDIDO</th>
+                  <th className="p-4">CLIENTE</th>
+                  <th className="p-4">PEÇA SOLICITADA</th>
+                  <th className="p-4">PRAZO</th>
+                  <th className="p-4">STATUS</th>
+                  <th className="p-4 text-right">AÇÃO</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-deep-black/10">
+                <tr className="hover:bg-deep-black/5">
+                  <td className="p-4 font-mono font-black text-deep-black">#ORD-9021</td>
+                  <td className="p-4 font-bold">BEATRIZ LIMA (BOSTON, MA)</td>
+                  <td className="p-4">
+                    <span className="font-black text-deep-black">KELY PANTS SET</span>
+                    <span className="text-[10px] text-deep-black/50 block font-mono">KEL-BLK-M (TAM M)</span>
+                  </td>
+                  <td className="p-4 text-gold font-black">EM 5 DIAS</td>
+                  <td className="p-4">
+                    <span className="px-2 py-1 bg-gold/20 text-deep-black font-black text-[9px] border border-gold">
+                      EM CONFECÇÃO
+                    </span>
+                  </td>
+                  <td className="p-4 text-right">
+                    <button className="px-3 py-1.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-[10px] transition">
+                      DAR ENTRADA & ENVIAR RASTREIO
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          TAB 5: COMISSÕES
+         ========================================================================= */}
+      {activeTab === 'commissions' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">VENDAS COMISSIONADAS (USD)</span>
+              <p className="text-2xl font-black text-deep-black font-mono">$4,850.00</p>
+            </div>
+            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">COMISSÕES A PAGAR (10%)</span>
+              <p className="text-2xl font-black text-gold font-mono">$485.00</p>
+            </div>
+            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">VENDEDORAS ATIVAS</span>
+              <p className="text-2xl font-black text-deep-black">2 ATIVAS (CAMILA & JULIANA)</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          TAB 6: GUIA DE TEMA
+         ========================================================================= */}
+      {activeTab === 'theme' && (
+        <div className="space-y-8 bg-white border-2 border-deep-black p-6 sm:p-10 shadow-luxury">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+              GUIA DE EDIÇÃO E PERSONALIZAÇÃO
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-deep-black mt-1">
+              PALETA OFICIAL BRANCO, PRETO E DOURADO
+            </h2>
+            <p className="text-xs text-deep-black/70 uppercase tracking-wide mt-1">
+              Design internacional de alto luxo configurado com moeda em Dólares ($ USD) e taxa fixa de frete de $9.99.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-5 border border-deep-black/20 bg-white space-y-3">
+              <div className="flex items-center gap-2 text-deep-black font-black text-xs uppercase">
+                <Palette className="w-4 h-4 text-gold" /> 1. CORES DA MARCA
+              </div>
+              <ul className="text-[10px] text-deep-black/80 uppercase space-y-1 pt-1 font-bold">
+                <li>• Fundo Branco Puro: <span className="font-mono text-deep-black">#FFFFFF</span></li>
+                <li>• Preto Profundo: <span className="font-mono text-deep-black">#0A0A0A</span></li>
+                <li>• Dourado Nobre Metálico: <span className="font-mono text-gold">#D4AF37</span></li>
+              </ul>
+            </div>
+
+            <div className="p-5 border border-deep-black/20 bg-white space-y-3">
+              <div className="flex items-center gap-2 text-deep-black font-black text-xs uppercase">
+                <Upload className="w-4 h-4 text-gold" /> 2. IMAGENS & VÍDEOS
+              </div>
+              <p className="text-[10px] uppercase font-bold text-deep-black/80">
+                Logotipos oficiais salvos em <code className="text-gold font-mono">apps/web/public/logo-ana-fitness.png</code> e <code className="text-gold font-mono">symbol-ana-fitness.png</code>.
+              </p>
+            </div>
+
+            <div className="p-5 border border-deep-black/20 bg-white space-y-3">
+              <div className="flex items-center gap-2 text-gold font-black text-xs uppercase">
+                <Eye className="w-4 h-4 text-gold" /> 3. IDIOMAS & MOEDA
+              </div>
+              <p className="text-[10px] text-deep-black/80 uppercase font-bold">
+                Chaveador de idiomas Português 🇧🇷 / Inglês 🇺🇸 ativo com moeda fixada em Dólares ($) e frete de $9.99.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
