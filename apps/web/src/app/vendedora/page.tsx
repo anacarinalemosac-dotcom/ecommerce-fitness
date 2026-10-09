@@ -36,6 +36,7 @@ export default function SellerPortalPage() {
   const [sellerSales, setSellerSales] = useState<any[]>([]);
 
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
+  const [registrationPendingNotice, setRegistrationPendingNotice] = useState<{ name: string; coupon: string } | null>(null);
   const [registerData, setRegisterData] = useState({
     name: '',
     email: '',
@@ -92,12 +93,12 @@ export default function SellerPortalPage() {
         }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Credenciais inválidas.');
+        throw new Error(data.error || 'Credenciais inválidas.');
       }
 
-      const data = await res.json();
       setLoggedSeller(data.seller);
       setPayoutFormData({
         payout_method: data.seller.payout_method || 'ZELLE',
@@ -127,19 +128,29 @@ export default function SellerPortalPage() {
         }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Falha ao realizar cadastro.');
+        throw new Error(data.error || 'Falha ao realizar cadastro.');
       }
 
-      const data = await res.json();
-      setLoggedSeller(data.seller);
-      setPayoutFormData({
-        payout_method: data.seller.payout_method || registerData.payout_method || 'ZELLE',
-        payout_key: data.seller.payout_key || registerData.payout_key || '',
-        payout_beneficiary: data.seller.payout_beneficiary || registerData.payout_beneficiary || '',
+      // ⚠️ NÃO AUTOLOGA: Fica aguardando aprovação de Ana Carina!
+      setRegistrationPendingNotice({
+        name: registerData.name,
+        coupon: registerData.coupon_code.toUpperCase(),
       });
-      fetchSellerSales(data.seller.coupon_code, data.seller.name);
+      setAuthTab('login');
+      setRegisterData({
+        name: '',
+        email: '',
+        phone: '',
+        instagram: '',
+        password: '',
+        coupon_code: '',
+        payout_method: 'ZELLE',
+        payout_key: '',
+        payout_beneficiary: '',
+      });
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao criar cadastro.');
     } finally {
@@ -250,6 +261,34 @@ export default function SellerPortalPage() {
           {/* FORMULÁRIO 1: LOGIN */}
           {authTab === 'login' && (
             <form onSubmit={handleLogin} className="bg-white border-2 border-deep-black p-6 sm:p-8 space-y-5 shadow-luxury">
+              {/* Alerta de Cadastro Recém-Enviado aguardando aprovação */}
+              {registrationPendingNotice && (
+                <div className="p-5 bg-gold/20 border-2 border-gold space-y-2 text-center animate-fadeIn">
+                  <div className="w-10 h-10 bg-deep-black text-gold rounded-full flex items-center justify-center mx-auto mb-1">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-sm font-black uppercase tracking-wider text-deep-black">
+                    SOLICITAÇÃO ENVIADA COM SUCESSO!
+                  </h4>
+                  <p className="text-xs text-deep-black font-medium leading-relaxed">
+                    Olá <strong>{registrationPendingNotice.name}</strong>, seu pedido de cupom <strong>{registrationPendingNotice.coupon}</strong> foi recebido!
+                  </p>
+                  <div className="p-2.5 bg-white border border-deep-black/20 text-[11px] text-deep-black font-black uppercase">
+                    🔒 STATUS: EM ANÁLISE POR ANA CARINA
+                  </div>
+                  <p className="text-[10px] text-deep-black/70 leading-relaxed uppercase">
+                    Por motivos de segurança, todo cadastro é revisado e aprovado pela gerência antes de ser ativado. Assim que Ana Carina validar seu perfil, seu cupom será liberado e você receberá o aviso para entrar!
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setRegistrationPendingNotice(null)}
+                    className="mt-2 text-[10px] text-deep-black underline font-black uppercase hover:text-gold"
+                  >
+                    Fechar este aviso
+                  </button>
+                </div>
+              )}
+
               {errorMsg && (
                 <div className="p-3 bg-red-50 border border-red-400 text-red-700 text-xs font-black uppercase tracking-wider">
                   ⚠ {errorMsg}
@@ -317,8 +356,17 @@ export default function SellerPortalPage() {
           {/* FORMULÁRIO 2: CADASTRO DE NOVA VENDEDORA / AFILIADA */}
           {authTab === 'register' && (
             <form onSubmit={handleRegister} className="bg-white border-2 border-deep-black p-6 sm:p-8 space-y-5 shadow-luxury animate-fadeIn">
-              <div className="p-3 bg-gold/10 border border-gold text-[11px] text-deep-black uppercase leading-relaxed font-bold">
-                ✨ Cadastre-se em segundos! Você ganha <strong>10% de comissão em dólares ($ USD)</strong> sobre todas as vendas realizadas com o seu cupom.
+              <div className="p-4 bg-gold/15 border-2 border-gold space-y-1.5 text-xs text-deep-black uppercase leading-relaxed font-bold">
+                <div className="flex items-center gap-2 text-deep-black">
+                  <ShieldCheck className="w-4 h-4 text-gold" />
+                  <span className="font-black text-xs tracking-wider">SOLICITAÇÃO DE CADASTRO DE VENDEDORA</span>
+                </div>
+                <p className="text-[11px] font-normal text-deep-black/80">
+                  Preencha seus dados para solicitar seu cupom oficial. Você ganha <strong>10% de comissão em dólares ($ USD)</strong> sobre todas as vendas que utilizarem seu código.
+                </p>
+                <div className="pt-2 border-t border-gold/40 text-[10px] text-deep-black/80 font-bold">
+                  🔒 <strong>APROVAÇÃO OBRIGATÓRIA:</strong> Por segurança da marca, toda nova solicitação passa pela aprovação de <strong>Ana Carina</strong> no Backoffice antes de ser ativada na loja.
+                </div>
               </div>
 
               {errorMsg && (
@@ -462,17 +510,21 @@ export default function SellerPortalPage() {
                 />
               </div>
 
+              <div className="p-3 bg-deep-black/5 border border-deep-black/10 text-[10px] text-deep-black/80 uppercase font-medium leading-snug">
+                ℹ️ Ao clicar abaixo, seus dados serão enviados diretamente para o painel de aprovação de <strong>Ana Carina</strong>. Seu cupom será ativado assim que a solicitação for aprovada.
+              </div>
+
               <button
                 type="submit"
                 disabled={loading}
                 className="w-full py-4 bg-gold hover:bg-deep-black hover:text-white text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
               >
                 {loading ? (
-                  <span>ATIVANDO CONTA...</span>
+                  <span>ENVIANDO SOLICITAÇÃO...</span>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    <span>CRIAR MEU CADASTRO & ATIVAR CUPOM</span>
+                    <span>ENVIAR CADASTRO PARA APROVAÇÃO ✦</span>
                   </>
                 )}
               </button>

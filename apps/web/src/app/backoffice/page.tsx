@@ -262,6 +262,72 @@ export default function BackofficeDashboard() {
   const [copiedCouponLink, setCopiedCouponLink] = useState<string | null>(null);
   const [copiedPayoutKey, setCopiedPayoutKey] = useState<string | null>(null);
 
+  // Aprovação e Reprovação de Vendedoras (Novos Cadastros)
+  const [approvingSeller, setApprovingSeller] = useState<any | null>(null);
+  const [approveCommissionPct, setApproveCommissionPct] = useState<number>(10);
+  const [approveDiscountPct, setApproveDiscountPct] = useState<number>(0);
+
+  const handleOpenApproveModal = (seller: any) => {
+    setApprovingSeller(seller);
+    setApproveCommissionPct(seller.commission_pct !== undefined ? Number(seller.commission_pct) : 10);
+    setApproveDiscountPct(seller.customer_discount_pct !== undefined ? Number(seller.customer_discount_pct) : 0);
+  };
+
+  const handleConfirmApprove = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!approvingSeller) return;
+    try {
+      const res = await fetch('/api/backoffice/sellers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'approve',
+          seller_id: approvingSeller.id,
+          commission_pct: approveCommissionPct,
+          customer_discount_pct: approveDiscountPct,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSellers(data.sellers);
+        setApprovingSeller(null);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Erro ao aprovar vendedora.');
+      }
+    } catch (err: any) {
+      alert(`Falha ao aprovar: ${err.message}`);
+    }
+  };
+
+  const handleDeleteOrRejectSeller = async (seller: any) => {
+    const isPending = seller.approval_status === 'PENDING';
+    const msg = isPending
+      ? `Deseja recusar e EXCLUIR a solicitação de cadastro de "${seller.name}" (Cupom: ${seller.coupon_code})?`
+      : `Deseja realmente EXCLUIR a vendedora "${seller.name}" (Cupom: ${seller.coupon_code})?`;
+    if (!confirm(msg)) return;
+
+    try {
+      const res = await fetch('/api/backoffice/sellers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete',
+          seller_id: seller.id,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSellers(data.sellers);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Erro ao excluir vendedora.');
+      }
+    } catch (err: any) {
+      alert(`Falha ao excluir: ${err.message}`);
+    }
+  };
+
   const handleCopyPayoutKey = (key: string, id: string) => {
     if (!key) return;
     navigator.clipboard.writeText(key);
@@ -2136,7 +2202,11 @@ export default function BackofficeDashboard() {
       {/* =========================================================================
           TAB 5: COMISSÕES & VENDEDORAS (PORTAL COMPLETO)
          ========================================================================= */}
-      {activeTab === 'commissions' && (
+      {activeTab === 'commissions' && (() => {
+        const pendingSellers = sellers.filter((s) => s.approval_status === 'PENDING');
+        const activeSellersCount = sellers.filter((s) => s.active).length;
+
+        return (
         <div className="space-y-8 animate-fadeIn">
           {/* Métricas Consolidadas das Vendedoras */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -2176,18 +2246,104 @@ export default function BackofficeDashboard() {
               </span>
             </div>
 
-            <div className="bg-white border-2 border-deep-black p-5 space-y-1 shadow-sm">
-              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 block">
-                EQUIPE & EMBAIXADORAS
-              </span>
-              <p className="text-2xl sm:text-3xl font-black text-deep-black font-mono">
-                {sellers.filter((s) => s.active).length} ATIVAS
+            <div className={`p-5 space-y-1 shadow-sm border-2 ${pendingSellers.length > 0 ? 'bg-amber-50 border-amber-500' : 'bg-white border-deep-black'}`}>
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] font-black uppercase tracking-widest block ${pendingSellers.length > 0 ? 'text-amber-900' : 'text-deep-black/60'}`}>
+                  SOLICITAÇÕES DE CADASTRO
+                </span>
+                {pendingSellers.length > 0 && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
+                )}
+              </div>
+              <p className={`text-2xl sm:text-3xl font-black font-mono ${pendingSellers.length > 0 ? 'text-amber-700' : 'text-deep-black'}`}>
+                {pendingSellers.length > 0 ? `${pendingSellers.length} PENDENTE(S)` : `${activeSellersCount} ATIVAS`}
               </p>
-              <span className="text-[9px] text-green-700 uppercase font-bold block">
-                {sellers.length} cadastradas no sistema
+              <span className={`text-[9px] uppercase font-bold block ${pendingSellers.length > 0 ? 'text-amber-800' : 'text-green-700'}`}>
+                {pendingSellers.length > 0 ? 'Aguardando sua aprovação' : `${sellers.length} cadastradas no total`}
               </span>
             </div>
           </div>
+
+          {/* =========================================================================
+              SEÇÃO EXCLUSIVA: SOLICITAÇÕES DE NOVAS VENDEDORAS AGUARDANDO APROVAÇÃO
+             ========================================================================= */}
+          {pendingSellers.length > 0 && (
+            <div className="bg-amber-50 border-2 border-amber-500 p-6 space-y-4 shadow-luxury animate-fadeIn">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-amber-600" />
+                  <h3 className="text-sm font-black uppercase tracking-wider text-amber-950">
+                    🚨 {pendingSellers.length} NOVA(S) VENDEDORA(S) SOLICITARAM CADASTRO (AGUARDANDO SUA APROVAÇÃO)
+                  </h3>
+                </div>
+                <span className="px-2.5 py-1 bg-amber-200 text-amber-950 text-[10px] font-black uppercase tracking-wider border border-amber-400">
+                  APROVAÇÃO NECESSÁRIA
+                </span>
+              </div>
+              <p className="text-xs text-amber-900 leading-relaxed uppercase">
+                Essas pessoas preencheram a solicitação em <strong>anafitwear.com/vendedora</strong>, mas <strong>o cupom e o acesso delas estão 100% BLOQUEADOS</strong> até você clicar em aprovar. Você pode revisar, ajustar as porcentagens e aprovar ou recusar:
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {pendingSellers.map((seller) => (
+                  <div key={seller.id} className="bg-white border-2 border-amber-400 p-4 space-y-3 shadow-sm">
+                    <div className="flex justify-between items-start gap-2">
+                      <div>
+                        <h4 className="font-black text-sm text-deep-black uppercase">{seller.name}</h4>
+                        <span className="text-[11px] font-mono text-deep-black/70 block">{seller.email}</span>
+                        {seller.phone && (
+                          <span className="text-[11px] font-mono text-deep-black/70 block">WhatsApp: {seller.phone}</span>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 font-mono font-black text-xs block">
+                          CUPOM: {seller.coupon_code}
+                        </span>
+                        <span className="text-[9px] text-deep-black/50 block font-bold uppercase mt-1">
+                          Senha: {seller.password}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 bg-deep-black/5 border border-deep-black/10 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-deep-black/60 uppercase">DADOS DE PAGAMENTO:</span>
+                        <span className="px-1.5 py-0.5 bg-deep-black text-gold font-mono font-black text-[9px]">
+                          {seller.payout_method || 'ZELLE'}
+                        </span>
+                      </div>
+                      <div className="font-mono font-bold text-xs text-deep-black">
+                        {seller.payout_key || 'Chave não informada'}
+                      </div>
+                      {seller.payout_beneficiary && (
+                        <div className="text-[10px] text-deep-black/70">
+                          Titular: {seller.payout_beneficiary}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteOrRejectSeller(seller)}
+                        className="px-3 py-2 border border-red-300 hover:bg-red-50 text-red-700 text-xs font-black uppercase tracking-wider transition"
+                      >
+                        ❌ RECUSAR
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenApproveModal(seller)}
+                        className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-xs font-black uppercase tracking-wider transition shadow flex items-center gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>✅ APROVAR VENDEDORA</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Banner de Controle de Regras (Desconto Cliente vs Comissão Vendedora) */}
           <div className="bg-white border-2 border-deep-black p-6 space-y-3 shadow-luxury">
@@ -2357,17 +2513,32 @@ export default function BackofficeDashboard() {
                         </td>
 
                         <td className="p-4">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleSellerActive(seller.id)}
-                            className={`px-2 py-0.5 text-[9px] font-black uppercase transition ${
-                              seller.active
-                                ? 'bg-green-100 text-green-800 border border-green-400 hover:bg-green-200'
-                                : 'bg-red-100 text-red-800 border border-red-400 hover:bg-red-200'
-                            }`}
-                          >
-                            {seller.active ? 'ATIVA' : 'INATIVA'}
-                          </button>
+                          {seller.approval_status === 'PENDING' ? (
+                            <div className="space-y-1">
+                              <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-400 block text-center">
+                                PENDENTE
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenApproveModal(seller)}
+                                className="w-full px-1.5 py-0.5 bg-green-700 hover:bg-green-800 text-white text-[9px] font-black uppercase tracking-wider transition text-center shadow-sm"
+                              >
+                                APROVAR
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSellerActive(seller.id)}
+                              className={`px-2 py-0.5 text-[9px] font-black uppercase transition ${
+                                seller.active
+                                  ? 'bg-green-100 text-green-800 border border-green-400 hover:bg-green-200'
+                                  : 'bg-red-100 text-red-800 border border-red-400 hover:bg-red-200'
+                              }`}
+                            >
+                              {seller.active ? 'ATIVA' : 'INATIVA'}
+                            </button>
+                          )}
                         </td>
 
                         <td className="p-4 text-right">
@@ -2403,6 +2574,15 @@ export default function BackofficeDashboard() {
                               title="Editar Vendedora"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteOrRejectSeller(seller)}
+                              className="p-1.5 border border-deep-black/20 hover:border-red-600 hover:text-red-600 bg-white text-deep-black transition"
+                              title={seller.approval_status === 'PENDING' ? 'Recusar Solicitação' : 'Excluir Vendedora'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
@@ -2787,8 +2967,128 @@ export default function BackofficeDashboard() {
               </div>
             </div>
           )}
+
+          {/* =========================================================================
+              MODAL 3: APROVAR E ATIVAR VENDEDORA
+             ========================================================================= */}
+          {approvingSeller && (
+            <div className="fixed inset-0 z-50 bg-deep-black/80 flex items-center justify-center p-4 animate-fadeIn">
+              <div className="bg-white border-2 border-deep-black w-full max-w-lg p-6 sm:p-8 space-y-6 shadow-luxury">
+                <div className="flex justify-between items-center border-b border-deep-black/10 pb-3">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                      REVISÃO DE CADASTRO
+                    </span>
+                    <h3 className="text-lg font-black uppercase tracking-wider text-deep-black">
+                      APROVAR E ATIVAR VENDEDORA
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setApprovingSeller(null)}
+                    className="p-1 hover:text-gold transition text-deep-black"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-4 bg-deep-black/5 border border-deep-black/10 space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-deep-black/60 font-bold uppercase">CANDIDATA:</span>
+                    <span className="font-black text-deep-black">{approvingSeller.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-deep-black/60 font-bold uppercase">CUPOM SOLICITADO:</span>
+                    <span className="font-mono font-black text-deep-black text-sm">{approvingSeller.coupon_code}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-deep-black/60 font-bold uppercase">CONTATO:</span>
+                    <span className="font-mono text-deep-black">
+                      {approvingSeller.phone || approvingSeller.email}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t border-deep-black/10 pt-2">
+                    <span className="text-deep-black/60 font-bold uppercase">DADOS DE REPASSE:</span>
+                    <span className="font-mono font-bold text-deep-black">
+                      {approvingSeller.payout_method || 'ZELLE'}: {approvingSeller.payout_key || 'Não informado'}
+                    </span>
+                  </div>
+                </div>
+
+                <form onSubmit={handleConfirmApprove} className="space-y-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                        % COMISSÃO DA VENDEDORA *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="100"
+                          required
+                          value={approveCommissionPct}
+                          onChange={(e) => setApproveCommissionPct(parseFloat(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-deep-black/30 text-xs font-mono font-black focus:outline-none focus:border-deep-black"
+                        />
+                        <span className="absolute right-3 top-2 font-mono font-bold text-deep-black">%</span>
+                      </div>
+                      <span className="text-[9px] text-deep-black/60 uppercase block">
+                        Quanto você paga à vendedora.
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                        % DESCONTO PARA O CLIENTE *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="100"
+                          required
+                          value={approveDiscountPct}
+                          onChange={(e) => setApproveDiscountPct(parseFloat(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-deep-black/30 text-xs font-mono font-black focus:outline-none focus:border-deep-black"
+                        />
+                        <span className="absolute right-3 top-2 font-mono font-bold text-deep-black">%</span>
+                      </div>
+                      <span className="text-[9px] text-deep-black/60 uppercase block">
+                        Coloque 0% se o cliente pagar preço normal.
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-green-50 border border-green-300 text-green-900 text-[10px] uppercase font-bold leading-relaxed">
+                    ✨ Ao clicar em confirmar, o cupom <strong>{approvingSeller.coupon_code}</strong> será ativado imediatamente para compras na loja e o login da vendedora no portal será liberado!
+                  </div>
+
+                  <div className="pt-2 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setApprovingSeller(null)}
+                      className="px-4 py-2.5 border border-deep-black/30 hover:border-deep-black text-deep-black font-black uppercase tracking-wider text-xs transition"
+                    >
+                      CANCELAR
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 bg-green-700 hover:bg-green-800 text-white font-black uppercase tracking-widest text-xs transition shadow flex items-center gap-1.5"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>CONFIRMAR & ATIVAR VENDEDORA</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+        );
+      })()}
 
       {/* =========================================================================
           TAB 6: GUIA DE TEMA

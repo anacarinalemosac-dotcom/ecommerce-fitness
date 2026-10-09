@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { recordLiveEvent } from '@/lib/liveStore';
 
 const SELLERS_FILE = path.join(process.cwd(), 'sellers_db.json');
 
@@ -15,6 +16,7 @@ export interface SellerRecord {
   customer_discount_pct: number; // ex: 10% de desconto pro cliente (ou 0% se for sem desconto)
   channel: 'ALL' | 'ONLINE' | 'POS_COUNTER';
   active: boolean;
+  approval_status: 'PENDING' | 'APPROVED' | 'REJECTED';
   payout_method: 'ZELLE' | 'VENMO' | 'CASHAPP' | 'PIX' | 'BANK';
   payout_key: string; // Chave PIX, E-mail ou Telefone Zelle, @Venmo, etc.
   payout_beneficiary?: string; // Nome do titular da conta
@@ -37,6 +39,7 @@ const INITIAL_SELLERS: SellerRecord[] = [
     customer_discount_pct: 10.0,
     channel: 'ALL',
     active: true,
+    approval_status: 'APPROVED',
     payout_method: 'ZELLE',
     payout_key: '+1 (508) 772-1100',
     payout_beneficiary: 'Camila Santos',
@@ -57,6 +60,7 @@ const INITIAL_SELLERS: SellerRecord[] = [
     customer_discount_pct: 0.0, // Cliente paga valor cheio, vendedora ganha 10%
     channel: 'POS_COUNTER',
     active: true,
+    approval_status: 'APPROVED',
     payout_method: 'ZELLE',
     payout_key: '+1 (978) 400-3321',
     payout_beneficiary: 'Juliana Silva',
@@ -77,6 +81,7 @@ const INITIAL_SELLERS: SellerRecord[] = [
     customer_discount_pct: 5.0, // Cliente ganha 5%, influenciadora ganha 12%
     channel: 'ONLINE',
     active: true,
+    approval_status: 'APPROVED',
     payout_method: 'VENMO',
     payout_key: '@beatriz_fit',
     payout_beneficiary: 'Beatriz Lima',
@@ -93,7 +98,12 @@ function readSellers(): SellerRecord[] {
     if (fs.existsSync(SELLERS_FILE)) {
       const raw = fs.readFileSync(SELLERS_FILE, 'utf8');
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((s: any) => ({
+          ...s,
+          approval_status: s.approval_status || (s.active ? 'APPROVED' : 'PENDING'),
+        }));
+      }
     }
   } catch (e) {
     console.warn('Erro ao ler sellers_db.json:', e);
@@ -204,6 +214,7 @@ export async function POST(req: NextRequest) {
           customer_discount_pct: Number(customer_discount_pct),
           channel,
           active: true,
+          approval_status: 'APPROVED',
           payout_method: payout_method || 'ZELLE',
           payout_key: payout_key || phone || '',
           payout_beneficiary: payout_beneficiary || name,
@@ -220,6 +231,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1.1 Ação de Auto-Cadastro de Vendedora / Embaixadora pelo site
+    // ⚠️ REGRA CRUCIAL: O cadastro público nasce INATIVO (PENDING) aguardando aprovação de Ana Carina!
     if (body.action === 'register') {
       const { name, email, phone, password, coupon_code, instagram, payout_method = 'ZELLE', payout_key = '', payout_beneficiary = '' } = body;
       if (!name || !password || !coupon_code) {
@@ -243,10 +255,11 @@ export async function POST(req: NextRequest) {
         phone: phone ? phone.trim() : (instagram ? `@${instagram.replace('@', '')}` : ''),
         password: password.trim(),
         coupon_code: cleanCoupon,
-        commission_pct: 10.0, // Comissão padrão inicial de 10%
+        commission_pct: 10.0, // Proposta padrão inicial de 10%
         customer_discount_pct: 0.0, // Cliente paga preço normal da loja
         channel: 'ALL',
-        active: true,
+        active: false, // 🔒 NASCE BLOQUEADO ATÉ APROVAÇÃO
+        approval_status: 'PENDING',
         payout_method: payout_method as any,
         payout_key: payout_key || phone || '',
         payout_beneficiary: payout_beneficiary || name.trim(),
@@ -260,7 +273,20 @@ export async function POST(req: NextRequest) {
       const newList = [newSeller, ...sellers];
       writeSellers(newList);
 
-      return NextResponse.json({ success: true, seller: newSeller });
+      // Dispara notificação em tempo real no Backoffice para alertar Ana Carina
+      recordLiveEvent({
+        type: 'NEW_VISITOR',
+        title: 'NOVA SOLICITAÇÃO DE VENDEDORA!',
+        description: `📋 ${name.trim()} solicitou cadastro com o cupom ${cleanCoupon}. Acesse o Backoffice para aprovar!`,
+        city: 'Aguardando Aprovação',
+      });
+
+      return NextResponse.json({
+        success: true,
+        pending_approval: true,
+        seller: newSeller,
+        message: 'Cadastro recebido com sucesso e enviado para análise de Ana Carina.',
+      });
     }
 
     // 1.2 Ação de Atualizar Dados de Pagamento/Repasse pela Vendedora
@@ -291,18 +317,28 @@ export async function POST(req: NextRequest) {
       const matched = sellers.find(
         (s) =>
           (s.email.toLowerCase() === cleanIdent || s.coupon_code.toLowerCase() === cleanIdent) &&
-          s.password === cleanPass &&
-          s.active
+          s.password === cleanPass
       );
 
       if (!matched) {
         return NextResponse.json(
-          { error: 'Credenciais inválidas ou cadastro inativo. Verifique seu e-mail/cupom e senha.' },
+          { error: 'Credenciais inválidas. Verifique seu e-mail ou cupom e sua senha.' },
           { status: 401 }
         );
       }
 
-      // Retorna os dados seguros da vendedora (incluindo método de repasse para ela editar)
+      // Se a vendedora foi recém-cadastrada ou está desativada, bloqueia e avisa
+      if (!matched.active || matched.approval_status === 'PENDING') {
+        return NextResponse.json(
+          {
+            error: 'Seu cadastro foi recebido com sucesso e está AGUARDANDO APROVAÇÃO de Ana Carina. Assim que seu cadastro for aprovado pela gerência, seu cupom e acesso serão liberados!',
+            pending_approval: true,
+          },
+          { status: 403 }
+        );
+      }
+
+      // Retorna os dados seguros da vendedora
       return NextResponse.json({
         seller: {
           id: matched.id,
@@ -323,6 +359,33 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // 2.1 Ação de APROVAR Vendedora no Backoffice por Ana Carina
+    if (body.action === 'approve') {
+      const { seller_id, commission_pct, customer_discount_pct } = body;
+      const updatedList = sellers.map((s) => {
+        if (s.id === seller_id) {
+          return {
+            ...s,
+            active: true,
+            approval_status: 'APPROVED' as const,
+            commission_pct: commission_pct !== undefined ? Number(commission_pct) : s.commission_pct,
+            customer_discount_pct: customer_discount_pct !== undefined ? Number(customer_discount_pct) : s.customer_discount_pct,
+          };
+        }
+        return s;
+      });
+      writeSellers(updatedList);
+      return NextResponse.json({ sellers: updatedList });
+    }
+
+    // 2.2 Ação de REPROVAR / EXCLUIR Vendedora do Backoffice
+    if (body.action === 'delete' || body.action === 'reject') {
+      const { seller_id } = body;
+      const updatedList = sellers.filter((s) => s.id !== seller_id);
+      writeSellers(updatedList);
+      return NextResponse.json({ sellers: updatedList });
+    }
+
     // 3. Ação de Marcar Pagamento de Comissão
     if (body.action === 'mark_paid') {
       const { seller_id, amount } = body;
@@ -339,12 +402,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ sellers: updatedList });
     }
 
-    // 4. Ação de Excluir / Desativar
+    // 4. Ação de Alternar Ativação
     if (body.action === 'toggle_active') {
       const { seller_id } = body;
       const updatedList = sellers.map((s) => {
         if (s.id === seller_id) {
-          return { ...s, active: !s.active };
+          const nextActive = !s.active;
+          return {
+            ...s,
+            active: nextActive,
+            approval_status: nextActive ? ('APPROVED' as const) : s.approval_status,
+          };
         }
         return s;
       });

@@ -163,6 +163,26 @@ export function recordHeartbeat(visitor: Partial<LiveVisitor> & { id: string }):
   return { isNew, event: newEvent };
 }
 
+export function recordLiveEvent(event: {
+  type: 'NEW_VISITOR' | 'NEW_ORDER' | 'CART_VIEW';
+  title: string;
+  description: string;
+  city: string;
+  amount?: number;
+  orderId?: string;
+}): LiveEvent {
+  const store = readStore();
+  const now = Date.now();
+  const newEvt: LiveEvent = {
+    id: `evt-${now}-${Math.random().toString(36).substring(2, 6)}`,
+    ...event,
+    timestamp: now,
+  };
+  store.events = [newEvt, ...store.events.slice(0, 49)];
+  writeStore(store);
+  return newEvt;
+}
+
 export function recordOrderEvent(order: {
   orderId: string;
   customerName: string;
