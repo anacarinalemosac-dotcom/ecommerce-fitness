@@ -3,6 +3,7 @@ import './globals.css';
 import { Providers } from '../components/Providers';
 import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
+import { FloatingLanguageSwitcher } from '../components/FloatingLanguageSwitcher';
 
 export const metadata: Metadata = {
   title: 'ANA FITNESS WEAR | ✨Wear Your Strength✨ | Official US Store',
@@ -26,6 +27,7 @@ export default function RootLayout({
             {children}
           </main>
           <SiteFooter />
+          <FloatingLanguageSwitcher />
         </Providers>
       </body>
     </html>

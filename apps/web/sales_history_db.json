@@ -1,0 +1,200 @@
+[
+  {
+    "id": "sale-1791542563173",
+    "order_id": "POS-LEO-1687",
+    "created_at": "2026-10-09T10:42:43.173Z",
+    "customer_name": "Mariana",
+    "customer_phone": "9783139452",
+    "channel": "POS_COUNTER",
+    "seller_name": "Juliana Silva (PDV Balcão Leominster)",
+    "payment_method": "VENMO",
+    "subtotal_products": 89.8,
+    "shipping_fee": 0,
+    "shipping_cost": 0,
+    "discount_amount": 0,
+    "payment_fee": 1.71,
+    "commission_amount": 8.98,
+    "cost_of_goods": 32,
+    "net_profit": 47.11,
+    "profit_margin_pct": 52.5,
+    "items": [
+      {
+        "title": "SAMANTA ROMPER",
+        "size": "S",
+        "color": "Preto Ônix",
+        "sku": "SAM-BLK-S",
+        "quantity": 1,
+        "unit_price": 44.9,
+        "cost_price": 16
+      },
+      {
+        "title": "SAMANTA ROMPER",
+        "size": "S",
+        "color": "Pure White",
+        "sku": "SAM-BLK-S-PUR-S",
+        "quantity": 1,
+        "unit_price": 44.9,
+        "cost_price": 16
+      }
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "id": "sale-001",
+    "order_id": "ANA-928104",
+    "created_at": "2026-10-09T07:29:31.371Z",
+    "customer_name": "Mariana Salles",
+    "customer_email": "mariana.salles@gmail.com",
+    "customer_phone": "+1 (508) 492-8819",
+    "channel": "ONLINE",
+    "seller_name": "Camila (Embaixadora)",
+    "coupon_code": "CAMILA10",
+    "payment_method": "CARD",
+    "subtotal_products": 44.9,
+    "shipping_fee": 9.99,
+    "shipping_cost": 7.5,
+    "discount_amount": 4.49,
+    "payment_fee": 1.76,
+    "commission_amount": 4.04,
+    "cost_of_goods": 15,
+    "net_profit": 22.1,
+    "profit_margin_pct": 43.8,
+    "items": [
+      {
+        "title": "SAMANTA ROMPER",
+        "size": "S",
+        "color": "Preto Ônix",
+        "sku": "SAM-BLK-S",
+        "quantity": 1,
+        "unit_price": 44.9,
+        "cost_price": 15
+      }
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "id": "sale-002",
+    "order_id": "POS-LEO-103",
+    "created_at": "2026-10-09T03:29:31.371Z",
+    "customer_name": "Juliana Barbosa (Balcão)",
+    "customer_phone": "+1 (978) 400-3321",
+    "channel": "POS_COUNTER",
+    "seller_name": "Juliana Silva (PDV Balcão)",
+    "payment_method": "ZELLE",
+    "subtotal_products": 69.8,
+    "shipping_fee": 0,
+    "shipping_cost": 0,
+    "discount_amount": 0,
+    "payment_fee": 0,
+    "commission_amount": 6.98,
+    "cost_of_goods": 26,
+    "net_profit": 36.82,
+    "profit_margin_pct": 52.7,
+    "items": [
+      {
+        "title": "BEST SELLER BAILARINA TOP",
+        "size": "M",
+        "color": "Champagne Gold",
+        "sku": "BAI-GLD-M",
+        "quantity": 2,
+        "unit_price": 34.9,
+        "cost_price": 13
+      }
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "id": "sale-003",
+    "order_id": "POS-LEO-102",
+    "created_at": "2026-10-08T11:29:31.371Z",
+    "customer_name": "Fernanda Lima (Balcão)",
+    "customer_phone": "+1 (978) 514-9902",
+    "channel": "POS_COUNTER",
+    "seller_name": "Juliana Silva (PDV Balcão)",
+    "payment_method": "VENMO",
+    "subtotal_products": 44.9,
+    "shipping_fee": 0,
+    "shipping_cost": 0,
+    "discount_amount": 0,
+    "payment_fee": 0.85,
+    "commission_amount": 4.49,
+    "cost_of_goods": 15,
+    "net_profit": 24.56,
+    "profit_margin_pct": 54.7,
+    "items": [
+      {
+        "title": "SAMANTA ROMPER",
+        "size": "M",
+        "color": "Pure White",
+        "sku": "SAM-WHT-M",
+        "quantity": 1,
+        "unit_price": 44.9,
+        "cost_price": 15
+      }
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "id": "sale-004",
+    "order_id": "ANA-927552",
+    "created_at": "2026-10-07T21:29:31.371Z",
+    "customer_name": "Beatriz Figueiredo",
+    "customer_email": "beatriz.fig@miamifit.com",
+    "customer_phone": "+1 (305) 881-2299",
+    "channel": "ONLINE",
+    "seller_name": "Loja Oficial Online",
+    "payment_method": "CARD",
+    "subtotal_products": 79.8,
+    "shipping_fee": 9.99,
+    "shipping_cost": 7.5,
+    "discount_amount": 0,
+    "payment_fee": 2.9,
+    "commission_amount": 0,
+    "cost_of_goods": 31,
+    "net_profit": 48.39,
+    "profit_margin_pct": 53.9,
+    "items": [
+      {
+        "title": "KELY PANTS SET (PRE-ORDER)",
+        "size": "S",
+        "color": "Vinho Marsala",
+        "sku": "KEL-VIN-S",
+        "quantity": 2,
+        "unit_price": 39.9,
+        "cost_price": 15.5
+      }
+    ],
+    "status": "IN_PRODUCTION"
+  },
+  {
+    "id": "sale-005",
+    "order_id": "POS-LEO-101",
+    "created_at": "2026-10-07T07:29:31.371Z",
+    "customer_name": "Camila Santos (Showroom)",
+    "customer_phone": "+1 (508) 772-1100",
+    "channel": "POS_COUNTER",
+    "seller_name": "Juliana Silva (PDV Balcão)",
+    "payment_method": "CASH",
+    "subtotal_products": 34.9,
+    "shipping_fee": 0,
+    "shipping_cost": 0,
+    "discount_amount": 0,
+    "payment_fee": 0,
+    "commission_amount": 3.49,
+    "cost_of_goods": 13,
+    "net_profit": 18.41,
+    "profit_margin_pct": 52.8,
+    "items": [
+      {
+        "title": "BEST SELLER BAILARINA TOP",
+        "size": "L",
+        "color": "Preto Ônix",
+        "sku": "BAI-BLK-L",
+        "quantity": 1,
+        "unit_price": 34.9,
+        "cost_price": 13
+      }
+    ],
+    "status": "COMPLETED"
+  }
+]
