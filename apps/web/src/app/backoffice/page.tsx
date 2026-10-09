@@ -42,6 +42,10 @@ import {
   ChevronRight,
   Percent,
   Store,
+  Lock,
+  Copy,
+  Key,
+  Share2,
 } from 'lucide-react';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
 
@@ -223,9 +227,170 @@ export default function BackofficeDashboard() {
     }
   };
 
+  // Gestão de Vendedoras & Comissões
+  const [sellers, setSellers] = useState<any[]>([]);
+  const [loadingSellers, setLoadingSellers] = useState(false);
+  const [showSellerModal, setShowSellerModal] = useState(false);
+  const [editingSellerId, setEditingSellerId] = useState<string | null>(null);
+  const [sellerFormData, setSellerFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    coupon_code: '',
+    commission_pct: 10,
+    customer_discount_pct: 0,
+    channel: 'ALL' as 'ALL' | 'ONLINE' | 'POS_COUNTER',
+    active: true,
+  });
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [payoutSeller, setPayoutSeller] = useState<any | null>(null);
+  const [payoutAmount, setPayoutAmount] = useState<string>('');
+  const [payoutMethod, setPayoutMethod] = useState<'ZELLE' | 'VENMO' | 'CASHAPP' | 'PIX' | 'CASH'>('ZELLE');
+  const [copiedCouponLink, setCopiedCouponLink] = useState<string | null>(null);
+
+  const fetchSellers = async () => {
+    setLoadingSellers(true);
+    try {
+      const res = await fetch('/api/backoffice/sellers');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.sellers)) {
+          setSellers(data.sellers);
+        }
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar vendedoras:', err);
+    } finally {
+      setLoadingSellers(false);
+    }
+  };
+
+  const handleOpenAddSeller = () => {
+    setEditingSellerId(null);
+    setSellerFormData({
+      name: '',
+      email: '',
+      phone: '',
+      password: '',
+      coupon_code: '',
+      commission_pct: 10,
+      customer_discount_pct: 0,
+      channel: 'ALL',
+      active: true,
+    });
+    setShowSellerModal(true);
+  };
+
+  const handleOpenEditSeller = (seller: any) => {
+    setEditingSellerId(seller.id);
+    setSellerFormData({
+      name: seller.name,
+      email: seller.email,
+      phone: seller.phone,
+      password: seller.password,
+      coupon_code: seller.coupon_code,
+      commission_pct: seller.commission_pct,
+      customer_discount_pct: seller.customer_discount_pct,
+      channel: seller.channel || 'ALL',
+      active: seller.active,
+    });
+    setShowSellerModal(true);
+  };
+
+  const handleSaveSeller = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/backoffice/sellers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save',
+          seller: {
+            id: editingSellerId,
+            ...sellerFormData,
+          },
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSellers(data.sellers);
+        setShowSellerModal(false);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Erro ao salvar vendedora.');
+      }
+    } catch (err: any) {
+      alert(`Falha ao salvar: ${err.message}`);
+    }
+  };
+
+  const handleToggleSellerActive = async (sellerId: string) => {
+    try {
+      const res = await fetch('/api/backoffice/sellers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'toggle_active',
+          seller_id: sellerId,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSellers(data.sellers);
+      }
+    } catch (e) {
+      console.warn('Erro ao alternar status da vendedora:', e);
+    }
+  };
+
+  const handleOpenPayout = (seller: any) => {
+    const pending = Math.max(0, (seller.total_commission_earned || 0) - (seller.total_commission_paid || 0));
+    setPayoutSeller(seller);
+    setPayoutAmount(pending.toFixed(2));
+    setShowPayoutModal(true);
+  };
+
+  const handleConfirmPayout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payoutSeller) return;
+    const amountNum = parseFloat(payoutAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      alert('Informe um valor válido de repasse.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/backoffice/sellers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'mark_paid',
+          seller_id: payoutSeller.id,
+          amount: amountNum,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSellers(data.sellers);
+        setShowPayoutModal(false);
+        setPayoutSeller(null);
+      }
+    } catch (err: any) {
+      alert(`Falha ao registrar pagamento: ${err.message}`);
+    }
+  };
+
+  const copySellerLink = (coupon: string) => {
+    const link = `https://anafitwear.com/?ref=${coupon}`;
+    navigator.clipboard.writeText(link);
+    setCopiedCouponLink(coupon);
+    setTimeout(() => setCopiedCouponLink(null), 3000);
+  };
+
   useEffect(() => {
     fetchSupabaseProducts();
     fetchSalesData();
+    fetchSellers();
   }, []);
 
   const handleDeleteSupabaseProduct = async (id: string, title: string) => {
@@ -1443,24 +1608,519 @@ export default function BackofficeDashboard() {
       )}
 
       {/* =========================================================================
-          TAB 5: COMISSÕES
+          TAB 5: COMISSÕES & VENDEDORAS (PORTAL COMPLETO)
          ========================================================================= */}
       {activeTab === 'commissions' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
-              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">VENDAS COMISSIONADAS (USD)</span>
-              <p className="text-2xl font-black text-deep-black font-mono">$4,850.00</p>
+        <div className="space-y-8 animate-fadeIn">
+          {/* Métricas Consolidadas das Vendedoras */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white border-2 border-deep-black p-5 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 block">
+                FATURAMENTO TOTAL AFILIADAS
+              </span>
+              <p className="text-2xl sm:text-3xl font-black text-deep-black font-mono">
+                ${sellers.reduce((acc, s) => acc + (Number(s.total_revenue_generated) || 0), 0).toFixed(2)}
+              </p>
+              <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
+                {sellers.reduce((acc, s) => acc + (Number(s.total_sales_count) || 0), 0)} pedidos intermediados
+              </span>
             </div>
-            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
-              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">COMISSÕES A PAGAR (10%)</span>
-              <p className="text-2xl font-black text-gold font-mono">$485.00</p>
+
+            <div className="bg-white border-2 border-deep-black p-5 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 block">
+                COMISSÃO TOTAL GERADA
+              </span>
+              <p className="text-2xl sm:text-3xl font-black text-gold font-mono">
+                ${sellers.reduce((acc, s) => acc + (Number(s.total_commission_earned) || 0), 0).toFixed(2)}
+              </p>
+              <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
+                Valor bruto devido às vendedoras
+              </span>
             </div>
-            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
-              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">VENDEDORAS ATIVAS</span>
-              <p className="text-2xl font-black text-deep-black">2 ATIVAS (CAMILA & JULIANA)</p>
+
+            <div className="bg-deep-black text-white border-2 border-gold p-5 space-y-1 shadow-luxury">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                SALDO PENDENTE A PAGAR
+              </span>
+              <p className="text-2xl sm:text-3xl font-black text-gold font-mono">
+                ${Math.max(0, sellers.reduce((acc, s) => acc + ((Number(s.total_commission_earned) || 0) - (Number(s.total_commission_paid) || 0)), 0)).toFixed(2)}
+              </p>
+              <span className="text-[9px] text-white/70 uppercase font-bold block">
+                Aguardando repasse via Zelle / Venmo
+              </span>
+            </div>
+
+            <div className="bg-white border-2 border-deep-black p-5 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 block">
+                EQUIPE & EMBAIXADORAS
+              </span>
+              <p className="text-2xl sm:text-3xl font-black text-deep-black font-mono">
+                {sellers.filter((s) => s.active).length} ATIVAS
+              </p>
+              <span className="text-[9px] text-green-700 uppercase font-bold block">
+                {sellers.length} cadastradas no sistema
+              </span>
             </div>
           </div>
+
+          {/* Banner de Controle de Regras (Desconto Cliente vs Comissão Vendedora) */}
+          <div className="bg-white border-2 border-deep-black p-6 space-y-3 shadow-luxury">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-gold" />
+                <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-deep-black">
+                  CONTROLE INDEPENDENTE: DESCONTO DO CLIENTE VS COMISSÃO DA VENDEDORA
+                </h3>
+              </div>
+              <span className="px-2.5 py-1 bg-gold/20 text-deep-black text-[9px] font-black uppercase border border-gold">
+                REGRAS 100% FLEXÍVEIS
+              </span>
+            </div>
+            <p className="text-xs text-deep-black/80 leading-relaxed uppercase">
+              • <strong>Comissão da Vendedora (%):</strong> Você define quanto ela ganha sobre cada venda (ex: 10%, 12%, 15%).<br />
+              • <strong>Desconto do Cliente (%):</strong> Você decide se a cliente ganha desconto ou não ao usar o cupom. Se colocar <strong>0% de desconto</strong>, a cliente paga o preço normal da loja (sem desconto) e a venda continua 100% atribuída à vendedora para pagamento da comissão!<br />
+              • <strong>Portal Exclusivo das Vendedoras:</strong> Cada vendedora acessa <strong>anafitwear.com/vendedora</strong> com o e-mail/cupom e senha cadastrados abaixo. Elas <strong>NUNCA</strong> têm acesso aos seus custos de confecção ou lucros da empresa.
+            </p>
+          </div>
+
+          {/* Barra de Ações & Botão de Cadastro */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleOpenAddSeller}
+                className="px-5 py-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shadow"
+              >
+                <PlusCircle className="w-4 h-4 text-gold" />
+                <span>+ CADASTRAR NOVA VENDEDORA / CUPOM</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={fetchSellers}
+                disabled={loadingSellers}
+                className="p-3 border border-deep-black/30 hover:border-deep-black bg-white text-deep-black text-xs transition"
+                title="Atualizar lista"
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingSellers ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            <Link
+              href="/vendedora"
+              target="_blank"
+              className="px-4 py-3 border-2 border-deep-black bg-white hover:bg-deep-black hover:text-white text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center gap-2 self-start sm:self-auto"
+            >
+              <Lock className="w-4 h-4 text-gold" />
+              <span>ABRIR PORTAL DA VENDEDORA (/vendedora) ↗</span>
+            </Link>
+          </div>
+
+          {/* Tabela de Vendedoras e Cupons */}
+          <div className="bg-white border-2 border-deep-black overflow-x-auto shadow-sm">
+            <table className="w-full text-left text-xs uppercase tracking-wider">
+              <thead className="bg-deep-black text-white text-[10px] font-black">
+                <tr>
+                  <th className="p-4">VENDEDORA</th>
+                  <th className="p-4">SENHA</th>
+                  <th className="p-4">CUPOM & REGRAS</th>
+                  <th className="p-4">FATURAMENTO</th>
+                  <th className="p-4">COMISSÃO</th>
+                  <th className="p-4">JÁ PAGO</th>
+                  <th className="p-4">SALDO A PAGAR</th>
+                  <th className="p-4">STATUS</th>
+                  <th className="p-4 text-right">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-deep-black/10">
+                {sellers.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="p-8 text-center text-deep-black/50 font-bold">
+                      Nenhuma vendedora cadastrada no momento. Clique no botão acima para adicionar.
+                    </td>
+                  </tr>
+                ) : (
+                  sellers.map((seller) => {
+                    const pending = Math.max(0, (Number(seller.total_commission_earned) || 0) - (Number(seller.total_commission_paid) || 0));
+                    return (
+                      <tr key={seller.id} className="hover:bg-deep-black/5">
+                        <td className="p-4">
+                          <span className="font-black text-deep-black block">{seller.name}</span>
+                          <span className="text-[10px] text-deep-black/60 font-mono block">{seller.email}</span>
+                          {seller.phone && (
+                            <span className="text-[10px] text-deep-black/60 font-mono block">{seller.phone}</span>
+                          )}
+                        </td>
+
+                        <td className="p-4">
+                          <span className="px-2 py-1 bg-deep-black/5 border border-deep-black/20 font-mono text-[10px] font-bold text-deep-black">
+                            {seller.password || 'ana123'}
+                          </span>
+                        </td>
+
+                        <td className="p-4 space-y-1">
+                          <div className="font-mono font-black text-sm text-deep-black">
+                            {seller.coupon_code}
+                          </div>
+                          <div className="flex flex-wrap gap-1 text-[9px] font-bold">
+                            <span className="px-1.5 py-0.5 bg-gold text-deep-black">
+                              {seller.commission_pct}% COMISSÃO
+                            </span>
+                            {Number(seller.customer_discount_pct) > 0 ? (
+                              <span className="px-1.5 py-0.5 bg-green-100 text-green-800 border border-green-300">
+                                {seller.customer_discount_pct}% OFF CLIENTE
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 border border-gray-300">
+                                0% OFF (PREÇO CHEIO)
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="p-4">
+                          <span className="font-mono font-bold text-deep-black block">
+                            ${(Number(seller.total_revenue_generated) || 0).toFixed(2)}
+                          </span>
+                          <span className="text-[10px] text-deep-black/50 block font-mono">
+                            {seller.total_sales_count || 0} vendas
+                          </span>
+                        </td>
+
+                        <td className="p-4 font-mono font-bold text-deep-black">
+                          ${(Number(seller.total_commission_earned) || 0).toFixed(2)}
+                        </td>
+
+                        <td className="p-4 font-mono text-deep-black/70">
+                          ${(Number(seller.total_commission_paid) || 0).toFixed(2)}
+                        </td>
+
+                        <td className="p-4 font-mono font-black text-gold">
+                          ${pending.toFixed(2)}
+                        </td>
+
+                        <td className="p-4">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSellerActive(seller.id)}
+                            className={`px-2 py-0.5 text-[9px] font-black uppercase transition ${
+                              seller.active
+                                ? 'bg-green-100 text-green-800 border border-green-400 hover:bg-green-200'
+                                : 'bg-red-100 text-red-800 border border-red-400 hover:bg-red-200'
+                            }`}
+                          >
+                            {seller.active ? 'ATIVA' : 'INATIVA'}
+                          </button>
+                        </td>
+
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {pending > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPayout(seller)}
+                                className="px-2.5 py-1.5 bg-gold hover:bg-gold/90 text-deep-black font-black text-[10px] uppercase tracking-wider transition shadow-sm"
+                                title="Registrar Pagamento"
+                              >
+                                PAGAR REPASSE
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => copySellerLink(seller.coupon_code)}
+                              className="p-1.5 border border-deep-black/20 hover:border-deep-black bg-white text-deep-black transition"
+                              title="Copiar Link de Afiliada"
+                            >
+                              {copiedCouponLink === seller.coupon_code ? (
+                                <Check className="w-3.5 h-3.5 text-gold" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5 text-deep-black" />
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditSeller(seller)}
+                              className="p-1.5 border border-deep-black/20 hover:border-deep-black bg-white text-deep-black transition"
+                              title="Editar Vendedora"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* =========================================================================
+              MODAL 1: CADASTRAR / EDITAR VENDEDORA
+             ========================================================================= */}
+          {showSellerModal && (
+            <div className="fixed inset-0 z-50 bg-deep-black/80 flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+              <div className="bg-white border-2 border-deep-black w-full max-w-xl p-6 sm:p-8 space-y-6 shadow-luxury my-8">
+                <div className="flex justify-between items-center border-b border-deep-black/10 pb-3">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                      CONFIGURAÇÃO DE EQUIPE
+                    </span>
+                    <h3 className="text-lg font-black uppercase tracking-wider text-deep-black">
+                      {editingSellerId ? 'EDITAR VENDEDORA / CUPOM' : 'CADASTRAR NOVA VENDEDORA'}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSellerModal(false)}
+                    className="p-1 hover:text-gold transition text-deep-black"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveSeller} className="space-y-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                        NOME COMPLETO *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={sellerFormData.name}
+                        onChange={(e) => setSellerFormData({ ...sellerFormData, name: e.target.value })}
+                        placeholder="Ex: Carolina Mendes"
+                        className="w-full px-3 py-2 border border-deep-black/30 text-xs font-bold uppercase focus:outline-none focus:border-deep-black"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                        WHATSAPP / TELEFONE
+                      </label>
+                      <input
+                        type="text"
+                        value={sellerFormData.phone}
+                        onChange={(e) => setSellerFormData({ ...sellerFormData, phone: e.target.value })}
+                        placeholder="+1 (978) 000-0000"
+                        className="w-full px-3 py-2 border border-deep-black/30 text-xs font-mono focus:outline-none focus:border-deep-black"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                        E-MAIL DE ACESSO AO PORTAL
+                      </label>
+                      <input
+                        type="email"
+                        value={sellerFormData.email}
+                        onChange={(e) => setSellerFormData({ ...sellerFormData, email: e.target.value })}
+                        placeholder="carol@exemplo.com"
+                        className="w-full px-3 py-2 border border-deep-black/30 text-xs font-mono focus:outline-none focus:border-deep-black"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                        SENHA DE ACESSO DA VENDEDORA *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={sellerFormData.password}
+                        onChange={(e) => setSellerFormData({ ...sellerFormData, password: e.target.value })}
+                        placeholder="Ex: carol123"
+                        className="w-full px-3 py-2 border border-deep-black/30 text-xs font-mono font-bold focus:outline-none focus:border-deep-black"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-deep-black/5 border border-deep-black/10 space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-deep-black flex items-center gap-1">
+                        <Tag className="w-3.5 h-3.5 text-gold" />
+                        <span>CÓDIGO DO CUPOM DA VENDEDORA *</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={sellerFormData.coupon_code}
+                        onChange={(e) => setSellerFormData({ ...sellerFormData, coupon_code: e.target.value.toUpperCase() })}
+                        placeholder="EX: CAROL10"
+                        className="w-full px-3 py-2 border border-deep-black/30 text-sm font-mono font-black uppercase tracking-wider focus:outline-none focus:border-deep-black"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Comissão da Vendedora */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                          % COMISSÃO DA VENDEDORA
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0"
+                            max="100"
+                            required
+                            value={sellerFormData.commission_pct}
+                            onChange={(e) => setSellerFormData({ ...sellerFormData, commission_pct: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 border border-deep-black/30 text-xs font-mono font-black focus:outline-none focus:border-deep-black"
+                          />
+                          <span className="absolute right-3 top-2 font-mono font-bold text-deep-black">%</span>
+                        </div>
+                        <span className="text-[9px] text-deep-black/60 uppercase block">
+                          Valor que Ana Carina paga à vendedora.
+                        </span>
+                      </div>
+
+                      {/* Desconto do Cliente */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                          % DESCONTO PARA O CLIENTE
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0"
+                            max="100"
+                            required
+                            value={sellerFormData.customer_discount_pct}
+                            onChange={(e) => setSellerFormData({ ...sellerFormData, customer_discount_pct: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 border border-deep-black/30 text-xs font-mono font-black focus:outline-none focus:border-deep-black"
+                          />
+                          <span className="absolute right-3 top-2 font-mono font-bold text-deep-black">%</span>
+                        </div>
+                        <span className="text-[9px] text-deep-black/60 uppercase block">
+                          <strong>Coloque 0%</strong> se o cliente pagar preço cheio.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowSellerModal(false)}
+                      className="px-4 py-2.5 border border-deep-black/30 hover:border-deep-black text-deep-black font-black uppercase tracking-wider text-xs transition"
+                    >
+                      CANCELAR
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black uppercase tracking-widest text-xs transition shadow"
+                    >
+                      {editingSellerId ? 'SALVAR ALTERAÇÕES' : 'CADASTRAR VENDEDORA'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* =========================================================================
+              MODAL 2: REGISTRAR REPASSE DE PAGAMENTO
+             ========================================================================= */}
+          {showPayoutModal && payoutSeller && (
+            <div className="fixed inset-0 z-50 bg-deep-black/80 flex items-center justify-center p-4 animate-fadeIn">
+              <div className="bg-white border-2 border-deep-black w-full max-w-md p-6 sm:p-8 space-y-6 shadow-luxury">
+                <div className="flex justify-between items-center border-b border-deep-black/10 pb-3">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                      REPASSE DE COMISSÃO
+                    </span>
+                    <h3 className="text-lg font-black uppercase tracking-wider text-deep-black">
+                      REGISTRAR PAGAMENTO
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPayoutModal(false)}
+                    className="p-1 hover:text-gold transition text-deep-black"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-4 bg-deep-black/5 border border-deep-black/10 space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-deep-black/60 font-bold uppercase">VENDEDORA:</span>
+                    <span className="font-black text-deep-black">{payoutSeller.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-deep-black/60 font-bold uppercase">CUPOM:</span>
+                    <span className="font-mono font-bold text-deep-black">{payoutSeller.coupon_code}</span>
+                  </div>
+                  <div className="flex justify-between text-gold font-black border-t border-deep-black/10 pt-2">
+                    <span>SALDO PENDENTE ATUAL:</span>
+                    <span className="font-mono text-sm">
+                      ${Math.max(0, (Number(payoutSeller.total_commission_earned) || 0) - (Number(payoutSeller.total_commission_paid) || 0)).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                <form onSubmit={handleConfirmPayout} className="space-y-4 text-xs">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                      VALOR DO REPASSE PAGO ($ USD) *
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 font-mono font-bold text-deep-black">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        required
+                        value={payoutAmount}
+                        onChange={(e) => setPayoutAmount(e.target.value)}
+                        className="w-full pl-7 pr-3 py-2 border border-deep-black/30 text-sm font-mono font-black focus:outline-none focus:border-deep-black"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                      MÉTODO UTILIZADO PARA PAGAMENTO
+                    </label>
+                    <select
+                      value={payoutMethod}
+                      onChange={(e) => setPayoutMethod(e.target.value as any)}
+                      className="w-full px-3 py-2 border border-deep-black/30 text-xs font-bold uppercase focus:outline-none focus:border-deep-black"
+                    >
+                      <option value="ZELLE">ZELLE (Transferência Instantânea)</option>
+                      <option value="VENMO">VENMO</option>
+                      <option value="CASHAPP">CASH APP</option>
+                      <option value="PIX">PIX (Banco Brasileiro)</option>
+                      <option value="CASH">CASH (Dinheiro em Mãos)</option>
+                    </select>
+                  </div>
+
+                  <div className="pt-2 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowPayoutModal(false)}
+                      className="px-4 py-2.5 border border-deep-black/30 hover:border-deep-black text-deep-black font-black uppercase tracking-wider text-xs transition"
+                    >
+                      CANCELAR
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 bg-gold hover:bg-gold/90 text-deep-black font-black uppercase tracking-widest text-xs transition shadow"
+                    >
+                      CONFIRMAR REPASSE
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

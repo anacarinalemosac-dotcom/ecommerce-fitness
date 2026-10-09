@@ -116,6 +116,7 @@ export function SiteFooter() {
               {lang === 'pt' ? 'SISTEMA & PDV' : 'POS & ERP'}
             </h4>
             <ul className="space-y-2.5 uppercase tracking-wider text-white/70 font-medium text-[11px]">
+              <li><Link href="/vendedora" className="hover:text-gold transition text-gold font-bold">{lang === 'pt' ? 'Portal da Vendedora (Login)' : 'Seller / Affiliate Login'}</Link></li>
               <li><Link href="/pos" className="hover:text-gold transition">{t('nav.pos')}</Link></li>
               <li><Link href="/backoffice" className="hover:text-gold transition">{t('nav.erp')}</Link></li>
               <li><span className="text-white/40">Moeda: USD ($) Only</span></li>

@@ -77,8 +77,14 @@ export default function CheckoutPage() {
 
   // Cupom de Vendedora (Comissão Oculta para o Cliente)
   const [couponInput, setCouponInput] = useState('CAMILA10');
-  const [appliedCoupon, setAppliedCoupon] = useState<'CAMILA10' | null>('CAMILA10');
-  const [discountPercent, setDiscountPercent] = useState(10); // 10% desconto do cupom
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [discountPercent, setDiscountPercent] = useState(0); // Desconto dinâmico do cupom
+  const [couponSellerInfo, setCouponSellerInfo] = useState<{
+    name: string;
+    discount_pct: number;
+    commission_pct: number;
+  } | null>(null);
+  const [couponFeedback, setCouponFeedback] = useState<string>('');
 
   // Status de Finalização
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,12 +96,52 @@ export default function CheckoutPage() {
   const shippingRate = 9.99; // Taxa fixa de frete para todos os EUA
   const total = subtotal - discountAmount + shippingRate;
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = couponInput.trim().toUpperCase();
-    if (clean === 'CAMILA10' || clean === 'JULIANA10' || clean === 'ANA10') {
-      setAppliedCoupon('CAMILA10');
+    if (!clean) return;
+
+    try {
+      const res = await fetch(`/api/backoffice/sellers?coupon=${encodeURIComponent(clean)}`);
+      if (res.ok) {
+        const data = await res.json();
+        const seller = data.coupon;
+        setAppliedCoupon(seller.code);
+        setDiscountPercent(seller.customer_discount_pct || 0);
+        setCouponSellerInfo({
+          name: seller.seller_name,
+          discount_pct: seller.customer_discount_pct || 0,
+          commission_pct: seller.commission_pct || 10,
+        });
+        if (seller.customer_discount_pct > 0) {
+          setCouponFeedback(
+            lang === 'pt'
+              ? `✓ CUPOM ${seller.code} APLICADO • ${seller.customer_discount_pct}% DE DESCONTO`
+              : `✓ CODE ${seller.code} APPLIED • ${seller.customer_discount_pct}% OFF DISCOUNT`
+          );
+        } else {
+          setCouponFeedback(
+            lang === 'pt'
+              ? `✓ CUPOM ${seller.code} ATIVADO (Vendedora: ${seller.seller_name})`
+              : `✓ CODE ${seller.code} ACTIVATED (Seller: ${seller.seller_name})`
+          );
+        }
+        return;
+      }
+    } catch (err) {
+      console.warn('Erro ao consultar cupom:', err);
+    }
+
+    // Cupons promocionais gerais
+    if (clean === 'CAMILA10' || clean === 'JULIANA10' || clean === 'ANA10' || clean === 'WELCOME10') {
+      setAppliedCoupon(clean);
       setDiscountPercent(10);
+      setCouponSellerInfo(null);
+      setCouponFeedback(
+        lang === 'pt'
+          ? `✓ CUPOM ${clean} APLICADO • 10% DE DESCONTO`
+          : `✓ CODE ${clean} APPLIED • 10% OFF DISCOUNT`
+      );
     } else {
       alert(lang === 'pt' ? 'Cupom inválido ou expirado.' : 'Invalid or expired promo code.');
     }
@@ -117,7 +163,7 @@ export default function CheckoutPage() {
           customer_name: `${shippingForm.firstName || 'Cliente'} ${shippingForm.lastName || 'Online'}`,
           customer_email: shippingForm.email || 'cliente@exemplo.com',
           customer_phone: shippingForm.phone || '+1 978 313-9452',
-          seller_name: appliedCoupon === 'CAMILA10' ? 'Camila (Embaixadora)' : 'Loja Oficial Online',
+          seller_name: couponSellerInfo ? couponSellerInfo.name : (appliedCoupon === 'CAMILA10' ? 'Camila Santos' : 'Loja Oficial Online'),
           coupon_code: appliedCoupon,
           payment_method: paymentMethod,
           subtotal_products: subtotal,
@@ -588,7 +634,7 @@ export default function CheckoutPage() {
             {appliedCoupon && (
               <p className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1 pt-1">
                 <CheckCircle2 className="w-3.5 h-3.5 text-gold" />
-                <span>{lang === 'pt' ? '✓ CUPOM ATIVO • 10% DE DESCONTO APLICADO' : '✓ CODE APPLIED • 10% OFF DISCOUNT'}</span>
+                <span>{couponFeedback || (discountPercent > 0 ? `✓ CUPOM ${appliedCoupon} ATIVO (${discountPercent}% OFF)` : `✓ CUPOM ${appliedCoupon} ATIVO`)}</span>
               </p>
             )}
           </div>
@@ -600,9 +646,9 @@ export default function CheckoutPage() {
               <span className="font-mono font-bold">${subtotal.toFixed(2)}</span>
             </div>
 
-            {appliedCoupon && (
+            {appliedCoupon && discountPercent > 0 && (
               <div className="flex justify-between text-gold font-bold">
-                <span>{lang === 'pt' ? 'DESCONTO (10%):' : 'DISCOUNT (10%):'}</span>
+                <span>{lang === 'pt' ? `DESCONTO (${discountPercent}%):` : `DISCOUNT (${discountPercent}%):`}</span>
                 <span className="font-mono">-${discountAmount.toFixed(2)}</span>
               </div>
             )}

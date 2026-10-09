@@ -390,10 +390,35 @@ export async function POST(req: NextRequest) {
 
     const pFee = calculatePaymentFee(payment_method, grossTotal);
 
-    // Comissão: se for balcão PDV, padrão 10%; se for cupom de vendedora, 10%
+    // Consulta vendedora para aplicar taxa personalizada e atualizar estatísticas
+    const SELLERS_FILE = path.join(process.cwd(), 'sellers_db.json');
+    let matchedSeller: any = null;
+    let sellersList: any[] = [];
+    try {
+      if (fs.existsSync(SELLERS_FILE)) {
+        sellersList = JSON.parse(fs.readFileSync(SELLERS_FILE, 'utf8'));
+        if (Array.isArray(sellersList)) {
+          if (coupon_code) {
+            matchedSeller = sellersList.find((s: any) => s.coupon_code && s.coupon_code.toUpperCase() === coupon_code.toUpperCase());
+          }
+          if (!matchedSeller && seller_name && seller_name !== 'Loja Oficial Online') {
+            matchedSeller = sellersList.find((s: any) => s.name && s.name.toLowerCase().includes(seller_name.toLowerCase().split(' ')[0]));
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao ler sellers_db:', e);
+    }
+
+    // Comissão: se houver vendedora cadastrada, usa commission_pct dela. Caso contrário balcão 10%
     const isPOS = channel === 'POS_COUNTER' || channel === 'POS';
     const hasCoupon = Boolean(coupon_code);
-    const commRate = isPOS || hasCoupon ? 0.10 : 0.00;
+    let commRate = 0.00;
+    if (matchedSeller) {
+      commRate = (Number(matchedSeller.commission_pct) || 10) / 100;
+    } else if (isPOS || hasCoupon) {
+      commRate = 0.10;
+    }
     const commissionAmount = Number(((gross - disc) * commRate).toFixed(2));
 
     // Soma do custo de confecção / aquisição
@@ -407,6 +432,8 @@ export async function POST(req: NextRequest) {
     const netProfit = Number((grossTotal - totalCostOfGoods - pFee - shipCost - commissionAmount).toFixed(2));
     const marginPct = grossTotal > 0 ? Number(((netProfit / grossTotal) * 100).toFixed(1)) : 0;
 
+    const finalSellerName = matchedSeller ? matchedSeller.name : (seller_name || (isPOS ? 'Juliana Silva (PDV Balcão)' : 'Loja Oficial Online'));
+
     const newSale: SaleRecord = {
       id: `sale-${Date.now()}`,
       order_id: order_id || `ANA-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -415,7 +442,7 @@ export async function POST(req: NextRequest) {
       customer_email,
       customer_phone,
       channel: isPOS ? 'POS_COUNTER' : 'ONLINE',
-      seller_name: seller_name || (isPOS ? 'Juliana Silva (PDV Balcão)' : 'Loja Oficial Online'),
+      seller_name: finalSellerName,
       coupon_code,
       payment_method: payment_method.toUpperCase() as any,
       subtotal_products: gross,
@@ -438,6 +465,26 @@ export async function POST(req: NextRequest) {
       })),
       status: 'COMPLETED',
     };
+
+    // Atualiza acumulado da vendedora no sellers_db.json
+    if (matchedSeller && sellersList.length > 0) {
+      try {
+        const updatedSellers = sellersList.map((s: any) => {
+          if (s.id === matchedSeller.id) {
+            return {
+              ...s,
+              total_sales_count: (s.total_sales_count || 0) + 1,
+              total_revenue_generated: Number(((s.total_revenue_generated || 0) + (gross - disc)).toFixed(2)),
+              total_commission_earned: Number(((s.total_commission_earned || 0) + commissionAmount).toFixed(2)),
+            };
+          }
+          return s;
+        });
+        fs.writeFileSync(SELLERS_FILE, JSON.stringify(updatedSellers, null, 2), 'utf8');
+      } catch (e) {
+        console.warn('Erro ao atualizar stats da vendedora:', e);
+      }
+    }
 
     // 1. Salva no arquivo local persistente
     const saved = readSavedSales();
