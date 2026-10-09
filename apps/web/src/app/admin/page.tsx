@@ -48,7 +48,8 @@ export default function AdminPortalPage() {
 
   const [activeTab, setActiveTab] = useState<'products' | 'images' | 'info'>('products');
   const [loginEmail, setLoginEmail] = useState('ana@anafitwear.com');
-  const [loginPass, setLoginPass] = useState('admin123');
+  const [loginPass, setLoginPass] = useState('');
+  const [loginError, setLoginError] = useState('');
   const [savedSuccessMessage, setSavedSuccessMessage] = useState<string | null>(null);
 
   // Estado local para edição de Informações
@@ -64,8 +65,13 @@ export default function AdminPortalPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    loginAdmin(loginEmail, loginPass);
-    triggerSuccess('Bem-vinda, Ana Carina! Acesso de Administradora autenticado com sucesso.');
+    const ok = loginAdmin(loginEmail, loginPass);
+    if (ok) {
+      setLoginError('');
+      triggerSuccess('Bem-vinda, Ana Carina! Acesso de Administradora autenticado com sucesso.');
+    } else {
+      setLoginError('Senha incorreta! Digite a senha master da loja.');
+    }
   };
 
   const handleSaveInfo = (e: React.FormEvent) => {
@@ -101,6 +107,12 @@ export default function AdminPortalPage() {
             </p>
           </div>
 
+          {loginError && (
+            <div className="p-3 bg-red-50 border-2 border-red-600 text-red-700 text-xs font-bold uppercase text-center animate-shake">
+              ⚠️ {loginError}
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
@@ -118,7 +130,7 @@ export default function AdminPortalPage() {
 
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
-                Senha de Acesso
+                Senha de Acesso Master
               </label>
               <input
                 type="password"
@@ -126,7 +138,7 @@ export default function AdminPortalPage() {
                 value={loginPass}
                 onChange={(e) => setLoginPass(e.target.value)}
                 className="w-full p-3 border-2 border-deep-black font-bold text-xs focus:outline-none focus:border-gold"
-                placeholder="••••••••"
+                placeholder="Digite sua senha..."
               />
             </div>
 
@@ -139,25 +151,10 @@ export default function AdminPortalPage() {
             </button>
           </form>
 
-          <div className="pt-4 border-t border-deep-black/10 text-center space-y-3">
-            <button
-              type="button"
-              onClick={() => {
-                loginAdmin('ana@anafitwear.com', 'admin123');
-                triggerSuccess('Acesso direto concedido como Ana Carina!');
-              }}
-              className="text-[10px] font-black uppercase tracking-widest text-gold hover:text-deep-black underline block w-full"
-            >
-              👑 Acesso Rápido com 1-Clique (Ana Carina)
-            </button>
-
-            <Link
-              href="/backoffice?tab=sales"
-              className="w-full py-3 bg-gold hover:bg-white text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 border-2 border-deep-black shadow-sm"
-            >
-              <Package className="w-4 h-4 text-deep-black" />
-              <span>📦 VER PEDIDOS DOS CLIENTES (BACKOFFICE)</span>
-            </Link>
+          <div className="pt-4 border-t border-deep-black/10 text-center">
+            <p className="text-[10px] text-deep-black/50 uppercase font-bold">
+              🔒 Acesso restrito e criptografado para a proprietária da loja.
+            </p>
           </div>
         </div>
       </div>

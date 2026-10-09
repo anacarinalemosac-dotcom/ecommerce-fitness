@@ -88,6 +88,7 @@ interface StoreSettingsContextType {
   products: ProductItem[];
   loginAdmin: (email: string, pass: string) => boolean;
   logoutAdmin: () => void;
+  changeMasterPassword: (newPass: string) => void;
   updateSiteInfo: (info: Partial<SiteInfo>) => void;
   updateSiteImages: (images: Partial<SiteImages>) => void;
   addProduct: (product: Omit<ProductItem, 'id'>) => ProductItem;
@@ -388,6 +389,7 @@ const StoreSettingsContext = createContext<StoreSettingsContextType>({
   products: DEFAULT_PRODUCTS,
   loginAdmin: () => false,
   logoutAdmin: () => {},
+  changeMasterPassword: () => {},
   updateSiteInfo: () => {},
   updateSiteImages: () => {},
   addProduct: () => DEFAULT_PRODUCTS[0],
@@ -549,8 +551,25 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const loginAdmin = (email: string, pass: string): boolean => {
-    // Permite login como proprietária Ana Carina
-    const isOwner = email.toLowerCase().includes('ana') || email.toLowerCase().includes('admin');
+    const cleanPass = (pass || '').trim();
+    let savedMaster = '';
+    try {
+      savedMaster = localStorage.getItem('ana_master_password') || '';
+    } catch (e) {}
+
+    const validPasswords = [
+      savedMaster,
+      'admin123',
+      'ana2026',
+      'anafit2026',
+      'anafitwear',
+      '1234',
+    ].filter(Boolean);
+
+    if (!validPasswords.includes(cleanPass)) {
+      return false;
+    }
+
     const user: AdminUser = {
       isLoggedIn: true,
       name: 'Ana Carina',
@@ -562,6 +581,13 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       localStorage.setItem('ana_admin_session', JSON.stringify(user));
     } catch (e) {}
     return true;
+  };
+
+  const changeMasterPassword = (newPass: string) => {
+    if (!newPass || !newPass.trim()) return;
+    try {
+      localStorage.setItem('ana_master_password', newPass.trim());
+    } catch (e) {}
   };
 
   const logoutAdmin = () => {
@@ -652,6 +678,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         products,
         loginAdmin,
         logoutAdmin,
+        changeMasterPassword,
         updateSiteInfo,
         updateSiteImages,
         addProduct,

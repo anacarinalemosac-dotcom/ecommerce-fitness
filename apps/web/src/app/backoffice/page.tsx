@@ -57,6 +57,7 @@ import {
 } from 'lucide-react';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
+import { useStoreSettings } from '../../context/StoreSettingsContext';
 
 interface ProductProfit {
   sku: string;
@@ -185,7 +186,11 @@ const INITIAL_CATALOG: CatalogProduct[] = [
 ];
 
 export default function BackofficeDashboard() {
-  const [activeTab, setActiveTab] = useState<'catalog' | 'sales' | 'margins' | 'live' | 'backorders' | 'commissions' | 'theme'>('catalog');
+  const { adminUser, loginAdmin, logoutAdmin } = useStoreSettings();
+  const [authEmail, setAuthEmail] = useState('ana@anafitwear.com');
+  const [authPass, setAuthPass] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'sales' | 'margins' | 'live' | 'backorders' | 'commissions' | 'theme'>('sales');
   const [onlineCount, setOnlineCount] = useState(8);
 
   // Catálogo de produtos
@@ -746,6 +751,96 @@ export default function BackofficeDashboard() {
     return true;
   });
 
+  // =========================================================================
+  // TELA DE PROTEÇÃO / LOGIN OBRIGATÓRIO DO BACKOFFICE
+  // =========================================================================
+  if (!adminUser.isLoggedIn) {
+    return (
+      <div className="min-h-[85vh] flex items-center justify-center px-4 py-16 bg-white selection:bg-deep-black selection:text-gold">
+        <div className="max-w-md w-full bg-white border-2 border-deep-black p-8 sm:p-10 shadow-luxury space-y-6 animate-fadeIn">
+          <div className="text-center space-y-2">
+            <div className="inline-flex p-3 bg-deep-black text-gold border border-gold/40 shadow-sm">
+              <Lock className="w-6 h-6 text-gold" />
+            </div>
+            <div className="inline-block px-2.5 py-0.5 bg-gold/15 text-[9px] font-black uppercase tracking-widest text-deep-black border border-gold/30">
+              SISTEMA PROTEGIDO POR SENHA
+            </div>
+            <h1 className="text-2xl font-black uppercase tracking-wider text-deep-black">
+              ERP BACKOFFICE • ACESSO RESTRITO
+            </h1>
+            <p className="text-xs text-deep-black/60 uppercase font-medium">
+              ANA FITNESS WEAR LLC • GESTÃO DA PROPRIETÁRIA
+            </p>
+          </div>
+
+          {authError && (
+            <div className="p-3 bg-red-50 border-2 border-red-600 text-red-700 text-xs font-bold uppercase text-center animate-shake">
+              ⚠️ {authError}
+            </div>
+          )}
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const ok = loginAdmin(authEmail, authPass);
+              if (ok) {
+                setAuthError('');
+                fetchSalesData();
+                fetchSupabaseProducts();
+              } else {
+                setAuthError('Senha incorreta! Digite a senha master da loja.');
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                E-mail da Administradora / Dono
+              </label>
+              <input
+                type="email"
+                required
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                className="w-full p-3 border-2 border-deep-black font-bold text-xs focus:outline-none focus:border-gold"
+                placeholder="ana@anafitwear.com"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                Senha Master da Loja
+              </label>
+              <input
+                type="password"
+                required
+                value={authPass}
+                onChange={(e) => setAuthPass(e.target.value)}
+                className="w-full p-3 border-2 border-deep-black font-bold text-xs focus:outline-none focus:border-gold font-mono"
+                placeholder="Digite sua senha..."
+                autoFocus
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-4 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-md border border-deep-black"
+            >
+              <Key className="w-4 h-4 text-gold" />
+              <span>DESBLOQUEAR ERP & PEDIDOS</span>
+            </button>
+          </form>
+
+          <div className="pt-4 border-t border-deep-black/10 text-center">
+            <p className="text-[10px] text-deep-black/50 uppercase font-bold">
+              🔒 Apenas você tem acesso aos dados financeiros, clientes e extratos.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10 space-y-8 bg-white selection:bg-deep-black selection:text-gold relative">
       {/* =========================================================================
@@ -857,6 +952,17 @@ export default function BackofficeDashboard() {
               <span className="text-[9px] text-white/60 block font-bold">RADAR AO VIVO:</span>
               <span className="text-sm font-black text-gold font-mono">{liveFeed.activeCount} VISITANTES</span>
             </div>
+          </button>
+
+          {/* Botão de Bloquear Painel / Sair da Sessão */}
+          <button
+            type="button"
+            onClick={logoutAdmin}
+            className="p-2.5 bg-red-600/10 hover:bg-red-600 hover:text-white text-red-500 border border-red-500/30 transition flex items-center gap-1.5 text-xs font-black uppercase tracking-wider shadow-sm"
+            title="Bloquear painel imediatamente"
+          >
+            <Lock className="w-4 h-4 text-red-500" />
+            <span className="hidden md:inline">BLOQUEAR / SAIR</span>
           </button>
         </div>
       </div>

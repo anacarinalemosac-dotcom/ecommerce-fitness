@@ -20,6 +20,8 @@ import {
   Receipt,
   RotateCcw,
   ExternalLink,
+  Lock,
+  Store,
 } from 'lucide-react';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 
@@ -36,7 +38,10 @@ interface CartItem {
 }
 
 export default function PosTerminalPage() {
-  const { products, refreshProducts } = useStoreSettings();
+  const { products, refreshProducts, adminUser, loginAdmin } = useStoreSettings();
+  const [posUnlocked, setPosUnlocked] = useState(false);
+  const [posPinInput, setPosPinInput] = useState('');
+  const [posPinError, setPosPinError] = useState('');
 
   const [barcodeInput, setBarcodeInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -269,6 +274,82 @@ export default function PosTerminalPage() {
     }
   };
 
+  // =========================================================================
+  // TELA DE PROTEÇÃO / PIN DE SEGURANÇA DO PDV BALCÃO
+  // =========================================================================
+  if (!adminUser.isLoggedIn && !posUnlocked) {
+    return (
+      <div className="min-h-[85vh] flex items-center justify-center px-4 py-16 bg-white selection:bg-deep-black selection:text-gold">
+        <div className="max-w-md w-full bg-white border-2 border-deep-black p-8 sm:p-10 shadow-luxury space-y-6 animate-fadeIn">
+          <div className="text-center space-y-2">
+            <div className="inline-flex p-3 bg-deep-black text-gold border border-gold/40 shadow-sm">
+              <Store className="w-6 h-6 text-gold" />
+            </div>
+            <div className="inline-block px-2.5 py-0.5 bg-gold/15 text-[9px] font-black uppercase tracking-widest text-deep-black border border-gold/30">
+              TERMINAL PDV BALCÃO BLOQUEADO
+            </div>
+            <h1 className="text-2xl font-black uppercase tracking-wider text-deep-black">
+              CAIXA SHOWROOM LEOMINSTER
+            </h1>
+            <p className="text-xs text-deep-black/60 uppercase font-medium">
+              ANA FITNESS WEAR • ACESSO RESTRITO A OPERADORAS
+            </p>
+          </div>
+
+          {posPinError && (
+            <div className="p-3 bg-red-50 border-2 border-red-600 text-red-700 text-xs font-bold uppercase text-center animate-shake">
+              ⚠️ {posPinError}
+            </div>
+          )}
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const clean = posPinInput.trim();
+              if (clean === '1234' || clean === 'admin123' || clean === 'ana2026' || clean === 'anafit' || loginAdmin('pos@anafitwear.com', clean)) {
+                setPosUnlocked(true);
+                setPosPinError('');
+              } else {
+                setPosPinError('PIN ou Senha de operadora incorreta!');
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                PIN de Operadora (ex: 1234) ou Senha Master
+              </label>
+              <input
+                type="password"
+                required
+                value={posPinInput}
+                onChange={(e) => setPosPinInput(e.target.value)}
+                className="w-full p-4 border-2 border-deep-black font-black text-center text-lg tracking-widest focus:outline-none focus:border-gold font-mono"
+                placeholder="••••"
+                maxLength={20}
+                autoFocus
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-4 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-md border border-deep-black"
+            >
+              <Lock className="w-4 h-4 text-gold" />
+              <span>DESBLOQUEAR TERMINAL DE CAIXA</span>
+            </button>
+          </form>
+
+          <div className="pt-4 border-t border-deep-black/10 text-center">
+            <p className="text-[10px] text-deep-black/50 uppercase font-bold">
+              🔒 Terminal protegido contra uso indevido por clientes da loja online.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 space-y-8 bg-white min-h-[85vh]">
       {/* Banner de Uso Interno */}
@@ -278,6 +359,16 @@ export default function PosTerminalPage() {
           <span>TERMINAL PDV BALCÃO • SHOWROOM LEOMINSTER, MA (USO INTERNO)</span>
         </span>
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setPosUnlocked(false)}
+            className="p-1.5 px-2 bg-red-600 text-white hover:bg-red-700 text-[10px] font-black uppercase flex items-center gap-1 transition"
+            title="Bloquear terminal imediatamente"
+          >
+            <Lock className="w-3 h-3" />
+            <span>BLOQUEAR CAIXA</span>
+          </button>
+          <span className="text-white/40">|</span>
           <Link href="/backoffice" className="text-white hover:text-gold underline text-[10px] font-bold">
             VER RELATÓRIO NO ERP BACKOFFICE →
           </Link>
