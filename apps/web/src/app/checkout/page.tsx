@@ -16,6 +16,7 @@ import {
   Sparkles,
   Phone,
   HelpCircle,
+  Package,
 } from 'lucide-react';
 
 const US_STATES = [
@@ -175,10 +176,17 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+          <Link
+            href="/pedidos"
+            className="px-6 py-3.5 bg-gold text-deep-black hover:bg-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
+          >
+            <Package className="w-4 h-4 text-deep-black" />
+            <span>{lang === 'pt' ? 'ACOMPANHAR ESTE PEDIDO EM TEMPO REAL' : 'TRACK THIS ORDER LIVE'}</span>
+          </Link>
           <Link
             href="/"
-            className="px-8 py-3.5 bg-deep-black text-white hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-widest transition"
+            className="px-6 py-3.5 bg-deep-black text-white hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-widest transition"
           >
             {lang === 'pt' ? 'VOLTAR À PÁGINA INICIAL' : 'RETURN TO HOME'}
           </Link>
@@ -186,10 +194,10 @@ export default function CheckoutPage() {
             href={`https://wa.me/19783139452?text=Hello%2C%20I%20just%20placed%20order%20%23${orderComplete}%20on%20the%20website.`}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-8 py-3.5 bg-gold text-deep-black hover:bg-deep-black hover:text-gold text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2"
+            className="px-6 py-3.5 border-2 border-deep-black text-deep-black hover:bg-deep-black hover:text-white text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2"
           >
             <Phone className="w-4 h-4" />
-            <span>{lang === 'pt' ? 'ACOMPANHAR NO WHATSAPP' : 'TRACK ON WHATSAPP'}</span>
+            <span>{lang === 'pt' ? 'SUPORTE NO WHATSAPP' : 'WHATSAPP CONCIERGE'}</span>
           </a>
         </div>
       </div>

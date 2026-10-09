@@ -102,6 +102,7 @@ export function SiteFooter() {
               {lang === 'pt' ? 'INSTITUCIONAL' : 'STORE INFO'}
             </h4>
             <ul className="space-y-2.5 uppercase tracking-wider text-white/70 font-medium text-[11px]">
+              <li><Link href="/pedidos" className="hover:text-gold transition text-gold font-bold">{lang === 'pt' ? 'Rastrear Meu Pedido (USPS)' : 'Track My Order (USPS)'}</Link></li>
               <li><Link href="/contato" className="hover:text-gold transition">{t('nav.contact')}</Link></li>
               <li><Link href="/trocas-e-devolucoes" className="hover:text-gold transition">{lang === 'pt' ? 'Trocas e Devoluções (30 Dias)' : '30-Day Returns'}</Link></li>
               <li><Link href="/politica-de-envio" className="hover:text-gold transition">{lang === 'pt' ? 'Frete Fixo $9.99 (EUA)' : 'Flat Rate Shipping $9.99'}</Link></li>

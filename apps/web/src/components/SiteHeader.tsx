@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
-import { ShoppingBag, Tablet, LayoutDashboard, Sparkles, Globe, Search, Heart, ShieldAlert } from 'lucide-react';
+import { ShoppingBag, Tablet, LayoutDashboard, Sparkles, Globe, Search, Heart, ShieldAlert, Package } from 'lucide-react';
 
 export function SiteHeader() {
   const { lang, setLang, t } = useLanguage();
@@ -190,6 +190,16 @@ export function SiteHeader() {
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
               <span>{t('nav.erp')}</span>
+            </Link>
+
+            {/* Link Meus Pedidos / Track Order */}
+            <Link
+              href="/pedidos"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider bg-white text-deep-black border border-deep-black/30 hover:border-gold hover:text-gold transition"
+              title="Track Order / Consultar Meus Pedidos"
+            >
+              <Package className="w-3.5 h-3.5 text-gold" />
+              <span className="hidden md:inline">{lang === 'pt' ? 'MEUS PEDIDOS' : 'TRACK ORDER'}</span>
             </Link>
 
             <Link
