@@ -118,7 +118,7 @@ export function SiteFooter() {
             <ul className="space-y-2.5 uppercase tracking-wider text-white/70 font-medium text-[11px]">
               <li><Link href="/vendedora" className="hover:text-gold transition text-gold font-bold">{lang === 'pt' ? 'Portal da Vendedora (Login)' : 'Seller / Affiliate Login'}</Link></li>
               <li><Link href="/pos" className="hover:text-gold transition">{t('nav.pos')}</Link></li>
-              <li><Link href="/backoffice" className="hover:text-gold transition">{t('nav.erp')}</Link></li>
+              <li><Link href="/backoffice?tab=sales" className="hover:text-gold transition font-bold text-gold">{lang === 'pt' ? '📦 Pedidos dos Clientes & ERP' : '📦 Customer Orders & ERP'}</Link></li>
               <li><span className="text-white/40">Moeda: USD ($) Only</span></li>
               <li><span className="text-white/40">USPS Tracking: Ativo</span></li>
             </ul>
@@ -154,8 +154,9 @@ export function SiteFooter() {
         <div className="pt-8 mt-8 border-t border-neutral-800 text-xs text-neutral-400 flex flex-wrap gap-4 items-center justify-between">
           <p>© {new Date().getFullYear()} Ana Fitness Wear LLC • Leominster, MA. All rights reserved.</p>
           <div className="flex flex-wrap gap-4 text-[11px]">
-            <Link href="/admin" className="hover:text-gold transition-colors">Acesso Lojista (ERP)</Link>
-            <Link href="/pos" className="hover:text-gold transition-colors">PDV Vendedoras</Link>
+            <Link href="/backoffice?tab=sales" className="text-gold font-black hover:text-white transition-colors">📦 Pedidos dos Clientes (ERP)</Link>
+            <Link href="/admin" className="hover:text-gold transition-colors">Personalizar Loja</Link>
+            <Link href="/pos" className="hover:text-gold transition-colors">PDV Balcão</Link>
             <Link href="/vendedora" className="hover:text-gold transition-colors">Portal da Vendedora</Link>
           </div>
         </div>

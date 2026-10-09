@@ -163,6 +163,13 @@ export default function CheckoutPage() {
           customer_name: `${shippingForm.firstName || 'Cliente'} ${shippingForm.lastName || 'Online'}`,
           customer_email: shippingForm.email || 'cliente@exemplo.com',
           customer_phone: shippingForm.phone || '+1 978 313-9452',
+          shipping_address: {
+            address: shippingForm.address || '742 Commonwealth Ave',
+            apt: shippingForm.apt || '',
+            city: shippingForm.city || 'Boston',
+            state: shippingForm.state || 'MA',
+            zip: shippingForm.zip || '02215',
+          },
           seller_name: couponSellerInfo ? couponSellerInfo.name : (appliedCoupon === 'CAMILA10' ? 'Camila Santos' : 'Loja Oficial Online'),
           coupon_code: appliedCoupon,
           payment_method: paymentMethod,

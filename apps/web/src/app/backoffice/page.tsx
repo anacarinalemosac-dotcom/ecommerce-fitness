@@ -639,6 +639,14 @@ export default function BackofficeDashboard() {
   };
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab === 'sales' || tab === 'orders' || tab === 'pedidos') {
+        setActiveTab('sales');
+      }
+    }
+
     fetchSupabaseProducts();
     fetchSalesData();
     fetchSellers();
@@ -878,10 +886,10 @@ export default function BackofficeDashboard() {
               : 'border-transparent text-deep-black/50 hover:text-deep-black'
           }`}
         >
-          <BarChart3 className="w-4 h-4 text-gold" />
-          <span>📊 RELATÓRIO DE VENDAS & LUCRO (USD)</span>
-          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
-            REAL
+          <Receipt className="w-4 h-4 text-gold" />
+          <span>📦 PEDIDOS DOS CLIENTES & VENDAS</span>
+          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+            AO VIVO
           </span>
         </button>
 
@@ -1588,10 +1596,20 @@ export default function BackofficeDashboard() {
 
                       {/* Cliente */}
                       <td className="p-3 font-bold text-deep-black">
-                        <span>{sale.customer_name}</span>
+                        <span className="block">{sale.customer_name}</span>
                         {sale.customer_phone && (
-                          <span className="text-[9px] text-deep-black/50 block font-mono">
-                            {sale.customer_phone}
+                          <span className="text-[9px] text-deep-black/60 block font-mono">
+                            📞 {sale.customer_phone}
+                          </span>
+                        )}
+                        {sale.customer_email && (
+                          <span className="text-[9px] text-deep-black/50 block font-mono lowercase truncate max-w-[140px]">
+                            ✉️ {sale.customer_email}
+                          </span>
+                        )}
+                        {sale.shipping_address && (
+                          <span className="text-[9px] text-gold font-bold block mt-0.5">
+                            📍 {sale.shipping_address.city}, {sale.shipping_address.state} {sale.shipping_address.zip}
                           </span>
                         )}
                       </td>
@@ -1701,17 +1719,33 @@ export default function BackofficeDashboard() {
                   </button>
                 </div>
 
-                {/* Dados da Venda */}
-                <div className="grid grid-cols-2 gap-3 text-xs uppercase tracking-wider bg-deep-black/5 p-3 border border-deep-black/10">
-                  <div>
-                    <span className="text-[9px] text-deep-black/50 font-bold block">CLIENTE:</span>
-                    <strong className="text-deep-black">{selectedSaleDetail.customer_name}</strong>
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-deep-black/50 font-bold block">CANAL & MEIO:</span>
-                    <strong className="text-deep-black">
+                {/* Dados da Venda e Envio */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs uppercase tracking-wider bg-deep-black/5 p-4 border border-deep-black/10">
+                  <div className="space-y-1">
+                    <span className="text-[9px] text-deep-black/50 font-bold block">CLIENTE & CONTATO:</span>
+                    <strong className="text-deep-black block">{selectedSaleDetail.customer_name}</strong>
+                    {selectedSaleDetail.customer_phone && (
+                      <span className="text-[10px] text-deep-black/70 font-mono block">📞 {selectedSaleDetail.customer_phone}</span>
+                    )}
+                    {selectedSaleDetail.customer_email && (
+                      <span className="text-[10px] text-deep-black/70 lowercase font-mono block">✉️ {selectedSaleDetail.customer_email}</span>
+                    )}
+                    <span className="text-[9px] text-deep-black/50 block font-mono mt-1">
                       {selectedSaleDetail.channel} • {selectedSaleDetail.payment_method}
-                    </strong>
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-deep-black/10 pt-2 sm:pt-0 sm:pl-3">
+                    <span className="text-[9px] text-gold font-black block">📍 ENDEREÇO DE ENTREGA (USPS):</span>
+                    {selectedSaleDetail.shipping_address ? (
+                      <div className="text-[10px] text-deep-black font-medium leading-relaxed">
+                        <div>{selectedSaleDetail.shipping_address.address} {selectedSaleDetail.shipping_address.apt}</div>
+                        <div className="font-bold">{selectedSaleDetail.shipping_address.city}, {selectedSaleDetail.shipping_address.state} {selectedSaleDetail.shipping_address.zip}</div>
+                        <div className="text-[9px] text-deep-black/50 font-mono">United States (Domestic Delivery)</div>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-deep-black/60 italic">Retirada no Showroom ou endereço padrão Leominster, MA</span>
+                    )}
                   </div>
                 </div>
 

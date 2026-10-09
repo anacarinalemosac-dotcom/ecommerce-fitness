@@ -139,17 +139,25 @@ export default function AdminPortalPage() {
             </button>
           </form>
 
-          <div className="pt-4 border-t border-deep-black/10 text-center">
+          <div className="pt-4 border-t border-deep-black/10 text-center space-y-3">
             <button
               type="button"
               onClick={() => {
                 loginAdmin('ana@anafitwear.com', 'admin123');
                 triggerSuccess('Acesso direto concedido como Ana Carina!');
               }}
-              className="text-[10px] font-black uppercase tracking-widest text-gold hover:text-deep-black underline"
+              className="text-[10px] font-black uppercase tracking-widest text-gold hover:text-deep-black underline block w-full"
             >
               👑 Acesso Rápido com 1-Clique (Ana Carina)
             </button>
+
+            <Link
+              href="/backoffice?tab=sales"
+              className="w-full py-3 bg-gold hover:bg-white text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 border-2 border-deep-black shadow-sm"
+            >
+              <Package className="w-4 h-4 text-deep-black" />
+              <span>📦 VER PEDIDOS DOS CLIENTES (BACKOFFICE)</span>
+            </Link>
           </div>
         </div>
       </div>
@@ -177,7 +185,15 @@ export default function AdminPortalPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <Link
+            href="/backoffice?tab=sales"
+            className="px-4 py-2.5 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shadow-sm border border-gold"
+          >
+            <Package className="w-3.5 h-3.5 text-deep-black" />
+            <span>📦 VER PEDIDOS DOS CLIENTES</span>
+          </Link>
+
           <Link
             href="/"
             target="_blank"
@@ -195,6 +211,28 @@ export default function AdminPortalPage() {
             <LogOut className="w-4 h-4" />
           </button>
         </div>
+      </div>
+
+      {/* Banner de Destaque: Acesso aos Pedidos dos Clientes */}
+      <div className="p-5 bg-gold text-deep-black border-2 border-deep-black flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-luxury">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-deep-black animate-ping" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-deep-black">CENTRAL DE EXPEDIÇÃO & VENDAS</span>
+          </div>
+          <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-deep-black">
+            📦 ACOMPANHAR PEDIDOS DE CLIENTES & LUCRO REAL
+          </h2>
+          <p className="text-xs uppercase font-bold text-deep-black/80">
+            Veja nome, itens, endereço de entrega USPS, forma de pagamento e margem de lucro de cada compra simulada ou real.
+          </p>
+        </div>
+        <Link
+          href="/backoffice?tab=sales"
+          className="px-6 py-3.5 bg-deep-black hover:bg-white hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border-2 border-deep-black"
+        >
+          <span>ACESSAR PEDIDOS NO BACKOFFICE →</span>
+        </Link>
       </div>
 
       {/* Mensagem de Feedback de Sucesso */}

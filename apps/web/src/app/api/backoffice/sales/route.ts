@@ -24,6 +24,13 @@ export interface SaleRecord {
   customer_name: string;
   customer_email?: string;
   customer_phone?: string;
+  shipping_address?: {
+    address: string;
+    apt?: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
   channel: 'ONLINE' | 'POS_COUNTER';
   seller_name: string;
   coupon_code?: string;
@@ -373,6 +380,7 @@ export async function POST(req: NextRequest) {
       customer_name = 'Cliente',
       customer_email,
       customer_phone,
+      shipping_address,
       seller_name = 'Loja Oficial',
       coupon_code,
       payment_method = 'CARD',
@@ -442,6 +450,13 @@ export async function POST(req: NextRequest) {
       customer_name,
       customer_email,
       customer_phone,
+      shipping_address: shipping_address || (channel === 'ONLINE' ? {
+        address: '742 Commonwealth Ave',
+        apt: '',
+        city: 'Boston',
+        state: 'MA',
+        zip: '02215',
+      } : undefined),
       channel: isPOS ? 'POS_COUNTER' : 'ONLINE',
       seller_name: finalSellerName,
       coupon_code,
