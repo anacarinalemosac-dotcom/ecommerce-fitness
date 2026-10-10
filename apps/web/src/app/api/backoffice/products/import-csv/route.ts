@@ -389,17 +389,20 @@ export async function POST(req: NextRequest) {
           .eq('sku', row.sku)
           .maybeSingle();
 
+        const safeSize = row.size.length > 10
+          ? (row.size.toLowerCase().includes('not') || row.size.toLowerCase().includes('nao') ? 'U' : row.size.slice(0, 10))
+          : row.size;
+
         const variantPayload: any = {
           product_id: targetProductId,
           sku: row.sku,
-          size: row.size,
+          size: safeSize,
           color: row.color,
           price: row.price,
           cost_price: row.cost_price,
           stock_quantity: row.stock_quantity,
           allow_backorder: row.allow_backorder,
           estimated_production_days: 7,
-          barcode: `${Date.now()}`.slice(-12),
         };
 
         if (existingVariant) {
@@ -415,6 +418,7 @@ export async function POST(req: NextRequest) {
           if (!updVarErr) variantsUpdated++;
         } else {
           variantPayload.images = imageArray;
+          variantPayload.barcode = '789' + String(Date.now()).slice(-6) + String(Math.floor(Math.random() * 900) + 100);
 
           const { error: insVarErr } = await supabaseServer
             .from('product_variants')
