@@ -59,7 +59,7 @@ import {
 } from 'lucide-react';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
-import { CsvProductImportModal, downloadCsvTemplate } from '../../components/CsvProductImportModal';
+import { CsvProductImportModal, downloadCsvTemplate, downloadExcelTemplate } from '../../components/CsvProductImportModal';
 import { StockWriteOffModal } from '../../components/StockWriteOffModal';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 
@@ -1093,26 +1093,26 @@ export default function BackofficeDashboard() {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              {/* Botão Baixar Modelo CSV */}
+              {/* Botão Baixar Modelo Excel / CSV */}
               <button
                 type="button"
-                onClick={downloadCsvTemplate}
+                onClick={downloadExcelTemplate}
                 className="px-3.5 py-3 border-2 border-deep-black bg-white hover:bg-gold hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm"
-                title="Baixar planilha modelo CSV para importação em massa"
+                title="Baixar planilha modelo Excel (.xlsx) para importação em massa"
               >
                 <Download className="w-3.5 h-3.5 text-gold" />
-                <span>Baixar Modelo CSV</span>
+                <span>Baixar Modelo Excel (.xlsx)</span>
               </button>
 
-              {/* Botão Importar Planilha CSV */}
+              {/* Botão Importar Planilha (Excel / CSV) */}
               <button
                 type="button"
                 onClick={() => setShowCsvImportModal(true)}
                 className="px-4 py-3 bg-gold hover:bg-deep-black hover:text-white text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border-2 border-deep-black"
-                title="Importar produtos em massa a partir de um arquivo CSV"
+                title="Importar produtos em massa a partir de um arquivo Excel (.xlsx) ou CSV"
               >
                 <Upload className="w-4 h-4 text-deep-black" />
-                <span>Importar Planilha CSV</span>
+                <span>Importar Planilha (Excel / CSV)</span>
               </button>
 
               {/* Botão Saída / Baixa de Estoque sem Custo (Uso Próprio e Vendedoras) */}
