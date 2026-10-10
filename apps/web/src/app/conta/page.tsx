@@ -23,6 +23,7 @@ import {
   Edit2,
   Save,
   ArrowRight,
+  AlertCircle,
 } from 'lucide-react';
 
 const US_STATES = [
@@ -78,6 +79,72 @@ export default function CustomerAccountPage() {
     zip: '',
   });
   const [saveAddressLoading, setSaveAddressLoading] = useState(false);
+  const [saveAddressSuccess, setSaveAddressSuccess] = useState(false);
+  const [addressErrors, setAddressErrors] = useState<string[]>([]);
+
+  // Validação em Tempo Real de Endereço nos EUA (USPS)
+  const [validatingZipReg, setValidatingZipReg] = useState(false);
+  const [zipVerifiedReg, setZipVerifiedReg] = useState<{ valid: boolean; city?: string; state?: string; message?: string } | null>(null);
+
+  const [validatingZipEdit, setValidatingZipEdit] = useState(false);
+  const [zipVerifiedEdit, setZipVerifiedEdit] = useState<{ valid: boolean; city?: string; state?: string; message?: string } | null>(null);
+
+  const handleRegZipChange = async (val: string) => {
+    const clean = val.replace(/\D/g, '').slice(0, 5);
+    setRegAddress((prev) => ({ ...prev, zip: clean }));
+
+    if (clean.length === 5) {
+      setValidatingZipReg(true);
+      try {
+        const res = await fetch(`/api/shipping/validate-address?zip=${clean}`);
+        if (res.ok) {
+          const data = await res.json();
+          setRegAddress((prev) => ({
+            ...prev,
+            city: data.city || prev.city,
+            state: data.state || prev.state,
+          }));
+          setZipVerifiedReg({ valid: true, city: data.city, state: data.state });
+        } else {
+          setZipVerifiedReg({ valid: false, message: 'ZIP Code não localizado no USPS.' });
+        }
+      } catch (e) {
+      } finally {
+        setValidatingZipReg(false);
+      }
+    } else {
+      setZipVerifiedReg(null);
+    }
+  };
+
+  const handleEditZipChange = async (val: string) => {
+    const clean = val.replace(/\D/g, '').slice(0, 5);
+    setAddressForm((prev) => ({ ...prev, zip: clean }));
+
+    if (clean.length === 5) {
+      setValidatingZipEdit(true);
+      try {
+        const res = await fetch(`/api/shipping/validate-address?zip=${clean}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAddressForm((prev) => ({
+            ...prev,
+            city: data.city || prev.city,
+            state: data.state || prev.state,
+          }));
+          setZipVerifiedEdit({ valid: true, city: data.city, state: data.state });
+          setAddressErrors((prev) => prev.filter((e) => !e.toLowerCase().includes('zip')));
+        } else {
+          setZipVerifiedEdit({ valid: false, message: 'ZIP Code não localizado no USPS.' });
+        }
+      } catch (e) {
+      } finally {
+        setValidatingZipEdit(false);
+      }
+    } else {
+      setZipVerifiedEdit(null);
+    }
+  };
 
   // Carrega sessão salva no navegador
   useEffect(() => {
@@ -168,6 +235,37 @@ export default function CustomerAccountPage() {
     setAuthError('');
     setAuthSuccess('');
 
+    // Se o cliente forneceu endereço no cadastro, valida estritamente
+    if (regAddress.address.trim() || regAddress.zip.trim()) {
+      try {
+        const valRes = await fetch('/api/shipping/validate-address', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...regAddress,
+            phone: regPhone,
+            email: regEmail,
+            firstName: regName.split(' ')[0],
+            lastName: regName.split(' ').slice(1).join(' '),
+          }),
+        });
+        const valData = await valRes.json();
+        if (!valData.valid) {
+          setAuthError(valData.errors.join(' • '));
+          setAuthLoading(false);
+          return;
+        }
+        if (valData.normalized) {
+          regAddress.address = valData.normalized.address;
+          regAddress.city = valData.normalized.city;
+          regAddress.state = valData.normalized.state;
+          regAddress.zip = valData.normalized.zip;
+        }
+      } catch (err) {
+        console.warn('Erro ao validar endereço no cadastro:', err);
+      }
+    }
+
     try {
       const res = await fetch('/api/customer/auth', {
         method: 'POST',
@@ -212,11 +310,39 @@ export default function CustomerAccountPage() {
     setLoginPassword('');
   };
 
-  // Salvar Endereço Atualizado
+  // Salvar Endereço Atualizado com Validação USPS
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customer) return;
     setSaveAddressLoading(true);
+    setAddressErrors([]);
+    setSaveAddressSuccess(false);
+
+    // Validação estrita do endereço antes de atualizar
+    try {
+      const valRes = await fetch('/api/shipping/validate-address', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...addressForm,
+          email: customer.email,
+        }),
+      });
+      const valData = await valRes.json();
+      if (!valData.valid) {
+        setAddressErrors(valData.errors || ['Endereço de entrega inválido.']);
+        setSaveAddressLoading(false);
+        return;
+      }
+      if (valData.normalized) {
+        addressForm.address = valData.normalized.address;
+        addressForm.city = valData.normalized.city;
+        addressForm.state = valData.normalized.state;
+        addressForm.zip = valData.normalized.zip;
+      }
+    } catch (e) {
+      console.warn('Erro ao validar endereço:', e);
+    }
 
     try {
       const res = await fetch('/api/customer/auth', {
@@ -235,6 +361,8 @@ export default function CustomerAccountPage() {
         localStorage.setItem('ana_customer_session', JSON.stringify(data.customer));
         window.dispatchEvent(new Event('ana_customer_updated'));
         setEditingAddress(false);
+        setSaveAddressSuccess(true);
+        setTimeout(() => setSaveAddressSuccess(false), 4000);
       }
     } catch (e) {
       console.warn('Erro ao salvar endereço:', e);
@@ -424,27 +552,47 @@ export default function CustomerAccountPage() {
                   />
                 </div>
 
-                {/* Endereço de Entrega Inicial (Opcional ou Recomendado) */}
+                {/* Endereço de Entrega Inicial com Validação USPS (Opcional ou Recomendado) */}
                 <div className="pt-2 border-t border-deep-black/10 space-y-3">
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-deep-black flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-gold" />
-                    <span>{lang === 'pt' ? 'ENDEREÇO DE ENTREGA NOS EUA (OPCIONAL):' : 'DOMESTIC US SHIPPING ADDRESS (OPTIONAL):'}</span>
-                  </h4>
-
-                  <input
-                    type="text"
-                    value={regAddress.address}
-                    onChange={(e) => setRegAddress({ ...regAddress, address: e.target.value })}
-                    placeholder="Street Address (ex: 123 Main St)"
-                    className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                  />
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-deep-black flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-gold" />
+                      <span>{lang === 'pt' ? 'ENDEREÇO DE ENTREGA NOS EUA (OPCIONAL):' : 'DOMESTIC US SHIPPING ADDRESS (OPTIONAL):'}</span>
+                    </h4>
+                    {validatingZipReg && <span className="text-[9px] text-gold font-bold animate-pulse">VERIFICANDO CEP...</span>}
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <input
                       type="text"
+                      value={regAddress.address}
+                      onChange={(e) => setRegAddress({ ...regAddress, address: e.target.value })}
+                      placeholder="Street Address com número (ex: 123 Main St)"
+                      className="sm:col-span-2 w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                    />
+                    <input
+                      type="text"
+                      value={regAddress.apt}
+                      onChange={(e) => setRegAddress({ ...regAddress, apt: e.target.value })}
+                      placeholder="Apt / Unit (opcional)"
+                      className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input
+                      type="text"
+                      maxLength={5}
+                      value={regAddress.zip}
+                      onChange={(e) => handleRegZipChange(e.target.value)}
+                      placeholder="ZIP (01453)"
+                      className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                    />
+                    <input
+                      type="text"
                       value={regAddress.city}
                       onChange={(e) => setRegAddress({ ...regAddress, city: e.target.value })}
-                      placeholder="City (ex: Boston)"
+                      placeholder="City (ex: Leominster)"
                       className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
                     />
                     <select
@@ -456,15 +604,30 @@ export default function CustomerAccountPage() {
                         <option key={st} value={st}>{st}</option>
                       ))}
                     </select>
-                    <input
-                      type="text"
-                      maxLength={5}
-                      value={regAddress.zip}
-                      onChange={(e) => setRegAddress({ ...regAddress, zip: e.target.value })}
-                      placeholder="Zip (02215)"
-                      className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                    />
                   </div>
+
+                  {/* Feedback do ZIP no Cadastro */}
+                  {zipVerifiedReg && (
+                    <div
+                      className={`p-2 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 border animate-fadeIn ${
+                        zipVerifiedReg.valid
+                          ? 'bg-green-50 text-green-900 border-green-300'
+                          : 'bg-red-50 text-red-900 border-red-300'
+                      }`}
+                    >
+                      {zipVerifiedReg.valid ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                          <span>✓ CEP VALIDADO (USPS): {zipVerifiedReg.city}, {zipVerifiedReg.state}</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                          <span>⚠️ {zipVerifiedReg.message}</span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -804,34 +967,79 @@ export default function CustomerAccountPage() {
           </div>
 
           <form onSubmit={handleSaveAddress} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                {lang === 'pt' ? 'ENDEREÇO (STREET ADDRESS):' : 'STREET ADDRESS:'}
-              </label>
-              <input
-                type="text"
-                required
-                value={addressForm.address}
-                onChange={(e) => setAddressForm({ ...addressForm, address: e.target.value })}
-                placeholder="Ex: 742 Commonwealth Ave"
-                className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
-              />
-            </div>
+            {/* Mensagens de Erro de Validação de Endereço */}
+            {addressErrors.length > 0 && (
+              <div className="p-4 bg-red-50 border-2 border-red-500 text-red-950 space-y-1.5 animate-fadeIn">
+                <div className="flex items-center gap-2 font-black uppercase text-xs text-red-700">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>CORRIJA O ENDEREÇO PARA SALVAR:</span>
+                </div>
+                <ul className="list-disc list-inside text-[11px] font-bold text-red-800 space-y-0.5">
+                  {addressErrors.map((err, i) => (
+                    <li key={i}>{err}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-            <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                APT / SUITE / UNIT (OPCIONAL):
-              </label>
-              <input
-                type="text"
-                value={addressForm.apt || ''}
-                onChange={(e) => setAddressForm({ ...addressForm, apt: e.target.value })}
-                placeholder="Ex: Apt 4B"
-                className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
-              />
+            {/* Sucesso */}
+            {saveAddressSuccess && (
+              <div className="p-3 bg-green-50 border-2 border-green-600 text-green-950 font-bold text-xs uppercase flex items-center gap-2 animate-fadeIn">
+                <CheckCircle2 className="w-4 h-4 text-green-700 shrink-0" />
+                <span>✓ ENDEREÇO PADRÃO VALIDADO PELO USPS E SALVO COM SUCESSO!</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2 space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70 flex items-center justify-between">
+                  <span>{lang === 'pt' ? 'ENDEREÇO COM NÚMERO (STREET ADDRESS):' : 'STREET ADDRESS WITH NUMBER:'}</span>
+                  <span className="text-[9px] text-deep-black/40 font-mono">Ex: 742 Commonwealth Ave</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={addressForm.address}
+                  onChange={(e) => {
+                    setAddressForm({ ...addressForm, address: e.target.value });
+                    setAddressErrors((prev) => prev.filter((er) => !er.includes('número') && !er.includes('Endereço')));
+                  }}
+                  placeholder="Ex: 742 Commonwealth Ave"
+                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                  APT / SUITE / UNIT:
+                </label>
+                <input
+                  type="text"
+                  value={addressForm.apt || ''}
+                  onChange={(e) => setAddressForm({ ...addressForm, apt: e.target.value })}
+                  placeholder="Ex: Apt 4B (opcional)"
+                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70 flex items-center justify-between">
+                  <span>ZIP CODE (USPS):</span>
+                  {validatingZipEdit && <span className="text-[9px] text-gold font-bold animate-pulse">VERIFICANDO...</span>}
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={5}
+                  value={addressForm.zip}
+                  onChange={(e) => handleEditZipChange(e.target.value)}
+                  placeholder="02215"
+                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                />
+              </div>
+
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
                   {lang === 'pt' ? 'CIDADE:' : 'CITY:'}
@@ -860,22 +1068,30 @@ export default function CustomerAccountPage() {
                   ))}
                 </select>
               </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                  ZIP CODE:
-                </label>
-                <input
-                  type="text"
-                  required
-                  maxLength={5}
-                  value={addressForm.zip}
-                  onChange={(e) => setAddressForm({ ...addressForm, zip: e.target.value })}
-                  placeholder="02215"
-                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                />
-              </div>
             </div>
+
+            {/* Feedback Visual de Validação do ZIP no USPS */}
+            {zipVerifiedEdit && (
+              <div
+                className={`p-3 text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 border animate-fadeIn ${
+                  zipVerifiedEdit.valid
+                    ? 'bg-green-50 text-green-900 border-green-300'
+                    : 'bg-red-50 text-red-900 border-red-300'
+                }`}
+              >
+                {zipVerifiedEdit.valid ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                    <span>✓ CEP AMERICANO VERIFICADO (USPS): {zipVerifiedEdit.city}, {zipVerifiedEdit.state}</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                    <span>⚠️ {zipVerifiedEdit.message}</span>
+                  </>
+                )}
+              </div>
+            )}
 
             <div className="pt-2">
               <button
@@ -884,7 +1100,7 @@ export default function CustomerAccountPage() {
                 className="px-8 py-3.5 bg-deep-black hover:bg-gold text-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
               >
                 <Save className="w-4 h-4 text-gold" />
-                <span>{saveAddressLoading ? (lang === 'pt' ? 'SALVANDO...' : 'SAVING...') : (lang === 'pt' ? 'SALVAR ENDEREÇO' : 'SAVE ADDRESS')}</span>
+                <span>{saveAddressLoading ? (lang === 'pt' ? 'VALIDANDO E SALVANDO...' : 'VALIDATING & SAVING...') : (lang === 'pt' ? 'SALVAR ENDEREÇO' : 'SAVE ADDRESS')}</span>
               </button>
             </div>
           </form>
