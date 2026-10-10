@@ -97,7 +97,7 @@ function readAllOrders(): any[] {
               tracking_code: s.channel === 'ONLINE' ? '9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000) : 'BALCAO-SHOWROOM',
               carrier: s.channel === 'ONLINE' ? 'USPS Domestic Priority ($9.99)' : 'Retirada no Showroom (Leominster, MA)',
               estimated_delivery: s.channel === 'ONLINE' ? '1 a 5 dias úteis' : 'Imediato no balcão',
-              shipping_address: {
+              shipping_address: s.shipping_address || {
                 address: 'Leominster Area / Online Delivery',
                 apt: '',
                 city: 'Leominster',

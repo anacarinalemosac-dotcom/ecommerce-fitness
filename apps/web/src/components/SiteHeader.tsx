@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
@@ -13,12 +13,49 @@ import {
   Menu,
   X,
   ChevronRight,
+  User,
 } from 'lucide-react';
 
 export function SiteHeader() {
   const { lang, setLang, t } = useLanguage();
   const { siteInfo, siteImages } = useStoreSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+  const [customerUser, setCustomerUser] = useState<any | null>(null);
+
+  const updateCartAndUser = () => {
+    try {
+      const savedCart = localStorage.getItem('ana_cart_item');
+      if (savedCart) {
+        const parsed = JSON.parse(savedCart);
+        setCartCount(Number(parsed.quantity) || 1);
+      } else {
+        setCartCount(0);
+      }
+
+      const savedCust = localStorage.getItem('ana_customer_session');
+      if (savedCust) {
+        setCustomerUser(JSON.parse(savedCust));
+      } else {
+        setCustomerUser(null);
+      }
+    } catch (e) {
+      setCartCount(0);
+      setCustomerUser(null);
+    }
+  };
+
+  useEffect(() => {
+    updateCartAndUser();
+    window.addEventListener('ana_cart_updated', updateCartAndUser);
+    window.addEventListener('ana_customer_updated', updateCartAndUser);
+    window.addEventListener('storage', updateCartAndUser);
+    return () => {
+      window.removeEventListener('ana_cart_updated', updateCartAndUser);
+      window.removeEventListener('ana_customer_updated', updateCartAndUser);
+      window.removeEventListener('storage', updateCartAndUser);
+    };
+  }, []);
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
@@ -147,14 +184,28 @@ export function SiteHeader() {
               <Search className="w-4 h-4" />
             </Link>
 
+            {/* Minha Conta / Login do Cliente */}
+            <Link
+              href="/conta"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider bg-white text-deep-black border border-deep-black/30 hover:border-gold hover:text-gold transition"
+              title="Minha Conta / Customer Portal"
+            >
+              <User className="w-3.5 h-3.5 text-gold" />
+              <span className="hidden md:inline">
+                {customerUser
+                  ? `OLÁ, ${(customerUser.name || 'CLIENTE').split(' ')[0].toUpperCase()}`
+                  : (lang === 'pt' ? 'MINHA CONTA' : 'MY ACCOUNT')}
+              </span>
+            </Link>
+
             {/* Rastrear Pedido (USPS) */}
             <Link
               href="/pedidos"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider bg-white text-deep-black border border-deep-black/30 hover:border-gold hover:text-gold transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider bg-white text-deep-black border border-deep-black/30 hover:border-gold hover:text-gold transition hidden sm:flex"
               title="Track Order / Rastrear Pedidos"
             >
               <Package className="w-3.5 h-3.5 text-gold" />
-              <span className="hidden sm:inline">{lang === 'pt' ? 'MEUS PEDIDOS' : 'TRACK ORDER'}</span>
+              <span>{lang === 'pt' ? 'RASTREAR' : 'TRACK'}</span>
             </Link>
 
             {/* Sacola de Compras */}
@@ -162,11 +213,14 @@ export function SiteHeader() {
               href="/checkout"
               className="relative p-2.5 bg-deep-black text-white hover:bg-gold hover:text-deep-black transition shadow-sm"
               aria-label="Shopping Bag"
+              title="Sacola de Compras"
             >
               <ShoppingBag className="w-4 h-4" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-gold text-deep-black text-[9px] font-black flex items-center justify-center">
-                1
-              </span>
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-gold text-deep-black text-[9px] font-black flex items-center justify-center animate-pulse">
+                  {cartCount}
+                </span>
+              )}
             </Link>
           </div>
         </div>
@@ -223,6 +277,21 @@ export function SiteHeader() {
                 <span className="flex items-center gap-2">
                   <span>{t('nav.preorder')}</span>
                   <span className="w-2 h-2 rounded-full bg-gold animate-ping"></span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-gold" />
+              </Link>
+              <Link
+                href="/conta"
+                onClick={closeMobileMenu}
+                className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black"
+              >
+                <span className="flex items-center gap-2">
+                  <User className="w-3.5 h-3.5 text-gold" />
+                  <span>
+                    {customerUser
+                      ? `${lang === 'pt' ? 'MINHA CONTA' : 'MY ACCOUNT'} (${customerUser.name?.split(' ')[0]})`
+                      : (lang === 'pt' ? 'MINHA CONTA / ENTRAR' : 'MY ACCOUNT / SIGN IN')}
+                  </span>
                 </span>
                 <ChevronRight className="w-4 h-4 text-gold" />
               </Link>

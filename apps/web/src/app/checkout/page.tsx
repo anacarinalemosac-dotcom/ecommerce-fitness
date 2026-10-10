@@ -17,6 +17,9 @@ import {
   Phone,
   HelpCircle,
   Package,
+  User,
+  Trash2,
+  ArrowRight,
 } from 'lucide-react';
 
 const US_STATES = [
@@ -27,31 +30,24 @@ const US_STATES = [
   'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
 ];
 
+interface CartItem {
+  title: string;
+  slug?: string;
+  size: string;
+  color: string;
+  sku: string;
+  price: number;
+  quantity: number;
+  image: string;
+}
+
 export default function CheckoutPage() {
   const { lang, t } = useLanguage();
 
-  // Dados do Item no Carrinho
-  const [cartItem, setCartItem] = useState({
-    title: 'SAMANTA ROMPER',
-    slug: 'samanta-romper',
-    size: 'S',
-    color: 'Preto Ônix',
-    sku: 'SAM-BLK-S',
-    price: 44.9,
-    quantity: 1,
-    image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=400&q=80',
-  });
-
-  // Carrega o item real selecionado pelo cliente
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('ana_cart_item');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setCartItem((prev) => ({ ...prev, ...parsed }));
-      }
-    } catch (e) {}
-  }, []);
+  // Dados do Item no Carrinho (Inicia como null para não forçar item estático)
+  const [cartItem, setCartItem] = useState<CartItem | null>(null);
+  const [isCartLoaded, setIsCartLoaded] = useState(false);
+  const [customerUser, setCustomerUser] = useState<any | null>(null);
 
   // Endereço de Envio nos EUA
   const [shippingForm, setShippingForm] = useState({
@@ -65,6 +61,46 @@ export default function CheckoutPage() {
     state: 'MA',
     zip: '',
   });
+
+  // Carrega o item real selecionado e a sessão do cliente
+  useEffect(() => {
+    try {
+      const savedCart = localStorage.getItem('ana_cart_item');
+      if (savedCart) {
+        setCartItem(JSON.parse(savedCart));
+      } else {
+        setCartItem(null);
+      }
+
+      // Preenche dados se o cliente já tiver sessão ativa
+      const savedCust = localStorage.getItem('ana_customer_session');
+      if (savedCust) {
+        const cust = JSON.parse(savedCust);
+        setCustomerUser(cust);
+        const nameParts = (cust.name || '').trim().split(' ');
+        const fName = nameParts[0] || '';
+        const lName = nameParts.slice(1).join(' ') || '';
+
+        setShippingForm((prev) => ({
+          ...prev,
+          email: cust.email || prev.email,
+          phone: cust.phone || prev.phone,
+          firstName: fName || prev.firstName,
+          lastName: lName || prev.lastName,
+          address: cust.shipping_address?.address || prev.address,
+          apt: cust.shipping_address?.apt || prev.apt,
+          city: cust.shipping_address?.city || prev.city,
+          state: cust.shipping_address?.state || prev.state,
+          zip: cust.shipping_address?.zip || prev.zip,
+        }));
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar dados do carrinho ou cliente:', e);
+      setCartItem(null);
+    } finally {
+      setIsCartLoaded(true);
+    }
+  }, []);
 
   // Pagamento Online
   const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'APPLE_PAY' | 'ZELLE' | 'VENMO'>('CARD');
@@ -91,10 +127,16 @@ export default function CheckoutPage() {
   const [orderComplete, setOrderComplete] = useState<null | string>(null);
 
   // Cálculos Financeiros
-  const subtotal = cartItem.price * cartItem.quantity;
+  const subtotal = cartItem ? cartItem.price * cartItem.quantity : 0;
   const discountAmount = appliedCoupon ? (subtotal * discountPercent) / 100 : 0;
   const shippingRate = 9.99; // Taxa fixa de frete para todos os EUA
-  const total = subtotal - discountAmount + shippingRate;
+  const total = subtotal > 0 ? subtotal - discountAmount + shippingRate : 0;
+
+  const handleRemoveCartItem = () => {
+    localStorage.removeItem('ana_cart_item');
+    window.dispatchEvent(new Event('ana_cart_updated'));
+    setCartItem(null);
+  };
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,6 +191,8 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!cartItem) return;
+
     setIsSubmitting(true);
 
     const generatedOrderId = `ANA-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -192,6 +236,9 @@ export default function CheckoutPage() {
         if (stripeRes.ok) {
           const stripeData = await stripeRes.json();
           if (stripeData.configured && stripeData.url) {
+            // Esvazia o carrinho antes de redirecionar para a Stripe
+            localStorage.removeItem('ana_cart_item');
+            window.dispatchEvent(new Event('ana_cart_updated'));
             window.location.href = stripeData.url;
             return;
           }
@@ -243,10 +290,16 @@ export default function CheckoutPage() {
       console.warn('Erro ao registrar venda na API:', err);
     }
 
+    // Esvazia a sacola com sucesso e despacha evento global
+    localStorage.removeItem('ana_cart_item');
+    window.dispatchEvent(new Event('ana_cart_updated'));
+    setCartItem(null);
+
     setIsSubmitting(false);
     setOrderComplete(generatedOrderId);
   };
 
+  // 1. TELA DE SUCESSO / PEDIDO CONCLUÍDO
   if (orderComplete) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-8 animate-fadeIn">
@@ -266,48 +319,100 @@ export default function CheckoutPage() {
           </p>
         </div>
 
-        <div className="p-6 bg-white border-2 border-deep-black text-left space-y-4 max-w-xl mx-auto">
+        <div className="p-6 bg-white border-2 border-deep-black text-left space-y-4 max-w-xl mx-auto shadow-sm">
           <h3 className="text-xs font-black uppercase tracking-wider text-deep-black border-b border-deep-black/10 pb-2">
             {lang === 'pt' ? 'DETALHES DO ENVIO DOMÉSTICO (EUA)' : 'DOMESTIC US SHIPPING DETAILS'}
           </h3>
           <div className="text-xs space-y-1 text-deep-black/80 uppercase font-medium">
             <p><strong>{lang === 'pt' ? 'Cliente' : 'Customer'}:</strong> {shippingForm.firstName || 'Cliente'} {shippingForm.lastName}</p>
-            <p><strong>{lang === 'pt' ? 'Destino' : 'Destination'}:</strong> {shippingForm.address || 'Leominster'}, {shippingForm.city || 'MA'} {shippingForm.state} {shippingForm.zip || '01453'}</p>
-            <p><strong>{lang === 'pt' ? 'Prazo de Preparação' : 'Handling Time'}:</strong> 1 a 5 dias úteis com rastreamento USPS</p>
+            <p><strong>{lang === 'pt' ? 'E-mail de Notificação' : 'Notification Email'}:</strong> {shippingForm.email || 'cliente@exemplo.com'}</p>
+            <p><strong>{lang === 'pt' ? 'Destino' : 'Destination'}:</strong> {shippingForm.address || '742 Commonwealth Ave'}, {shippingForm.city || 'Boston'} {shippingForm.state} {shippingForm.zip || '02215'}</p>
+            <p><strong>{lang === 'pt' ? 'Prazo de Preparação' : 'Handling Time'}:</strong> 1 a 5 dias úteis com rastreamento oficial USPS</p>
             <p><strong>{lang === 'pt' ? 'Total Pago' : 'Total Paid'}:</strong> <span className="font-bold text-gold font-mono">${total.toFixed(2)}</span></p>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
           <Link
+            href="/conta"
+            className="px-6 py-3.5 bg-deep-black text-gold hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
+          >
+            <User className="w-4 h-4 text-gold" />
+            <span>{lang === 'pt' ? 'VER NA MINHA CONTA / HISTÓRICO' : 'VIEW IN MY ACCOUNT / ORDERS'}</span>
+          </Link>
+          <Link
             href="/pedidos"
             className="px-6 py-3.5 bg-gold text-deep-black hover:bg-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
           >
             <Package className="w-4 h-4 text-deep-black" />
-            <span>{lang === 'pt' ? 'ACOMPANHAR ESTE PEDIDO EM TEMPO REAL' : 'TRACK THIS ORDER LIVE'}</span>
+            <span>{lang === 'pt' ? 'RASTREAR VIA USPS' : 'TRACK VIA USPS'}</span>
           </Link>
           <Link
             href="/"
-            className="px-6 py-3.5 bg-deep-black text-white hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-widest transition"
+            className="px-6 py-3.5 border-2 border-deep-black text-deep-black hover:bg-deep-black hover:text-white text-xs font-black uppercase tracking-widest transition"
           >
-            {lang === 'pt' ? 'VOLTAR À PÁGINA INICIAL' : 'RETURN TO HOME'}
+            {lang === 'pt' ? 'VOLTAR À VITRINE' : 'DISCOVER MORE'}
           </Link>
-          <a
-            href={`https://wa.me/19783139452?text=Hello%2C%20I%20just%20placed%20order%20%23${orderComplete}%20on%20the%20website.`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-6 py-3.5 border-2 border-deep-black text-deep-black hover:bg-deep-black hover:text-white text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2"
-          >
-            <Phone className="w-4 h-4" />
-            <span>{lang === 'pt' ? 'SUPORTE NO WHATSAPP' : 'WHATSAPP CONCIERGE'}</span>
-          </a>
         </div>
       </div>
     );
   }
 
+  // 2. TELA DE SACOLA VAZIA (QUANDO NÃO HÁ ITENS)
+  if (isCartLoaded && !cartItem) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center space-y-8 animate-fadeIn">
+        <div className="w-20 h-20 bg-deep-black/5 text-deep-black rounded-full flex items-center justify-center mx-auto border-2 border-dashed border-deep-black/20">
+          <ShoppingBag className="w-10 h-10 text-gold" />
+        </div>
+
+        <div className="space-y-3 max-w-md mx-auto">
+          <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+            {lang === 'pt' ? 'ANA FITNESS WEAR • LUXURY COLLECTION' : 'ANA FITNESS WEAR • LUXURY COLLECTION'}
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-deep-black">
+            {lang === 'pt' ? 'SUA SACOLA ESTÁ VAZIA' : 'YOUR SHOPPING BAG IS EMPTY'}
+          </h1>
+          <p className="text-xs uppercase tracking-wider text-deep-black/60 font-medium leading-relaxed">
+            {lang === 'pt'
+              ? 'Você ainda não selecionou nenhuma peça. Escolha seu modelo favorito na vitrine para finalizar sua compra com frete fixo de $9.99 para todos os EUA.'
+              : 'You haven\'t added any items to your bag yet. Explore our zero-transparency sets and rompers with flat $9.99 shipping anywhere in the US.'}
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+          <Link
+            href="/#vitrine"
+            className="px-8 py-4 bg-deep-black text-gold hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-widest transition shadow-luxury flex items-center justify-center gap-2"
+          >
+            <Sparkles className="w-4 h-4 text-gold" />
+            <span>{lang === 'pt' ? 'EXPLORAR A VITRINE DE PRODUTOS' : 'EXPLORE COLLECTION'}</span>
+          </Link>
+          <Link
+            href="/conta"
+            className="px-8 py-4 bg-white border-2 border-deep-black text-deep-black hover:bg-deep-black hover:text-white text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2"
+          >
+            <User className="w-4 h-4 text-gold" />
+            <span>{lang === 'pt' ? 'ACESSAR MINHA CONTA / MEUS PEDIDOS' : 'MY ACCOUNT / ORDER HISTORY'}</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Se ainda estiver lendo o localStorage, evita flicker rápido
+  if (!isCartLoaded) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-24 text-center">
+        <p className="text-xs font-black uppercase tracking-widest text-deep-black/40 animate-pulse">
+          {lang === 'pt' ? 'CARREGANDO SACOLA DE COMPRAS...' : 'LOADING SHOPPING BAG...'}
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10 space-y-10 bg-white">
+    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10 space-y-8 bg-white">
       {/* Header do Checkout do Cliente */}
       <div className="flex items-center justify-between border-b border-deep-black/10 pb-6">
         <Link
@@ -323,6 +428,42 @@ export default function CheckoutPage() {
           <span>{lang === 'pt' ? 'CHECKOUT ONLINE 100% SEGURO' : '100% SECURE ONLINE CHECKOUT'}</span>
         </div>
       </div>
+
+      {/* Banner de Identificação do Cliente: Logado vs Guest Checkout */}
+      {customerUser ? (
+        <div className="bg-gold/10 border border-gold/40 px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-deep-black">
+            <User className="w-4 h-4 text-gold shrink-0" />
+            <span className="font-bold uppercase tracking-wider">
+              {lang === 'pt' ? 'CONECTADO COMO:' : 'LOGGED IN AS:'}{' '}
+              <strong className="text-deep-black font-black">{customerUser.name}</strong> ({customerUser.email})
+            </span>
+          </div>
+          <Link
+            href="/conta"
+            className="text-[10px] font-black uppercase tracking-widest text-deep-black hover:text-gold underline"
+          >
+            {lang === 'pt' ? 'GERENCIAR MINHA CONTA / ENDEREÇOS' : 'MANAGE MY ACCOUNT / ADDRESSES'}
+          </Link>
+        </div>
+      ) : (
+        <div className="bg-gray-50 border border-deep-black/10 px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-deep-black/80">
+            <User className="w-4 h-4 text-gold shrink-0" />
+            <span className="font-medium">
+              {lang === 'pt'
+                ? 'Já possui uma conta na Ana Fitness Wear? Entre para preencher seu endereço em 1 clique.'
+                : 'Already have an account? Sign in for 1-click address autofill.'}
+            </span>
+          </div>
+          <Link
+            href="/conta"
+            className="text-[10px] font-black uppercase tracking-widest bg-deep-black text-white hover:bg-gold hover:text-deep-black px-3 py-1.5 transition"
+          >
+            {lang === 'pt' ? 'ENTRAR / CRIAR CONTA' : 'SIGN IN / REGISTER'}
+          </Link>
+        </div>
+      )}
 
       <form onSubmit={handlePlaceOrder} className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
         {/* =========================================================================
@@ -344,7 +485,7 @@ export default function CheckoutPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                  {lang === 'pt' ? 'E-MAIL (PARA RASTREIO):' : 'EMAIL (FOR TRACKING UPDATES):'}
+                  {lang === 'pt' ? 'E-MAIL (PARA RASTREIO E CONTA):' : 'EMAIL (FOR TRACKING & ACCOUNT):'}
                 </label>
                 <input
                   type="email"
@@ -633,15 +774,17 @@ export default function CheckoutPage() {
             COLUNA DIREITA: RESUMO DO PEDIDO & CUPOM (SEM COMISSÃO DE VENDEDORA)
            ========================================================================= */}
         <div className="lg:col-span-5 bg-white border-2 border-deep-black p-6 sm:p-8 space-y-6 shadow-luxury">
-          <div className="border-b border-deep-black/10 pb-4">
-            <h3 className="text-sm font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
-              <span>{lang === 'pt' ? 'RESUMO DA SACOLA' : 'ORDER SUMMARY'}</span>
-              <span className="text-xs text-deep-black/50 font-bold">1 ITEM</span>
+          <div className="border-b border-deep-black/10 pb-4 flex items-center justify-between">
+            <h3 className="text-sm font-black uppercase tracking-wider text-deep-black">
+              {lang === 'pt' ? 'RESUMO DA SACOLA' : 'ORDER SUMMARY'}
             </h3>
+            <span className="text-xs text-deep-black/50 font-bold">
+              {cartItem.quantity} {cartItem.quantity === 1 ? 'ITEM' : 'ITEMS'}
+            </span>
           </div>
 
           {/* Item no Carrinho */}
-          <div className="flex gap-4 items-center border-b border-deep-black/10 pb-4">
+          <div className="flex gap-4 items-center border-b border-deep-black/10 pb-4 relative">
             <img
               src={cartItem.image}
               alt={cartItem.title}
@@ -654,12 +797,21 @@ export default function CheckoutPage() {
               <p className="text-[10px] text-deep-black/60 uppercase font-mono font-bold">
                 {lang === 'pt' ? 'TAMANHO' : 'SIZE'}: {cartItem.size} • {cartItem.color}
               </p>
-              <span className="text-[10px] text-gold font-black uppercase">
+              <span className="text-[10px] text-gold font-black uppercase block">
                 {lang === 'pt' ? 'ZERO TRANSPARÊNCIA' : 'ZERO SEE-THROUGH'}
               </span>
+              <button
+                type="button"
+                onClick={handleRemoveCartItem}
+                className="text-[10px] text-red-600 hover:text-red-800 uppercase font-bold flex items-center gap-1 pt-1 transition"
+                title="Remover item da sacola"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>{lang === 'pt' ? 'REMOVER DA SACOLA' : 'REMOVE ITEM'}</span>
+              </button>
             </div>
             <span className="text-sm font-black text-deep-black font-mono">
-              ${cartItem.price.toFixed(2)}
+              ${(cartItem.price * cartItem.quantity).toFixed(2)}
             </span>
           </div>
 

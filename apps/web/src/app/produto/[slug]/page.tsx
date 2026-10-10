@@ -331,6 +331,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
     try {
       localStorage.setItem('ana_cart_item', JSON.stringify(cartItemToSave));
+      window.dispatchEvent(new Event('ana_cart_updated'));
     } catch (e) {}
 
     setCartFeedback(isBackorder ? 'backorder' : 'added');
