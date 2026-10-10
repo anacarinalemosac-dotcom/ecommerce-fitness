@@ -152,7 +152,56 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     const generatedOrderId = `ANA-${Math.floor(100000 + Math.random() * 900000)}`;
+    const isCardOrApplePay = paymentMethod === 'CARD' || paymentMethod === 'APPLE_PAY';
 
+    // 1. Se for Cartão ou Apple Pay, tenta iniciar a sessão oficial da Stripe
+    if (isCardOrApplePay) {
+      try {
+        const stripeRes = await fetch('/api/checkout/stripe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            order_id: generatedOrderId,
+            customer_name: `${shippingForm.firstName || 'Cliente'} ${shippingForm.lastName || 'Online'}`,
+            customer_email: shippingForm.email || 'cliente@exemplo.com',
+            customer_phone: shippingForm.phone || '+1 978 313-9452',
+            shipping_address: {
+              address: shippingForm.address || '742 Commonwealth Ave',
+              apt: shippingForm.apt || '',
+              city: shippingForm.city || 'Boston',
+              state: shippingForm.state || 'MA',
+              zip: shippingForm.zip || '02215',
+            },
+            coupon_code: appliedCoupon,
+            discount_amount: discountAmount,
+            seller_name: couponSellerInfo ? couponSellerInfo.name : (appliedCoupon === 'CAMILA10' ? 'Camila Santos' : 'Loja Oficial Online'),
+            items: [
+              {
+                title: cartItem.title,
+                size: cartItem.size,
+                color: cartItem.color,
+                sku: (cartItem as any).sku || 'ANA-ITEM',
+                quantity: cartItem.quantity,
+                unit_price: cartItem.price,
+                image: cartItem.image,
+              },
+            ],
+          }),
+        });
+
+        if (stripeRes.ok) {
+          const stripeData = await stripeRes.json();
+          if (stripeData.configured && stripeData.url) {
+            window.location.href = stripeData.url;
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Stripe checkout fallback para modo simulação:', err);
+      }
+    }
+
+    // 2. Fallback / Pagamentos Zelle, Venmo ou teste
     try {
       await fetch('/api/backoffice/sales', {
         method: 'POST',
