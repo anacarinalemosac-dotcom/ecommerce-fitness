@@ -22,7 +22,9 @@ import {
   ExternalLink,
   Lock,
   Store,
+  PackageMinus,
 } from 'lucide-react';
+import { StockWriteOffModal } from '../../components/StockWriteOffModal';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 
 interface CartItem {
@@ -58,6 +60,7 @@ export default function PosTerminalPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedSale, setCompletedSale] = useState<any | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showWriteOffModal, setShowWriteOffModal] = useState(false);
 
   const [cart, setCart] = useState<CartItem[]>([
     {
@@ -399,25 +402,47 @@ export default function PosTerminalPage() {
           </h1>
         </div>
 
-        {/* Vendedora Ativa Selecionável */}
-        <div className="flex items-center gap-3 bg-white border border-deep-black/20 p-2.5">
-          <UserCheck className="w-5 h-5 text-gold shrink-0" />
-          <div className="text-right">
-            <label className="text-[9px] font-black uppercase tracking-widest text-deep-black/50 block">
-              OPERADORA CONECTADA:
-            </label>
-            <select
-              value={seller}
-              onChange={(e) => setSeller(e.target.value)}
-              className="text-xs font-black uppercase tracking-wider text-deep-black bg-transparent border-0 focus:outline-none cursor-pointer"
-            >
-              <option value="Juliana Silva (PDV Balcão Leominster)">Juliana Silva (PDV Balcão Leominster)</option>
-              <option value="Ana Carina (Proprietária / Showroom)">Ana Carina (Proprietária / Showroom)</option>
-              <option value="Camila (Vendedora Showroom)">Camila (Vendedora Showroom)</option>
-            </select>
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+          <button
+            type="button"
+            onClick={() => setShowWriteOffModal(true)}
+            className="px-3.5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition flex items-center gap-2 border-2 border-deep-black shadow-sm shrink-0"
+            title="Dar saída no estoque para uso próprio da dona, mostruário de vendedoras ou brindes sem custo"
+          >
+            <PackageMinus className="w-4 h-4 text-white" />
+            <span>- RETIRADA / USO PRÓPRIO & MOSTRUÁRIO</span>
+          </button>
+
+          {/* Vendedora Ativa Selecionável */}
+          <div className="flex items-center gap-3 bg-white border border-deep-black/20 p-2.5">
+            <UserCheck className="w-5 h-5 text-gold shrink-0" />
+            <div className="text-right">
+              <label className="text-[9px] font-black uppercase tracking-widest text-deep-black/50 block">
+                OPERADORA CONECTADA:
+              </label>
+              <select
+                value={seller}
+                onChange={(e) => setSeller(e.target.value)}
+                className="text-xs font-black uppercase tracking-wider text-deep-black bg-transparent border-0 focus:outline-none cursor-pointer"
+              >
+                <option value="Juliana Silva (PDV Balcão Leominster)">Juliana Silva (PDV Balcão Leominster)</option>
+                <option value="Ana Carina (Proprietária / Showroom)">Ana Carina (Proprietária / Showroom)</option>
+                <option value="Camila (Vendedora Showroom)">Camila (Vendedora Showroom)</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Modal de Saída / Baixa de Estoque sem Custo */}
+      <StockWriteOffModal
+        isOpen={showWriteOffModal}
+        onClose={() => setShowWriteOffModal(false)}
+        onSuccess={() => {
+          if (refreshProducts) refreshProducts();
+        }}
+        catalogProducts={products}
+      />
 
       {/* MODAL DE SUCESSO DA VENDA */}
       {completedSale && (

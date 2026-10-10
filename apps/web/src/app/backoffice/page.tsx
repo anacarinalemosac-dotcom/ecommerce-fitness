@@ -55,10 +55,12 @@ import {
   Laptop,
   Radio,
   Download,
+  PackageMinus,
 } from 'lucide-react';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
 import { CsvProductImportModal, downloadCsvTemplate } from '../../components/CsvProductImportModal';
+import { StockWriteOffModal } from '../../components/StockWriteOffModal';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 
 interface ProductProfit {
@@ -203,6 +205,7 @@ export default function BackofficeDashboard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState(false);
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
+  const [showWriteOffModal, setShowWriteOffModal] = useState(false);
 
   // Relatório de Vendas e Lucro Real
   const [salesData, setSalesData] = useState<any | null>(null);
@@ -1112,6 +1115,17 @@ export default function BackofficeDashboard() {
                 <span>Importar Planilha CSV</span>
               </button>
 
+              {/* Botão Saída / Baixa de Estoque sem Custo (Uso Próprio e Vendedoras) */}
+              <button
+                type="button"
+                onClick={() => setShowWriteOffModal(true)}
+                className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border-2 border-deep-black"
+                title="Dar saída no estoque para uso próprio da dona, mostruário de vendedoras sem custo ou brindes"
+              >
+                <PackageMinus className="w-4 h-4 text-white" />
+                <span>- RETIRADA / USO PRÓPRIO & MOSTRUÁRIO</span>
+              </button>
+
               <button
                 type="button"
                 onClick={fetchSupabaseProducts}
@@ -1144,6 +1158,19 @@ export default function BackofficeDashboard() {
               setTimeout(() => setSaveSuccessMessage(false), 5000);
               fetchSupabaseProducts();
             }}
+          />
+
+          {/* Modal de Saída / Baixa de Estoque sem Custo (Uso Próprio & Vendedoras) */}
+          <StockWriteOffModal
+            isOpen={showWriteOffModal}
+            onClose={() => setShowWriteOffModal(false)}
+            onSuccess={() => {
+              setSaveSuccessMessage(true);
+              setTimeout(() => setSaveSuccessMessage(false), 5000);
+              fetchSupabaseProducts();
+              fetchSalesData();
+            }}
+            catalogProducts={supabaseProducts.length > 0 ? supabaseProducts : products}
           />
 
           {/* FORMULÁRIO DE CADASTRO E EDIÇÃO COM GRADE DE VARIAÇÕES (MATRIZ COR X TAMANHO) */}
@@ -1707,6 +1734,7 @@ export default function BackofficeDashboard() {
               <tbody className="divide-y divide-deep-black/10">
                 {filteredSalesList.map((sale: any) => {
                   const isOnline = sale.channel === 'ONLINE';
+                  const isWriteOff = sale.order_id?.startsWith('OUT-') || sale.channel === 'WRITE_OFF' || (Number(sale.subtotal_products) === 0 && Number(sale.cost_of_goods) > 0);
                   return (
                     <tr key={sale.id || sale.order_id} className="hover:bg-deep-black/5">
                       {/* Pedido & Data */}
@@ -1725,11 +1753,13 @@ export default function BackofficeDashboard() {
                       {/* Canal & Operadora */}
                       <td className="p-3">
                         <span className={`inline-block px-1.5 py-0.5 text-[8px] font-black border uppercase ${
-                          isOnline
+                          isWriteOff
+                            ? 'bg-purple-900 text-gold border-gold'
+                            : isOnline
                             ? 'bg-deep-black text-white border-deep-black'
                             : 'bg-gold/20 text-deep-black border-gold/40'
                         }`}>
-                          {isOnline ? 'LOJA ONLINE' : 'PDV BALCÃO'}
+                          {isWriteOff ? 'RETIRADA SEM CUSTO' : isOnline ? 'LOJA ONLINE' : 'PDV BALCÃO'}
                         </span>
                         <span className="text-[9px] text-deep-black/60 block font-bold truncate max-w-[120px] mt-0.5" title={sale.seller_name}>
                           {sale.seller_name}
@@ -1811,10 +1841,14 @@ export default function BackofficeDashboard() {
                       </td>
 
                       {/* Lucro Líquido Real */}
-                      <td className="p-3 text-right font-mono font-black text-gold bg-deep-black/5">
-                        ${Number(sale.net_profit).toFixed(2)}
+                      <td className={`p-3 text-right font-mono font-black bg-deep-black/5 ${
+                        Number(sale.net_profit) < 0 ? 'text-red-600' : 'text-gold'
+                      }`}>
+                        {Number(sale.net_profit) < 0
+                          ? `-$${Math.abs(Number(sale.net_profit)).toFixed(2)}`
+                          : `$${Number(sale.net_profit).toFixed(2)}`}
                         <span className="text-[8px] text-deep-black/50 block font-normal">
-                          {sale.profit_margin_pct}%
+                          {isWriteOff ? 'CUSTO ABSORVIDO' : `${sale.profit_margin_pct}%`}
                         </span>
                       </td>
 
