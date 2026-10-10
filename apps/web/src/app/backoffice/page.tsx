@@ -54,9 +54,11 @@ import {
   Smartphone,
   Laptop,
   Radio,
+  Download,
 } from 'lucide-react';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
+import { CsvProductImportModal, downloadCsvTemplate } from '../../components/CsvProductImportModal';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 
 interface ProductProfit {
@@ -200,6 +202,7 @@ export default function BackofficeDashboard() {
   const [loadingSupabase, setLoadingSupabase] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState(false);
+  const [showCsvImportModal, setShowCsvImportModal] = useState(false);
 
   // Relatório de Vendas e Lucro Real
   const [salesData, setSalesData] = useState<any | null>(null);
@@ -1086,7 +1089,29 @@ export default function BackofficeDashboard() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              {/* Botão Baixar Modelo CSV */}
+              <button
+                type="button"
+                onClick={downloadCsvTemplate}
+                className="px-3.5 py-3 border-2 border-deep-black bg-white hover:bg-gold hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm"
+                title="Baixar planilha modelo CSV para importação em massa"
+              >
+                <Download className="w-3.5 h-3.5 text-gold" />
+                <span>Baixar Modelo CSV</span>
+              </button>
+
+              {/* Botão Importar Planilha CSV */}
+              <button
+                type="button"
+                onClick={() => setShowCsvImportModal(true)}
+                className="px-4 py-3 bg-gold hover:bg-deep-black hover:text-white text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border-2 border-deep-black"
+                title="Importar produtos em massa a partir de um arquivo CSV"
+              >
+                <Upload className="w-4 h-4 text-deep-black" />
+                <span>Importar Planilha CSV</span>
+              </button>
+
               <button
                 type="button"
                 onClick={fetchSupabaseProducts}
@@ -1109,6 +1134,17 @@ export default function BackofficeDashboard() {
               </button>
             </div>
           </div>
+
+          {/* Modal de Importação em Massa via CSV */}
+          <CsvProductImportModal
+            isOpen={showCsvImportModal}
+            onClose={() => setShowCsvImportModal(false)}
+            onSuccess={(summary) => {
+              setSaveSuccessMessage(true);
+              setTimeout(() => setSaveSuccessMessage(false), 5000);
+              fetchSupabaseProducts();
+            }}
+          />
 
           {/* FORMULÁRIO DE CADASTRO E EDIÇÃO COM GRADE DE VARIAÇÕES (MATRIZ COR X TAMANHO) */}
           {showAddForm && (
