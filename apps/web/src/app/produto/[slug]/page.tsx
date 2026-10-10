@@ -86,8 +86,8 @@ const CATALOG_ITEMS: Record<string, any> = {
   },
   'blusa-bailarina': {
     title: 'BEST SELLER BAILARINA TOP',
-    categoryPt: 'TOPS & BLUSAS • ALTA SUSTENTAÇÃO',
-    categoryEn: 'TOPS & BRAS • MAXIMUM SUPPORT',
+    categoryPt: 'TOPS • ALTA SUSTENTAÇÃO',
+    categoryEn: 'TOPS • MAXIMUM SUPPORT',
     price: 34.9,
     descriptionPt:
       'Top Bailarina Best Seller com decote delicado nas costas e sustentação perfeita para musculação, corrida e pilates. Confeccionado com bojo removível e tecnologia Dry-Fit respirável.',

@@ -84,8 +84,8 @@ const FEATURED_PRODUCTS: ProductItem[] = [
     id: 'p2',
     title: 'BAILARINA TOP',
     slug: 'blusa-bailarina',
-    categoryPt: 'TOPS & BLUSAS',
-    categoryEn: 'TOPS & BRAS',
+    categoryPt: 'TOPS',
+    categoryEn: 'TOPS',
     categoryKey: 'tops',
     fitPt: 'MÉDIO IMPACTO • BOJO REMOVÍVEL',
     fitEn: 'MEDIUM IMPACT • REMOVABLE CUPS',
@@ -209,8 +209,8 @@ const FEATURED_PRODUCTS: ProductItem[] = [
     id: 'p7',
     title: 'MESH TANK',
     slug: 'mesh-tank',
-    categoryPt: 'TOPS & BLUSAS',
-    categoryEn: 'TOPS & BRAS',
+    categoryPt: 'TOPS',
+    categoryEn: 'TOPS',
     categoryKey: 'tops',
     fitPt: 'RESPIRABILIDADE DRY-FIT • TECIDO LEVE',
     fitEn: 'DRY-FIT BREATHABILITY • ULTRA LIGHT',
@@ -260,7 +260,7 @@ const CATEGORIES = [
   { key: 'sets', namePt: 'CONJUNTOS', nameEn: 'SETS', descPt: 'HARMONIA & LUXO', descEn: 'HARMONY & SCULPT', image: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=700&q=80' },
   { key: 'rompers', namePt: 'MACAQUINHOS', nameEn: 'ROMPERS', descPt: 'ALTA PERFORMANCE', descEn: 'HIGH PERFORMANCE', image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=700&q=80' },
   { key: 'jumpsuits', namePt: 'MACACÕES', nameEn: 'JUMPSUITS', descPt: 'SILHUETA ESCULPIDA', descEn: 'SCULPTED SILHOUETTE', image: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=700&q=80' },
-  { key: 'tops', namePt: 'TOPS & BLUSAS', nameEn: 'TOPS & BRAS', descPt: 'SUSTENTAÇÃO TOTAL', descEn: 'MAXIMUM SUPPORT', image: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=700&q=80' },
+  { key: 'tops', namePt: 'TOPS', nameEn: 'TOPS', descPt: 'SUSTENTAÇÃO TOTAL', descEn: 'MAXIMUM SUPPORT', image: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=700&q=80' },
   { key: 'preorder', namePt: 'PRÉ-VENDA', nameEn: 'PRE-ORDERS', descPt: 'SOB MEDIDA ATELIER', descEn: 'MADE-TO-ORDER ATELIER', image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=700&q=80' },
 ];
 
@@ -328,7 +328,7 @@ export default function HomePage() {
     { key: 'sets', namePt: 'CONJUNTOS', nameEn: 'SETS', descPt: 'HARMONIA & LUXO', descEn: 'HARMONY & SCULPT', image: siteImages?.categoryImages?.sets || 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=700&q=80' },
     { key: 'rompers', namePt: 'MACAQUINHOS', nameEn: 'ROMPERS', descPt: 'ALTA PERFORMANCE', descEn: 'HIGH PERFORMANCE', image: siteImages?.categoryImages?.rompers || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=700&q=80' },
     { key: 'jumpsuits', namePt: 'MACACÕES', nameEn: 'JUMPSUITS', descPt: 'SILHUETA ESCULPIDA', descEn: 'SCULPTED SILHOUETTE', image: siteImages?.categoryImages?.jumpsuits || 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=700&q=80' },
-    { key: 'tops', namePt: 'TOPS & BLUSAS', nameEn: 'TOPS & BRAS', descPt: 'SUSTENTAÇÃO TOTAL', descEn: 'MAXIMUM SUPPORT', image: siteImages?.categoryImages?.tops || 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=700&q=80' },
+    { key: 'tops', namePt: 'TOPS', nameEn: 'TOPS', descPt: 'SUSTENTAÇÃO TOTAL', descEn: 'MAXIMUM SUPPORT', image: siteImages?.categoryImages?.tops || 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=700&q=80' },
     { key: 'preorder', namePt: 'PRÉ-VENDA', nameEn: 'PRE-ORDERS', descPt: 'SOB MEDIDA ATELIER', descEn: 'MADE-TO-ORDER ATELIER', image: siteImages?.categoryImages?.preorder || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=700&q=80' },
   ];
 
@@ -506,7 +506,7 @@ export default function HomePage() {
               { id: 'sets', labelPt: 'CONJUNTOS', labelEn: 'SETS' },
               { id: 'rompers', labelPt: 'MACAQUINHOS', labelEn: 'ROMPERS' },
               { id: 'jumpsuits', labelPt: 'MACACÕES', labelEn: 'JUMPSUITS' },
-              { id: 'tops', labelPt: 'TOPS & BLUSAS', labelEn: 'TOPS & BRAS' },
+              { id: 'tops', labelPt: 'TOPS', labelEn: 'TOPS' },
               { id: 'preorder', labelPt: 'PRÉ-VENDA', labelEn: 'PRE-ORDERS' },
             ].map((filter) => {
               const isActive = activeCategoryFilter === filter.id;

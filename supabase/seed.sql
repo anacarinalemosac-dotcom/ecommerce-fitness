@@ -1,7 +1,7 @@
 -- 1. Categorias Fitness
 INSERT INTO categories (id, name, slug) VALUES
   ('c1000000-0000-0000-0000-000000000001', 'Leggings', 'leggings'),
-  ('c1000000-0000-0000-0000-000000000002', 'Tops & Sutiãs', 'tops-sutias'),
+  ('c1000000-0000-0000-0000-000000000002', 'Tops', 'tops'),
   ('c1000000-0000-0000-0000-000000000003', 'Shorts & Bermudas', 'shorts-bermudas'),
   ('c1000000-0000-0000-0000-000000000004', 'Macacões', 'macacoes')
 ON CONFLICT (slug) DO NOTHING;

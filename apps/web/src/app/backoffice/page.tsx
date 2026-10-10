@@ -124,7 +124,7 @@ const INITIAL_CATALOG: CatalogProduct[] = [
     id: 'p2',
     title: 'BAILARINA TOP',
     slug: 'blusa-bailarina',
-    category: 'TOPS & BLUSAS',
+    category: 'TOPS',
     price: 34.9,
     costPrice: 12.0,
     badge: 'BEST SELLER',

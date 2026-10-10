@@ -545,7 +545,7 @@ export default function AdminPortalPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-deep-black">TOPS & BLUSAS (TOPS & BRAS)</label>
+                  <label className="text-[10px] font-black uppercase text-deep-black">TOPS</label>
                   <input
                     type="url"
                     value={tempImages.categoryImages.tops}

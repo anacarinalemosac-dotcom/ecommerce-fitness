@@ -558,7 +558,7 @@ export function ProductVariantMatrixForm({
               {categoriesList.length === 0 && (
                 <>
                   <option value="">LEGGINGS</option>
-                  <option value="">TOPS & SUTIÃS</option>
+                  <option value="">TOPS</option>
                   <option value="">CONJUNTOS</option>
                   <option value="">MACAQUINHOS</option>
                   <option value="">MACACÕES</option>
