@@ -21,9 +21,28 @@
       "device": "Windows PC",
       "lastPing": 1791753865513,
       "firstSeen": 1791753865513
+    },
+    "vis-mv4gy3zt-329doj": {
+      "id": "vis-mv4gy3zt-329doj",
+      "city": "Framingham",
+      "region": "MA",
+      "country": "US",
+      "page": "/produto/top-poliamida-manga-longa-bailarina",
+      "pageTitle": "ANA FITNESS WEAR | ✨Wear Your Strength✨ | Official US Store",
+      "device": "Windows PC",
+      "lastPing": 1791762490200,
+      "firstSeen": 1791762192819
     }
   },
   "events": [
+    {
+      "id": "evt-1791762192819-kz0k",
+      "type": "NEW_VISITOR",
+      "title": "Cliente Online no Site!",
+      "description": "Novo visitante de Framingham, MA vendo ANA FITNESS WEAR | ✨Wear Your Strength✨ | Official US Store",
+      "city": "Framingham, MA",
+      "timestamp": 1791762192819
+    },
     {
       "id": "evt-1791753865513-hu1g",
       "type": "NEW_VISITOR",

@@ -190,11 +190,18 @@ export function ProductVariantMatrixForm({
             if (parsedMeta.ribbon) setRibbon(parsedMeta.ribbon);
             if (parsedMeta.brand) setBrand(parsedMeta.brand);
             if (parsedMeta.general_sku) setGeneralSku(parsedMeta.general_sku);
-            if (parsedMeta.compare_price) {
+            if (parsedMeta.compare_price && parsedMeta.promotional_price) {
+              const higher = Math.max(Number(parsedMeta.compare_price), Number(parsedMeta.promotional_price));
+              const lower = Math.min(Number(parsedMeta.compare_price), Number(parsedMeta.promotional_price));
+              setComparePrice(String(higher));
+              setDefaultPrice(String(lower));
+              setIsOnSale(true);
+            } else if (parsedMeta.compare_price) {
               setComparePrice(String(parsedMeta.compare_price));
               setIsOnSale(true);
             } else if (parsedMeta.promotional_price) {
-              setComparePrice(String(parsedMeta.promotional_price));
+              setComparePrice(String(initialProduct.price || 49.90));
+              setDefaultPrice(String(parsedMeta.promotional_price));
               setIsOnSale(true);
             }
             setVisibleOnline(parsedMeta.visible_online === true || initialProduct.visible_online === true);
@@ -267,7 +274,11 @@ export function ProductVariantMatrixForm({
 
         // Preço padrão das variantes
         if (loadedVariants[0]) {
-          setDefaultPrice(String(loadedVariants[0].price));
+          if (parsedMeta.promotional_price) {
+            setDefaultPrice(String(parsedMeta.promotional_price));
+          } else {
+            setDefaultPrice(String(loadedVariants[0].price));
+          }
           setDefaultCostPrice(String(loadedVariants[0].cost_price));
         }
 
@@ -697,6 +708,24 @@ export function ProductVariantMatrixForm({
     try {
       const validMedia = mediaList.filter((m) => m.url && !m.url.startsWith('data:') && !m.isUploading);
       const primaryCoverImg = validMedia[0]?.url || enrichedVariants[0]?.images?.[0] || enrichedVariants[0]?.image || '';
+      const numCompare = isOnSale && comparePrice ? parseFloat(comparePrice) : null;
+      const numPrice = parseFloat(defaultPrice) || 34.90;
+
+      let finalSellingPrice = numPrice;
+      let finalComparePrice = numCompare;
+
+      if (isOnSale && numCompare) {
+        const higher = Math.max(numPrice, numCompare);
+        const lower = Math.min(numPrice, numCompare);
+        finalSellingPrice = lower;
+        finalComparePrice = higher;
+      }
+
+      const variantsWithPromoPrice = enrichedVariants.map((vr) => ({
+        ...vr,
+        price: finalSellingPrice,
+      }));
+
       const payload = {
         id: initialProduct?.id,
         title,
@@ -708,14 +737,14 @@ export function ProductVariantMatrixForm({
         description,
         composition,
         sizeGuide,
-        variants: enrichedVariants,
+        variants: variantsWithPromoPrice,
         visible_online: visibleOnline,
         visible_pos: visiblePos,
         ribbon: ribbon.trim(),
         brand: brand.trim() || 'ANA Fitness Wear',
         sku: generalSku.trim() || enrichedVariants[0]?.sku || '',
-        compare_price: isOnSale && comparePrice ? parseFloat(comparePrice) : null,
-        promotional_price: isOnSale && comparePrice ? parseFloat(defaultPrice) : null,
+        compare_price: finalComparePrice,
+        promotional_price: isOnSale ? finalSellingPrice : null,
         primary_image: primaryCoverImg,
       };
 
@@ -1184,7 +1213,7 @@ export function ProductVariantMatrixForm({
               {/* Preço de Venda Padrão */}
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
-                  Preço de Venda ($ USD) *
+                  {isOnSale ? 'Preço de Oferta / Promocional ($ USD) *' : 'Preço de Venda ($ USD) *'}
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-2.5 text-xs font-black text-deep-black">$</span>
@@ -1192,11 +1221,17 @@ export function ProductVariantMatrixForm({
                     type="number"
                     step="0.01"
                     required
+                    placeholder="Ex: 34.90"
                     value={defaultPrice}
                     onChange={(e) => setDefaultPrice(e.target.value)}
                     className="w-full p-2.5 pl-7 border-2 border-deep-black font-mono font-bold text-xs focus:outline-none focus:border-gold"
                   />
                 </div>
+                {isOnSale && (
+                  <span className="text-[9px] text-green-700 font-bold block">
+                    ✓ Valor que o cliente pagará (destacado na vitrine)
+                  </span>
+                )}
               </div>
 
               {/* Preço de Custo */}
@@ -1229,7 +1264,7 @@ export function ProductVariantMatrixForm({
                     className="w-4 h-4 accent-gold"
                   />
                   <span className="text-xs font-black uppercase tracking-wider text-deep-black">
-                    Em promoção (Exibir preço de comparação "De / Por")
+                    Em promoção (Exibir preço com risquinho por cima "De / Por")
                   </span>
                 </label>
                 {isOnSale && discountPct > 0 && (
@@ -1243,33 +1278,38 @@ export function ProductVariantMatrixForm({
                 <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
-                      Preço de Comparação ($ USD - Valor Original sem Desconto)
+                      Preço Regular ($ USD - Valor com risco por cima)
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-2.5 text-xs font-black text-deep-black">$</span>
                       <input
                         type="number"
                         step="0.01"
-                        placeholder="Ex: 59.90"
+                        placeholder="Ex: 49.90"
                         value={comparePrice}
                         onChange={(e) => setComparePrice(e.target.value)}
                         className="w-full p-2.5 pl-7 border-2 border-deep-black font-mono font-bold text-xs focus:outline-none focus:border-gold bg-white"
                       />
                     </div>
+                    <span className="text-[9px] text-deep-black/60 font-bold block">
+                      Aparecerá riscado ao lado do preço de oferta (ex: ~$49.90~)
+                    </span>
                   </div>
 
                   <div className="p-3 bg-white border border-deep-black/20 text-xs font-bold text-deep-black">
-                    <span className="text-[9px] text-deep-black/50 uppercase block">Como o cliente verá no site:</span>
-                    <div className="flex items-baseline gap-2 mt-0.5">
-                      <span className="text-sm font-black font-mono">${priceNum.toFixed(2)}</span>
-                      {compareNum > priceNum && (
-                        <span className="text-xs text-deep-black/40 line-through font-mono">
-                          ${compareNum.toFixed(2)}
+                    <span className="text-[9px] text-deep-black/50 uppercase block font-black">Como o cliente verá na vitrine:</span>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="text-base font-black font-mono text-deep-black">
+                        ${(priceNum > 0 ? (compareNum > 0 ? Math.min(priceNum, compareNum) : priceNum) : 34.90).toFixed(2)}
+                      </span>
+                      {compareNum > 0 && (
+                        <span className="text-xs text-deep-black/40 line-through font-mono font-bold">
+                          ${(Math.max(priceNum, compareNum)).toFixed(2)}
                         </span>
                       )}
                       {discountPct > 0 && (
                         <span className="text-[9px] font-black text-red-600 uppercase">
-                          ({discountPct}% de desconto)
+                          ({discountPct}% OFF)
                         </span>
                       )}
                     </div>

@@ -503,6 +503,29 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
           const isOnline = p.visible_online === true || meta.visible_online === true;
           const isPos = p.visible_pos !== false && meta.visible_pos !== false;
 
+          let sellingPrice = Number(firstVar.price) || 44.9;
+          let regularPrice: number | undefined = undefined;
+
+          const pCompare = meta.compare_price ? Number(meta.compare_price) : undefined;
+          const pPromo = meta.promotional_price ? Number(meta.promotional_price) : undefined;
+
+          if (pCompare && pPromo) {
+            const higher = Math.max(pCompare, pPromo);
+            const lower = Math.min(pCompare, pPromo);
+            if (higher > lower) {
+              sellingPrice = lower;
+              regularPrice = higher;
+            }
+          } else if (pCompare && pCompare > sellingPrice) {
+            regularPrice = pCompare;
+          } else if (pPromo && pPromo < sellingPrice) {
+            regularPrice = sellingPrice;
+            sellingPrice = pPromo;
+          } else if (pCompare && pCompare < sellingPrice) {
+            regularPrice = sellingPrice;
+            sellingPrice = pCompare;
+          }
+
           return {
             id: p.id,
             title: p.title,
@@ -512,8 +535,8 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             categoryKey,
             fitPt: meta.bio || 'ALTA SUSTENTAÇÃO • SEAMLESS SCULPT',
             fitEn: meta.bio || 'HIGH SUPPORT • SEAMLESS SCULPT',
-            price: Number(firstVar.price) || 44.9,
-            originalPrice: meta.compare_price ? Number(meta.compare_price) : (meta.promotional_price && Number(meta.promotional_price) > Number(firstVar.price) ? Number(meta.promotional_price) : undefined),
+            price: sellingPrice,
+            originalPrice: regularPrice,
             costPrice: Number(firstVar.cost_price) || 15.0,
             badgePt: (meta.ribbon || (totalStock > 0 ? 'LANÇAMENTO' : 'PRÉ-VENDA')) as any,
             badgeEn: (meta.ribbon || (totalStock > 0 ? 'NEW ARRIVAL' : 'PRE-ORDER')) as any,
