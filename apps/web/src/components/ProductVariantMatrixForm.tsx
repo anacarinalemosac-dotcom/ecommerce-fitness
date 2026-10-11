@@ -54,6 +54,7 @@ interface MediaItem {
   type: 'image' | 'video';
   associatedColor: string; // 'all' ou nome da cor
   fileName?: string;
+  isUploading?: boolean;
 }
 
 interface ProductVariantMatrixFormProps {
@@ -111,6 +112,7 @@ export function ProductVariantMatrixForm({
   // 4. Mídias
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [directImageUrlInput, setDirectImageUrlInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Estados de Supabase & Carregamento
@@ -201,6 +203,53 @@ export function ProductVariantMatrixForm({
 
         const uniqueSizes = Array.from(new Set(loadedVariants.map((v) => v.size)));
         setSelectedSizes(uniqueSizes);
+
+        // Extrai todas as mídias já existentes nas variantes e no produto
+        const existingMedia: MediaItem[] = [];
+        const seenUrls = new Set<string>();
+
+        loadedVariants.forEach((v) => {
+          if (Array.isArray(v.images)) {
+            v.images.forEach((imgUrl: string) => {
+              if (imgUrl && !seenUrls.has(imgUrl)) {
+                seenUrls.add(imgUrl);
+                existingMedia.push({
+                  id: `m-init-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  url: imgUrl,
+                  type: 'image',
+                  associatedColor: v.color || 'all',
+                  fileName: 'Foto do Produto',
+                  isUploading: false,
+                });
+              }
+            });
+          }
+          if (v.video_url && !seenUrls.has(v.video_url)) {
+            seenUrls.add(v.video_url);
+            existingMedia.push({
+              id: `m-init-vid-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              url: v.video_url,
+              type: 'video',
+              associatedColor: v.color || 'all',
+              fileName: 'Vídeo da Peça',
+              isUploading: false,
+            });
+          }
+        });
+
+        if (initialProduct.primaryImage && !seenUrls.has(initialProduct.primaryImage)) {
+          seenUrls.add(initialProduct.primaryImage);
+          existingMedia.push({
+            id: `m-init-p-${Date.now()}`,
+            url: initialProduct.primaryImage,
+            type: 'image',
+            associatedColor: 'all',
+            fileName: 'Foto Principal',
+            isUploading: false,
+          });
+        }
+
+        setMediaList(existingMedia);
       }
     }
   }, [initialProduct]);
@@ -351,39 +400,128 @@ export function ProductVariantMatrixForm({
     }
   };
 
-  // Upload de Mídias (Fotos e Vídeos)
+  // Upload de Mídias (Fotos e Vídeos) com Prévia Instantânea (0ms)
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     setIsUploadingMedia(true);
 
     const files = Array.from(e.target.files);
+    // Limpa o seletor para permitir selecionar o mesmo arquivo novamente
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
     for (const file of files) {
+      const isVid = file.type.startsWith('video/');
+      const tempId = `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const defaultColor = colors[0]?.name || 'all';
+
+      // 1. Leitura imediata com FileReader para exibição instantânea no contador e na tela
+      const reader = new FileReader();
+      const readPromise = new Promise<string>((resolve) => {
+        reader.onload = (evt) => {
+          resolve((evt.target?.result as string) || '');
+        };
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      });
+
+      const previewDataUrl = await readPromise;
+
+      // Adiciona na hora em mediaList -> Contador `{mediaList.length} ARQUIVOS CARREGADOS` sobe imediatamente!
+      const initialMediaItem: MediaItem = {
+        id: tempId,
+        url: previewDataUrl || '',
+        type: isVid ? 'video' : 'image',
+        associatedColor: defaultColor,
+        fileName: file.name,
+        isUploading: true,
+      };
+
+      setMediaList((prev) => [...prev, initialMediaItem]);
+
+      // 2. Envio para a API de upload (Supabase Storage Cloud + disco local)
       try {
         const formData = new FormData();
         formData.append('file', file);
+
         const res = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
         });
+
         if (res.ok) {
           const data = await res.json();
-          if (data.url) {
-            const isVid = file.type.startsWith('video/');
-            const newMedia: MediaItem = {
-              id: `m-${Date.now()}-${Math.random()}`,
-              url: data.url,
-              type: isVid ? 'video' : 'image',
-              associatedColor: colors[0]?.name || 'all',
-              fileName: file.name,
-            };
-            setMediaList((prev) => [...prev, newMedia]);
-          }
+          const finalUrl = data.url || previewDataUrl;
+
+          // Atualiza o item de mídia com a URL oficial da nuvem
+          setMediaList((prev) =>
+            prev.map((m) =>
+              m.id === tempId ? { ...m, url: finalUrl, isUploading: false } : m
+            )
+          );
+
+          // Sincroniza imediatamente com as variantes para gravar as fotos
+          setVariants((prev) =>
+            prev.map((vr) => {
+              if (defaultColor === 'all' || vr.color === defaultColor) {
+                const currentImgs = Array.isArray(vr.images) ? vr.images : [];
+                return {
+                  ...vr,
+                  image: currentImgs[0] || finalUrl,
+                  images: Array.from(new Set([...currentImgs, finalUrl])),
+                };
+              }
+              return vr;
+            })
+          );
+        } else {
+          console.warn('Upload de arquivo retornou código não-ok, mantendo prévia local');
+          setMediaList((prev) =>
+            prev.map((m) => (m.id === tempId ? { ...m, isUploading: false } : m))
+          );
         }
       } catch (err) {
-        console.error('Erro ao enviar mídia:', err);
+        console.error('Erro na requisição de upload:', err);
+        setMediaList((prev) =>
+          prev.map((m) => (m.id === tempId ? { ...m, isUploading: false } : m))
+        );
       }
     }
     setIsUploadingMedia(false);
+  };
+
+  // Adição direta por URL externa (ex: Unsplash, CDN ou Google Drive)
+  const handleAddDirectUrl = () => {
+    const rawUrl = directImageUrlInput.trim();
+    if (!rawUrl) return;
+
+    const defaultColor = colors[0]?.name || 'all';
+    const isVid = rawUrl.endsWith('.mp4') || rawUrl.includes('video');
+    const newMedia: MediaItem = {
+      id: `m-url-${Date.now()}`,
+      url: rawUrl,
+      type: isVid ? 'video' : 'image',
+      associatedColor: defaultColor,
+      fileName: 'Foto via URL Externa',
+      isUploading: false,
+    };
+
+    setMediaList((prev) => [...prev, newMedia]);
+    setDirectImageUrlInput('');
+
+    // Sincroniza com as variantes
+    setVariants((prev) =>
+      prev.map((vr) => {
+        if (defaultColor === 'all' || vr.color === defaultColor) {
+          const currentImgs = Array.isArray(vr.images) ? vr.images : [];
+          return {
+            ...vr,
+            image: currentImgs[0] || rawUrl,
+            images: Array.from(new Set([...currentImgs, rawUrl])),
+          };
+        }
+        return vr;
+      })
+    );
   };
 
   // =========================================================================
@@ -403,6 +541,23 @@ export function ProductVariantMatrixForm({
     setIsSaving(true);
     setFeedback(null);
 
+    // Mapeia todas as mídias carregadas para as respectivas variantes da matriz
+    const enrichedVariants = variants.map((vr) => {
+      const matchingImages = mediaList
+        .filter((m) => m.associatedColor === 'all' || m.associatedColor === vr.color)
+        .map((m) => m.url)
+        .filter(Boolean);
+
+      const currentImgs = Array.isArray(vr.images) ? vr.images : [];
+      const mergedImages = Array.from(new Set([...currentImgs, ...matchingImages]));
+
+      return {
+        ...vr,
+        images: mergedImages,
+        image: mergedImages[0] || vr.image || '',
+      };
+    });
+
     try {
       const payload = {
         id: initialProduct?.id,
@@ -415,7 +570,7 @@ export function ProductVariantMatrixForm({
         description,
         composition,
         sizeGuide,
-        variants,
+        variants: enrichedVariants,
       };
 
       const res = await fetch('/api/backoffice/products', {
@@ -1262,11 +1417,35 @@ export function ProductVariantMatrixForm({
           )}
         </div>
 
+        {/* Adição Direta via URL */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+          <input
+            type="url"
+            placeholder="Ou cole uma URL direta de foto (ex: https://.../foto.jpg ou link do seu catálogo)"
+            value={directImageUrlInput}
+            onChange={(e) => setDirectImageUrlInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddDirectUrl();
+              }
+            }}
+            className="flex-1 p-2.5 border-2 border-deep-black text-xs font-medium focus:border-gold focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={handleAddDirectUrl}
+            className="px-4 py-2.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition shrink-0"
+          >
+            + VINCULAR POR URL
+          </button>
+        </div>
+
         {/* Grade de Mídias Carregadas com Associação por Cor */}
         {mediaList.length > 0 && (
           <div className="space-y-3 pt-2">
             <span className="text-[10px] font-black uppercase tracking-wider text-deep-black block">
-              MÍDIAS VINCULADAS AO PRODUTO:
+              MÍDIAS VINCULADAS AO PRODUTO ({mediaList.length}):
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
               {mediaList.map((media, mIdx) => (
@@ -1283,9 +1462,26 @@ export function ProductVariantMatrixForm({
                     <span className="absolute top-1 left-1 bg-deep-black text-gold text-[7px] font-black px-1.5 py-0.5 uppercase">
                       {media.type}
                     </span>
+                    {media.isUploading && (
+                      <span className="absolute bottom-1 left-1 bg-gold text-deep-black text-[7px] font-black px-1 py-0.5 animate-pulse">
+                        ENVIANDO...
+                      </span>
+                    )}
                     <button
                       type="button"
-                      onClick={() => setMediaList(mediaList.filter((_, i) => i !== mIdx))}
+                      onClick={() => {
+                        const removed = mediaList[mIdx];
+                        setMediaList(mediaList.filter((_, i) => i !== mIdx));
+                        if (removed) {
+                          setVariants((prev) =>
+                            prev.map((vr) => ({
+                              ...vr,
+                              images: (vr.images || []).filter((u) => u !== removed.url),
+                              image: vr.image === removed.url ? (vr.images || []).find((u) => u !== removed.url) || '' : vr.image,
+                            }))
+                          );
+                        }
+                      }}
                       className="absolute top-1 right-1 p-1 bg-red-600 text-white opacity-0 group-hover:opacity-100 transition shadow-sm"
                       title="Excluir mídia"
                     >
@@ -1307,19 +1503,23 @@ export function ProductVariantMatrixForm({
                         setMediaList(updated);
 
                         // Atualiza automaticamente as variantes dessa cor na matriz
-                        if (val !== 'all') {
-                          setVariants((prev) =>
-                            prev.map((vr) =>
-                              vr.color === val
-                                ? {
-                                    ...vr,
-                                    image: media.url,
-                                    images: Array.from(new Set([...vr.images, media.url])),
-                                  }
-                                : vr
-                            )
-                          );
-                        }
+                        setVariants((prev) =>
+                          prev.map((vr) => {
+                            if (val === 'all' || vr.color === val) {
+                              const currentImgs = Array.isArray(vr.images) ? vr.images : [];
+                              return {
+                                ...vr,
+                                image: currentImgs[0] || media.url,
+                                images: Array.from(new Set([...currentImgs, media.url])),
+                              };
+                            } else {
+                              return {
+                                ...vr,
+                                images: (vr.images || []).filter((u) => u !== media.url),
+                              };
+                            }
+                          })
+                        );
                       }}
                       className="w-full p-1 border border-deep-black font-bold text-[9px] uppercase bg-white focus:outline-none focus:border-gold"
                     >
