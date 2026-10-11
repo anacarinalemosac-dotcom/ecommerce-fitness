@@ -161,7 +161,7 @@ export default function CheckoutPage() {
   });
 
   // Cupom de Vendedora (Comissão Oculta para o Cliente)
-  const [couponInput, setCouponInput] = useState('CAMILA10');
+  const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [discountPercent, setDiscountPercent] = useState(0); // Desconto dinâmico do cupom
   const [couponSellerInfo, setCouponSellerInfo] = useState<{
@@ -197,45 +197,36 @@ export default function CheckoutPage() {
       if (res.ok) {
         const data = await res.json();
         const seller = data.coupon;
-        setAppliedCoupon(seller.code);
-        setDiscountPercent(seller.customer_discount_pct || 0);
-        setCouponSellerInfo({
-          name: seller.seller_name,
-          discount_pct: seller.customer_discount_pct || 0,
-          commission_pct: seller.commission_pct || 10,
-        });
-        if (seller.customer_discount_pct > 0) {
-          setCouponFeedback(
-            lang === 'pt'
-              ? `✓ CUPOM ${seller.code} APLICADO • ${seller.customer_discount_pct}% DE DESCONTO`
-              : `✓ CODE ${seller.code} APPLIED • ${seller.customer_discount_pct}% OFF DISCOUNT`
-          );
-        } else {
-          setCouponFeedback(
-            lang === 'pt'
-              ? `✓ CUPOM ${seller.code} ATIVADO (Vendedora: ${seller.seller_name})`
-              : `✓ CODE ${seller.code} ACTIVATED (Seller: ${seller.seller_name})`
-          );
+        if (seller && seller.code) {
+          setAppliedCoupon(seller.code);
+          setDiscountPercent(seller.customer_discount_pct || 0);
+          setCouponSellerInfo({
+            name: seller.seller_name,
+            discount_pct: seller.customer_discount_pct || 0,
+            commission_pct: seller.commission_pct || 10,
+          });
+          if (seller.customer_discount_pct > 0) {
+            setCouponFeedback(
+              lang === 'pt'
+                ? `✓ CUPOM ${seller.code} APLICADO • ${seller.customer_discount_pct}% DE DESCONTO`
+                : `✓ CODE ${seller.code} APPLIED • ${seller.customer_discount_pct}% OFF DISCOUNT`
+            );
+          } else {
+            setCouponFeedback(
+              lang === 'pt'
+                ? `✓ CUPOM ${seller.code} ATIVADO (Vendedora: ${seller.seller_name})`
+                : `✓ CODE ${seller.code} ACTIVATED (Seller: ${seller.seller_name})`
+            );
+          }
+          return;
         }
-        return;
       }
     } catch (err) {
       console.warn('Erro ao consultar cupom:', err);
     }
 
-    // Cupons promocionais gerais
-    if (clean === 'CAMILA10' || clean === 'JULIANA10' || clean === 'ANA10' || clean === 'WELCOME10') {
-      setAppliedCoupon(clean);
-      setDiscountPercent(10);
-      setCouponSellerInfo(null);
-      setCouponFeedback(
-        lang === 'pt'
-          ? `✓ CUPOM ${clean} APLICADO • 10% DE DESCONTO`
-          : `✓ CODE ${clean} APPLIED • 10% OFF DISCOUNT`
-      );
-    } else {
-      alert(lang === 'pt' ? 'Cupom inválido ou expirado.' : 'Invalid or expired promo code.');
-    }
+    alert(lang === 'pt' ? 'Cupom inválido ou expirado.' : 'Invalid or expired promo code.');
+    setCouponFeedback('');
   };
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
@@ -303,7 +294,7 @@ export default function CheckoutPage() {
             },
             coupon_code: appliedCoupon,
             discount_amount: discountAmount,
-            seller_name: couponSellerInfo ? couponSellerInfo.name : (appliedCoupon === 'CAMILA10' ? 'Camila Santos' : 'Loja Oficial Online'),
+            seller_name: couponSellerInfo ? couponSellerInfo.name : 'Loja Oficial Online',
             items: [
               {
                 title: cartItem.title,
@@ -351,7 +342,7 @@ export default function CheckoutPage() {
             state: shippingForm.state || 'MA',
             zip: shippingForm.zip || '02215',
           },
-          seller_name: couponSellerInfo ? couponSellerInfo.name : (appliedCoupon === 'CAMILA10' ? 'Camila Santos' : 'Loja Oficial Online'),
+          seller_name: couponSellerInfo ? couponSellerInfo.name : 'Loja Oficial Online',
           coupon_code: appliedCoupon,
           payment_method: paymentMethod,
           subtotal_products: subtotal,
@@ -984,7 +975,7 @@ export default function CheckoutPage() {
                 type="text"
                 value={couponInput}
                 onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                placeholder="EX: CAMILA10"
+                placeholder={lang === 'pt' ? 'INSERIR CUPOM' : 'ENTER PROMO CODE'}
                 className="flex-1 px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
               />
               <button

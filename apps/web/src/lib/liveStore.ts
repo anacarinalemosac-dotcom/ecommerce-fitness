@@ -31,74 +31,9 @@ interface LiveStoreData {
 
 const LIVE_STORE_FILE = path.join(process.cwd(), 'live_store_db.json');
 
-// Cidades representativas para demonstração realista inicial caso ainda não haja tráfego
-const INITIAL_DEMO_VISITORS: Record<string, LiveVisitor> = {
-  'vis-demo-1': {
-    id: 'vis-demo-1',
-    city: 'Leominster',
-    region: 'MA',
-    country: 'US',
-    page: '/produto/samanta-romper',
-    pageTitle: 'SAMANTA ROMPER • Preto Ônix',
-    device: 'iPhone (iOS)',
-    lastPing: Date.now() - 15000,
-    firstSeen: Date.now() - 180000,
-  },
-  'vis-demo-2': {
-    id: 'vis-demo-2',
-    city: 'Boston',
-    region: 'MA',
-    country: 'US',
-    page: '/',
-    pageTitle: 'Página Inicial • Coleção Alto Luxo',
-    device: 'Desktop (Mac)',
-    lastPing: Date.now() - 35000,
-    firstSeen: Date.now() - 240000,
-  },
-  'vis-demo-3': {
-    id: 'vis-demo-3',
-    city: 'Worcester',
-    region: 'MA',
-    country: 'US',
-    page: '/checkout',
-    pageTitle: 'Sacola de Compras • Checkout',
-    device: 'Android',
-    lastPing: Date.now() - 5000,
-    firstSeen: Date.now() - 300000,
-  },
-  'vis-demo-4': {
-    id: 'vis-demo-4',
-    city: 'Miami',
-    region: 'FL',
-    country: 'US',
-    page: '/produto/conjunto-calca-kely',
-    pageTitle: 'KELY PANTS SET • Zero Transparência',
-    device: 'iPhone (iOS)',
-    lastPing: Date.now() - 45000,
-    firstSeen: Date.now() - 120000,
-  },
-};
-
-const INITIAL_DEMO_EVENTS: LiveEvent[] = [
-  {
-    id: 'evt-init-1',
-    type: 'NEW_ORDER',
-    title: 'Nova Compra Aprovada!',
-    description: 'Mariana Salles comprou $50.40 (Samanta Romper)',
-    city: 'Boston, MA',
-    amount: 50.40,
-    orderId: 'ANA-928104',
-    timestamp: Date.now() - 120000,
-  },
-  {
-    id: 'evt-init-2',
-    type: 'NEW_VISITOR',
-    title: 'Novo Cliente Conectado',
-    description: 'Visitante de Leominster, MA acessou a vitrine via iPhone',
-    city: 'Leominster, MA',
-    timestamp: Date.now() - 60000,
-  },
-];
+// Visitantes e eventos em tempo real iniciam vazios (apenas conexões e pedidos 100% reais)
+const INITIAL_DEMO_VISITORS: Record<string, LiveVisitor> = {};
+const INITIAL_DEMO_EVENTS: LiveEvent[] = [];
 
 function readStore(): LiveStoreData {
   try {
@@ -113,8 +48,8 @@ function readStore(): LiveStoreData {
     console.warn('Erro ao ler live_store_db.json:', e);
   }
   return {
-    visitors: INITIAL_DEMO_VISITORS,
-    events: INITIAL_DEMO_EVENTS,
+    visitors: {},
+    events: [],
   };
 }
 

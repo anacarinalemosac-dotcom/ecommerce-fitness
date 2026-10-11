@@ -11,7 +11,7 @@ export interface SellerRecord {
   email: string;
   phone: string;
   password: string; // Senha para login no portal da vendedora
-  coupon_code: string; // ex: CAMILA10
+  coupon_code: string;
   commission_pct: number; // ex: 10% comissão que a dona paga para a vendedora
   customer_discount_pct: number; // ex: 10% de desconto pro cliente (ou 0% se for sem desconto)
   channel: 'ALL' | 'ONLINE' | 'POS_COUNTER';
@@ -29,78 +29,15 @@ export interface SellerRecord {
   created_at: string;
 }
 
-const INITIAL_SELLERS: SellerRecord[] = [
-  {
-    id: 'seller-01',
-    name: 'Camila Santos',
-    email: 'camila@anafitnesswear.com',
-    phone: '+1 (508) 772-1100',
-    password: 'camila123',
-    coupon_code: 'CAMILA10',
-    commission_pct: 10.0,
-    customer_discount_pct: 10.0,
-    channel: 'ALL',
-    active: true,
-    approval_status: 'APPROVED',
-    payout_method: 'ZELLE',
-    payout_key: '+1 (508) 772-1100',
-    payout_beneficiary: 'Camila Santos',
-    total_sales_count: 14,
-    total_revenue_generated: 1420.50,
-    total_commission_earned: 142.05,
-    total_commission_paid: 0.00,
-    created_at: new Date(Date.now() - 3600000 * 24 * 30).toISOString(),
-  },
-  {
-    id: 'seller-02',
-    name: 'Juliana Silva',
-    email: 'juliana@anafitnesswear.com',
-    phone: '+1 (978) 400-3321',
-    password: 'juliana123',
-    coupon_code: 'JULIANA10',
-    commission_pct: 10.0,
-    customer_discount_pct: 0.0, // Cliente paga valor cheio, vendedora ganha 10%
-    channel: 'POS_COUNTER',
-    active: true,
-    approval_status: 'APPROVED',
-    payout_method: 'ZELLE',
-    payout_key: '+1 (978) 400-3321',
-    payout_beneficiary: 'Juliana Silva',
-    total_sales_count: 22,
-    total_revenue_generated: 2890.00,
-    total_commission_earned: 289.00,
-    total_commission_paid: 150.00,
-    created_at: new Date(Date.now() - 3600000 * 24 * 45).toISOString(),
-  },
-  {
-    id: 'seller-03',
-    name: 'Beatriz Lima (Embaixadora Boston)',
-    email: 'beatriz@bostonfit.com',
-    phone: '+1 (617) 502-9912',
-    password: 'beatriz123',
-    coupon_code: 'BEATRIZVIP',
-    commission_pct: 12.0,
-    customer_discount_pct: 5.0, // Cliente ganha 5%, influenciadora ganha 12%
-    channel: 'ONLINE',
-    active: true,
-    approval_status: 'APPROVED',
-    payout_method: 'VENMO',
-    payout_key: '@beatriz_fit',
-    payout_beneficiary: 'Beatriz Lima',
-    total_sales_count: 8,
-    total_revenue_generated: 840.00,
-    total_commission_earned: 100.80,
-    total_commission_paid: 0.00,
-    created_at: new Date(Date.now() - 3600000 * 24 * 15).toISOString(),
-  },
-];
+// Vendedoras cadastradas: começa vazio para conter apenas vendedoras reais cadastradas
+const INITIAL_SELLERS: SellerRecord[] = [];
 
 function readSellers(): SellerRecord[] {
   try {
     if (fs.existsSync(SELLERS_FILE)) {
       const raw = fs.readFileSync(SELLERS_FILE, 'utf8');
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed.map((s: any) => ({
           ...s,
           approval_status: s.approval_status || (s.active ? 'APPROVED' : 'PENDING'),
@@ -110,7 +47,7 @@ function readSellers(): SellerRecord[] {
   } catch (e) {
     console.warn('Erro ao ler sellers_db.json:', e);
   }
-  return INITIAL_SELLERS;
+  return [];
 }
 
 function writeSellers(sellers: SellerRecord[]) {

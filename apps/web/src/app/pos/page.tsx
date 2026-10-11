@@ -51,8 +51,8 @@ export default function PosTerminalPage() {
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedSize, setSelectedSize] = useState<string>('');
   
-  const [seller, setSeller] = useState('Juliana Silva (PDV Balcão Leominster)');
-  const [customerName, setCustomerName] = useState('Cliente Balcão Leominster');
+  const [seller, setSeller] = useState('Balcão Loja');
+  const [customerName, setCustomerName] = useState('Cliente Balcão');
   const [customerPhone, setCustomerPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'ZELLE' | 'VENMO' | 'CARD' | 'CASH'>('ZELLE');
   const [discountAmount, setDiscountAmount] = useState<number>(0);
@@ -62,19 +62,7 @@ export default function PosTerminalPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [showWriteOffModal, setShowWriteOffModal] = useState(false);
 
-  const [cart, setCart] = useState<CartItem[]>([
-    {
-      sku: 'SAM-BLK-S',
-      name: 'SAMANTA ROMPER',
-      size: 'S',
-      color: 'Preto Ônix',
-      price: 44.9,
-      costPrice: 16.0,
-      quantity: 1,
-      stock: 8,
-      image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80',
-    },
-  ]);
+  const [cart, setCart] = useState<CartItem[]>([]);
 
   // Filtragem de catálogo para seleção rápida no PDV
   const filteredProducts = products.filter((p) => {
@@ -771,7 +759,7 @@ export default function PosTerminalPage() {
             <div className="space-y-2">
               <input
                 type="text"
-                placeholder="NOME DA CLIENTE (EX: JULIANA BARBOSA)"
+                placeholder="NOME DA CLIENTE"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 className="w-full px-3 py-2 text-xs uppercase tracking-wider font-bold bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold"

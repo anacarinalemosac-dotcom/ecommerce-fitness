@@ -11,11 +11,8 @@ INSERT INTO suppliers (id, company_name, contact_name, phone, email) VALUES
   ('a1000000-0000-0000-0000-000000000001', 'Confecções FitPro Brasil', 'Mariana Ramos', '(11) 98765-4321', 'compras@fitprobrasil.com.br')
 ON CONFLICT DO NOTHING;
 
--- 3. Vendedoras & Cupons de Comissão
-INSERT INTO sellers (id, name, coupon_code, commission_rate, active) VALUES
-  ('b1000000-0000-0000-0000-000000000001', 'Camila Personal', 'CAMILA10', 8.00, true),
-  ('b1000000-0000-0000-0000-000000000002', 'Juliana Silva (PDV Balcão)', 'JULIANA_PDV', 5.00, true)
-ON CONFLICT (coupon_code) DO NOTHING;
+-- 3. Vendedoras & Cupons de Comissão (inicia vazio; cadastrados sob demanda pela dona)
+
 
 -- 4. Catálogo de Produtos
 INSERT INTO products (id, title, slug, description, category_id, supplier_id) VALUES

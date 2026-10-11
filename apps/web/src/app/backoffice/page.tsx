@@ -195,7 +195,7 @@ export default function BackofficeDashboard() {
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState<'catalog' | 'sales' | 'margins' | 'live' | 'backorders' | 'commissions' | 'theme'>('sales');
-  const [onlineCount, setOnlineCount] = useState(8);
+  const [onlineCount, setOnlineCount] = useState(0);
 
   // Catálogo de produtos
   const [products, setProducts] = useState<CatalogProduct[]>(INITIAL_CATALOG);
@@ -589,65 +589,7 @@ export default function BackofficeDashboard() {
     }
   };
 
-  // Simulações de teste para Ana Carina testar os sons e alertas imediatamente
-  const simulateLiveVisitor = async () => {
-    const testCities = ['Boston', 'Leominster', 'Worcester', 'Framingham', 'Miami'];
-    const randomCity = testCities[Math.floor(Math.random() * testCities.length)];
-    try {
-      await fetch('/api/live/heartbeat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: `vis-test-${Date.now()}`,
-          page: '/produto/samanta-romper',
-          pageTitle: 'SAMANTA ROMPER • Macaquinho',
-          device: 'iPhone (Apple)',
-          userCity: randomCity,
-          userRegion: 'MA',
-        }),
-      });
-      fetchLiveFeed();
-    } catch (e) {
-      console.warn('Erro ao simular visitante:', e);
-    }
-  };
 
-  const simulateLiveOrder = async () => {
-    const testId = `ANA-${Math.floor(100000 + Math.random() * 900000)}`;
-    try {
-      await fetch('/api/backoffice/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          order_id: testId,
-          channel: 'ONLINE',
-          customer_name: 'Cliente VIP Teste',
-          customer_email: 'vip@teste.com',
-          customer_phone: '+1 978 313-9452',
-          seller_name: 'Camila Santos',
-          coupon_code: 'CAMILA10',
-          payment_method: 'CARD',
-          subtotal_products: 44.90,
-          discount_amount: 4.49,
-          shipping_fee: 9.99,
-          items: [
-            {
-              title: 'SAMANTA ROMPER',
-              size: 'M',
-              color: 'Preto Ônix',
-              sku: 'SAM-BLK-M',
-              quantity: 1,
-              unit_price: 44.90,
-              cost_price: 16.0,
-            },
-          ],
-        }),
-      });
-      fetchLiveFeed();
-    } catch (e) {
-      console.warn('Erro ao simular venda:', e);
-    }
-  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -2111,23 +2053,7 @@ export default function BackofficeDashboard() {
                 <span>TESTAR SOM VENDA 💰</span>
               </button>
 
-              <button
-                type="button"
-                onClick={simulateLiveVisitor}
-                className="px-3 py-2 bg-white text-deep-black hover:bg-gold text-[10px] font-black uppercase tracking-wider transition border border-deep-black flex items-center gap-1.5"
-                title="Simular a entrada de um cliente online para testar a notificação"
-              >
-                <span>+ SIMULAR VISITANTE</span>
-              </button>
 
-              <button
-                type="button"
-                onClick={simulateLiveOrder}
-                className="px-3 py-2 bg-deep-black text-gold hover:bg-gold hover:text-deep-black text-[10px] font-black uppercase tracking-wider transition border border-gold flex items-center gap-1.5"
-                title="Simular uma nova compra para testar o alerta de venda"
-              >
-                <span>+ SIMULAR COMPRA</span>
-              </button>
             </div>
           </div>
 
@@ -2384,23 +2310,9 @@ export default function BackofficeDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-deep-black/10">
-                <tr className="hover:bg-deep-black/5">
-                  <td className="p-4 font-mono font-black text-deep-black">#ORD-9021</td>
-                  <td className="p-4 font-bold">BEATRIZ LIMA (BOSTON, MA)</td>
-                  <td className="p-4">
-                    <span className="font-black text-deep-black">KELY PANTS SET</span>
-                    <span className="text-[10px] text-deep-black/50 block font-mono">KEL-BLK-M (TAM M)</span>
-                  </td>
-                  <td className="p-4 text-gold font-black">EM 5 DIAS</td>
-                  <td className="p-4">
-                    <span className="px-2 py-1 bg-gold/20 text-deep-black font-black text-[9px] border border-gold">
-                      EM CONFECÇÃO
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button className="px-3 py-1.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-[10px] transition">
-                      DAR ENTRADA & ENVIAR RASTREIO
-                    </button>
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-deep-black/50 font-bold uppercase text-xs">
+                    Nenhuma encomenda ou pré-venda em confecção no momento.
                   </td>
                 </tr>
               </tbody>

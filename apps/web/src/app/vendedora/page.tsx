@@ -311,7 +311,7 @@ export default function SellerPortalPage() {
                 <input
                   type="text"
                   required
-                  placeholder="EX: CAMILA10 OU JULIANA10"
+                  placeholder="DIGITE SEU E-MAIL OU CUPOM"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full px-3.5 py-3 text-xs uppercase tracking-wider font-mono font-bold border border-deep-black/20 focus:outline-none focus:border-deep-black"
