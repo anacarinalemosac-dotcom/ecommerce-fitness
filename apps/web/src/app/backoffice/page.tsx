@@ -60,6 +60,7 @@ import {
   ShoppingBag,
   Heart,
   Settings,
+  Layers,
 } from 'lucide-react';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
@@ -198,13 +199,14 @@ const INITIAL_CATALOG: CatalogProduct[] = [
 ];
 
 export default function BackofficeDashboard() {
-  const { adminUser, loginAdmin, logoutAdmin } = useStoreSettings();
+  const { adminUser, loginAdmin, logoutAdmin, refreshProducts } = useStoreSettings();
   const [authEmail, setAuthEmail] = useState('anafitweareua@gmail.com');
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState<
     'dashboard' | 'catalog' | 'sales' | 'commissions' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme'
   >('dashboard');
+  const [cmsSubTab, setCmsSubTab] = useState<'media' | 'categories' | 'colors' | 'typography' | 'pages'>('categories');
   const [onlineCount, setOnlineCount] = useState(0);
 
   // Catálogo de produtos
@@ -310,7 +312,10 @@ export default function BackofficeDashboard() {
   const fetchSupabaseProducts = async () => {
     setLoadingSupabase(true);
     try {
-      const res = await fetch('/api/backoffice/products');
+      const res = await fetch(`/api/backoffice/products?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store' },
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.products)) {
@@ -321,6 +326,32 @@ export default function BackofficeDashboard() {
       console.warn('Erro ao buscar produtos do Supabase:', err);
     } finally {
       setLoadingSupabase(false);
+    }
+  };
+
+  const handleToggleVisibility = async (productId: string, newVisibility: boolean) => {
+    try {
+      const res = await fetch('/api/backoffice/products', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: productId, visible_online: newVisibility }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Falha ao atualizar status de visibilidade');
+      }
+
+      // Atualiza lista do backoffice e sincroniza vitrine da loja
+      await fetchSupabaseProducts();
+      if (refreshProducts) {
+        await refreshProducts();
+      }
+      try {
+        soundManager.playVisitorDing();
+      } catch (_) {}
+    } catch (err: any) {
+      alert(`Erro ao alterar visibilidade: ${err.message}`);
     }
   };
 
@@ -1069,7 +1100,16 @@ export default function BackofficeDashboard() {
           }`}
         >
           <Users className="w-4 h-4 text-gold" />
-          <span>4. VENDEDORAS & CUPONS ({sellers.length})</span>
+          <span>4. VENDEDORAS & CUPONS</span>
+          {sellers.filter((s: any) => s.approval_status === 'PENDING').length > 0 ? (
+            <span className="bg-amber-500 text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse shadow-xs">
+              {sellers.filter((s: any) => s.approval_status === 'PENDING').length} PENDENTE(S)
+            </span>
+          ) : (
+            <span className="bg-deep-black/10 text-deep-black text-[8px] font-bold px-1.5 py-0.5 rounded-full">
+              {sellers.length}
+            </span>
+          )}
         </button>
 
         {/* 5. Aparência da Loja (CMS Visual) */}
@@ -1151,12 +1191,12 @@ export default function BackofficeDashboard() {
 
       {/* Notificação de Sucesso */}
       {saveSuccessMessage && (
-        <div className="p-4 bg-deep-black text-white border-2 border-gold flex items-center justify-between text-xs font-black uppercase tracking-wider animate-fadeIn">
-          <div className="flex items-center gap-2 text-gold">
-            <CheckCircle2 className="w-5 h-5 text-gold" />
-            <span>✓ Produto atualizado com sucesso no Supabase e refletido na Loja Virtual e no PDV!</span>
+        <div className="p-4 bg-emerald-950 text-emerald-100 border-2 border-emerald-500 flex items-center justify-between text-xs font-black uppercase tracking-wider animate-fadeIn shadow-lg shadow-emerald-950/40">
+          <div className="flex items-center gap-2 text-emerald-400">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+            <span className="text-white">✓ Produto gravado com sucesso no Supabase! Grade de variantes persistida e catálogo atualizado.</span>
           </div>
-          <Link href="/#vitrine" className="text-white hover:text-gold underline flex items-center gap-1">
+          <Link href="/#vitrine" className="text-emerald-400 hover:text-white underline flex items-center gap-1 font-bold">
             <span>Ver na Loja</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
@@ -1170,6 +1210,7 @@ export default function BackofficeDashboard() {
         <DashboardMetricsView
           salesData={salesData}
           products={supabaseProducts.length > 0 ? supabaseProducts : products}
+          sellers={sellers}
           liveVisitors={liveFeed?.activeCount || onlineCount}
           onNavigateTab={setActiveTab}
         />
@@ -1235,6 +1276,20 @@ export default function BackofficeDashboard() {
               >
                 <PackageMinus className="w-4 h-4 text-white" />
                 <span>- RETIRADA / USO PRÓPRIO & MOSTRUÁRIO</span>
+              </button>
+
+              {/* Botão Trocar Capas das Categorias */}
+              <button
+                type="button"
+                onClick={() => {
+                  setCmsSubTab('categories');
+                  setActiveTab('cms');
+                }}
+                className="px-3.5 py-3 border-2 border-gold bg-gold/10 hover:bg-gold hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm"
+                title="Trocar fotos de capa das categorias (Sets, Rompers, Tops, etc) na página inicial"
+              >
+                <Layers className="w-3.5 h-3.5 text-gold" />
+                <span>Capas das Categorias</span>
               </button>
 
               <button
@@ -1355,6 +1410,7 @@ export default function BackofficeDashboard() {
                   <th className="p-4">CUSTO</th>
                   <th className="p-4">ESTOQUE TOTAL</th>
                   <th className="p-4">STATUS</th>
+                  <th className="p-4">VISIBILIDADE NA LOJA</th>
                   <th className="p-4 text-right">AÇÕES</th>
                 </tr>
               </thead>
@@ -1388,13 +1444,28 @@ export default function BackofficeDashboard() {
                       </td>
 
                       <td className="p-4">
-                        <span className="font-black text-deep-black block">{item.title}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-black text-deep-black block">{item.title}</span>
+                          {item.meta?.ribbon && (
+                            <span className="px-1.5 py-0.5 bg-gold text-deep-black text-[8px] font-black uppercase border border-deep-black">
+                              {item.meta.ribbon}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="text-[10px] text-gold font-bold">{categoryName}</span>
                           <span className="text-deep-black/30">•</span>
                           <span className="text-[9px] text-deep-black/60 font-bold truncate max-w-[140px]" title={supplierName}>
                             {supplierName}
                           </span>
+                          {(item.meta?.general_sku || item.sku) && (
+                            <>
+                              <span className="text-deep-black/30">•</span>
+                              <span className="text-[8.5px] font-mono text-deep-black/50">
+                                SKU: {item.meta?.general_sku || item.sku}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </td>
 
@@ -1421,7 +1492,19 @@ export default function BackofficeDashboard() {
                       </td>
 
                       <td className="p-4 font-mono font-black text-deep-black">
-                        ${Number(basePrice).toFixed(2)}
+                        <div>
+                          <span>${Number(basePrice).toFixed(2)}</span>
+                          {item.meta?.compare_price && Number(item.meta.compare_price) > Number(basePrice) && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className="text-[10px] text-deep-black/40 line-through">
+                                ${Number(item.meta.compare_price).toFixed(2)}
+                              </span>
+                              <span className="text-[8px] bg-red-600 text-white font-black px-1">
+                                -{Math.round(((Number(item.meta.compare_price) - Number(basePrice)) / Number(item.meta.compare_price)) * 100)}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </td>
 
                       <td className="p-4 font-mono text-deep-black/70">
@@ -1446,12 +1529,47 @@ export default function BackofficeDashboard() {
                         )}
                       </td>
 
+                      {/* VISIBILIDADE NA VITRINE / CONTROLE RÁPIDO */}
+                      <td className="p-4">
+                        <div className="flex flex-col gap-1.5 items-start">
+                          {item.visible_online ? (
+                            <span className="px-2 py-0.5 bg-green-700 text-white text-[9px] font-black border border-green-800 flex items-center gap-1 shadow-xs">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                              <span>NO AR NA LOJA</span>
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 bg-gray-200 text-gray-700 text-[9px] font-black border border-gray-400 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+                              <span>OCULTO / RASCUNHO</span>
+                            </span>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleVisibility(item.id, !item.visible_online)}
+                            className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 border transition flex items-center gap-1 ${
+                              item.visible_online
+                                ? 'border-red-300 text-red-600 hover:bg-red-600 hover:text-white'
+                                : 'border-deep-black bg-deep-black text-gold hover:bg-gold hover:text-deep-black shadow-xs'
+                            }`}
+                            title={item.visible_online ? 'Ocultar da vitrine da loja virtual' : 'Publicar na vitrine da loja virtual'}
+                          >
+                            {item.visible_online ? '✕ Ocultar do Site' : '✓ Ativar na Vitrine'}
+                          </button>
+                        </div>
+                      </td>
+
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
                             onClick={() => {
-                              setEditingProduct(item);
+                              setEditingProduct({
+                                ...item,
+                                variants: itemVariants,
+                                primaryImage: item.primaryImage || item.primary_image || item.meta?.primary_image || firstImage,
+                                primary_image: item.primary_image || item.primaryImage || item.meta?.primary_image || firstImage,
+                              });
                               setShowAddForm(true);
                               window.scrollTo({ top: 300, behavior: 'smooth' });
                             }}
@@ -3438,7 +3556,7 @@ export default function BackofficeDashboard() {
       {/* =========================================================================
           TAB 5: APARÊNCIA DA LOJA (CMS VISUAL)
          ========================================================================= */}
-      {(activeTab === 'cms' || activeTab === 'theme') && <AppearanceCmsView />}
+      {(activeTab === 'cms' || activeTab === 'theme') && <AppearanceCmsView initialSubTab={cmsSubTab} />}
 
       {/* =========================================================================
           TAB 6: CLIENTES E PROVA SOCIAL (REVIEWS)

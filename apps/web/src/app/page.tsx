@@ -319,7 +319,10 @@ export default function HomePage() {
     }, 3000);
   };
 
-  const activeProducts = storeProducts && storeProducts.length > 0 ? storeProducts : FEATURED_PRODUCTS;
+  // Vitrine exibe estritamente produtos com visibilidade online ativa (visibleOnline === true)
+  const onlineProducts = storeProducts ? storeProducts.filter((p) => p.visibleOnline === true) : [];
+  const activeProducts = onlineProducts;
+
   const filteredProducts = activeCategoryFilter === 'all'
     ? activeProducts
     : activeProducts.filter((p) => p.categoryKey === activeCategoryFilter);
@@ -528,7 +531,20 @@ export default function HomePage() {
         </div>
 
         {/* Grid de Produtos Gymshark: Aspect 4:5, Hover Swap, Quick Add Drawer */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7">
+        {filteredProducts.length === 0 ? (
+          <div className="py-20 text-center border-2 border-dashed border-deep-black/20 p-12 bg-deep-black/5 space-y-4">
+            <ShoppingBag className="w-12 h-12 text-gold mx-auto" />
+            <h3 className="text-base font-black uppercase tracking-wider text-deep-black">
+              {lang === 'pt' ? 'Nenhuma peça publicada nesta categoria' : 'No pieces published in this category'}
+            </h3>
+            <p className="text-xs text-deep-black/60 max-w-md mx-auto uppercase">
+              {lang === 'pt'
+                ? 'As peças estão sendo revisadas no ateliê. Acesse o Painel Backoffice para conferir dados, fotos e ativar os produtos na vitrine.'
+                : 'Pieces are being prepared in the atelier. Open Backoffice to review photos and activate products for the showcase.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7">
           {filteredProducts.map((product) => {
             const isHovered = hoveredProduct === product.id;
             const isBackorder = product.stock === 0 && product.allowBackorder;
@@ -676,10 +692,15 @@ export default function HomePage() {
                         <span className="text-base font-black text-deep-black uppercase tracking-wider">
                           ${product.price.toFixed(2)}
                         </span>
-                        {product.originalPrice && (
-                          <span className="text-xs text-deep-black/40 line-through font-bold">
-                            ${product.originalPrice.toFixed(2)}
-                          </span>
+                        {product.originalPrice && product.originalPrice > product.price && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-deep-black/40 line-through font-bold">
+                              ${product.originalPrice.toFixed(2)}
+                            </span>
+                            <span className="text-[8.5px] font-black bg-red-600 text-white px-1.5 py-0.5">
+                              -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+                            </span>
+                          </div>
                         )}
                       </div>
                       <span className="text-[9px] block text-deep-black/60 font-bold uppercase tracking-wider">
@@ -702,6 +723,7 @@ export default function HomePage() {
             );
           })}
         </div>
+        )}
       </section>
 
       {/* =========================================================================

@@ -60,8 +60,9 @@ export async function POST(req: NextRequest) {
 
     // ESTRATÉGIA A: Upload Oficial no Supabase Storage (Nuvem / CDN Público)
     try {
+      const bucketName = 'products';
       const { data: uploadData, error: uploadErr } = await supabaseServer.storage
-        .from('product-images')
+        .from(bucketName)
         .upload(uniqueFilename, buffer, {
           contentType: mimeType,
           upsert: true,
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
 
       if (!uploadErr && uploadData) {
         const { data: publicUrlData } = supabaseServer.storage
-          .from('product-images')
+          .from(bucketName)
           .getPublicUrl(uniqueFilename);
 
         if (publicUrlData?.publicUrl) {

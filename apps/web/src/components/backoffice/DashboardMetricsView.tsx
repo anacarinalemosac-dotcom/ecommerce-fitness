@@ -22,6 +22,7 @@ import {
 interface DashboardMetricsViewProps {
   salesData: any;
   products: any[];
+  sellers?: any[];
   liveVisitors: number;
   onNavigateTab: (tab: any) => void;
 }
@@ -29,6 +30,7 @@ interface DashboardMetricsViewProps {
 export function DashboardMetricsView({
   salesData,
   products = [],
+  sellers = [],
   liveVisitors = 0,
   onNavigateTab,
 }: DashboardMetricsViewProps) {
@@ -301,12 +303,60 @@ export function DashboardMetricsView({
         </div>
       </div>
 
-      {/* 3. ALERTAS OPERACIONAIS: ESTOQUE BAIXO/ZERADO & PRÉ-VENDAS */}
+      {/* 3. ALERTAS OPERACIONAIS: ESTOQUE BAIXO/ZERADO, PRÉ-VENDAS & VENDEDORAS */}
       <div className="space-y-4">
         <h3 className="text-xs font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
           <ShieldAlert className="w-4 h-4 text-red-600" />
           <span>ALERTAS OPERACIONAIS & ATENÇÃO IMEDIATA</span>
         </h3>
+
+        {/* Alerta de Novas Vendedoras Aguardando Aprovação */}
+        {(() => {
+          const pendingSellers = (sellers || []).filter((s: any) => s.approval_status === 'PENDING');
+          if (pendingSellers.length === 0) return null;
+          return (
+            <div className="bg-amber-50 border-2 border-amber-500 p-5 space-y-3 shadow-luxury animate-fadeIn">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-amber-500 text-deep-black font-black text-xs shrink-0 rounded">
+                    🚨 NOVO CADASTRO
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-amber-950">
+                      {pendingSellers.length} NOVA(S) VENDEDORA(S) AGUARDANDO SUA APROVAÇÃO
+                    </h4>
+                    <p className="text-[11px] text-amber-900 uppercase">
+                      Solicitações recebidas pelo site. O cupom e o acesso estão 100% bloqueados até você aprovar.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('commissions')}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase tracking-wider transition shadow shrink-0 flex items-center gap-1.5"
+                >
+                  <span>Analisar e Aprovar ({pendingSellers.length})</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+                {pendingSellers.map((ps: any) => (
+                  <div key={ps.id} className="p-2.5 bg-white border border-amber-300 text-xs flex justify-between items-center shadow-xs">
+                    <div>
+                      <strong className="text-deep-black uppercase block">{ps.name}</strong>
+                      <span className="text-[10px] text-deep-black/60 font-mono">Cupom: {ps.coupon_code}</span>
+                    </div>
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300">
+                      Pendente
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Card de Alerta de Estoque Crítico */}

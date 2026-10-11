@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Palette,
   Image as ImageIcon,
@@ -13,14 +13,26 @@ import {
   RefreshCw,
   Video,
   Sparkles,
+  Layers,
 } from 'lucide-react';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
+import { ImageUploadBox } from '../ImageUploadBox';
 
-export function AppearanceCmsView() {
+interface AppearanceCmsViewProps {
+  initialSubTab?: 'media' | 'categories' | 'colors' | 'typography' | 'pages';
+}
+
+export function AppearanceCmsView({ initialSubTab }: AppearanceCmsViewProps = {}) {
   const { siteInfo, siteImages, updateSiteInfo, updateSiteImages } = useStoreSettings();
 
-  const [activeSubTab, setActiveSubTab] = useState<'media' | 'colors' | 'typography' | 'pages'>('media');
+  const [activeSubTab, setActiveSubTab] = useState<'media' | 'categories' | 'colors' | 'typography' | 'pages'>(initialSubTab || 'media');
   const [activePageTab, setActivePageTab] = useState<'about' | 'returns' | 'shipping' | 'contact'>('about');
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
 
   const [formData, setFormData] = useState({
     heroTitle1: siteInfo.heroTitle1 || 'WEAR YOUR',
@@ -41,6 +53,26 @@ export function AppearanceCmsView() {
     shippingPolicyText: siteInfo.shippingPolicyText || 'Enviamos para todos os 50 estados dos Estados Unidos via USPS Priority Mail com taxa fixa de $9.99. O prazo de postagem para pronta-entrega é de até 24h úteis. Peças confeccionadas sob medida possuem prazo de produção informado na compra.',
     contactText: siteInfo.contactText || 'Nosso atendimento oficial está disponível de Segunda a Sexta, das 9h às 18h (EST). WhatsApp: +1 (978) 313-9452 • E-mail: anafitweareua@gmail.com • Leominster, MA.',
   });
+
+  const [categoryImages, setCategoryImages] = useState({
+    sets: siteImages?.categoryImages?.sets || 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=700&q=80',
+    rompers: siteImages?.categoryImages?.rompers || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=700&q=80',
+    jumpsuits: siteImages?.categoryImages?.jumpsuits || 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=700&q=80',
+    tops: siteImages?.categoryImages?.tops || 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=700&q=80',
+    preorder: siteImages?.categoryImages?.preorder || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=700&q=80',
+  });
+
+  useEffect(() => {
+    if (siteImages?.categoryImages) {
+      setCategoryImages((prev) => ({
+        sets: siteImages.categoryImages?.sets || prev.sets,
+        rompers: siteImages.categoryImages?.rompers || prev.rompers,
+        jumpsuits: siteImages.categoryImages?.jumpsuits || prev.jumpsuits,
+        tops: siteImages.categoryImages?.tops || prev.tops,
+        preorder: siteImages.categoryImages?.preorder || prev.preorder,
+      }));
+    }
+  }, [siteImages?.categoryImages]);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -67,6 +99,7 @@ export function AppearanceCmsView() {
     updateSiteImages({
       heroVideo: formData.heroVideo,
       heroPoster: formData.heroPoster,
+      categoryImages: categoryImages,
     });
 
     setSavedSuccess(true);
@@ -123,6 +156,19 @@ export function AppearanceCmsView() {
         >
           <Video className="w-4 h-4 text-gold" />
           <span>Banners & Vídeos (Hero)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('categories')}
+          className={`pb-2.5 px-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeSubTab === 'categories'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Layers className="w-4 h-4 text-gold" />
+          <span>Capas das Categorias</span>
         </button>
 
         <button
@@ -268,6 +314,120 @@ export function AppearanceCmsView() {
                   value={formData.tickerShipping}
                   onChange={(e) => setFormData({ ...formData, tickerShipping: e.target.value })}
                   className="w-full px-3 py-2 border border-deep-black/30 text-xs font-bold uppercase focus:outline-none focus:border-deep-black"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SUB-ABA: CAPAS DAS CATEGORIAS */}
+        {activeSubTab === 'categories' && (
+          <div className="bg-white border-2 border-deep-black p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-deep-black/10">
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-gold" />
+                  <span>FOTOS DE CAPA DAS CATEGORIAS (VITRINE PRINCIPAL)</span>
+                </h3>
+                <p className="text-[11px] text-deep-black/60 uppercase mt-1">
+                  Substitua as fotos de capa dos 5 cards principais da página inicial. Proporção recomendada: 4:5 vertical atlética.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* 1. CONJUNTOS (SETS) */}
+              <div className="p-4 border-2 border-deep-black/20 bg-neutral-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-deep-black">
+                    1. CONJUNTOS (SETS)
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 bg-gold/20 text-deep-black">
+                    HARMONIA & LUXO
+                  </span>
+                </div>
+                <ImageUploadBox
+                  label="Foto de Capa - Conjuntos"
+                  helperText="Exibida no 1º card da vitrine"
+                  value={categoryImages.sets}
+                  onChange={(url) => setCategoryImages((prev) => ({ ...prev, sets: url }))}
+                  aspectRatio="aspect-[4/5]"
+                />
+              </div>
+
+              {/* 2. MACAQUINHOS (ROMPERS) */}
+              <div className="p-4 border-2 border-deep-black/20 bg-neutral-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-deep-black">
+                    2. MACAQUINHOS (ROMPERS)
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 bg-gold/20 text-deep-black">
+                    ALTA PERFORMANCE
+                  </span>
+                </div>
+                <ImageUploadBox
+                  label="Foto de Capa - Macaquinhos"
+                  helperText="Exibida no 2º card da vitrine"
+                  value={categoryImages.rompers}
+                  onChange={(url) => setCategoryImages((prev) => ({ ...prev, rompers: url }))}
+                  aspectRatio="aspect-[4/5]"
+                />
+              </div>
+
+              {/* 3. MACACÕES (JUMPSUITS) */}
+              <div className="p-4 border-2 border-deep-black/20 bg-neutral-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-deep-black">
+                    3. MACACÕES (JUMPSUITS)
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 bg-gold/20 text-deep-black">
+                    SILHUETA ESCULPIDA
+                  </span>
+                </div>
+                <ImageUploadBox
+                  label="Foto de Capa - Macacões"
+                  helperText="Exibida no 3º card da vitrine"
+                  value={categoryImages.jumpsuits}
+                  onChange={(url) => setCategoryImages((prev) => ({ ...prev, jumpsuits: url }))}
+                  aspectRatio="aspect-[4/5]"
+                />
+              </div>
+
+              {/* 4. TOPS */}
+              <div className="p-4 border-2 border-deep-black/20 bg-neutral-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-deep-black">
+                    4. TOPS
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 bg-gold/20 text-deep-black">
+                    SUSTENTAÇÃO TOTAL
+                  </span>
+                </div>
+                <ImageUploadBox
+                  label="Foto de Capa - Tops"
+                  helperText="Exibida no 4º card da vitrine"
+                  value={categoryImages.tops}
+                  onChange={(url) => setCategoryImages((prev) => ({ ...prev, tops: url }))}
+                  aspectRatio="aspect-[4/5]"
+                />
+              </div>
+
+              {/* 5. PRÉ-VENDA (PRE-ORDERS) */}
+              <div className="p-4 border-2 border-deep-black/20 bg-neutral-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-deep-black">
+                    5. PRÉ-VENDA (PRE-ORDERS)
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 bg-gold/20 text-deep-black">
+                    SOB MEDIDA ATELIER
+                  </span>
+                </div>
+                <ImageUploadBox
+                  label="Foto de Capa - Pré-Venda"
+                  helperText="Exibida no 5º card da vitrine"
+                  value={categoryImages.preorder}
+                  onChange={(url) => setCategoryImages((prev) => ({ ...prev, preorder: url }))}
+                  aspectRatio="aspect-[4/5]"
                 />
               </div>
             </div>

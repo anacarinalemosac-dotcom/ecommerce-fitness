@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -12,7 +15,7 @@ export async function GET(req: NextRequest) {
         .from('products')
         .select('*, categories(*), suppliers(*)')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (prodErr || !product) {
         return NextResponse.json({ error: 'Produto não encontrado.' }, { status: 404 });
@@ -24,7 +27,36 @@ export async function GET(req: NextRequest) {
         .eq('product_id', id)
         .order('created_at', { ascending: true });
 
-      return NextResponse.json({ product, variants: variants || [] });
+      let meta: any = {};
+      try {
+        if (product.description && product.description.startsWith('{')) {
+          meta = JSON.parse(product.description);
+        } else if (product.description) {
+          meta = { bio: product.description };
+        }
+      } catch (e) {}
+
+      const primaryImage = meta.primary_image || (variants?.[0]?.images?.[0]) || '';
+      const enrichedProduct = {
+        ...product,
+        meta,
+        primary_image: primaryImage,
+        primaryImage: primaryImage,
+        visible_online: meta.visible_online === true,
+        visible_pos: meta.visible_pos !== false,
+        variants: variants || [],
+      };
+
+      return NextResponse.json(
+        { product: enrichedProduct, variants: variants || [] },
+        {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'CDN-Cache-Control': 'no-store',
+            'Vercel-CDN-Cache-Control': 'no-store',
+          },
+        }
+      );
     }
 
     // Busca todos os produtos com suas variações
@@ -45,15 +77,39 @@ export async function GET(req: NextRequest) {
       .order('size', { ascending: true });
 
     const enrichedProducts = (products || []).map((p) => {
+      let meta: any = {};
+      try {
+        if (p.description && p.description.startsWith('{')) {
+          meta = JSON.parse(p.description);
+        } else if (p.description) {
+          meta = { bio: p.description };
+        }
+      } catch (e) {}
+
       const pVariants = (allVariants || []).filter((v) => v.product_id === p.id);
+      const primaryImage = meta.primary_image || (pVariants[0]?.images?.[0]) || '';
       return {
         ...p,
+        meta,
+        primary_image: primaryImage,
+        primaryImage: primaryImage,
+        visible_online: meta.visible_online === true,
+        visible_pos: meta.visible_pos !== false,
         variants: pVariants,
         total_stock: pVariants.reduce((sum, v) => sum + (v.stock_quantity || 0), 0),
       };
     });
 
-    return NextResponse.json({ products: enrichedProducts });
+    return NextResponse.json(
+      { products: enrichedProducts },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'CDN-Cache-Control': 'no-store',
+          'Vercel-CDN-Cache-Control': 'no-store',
+        },
+      }
+    );
   } catch (err: any) {
     console.error('Erro no GET de produtos:', err);
     return NextResponse.json({ products: [] }, { status: 500 });
@@ -75,6 +131,14 @@ export async function POST(req: NextRequest) {
       category_id,
       supplier_id,
       variants,
+      visible_online,
+      visible_pos,
+      promotional_price,
+      compare_price,
+      ribbon,
+      brand,
+      sku: generalSku,
+      primary_image,
     } = body;
 
     if (!title) {
@@ -89,84 +153,76 @@ export async function POST(req: NextRequest) {
         .replace(/[\s_-]+/g, '-')
         .replace(/^-+|-+$/g, '');
 
-    // Empacota metadados detalhados (composição, tabela de medidas, tags e subcategoria) no campo description
+    const isUuid = (val: any) =>
+      typeof val === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+    // Empacota metadados detalhados (composição, tabela de medidas, tags, subcategoria, visibilidade e atributos Wix)
+    const primaryImg = primary_image || (variants?.[0]?.images?.[0]) || '';
     const metadataPayload = {
       bio: description || '',
       composition: composition || '',
       sizeGuide: sizeGuide || '',
       tags: Array.isArray(tags) ? tags : [],
       subcategory: subcategory || '',
+      promotional_price: promotional_price || null,
+      compare_price: compare_price ? parseFloat(compare_price) : null,
+      ribbon: ribbon || '',
+      brand: brand || 'ANA Fitness Wear',
+      general_sku: generalSku || '',
+      product_type: 'physical',
+      visible_online: visible_online === true,
+      visible_pos: visible_pos !== false,
+      primary_image: primaryImg,
     };
     const structuredDescription = JSON.stringify(metadataPayload);
 
-    let targetProductId = id;
+    // 1. Grava ou atualiza na tabela 'products' usando upsert sem .single()
+    const productData: any = {
+      title: title.toUpperCase(),
+      slug: cleanSlug,
+      description: structuredDescription,
+      category_id: category_id || null,
+      supplier_id: supplier_id || null,
+    };
 
-    // 1. Grava ou atualiza na tabela 'products'
-    if (targetProductId) {
-      const { data: updatedProduct, error: updateErr } = await supabaseServer
-        .from('products')
-        .update({
-          title: title.toUpperCase(),
-          slug: cleanSlug,
-          description: structuredDescription,
-          category_id: category_id || null,
-          supplier_id: supplier_id || null,
-        })
-        .eq('id', targetProductId)
-        .select('*')
-        .single();
-
-      if (updateErr) {
-        console.error('Erro ao atualizar produto no Supabase:', updateErr);
-        return NextResponse.json({ error: `Erro no Supabase: ${updateErr.message}` }, { status: 400 });
-      }
-      targetProductId = updatedProduct.id;
-    } else {
-      const { data: newProduct, error: insertErr } = await supabaseServer
-        .from('products')
-        .insert([
-          {
-            title: title.toUpperCase(),
-            slug: cleanSlug,
-            description: structuredDescription,
-            category_id: category_id || null,
-            supplier_id: supplier_id || null,
-          },
-        ])
-        .select('*')
-        .single();
-
-      if (insertErr) {
-        console.error('Erro ao criar produto no Supabase:', insertErr);
-        return NextResponse.json({ error: `Erro no Supabase: ${insertErr.message}` }, { status: 400 });
-      }
-      targetProductId = newProduct.id;
+    if (id && isUuid(id)) {
+      productData.id = id;
     }
 
-    // 2. Grava ou atualiza a matriz de variações na tabela 'product_variants'
-    const savedVariants: any[] = [];
+    const { data: savedProducts, error: prodError } = await supabaseServer
+      .from('products')
+      .upsert(productData)
+      .select();
 
-    if (Array.isArray(variants) && variants.length > 0) {
-      // Remove variantes antigas deste produto que não estão na lista atualizada
-      const incomingVariantIds = variants.map((v) => v.id).filter(Boolean);
-      if (incomingVariantIds.length > 0) {
-        await supabaseServer
-          .from('product_variants')
-          .delete()
-          .eq('product_id', targetProductId)
-          .not('id', 'in', `(${incomingVariantIds.join(',')})`);
-      } else {
-        await supabaseServer
-          .from('product_variants')
-          .delete()
-          .eq('product_id', targetProductId);
-      }
+    if (prodError) {
+      console.error('Erro ao salvar produto no Supabase:', prodError);
+      return NextResponse.json({ error: `Erro no Supabase: ${prodError.message}` }, { status: 400 });
+    }
 
-      for (const v of variants) {
+    const product = savedProducts?.[0];
+    const targetProductId = product?.id || (id && isUuid(id) ? id : null);
+
+    if (!targetProductId) {
+      return NextResponse.json({ error: 'Falha ao salvar produto: ID não pôde ser gerado.' }, { status: 500 });
+    }
+
+    // 2. Grava ou atualiza a matriz de variações na tabela 'product_variants' usando upsert sem .single()
+    let savedVariants: any[] = [];
+
+    if (Array.isArray(variants) && variants.length > 0 && targetProductId) {
+      // Limpa variantes existentes para gravar a grade atualizada sem duplicatas ou órfãos
+      await supabaseServer
+        .from('product_variants')
+        .delete()
+        .eq('product_id', targetProductId);
+
+      const variantsData = variants.map((v: any, i: number) => {
+        const genBarcode = `789${Math.floor(100000000 + Math.random() * 900000000)}`;
         const variantPayload: any = {
           product_id: targetProductId,
-          sku: v.sku || `${title.slice(0, 3).toUpperCase()}-${(v.color || 'COR').slice(0, 3).toUpperCase()}-${v.size || 'TAM'}`,
-          barcode: v.barcode || `${Date.now()}`.slice(-12),
+          sku: v.sku || `${title.slice(0, 3).toUpperCase()}-${(v.color || 'COR').slice(0, 3).toUpperCase()}-${v.size || 'TAM'}-${i + 1}`,
+          barcode: v.barcode && String(v.barcode).trim() ? String(v.barcode).trim() : genBarcode,
           size: v.size || 'M',
           color: v.color || 'Preto Ônix',
           price: parseFloat(v.price) || 39.9,
@@ -174,34 +230,53 @@ export async function POST(req: NextRequest) {
           stock_quantity: parseInt(v.stock_quantity) || 0,
           allow_backorder: Boolean(v.allow_backorder),
           estimated_production_days: parseInt(v.estimated_production_days) || 7,
-          images: Array.isArray(v.images) ? v.images : v.image ? [v.image] : [],
+          images: Array.isArray(v.images) && v.images.length > 0
+            ? v.images
+            : v.image
+            ? [v.image]
+            : primaryImg
+            ? [primaryImg]
+            : [],
           video_url: v.video_url || null,
         };
 
-        if (v.id) {
-          const { data: updatedV, error: vErr } = await supabaseServer
-            .from('product_variants')
-            .upsert({ ...variantPayload, id: v.id })
-            .select('*')
-            .single();
-
-          if (!vErr && updatedV) savedVariants.push(updatedV);
-        } else {
-          const { data: insertedV, error: vErr } = await supabaseServer
-            .from('product_variants')
-            .insert([variantPayload])
-            .select('*')
-            .single();
-
-          if (!vErr && insertedV) savedVariants.push(insertedV);
+        if (v.id && isUuid(v.id)) {
+          variantPayload.id = v.id;
         }
+
+        return variantPayload;
+      });
+
+      let { data: upsertedVariants, error: varError } = await supabaseServer
+        .from('product_variants')
+        .upsert(variantsData)
+        .select();
+
+      // Fallback em caso de colisão de código de barras
+      if (varError && varError.code === '23505' && varError.message?.includes('barcode')) {
+        const retryVariantsData = variantsData.map((vd: any) => ({
+          ...vd,
+          barcode: `789${Math.floor(100000000 + Math.random() * 900000000)}`,
+        }));
+        const retry = await supabaseServer
+          .from('product_variants')
+          .upsert(retryVariantsData)
+          .select();
+        upsertedVariants = retry.data;
+        varError = retry.error;
+      }
+
+      if (varError) {
+        console.warn('Erro ao salvar variantes no Supabase:', varError);
+      } else if (upsertedVariants) {
+        savedVariants = upsertedVariants;
       }
     }
 
     return NextResponse.json({
       success: true,
       productId: targetProductId,
-      product: { id: targetProductId, title, slug: cleanSlug },
+      product: product || { id: targetProductId, title, slug: cleanSlug },
       variants: savedVariants,
       message: 'Produto e variações gravados com sucesso no Supabase!',
     });
@@ -233,3 +308,62 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, visible_online, visible_pos } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID do produto é obrigatório.' }, { status: 400 });
+    }
+
+    const { data: currentProduct, error: fetchErr } = await supabaseServer
+      .from('products')
+      .select('id, description')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchErr || !currentProduct) {
+      return NextResponse.json({ error: 'Produto não encontrado.' }, { status: 404 });
+    }
+
+    let meta: any = {};
+    try {
+      if (currentProduct.description && currentProduct.description.startsWith('{')) {
+        meta = JSON.parse(currentProduct.description);
+      } else if (currentProduct.description) {
+        meta = { bio: currentProduct.description };
+      }
+    } catch (_) {
+      meta = {};
+    }
+
+    if (visible_online !== undefined) {
+      meta.visible_online = Boolean(visible_online);
+    }
+    if (visible_pos !== undefined) {
+      meta.visible_pos = Boolean(visible_pos);
+    }
+
+    const { data: updatedRows, error: updErr } = await supabaseServer
+      .from('products')
+      .update({ description: JSON.stringify(meta) })
+      .eq('id', id)
+      .select('*');
+
+    if (updErr) {
+      return NextResponse.json({ error: updErr.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      product: updatedRows?.[0] || null,
+      visible_online: meta.visible_online,
+      visible_pos: meta.visible_pos,
+    });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+

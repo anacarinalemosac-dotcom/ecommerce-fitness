@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Upload, Image as ImageIcon, CheckCircle2, RefreshCw, X, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface ImageUploadBoxProps {
   label: string;
@@ -37,39 +38,29 @@ export function ImageUploadBox({
     setUploadError(null);
     setIsUploading(true);
 
-    // 1. Leitura imediata com FileReader para prévia instantânea (0ms)
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const dataUrl = e.target?.result as string;
-      if (dataUrl) {
-        // Prévia instantânea imediata
-        onChange(dataUrl);
+    try {
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const filePath = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-        // 2. Salva fisicamente em public/uploads via /api/upload
-        try {
-          const res = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              dataUrl,
-              filename: file.name,
-            }),
-          });
+      const { data, error } = await supabase.storage
+        .from('products')
+        .upload(filePath, file, { contentType: file.type });
 
-          if (res.ok) {
-            const data = await res.json();
-            if (data.url) {
-              onChange(data.url);
-            }
-          }
-        } catch (err) {
-          console.warn('Upload salvo em base64 localmente:', err);
-        } finally {
-          setIsUploading(false);
-        }
+      if (error) {
+        throw new Error(error.message);
       }
-    };
-    reader.readAsDataURL(file);
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('products').getPublicUrl(filePath);
+
+      onChange(publicUrl);
+    } catch (err: any) {
+      console.error('Erro no upload para Supabase Storage:', err);
+      setUploadError(`Erro ao enviar foto: ${err?.message || 'Falha no upload'}`);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -185,6 +176,21 @@ export function ImageUploadBox({
                   <span>Remover</span>
                 </button>
               </div>
+            </div>
+          </div>
+        ) : isUploading ? (
+          /* Estado Carregando: Indicador Visual */
+          <div className="text-center py-6 space-y-3 animate-pulse">
+            <div className="inline-flex p-3 bg-white border border-deep-black/20 text-gold shadow-sm">
+              <Loader2 className="w-6 h-6 text-gold animate-spin" />
+            </div>
+            <div>
+              <span className="text-xs font-black uppercase tracking-wider text-deep-black block">
+                Carregando imagem...
+              </span>
+              <span className="text-[10px] text-deep-black/60 font-medium">
+                Enviando diretamente para o Supabase Storage
+              </span>
             </div>
           </div>
         ) : (

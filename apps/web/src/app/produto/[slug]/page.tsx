@@ -241,6 +241,10 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       categoryEn: `${dynamicProduct.categoryEn} • HIGH PERFORMANCE`,
       price: dynamicProduct.price,
       originalPrice: dynamicProduct.originalPrice,
+      ribbon: dynamicProduct.ribbon || '',
+      badgePt: dynamicProduct.badgePt || 'BEST SELLER',
+      badgeEn: dynamicProduct.badgeEn || 'BEST SELLER',
+      badgeStyle: dynamicProduct.badgeStyle || 'bg-gold text-deep-black',
       descriptionPt: dynamicProduct.fitPt || `${dynamicProduct.title} com modelagem de alta compressão e corte anatômico da Ana Fitness Wear. Tecido testado e aprovado com 100% zero transparência e toque amanteigado.`,
       descriptionEn: dynamicProduct.fitEn || `${dynamicProduct.title} crafted with anatomical contour support and 4-way stretch fabric. Lab-verified zero see-through athletic luxury fit.`,
       media: mediaList,
@@ -403,9 +407,11 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
             {/* Selos de Destaque */}
             <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
-              <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-gold text-deep-black shadow-sm">
-                BEST SELLER
-              </span>
+              {(productData.ribbon || productData.badgePt) && (
+                <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm ${productData.badgeStyle || 'bg-gold text-deep-black'}`}>
+                  {productData.ribbon || (lang === 'pt' ? productData.badgePt : productData.badgeEn)}
+                </span>
+              )}
               {isBackorder && (
                 <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-deep-black text-gold border border-gold">
                   {lang === 'pt' ? 'PRÉ-VENDA EXCLUSIVA' : 'PRE-ORDER EXCLUSIVE'}
@@ -449,10 +455,15 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               <span className="text-3xl sm:text-4xl font-black text-deep-black uppercase tracking-wider font-mono">
                 ${productData.price.toFixed(2)}
               </span>
-              {productData.originalPrice && (
-                <span className="text-sm font-bold text-deep-black/40 line-through uppercase tracking-wider font-mono">
-                  ${productData.originalPrice.toFixed(2)}
-                </span>
+              {productData.originalPrice && productData.originalPrice > productData.price && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-deep-black/40 line-through uppercase tracking-wider font-mono">
+                    ${productData.originalPrice.toFixed(2)}
+                  </span>
+                  <span className="text-[10px] font-black bg-red-600 text-white px-2 py-0.5">
+                    -{Math.round(((productData.originalPrice - productData.price) / productData.originalPrice) * 100)}% OFF
+                  </span>
+                </div>
               )}
             </div>
           </div>

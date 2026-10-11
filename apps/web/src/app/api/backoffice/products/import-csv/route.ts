@@ -277,12 +277,12 @@ export async function POST(req: NextRequest) {
           .replace(/[\s_-]+/g, '-')
           .replace(/^-+|-+$/g, '') || `cat-${Date.now()}`;
 
-        const { data: newCat, error: insertCatErr } = await supabaseServer
+        const { data: savedCats, error: insertCatErr } = await supabaseServer
           .from('categories')
           .insert([{ name: catName, slug: catSlug }])
-          .select('id, name')
-          .single();
+          .select('id, name');
 
+        const newCat = savedCats?.[0];
         if (!insertCatErr && newCat) {
           categoryMap.set(lower, newCat.id);
         }
@@ -317,10 +317,32 @@ export async function POST(req: NextRequest) {
 
       const categoryId = categoryMap.get(firstRow.category.toLowerCase().trim()) || null;
 
+      // Procura produto existente por slug ou title
+      const { data: existingProd } = await supabaseServer
+        .from('products')
+        .select('id, title, slug, description')
+        .or(`slug.eq.${prodSlug},title.eq.${prodTitle}`)
+        .maybeSingle();
+
       // Monta tags e metadados estruturados
       const tagsArray = firstRow.tags
         ? firstRow.tags.split(',').map((t) => t.trim()).filter(Boolean)
         : [];
+
+      // Preserva visibilidade se o produto já existia, ou define como FALSE por padrão na importação
+      let existingVisibleOnline = false;
+      let existingVisiblePos = true;
+      if (existingProd?.description) {
+        try {
+          const parsed = JSON.parse(existingProd.description);
+          if (parsed && typeof parsed.visible_online === 'boolean') {
+            existingVisibleOnline = parsed.visible_online;
+          }
+          if (parsed && typeof parsed.visible_pos === 'boolean') {
+            existingVisiblePos = parsed.visible_pos;
+          }
+        } catch (_) {}
+      }
 
       const metadataPayload = {
         bio: firstRow.description || `${prodTitle} - Coleção Ana Fitness Wear`,
@@ -329,16 +351,12 @@ export async function POST(req: NextRequest) {
         tags: tagsArray,
         subcategory: firstRow.subcategory || 'Geral',
         promotional_price: firstRow.promotional_price || null,
+        visible_online: existingProd ? existingVisibleOnline : false, // PADRÃO: NÃO APARECER NO SITE AO IMPORTAR
+        visible_pos: existingProd ? existingVisiblePos : true, // Padrão: disponível no PDV
+        primary_image: firstRow.image_url || '',
       };
 
       const structuredDescription = JSON.stringify(metadataPayload);
-
-      // Procura produto existente por slug ou title
-      const { data: existingProd } = await supabaseServer
-        .from('products')
-        .select('id, title, slug')
-        .or(`slug.eq.${prodSlug},title.eq.${prodTitle}`)
-        .maybeSingle();
 
       let targetProductId = '';
 
@@ -355,7 +373,7 @@ export async function POST(req: NextRequest) {
 
         if (!updErr) productsUpdated++;
       } else {
-        const { data: newProd, error: insErr } = await supabaseServer
+        const { data: savedProducts, error: insErr } = await supabaseServer
           .from('products')
           .insert([
             {
@@ -365,9 +383,9 @@ export async function POST(req: NextRequest) {
               category_id: categoryId,
             },
           ])
-          .select('id')
-          .single();
+          .select('id');
 
+        const newProd = savedProducts?.[0];
         if (insErr || !newProd) {
           console.error(`Erro ao criar produto "${prodTitle}":`, insErr);
           continue;

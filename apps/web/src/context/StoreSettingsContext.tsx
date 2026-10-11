@@ -90,6 +90,12 @@ export interface ProductItem {
   composition?: string;
   sizeGuide?: string;
   tags?: string[];
+  visibleOnline?: boolean;
+  visiblePos?: boolean;
+  ribbon?: string;
+  brand?: string;
+  comparePrice?: number;
+  productType?: string;
 }
 
 interface StoreSettingsContextType {
@@ -434,7 +440,10 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const syncProductsFromApi = async () => {
     try {
-      const res = await fetch('/api/backoffice/products');
+      const res = await fetch(`/api/backoffice/products?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store' },
+      });
       if (!res.ok) return;
       const data = await res.json();
       if (Array.isArray(data.products) && data.products.length > 0) {
@@ -473,6 +482,10 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             }
           });
 
+          if (meta.primary_image && !allImages.includes(meta.primary_image)) {
+            allImages.unshift(meta.primary_image);
+          }
+
           const categorySlug = (p.categories?.slug || '').toLowerCase();
           let categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'preorder' = 'sets';
           if (categorySlug.includes('romper') || categorySlug.includes('macaquinh')) categoryKey = 'rompers';
@@ -487,6 +500,8 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
           const firstVar = variants[0] || {};
           const totalStock = p.total_stock ?? variants.reduce((s: number, v: any) => s + (v.stock_quantity || 0), 0);
+          const isOnline = p.visible_online === true || meta.visible_online === true;
+          const isPos = p.visible_pos !== false && meta.visible_pos !== false;
 
           return {
             id: p.id,
@@ -498,11 +513,17 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             fitPt: meta.bio || 'ALTA SUSTENTAÇÃO • SEAMLESS SCULPT',
             fitEn: meta.bio || 'HIGH SUPPORT • SEAMLESS SCULPT',
             price: Number(firstVar.price) || 44.9,
-            originalPrice: firstVar.price ? Number(firstVar.price) * 1.15 : 49.9,
+            originalPrice: meta.compare_price ? Number(meta.compare_price) : (meta.promotional_price && Number(meta.promotional_price) > Number(firstVar.price) ? Number(meta.promotional_price) : undefined),
             costPrice: Number(firstVar.cost_price) || 15.0,
-            badgePt: (totalStock > 0 ? 'LANÇAMENTO' : 'PRÉ-VENDA') as any,
-            badgeEn: (totalStock > 0 ? 'NEW ARRIVAL' : 'PRE-ORDER') as any,
-            badgeStyle: totalStock > 0 ? 'bg-gold text-deep-black font-black' : 'bg-deep-black text-gold border border-gold font-black',
+            badgePt: (meta.ribbon || (totalStock > 0 ? 'LANÇAMENTO' : 'PRÉ-VENDA')) as any,
+            badgeEn: (meta.ribbon || (totalStock > 0 ? 'NEW ARRIVAL' : 'PRE-ORDER')) as any,
+            badgeStyle: meta.ribbon
+              ? (meta.ribbon.toLowerCase().includes('ofert') || meta.ribbon.toLowerCase().includes('sale')
+                  ? 'bg-red-600 text-white font-black'
+                  : meta.ribbon.toLowerCase().includes('best') || meta.ribbon.toLowerCase().includes('mais vendido')
+                  ? 'bg-gold text-deep-black font-black'
+                  : 'bg-deep-black text-white font-black')
+              : (totalStock > 0 ? 'bg-gold text-deep-black font-black' : 'bg-deep-black text-gold border border-gold font-black'),
             rating: 5.0,
             reviewsCount: 32,
             primaryImage: allImages[0] || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80',
@@ -522,13 +543,22 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             composition: meta.composition || '',
             sizeGuide: meta.sizeGuide || '',
             tags: meta.tags || [],
+            visibleOnline: isOnline,
+            visiblePos: isPos,
+            ribbon: meta.ribbon || '',
+            brand: meta.brand || 'ANA Fitness Wear',
+            comparePrice: meta.compare_price ? Number(meta.compare_price) : undefined,
+            productType: meta.product_type || 'physical',
           };
         });
 
         setProductsState((prev) => {
           const map = new Map<string, ProductItem>();
-          DEFAULT_PRODUCTS.forEach((prod) => map.set(prod.slug, prod));
           transformed.forEach((prod) => map.set(prod.slug, prod));
+          // Se não houver produtos reais no Supabase, mantém os modelos padrão
+          if (transformed.length === 0) {
+            DEFAULT_PRODUCTS.forEach((prod) => map.set(prod.slug, { ...prod, visibleOnline: true, visiblePos: true }));
+          }
           const merged = Array.from(map.values());
           try {
             localStorage.setItem('ana_products_list', JSON.stringify(merged));
@@ -569,6 +599,28 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Busca do Supabase em tempo real
     syncProductsFromApi();
+
+    // Sincroniza capas das categorias salvas no servidor
+    fetch(`/api/backoffice/categories?t=${Date.now()}`)
+      .then((res) => res.json())
+      .then((catData) => {
+        if (catData?.categoryImages) {
+          setSiteImagesState((prev) => {
+            const updated = {
+              ...prev,
+              categoryImages: {
+                ...(prev.categoryImages || {}),
+                ...catData.categoryImages,
+              },
+            };
+            try {
+              localStorage.setItem('ana_site_images', JSON.stringify(updated));
+            } catch (_) {}
+            return updated;
+          });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const loginAdmin = (email: string, pass: string): boolean => {
@@ -640,6 +692,15 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         localStorage.setItem('ana_site_images', JSON.stringify(updated));
       } catch (e) {}
+
+      if (images.categoryImages) {
+        fetch('/api/backoffice/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ categoryImages: images.categoryImages }),
+        }).catch((err) => console.warn('Erro ao salvar categoryImages na API:', err));
+      }
+
       return updated;
     });
   };

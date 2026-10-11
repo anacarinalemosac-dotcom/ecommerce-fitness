@@ -598,6 +598,19 @@ export function CsvProductImportModal({
             </div>
           </div>
 
+          {/* Banner de Aviso: Padrão Oculto / Rascunho */}
+          <div className="p-3.5 bg-gold/10 border-2 border-gold/40 flex items-start gap-2.5">
+            <span className="text-gold font-black text-sm leading-none shrink-0 mt-0.5">🛡️</span>
+            <div className="text-[11px] text-deep-black leading-relaxed">
+              <span className="font-black uppercase tracking-wider block text-deep-black">
+                PADRÃO DE IMPORTAÇÃO: PRODUTOS ENTRAM COMO RASCUNHO OCULTO (NÃO APARECEM NO SITE)
+              </span>
+              <span>
+                Para sua segurança e controle de qualidade, todas as peças importadas por planilha entram ocultas da vitrine. Você poderá entrar em cada produto, conferir fotos, cores e tamanhos, e ativá-lo com 1 clique para aparecer na vitrine.
+              </span>
+            </div>
+          </div>
+
           {/* Área de Seleção de Arquivo */}
           {!selectedFile ? (
             <div

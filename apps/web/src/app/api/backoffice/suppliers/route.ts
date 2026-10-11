@@ -44,17 +44,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nome da empresa/confecção é obrigatório.' }, { status: 400 });
     }
 
-    const { data, error } = await supabaseServer
+    const { data: savedSuppliers, error } = await supabaseServer
       .from('suppliers')
       .insert([{ company_name, contact_name, phone, email }])
-      .select('*')
-      .single();
+      .select('*');
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json({ supplier: data });
+    const supplier = savedSuppliers?.[0] || null;
+    return NextResponse.json({ supplier });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

@@ -27,9 +27,17 @@ import {
   Ruler,
   HelpCircle,
   FileText,
+  Percent,
+  Star,
+  Award,
+  Info,
+  ExternalLink,
+  ChevronRight,
+  TrendingUp,
+  Loader2,
 } from 'lucide-react';
-import { ImageUploadBox } from './ImageUploadBox';
 import { useStoreSettings } from '../context/StoreSettingsContext';
+import { supabase } from '../lib/supabase';
 
 export interface VariantRow {
   id?: string;
@@ -85,6 +93,17 @@ export function ProductVariantMatrixForm({
   const [sizeGuide, setSizeGuide] = useState(
     'P: Busto 84-88cm, Cintura 66-70cm (US 2-4)\nM: Busto 89-94cm, Cintura 71-76cm (US 6-8)\nG: Busto 95-100cm, Cintura 77-82cm (US 10-12)\nGG: Busto 101-106cm, Cintura 83-88cm (US 14)'
   );
+
+  // Visibilidade / Canais de Venda (Online & PDV)
+  const [visibleOnline, setVisibleOnline] = useState(false);
+  const [visiblePos, setVisiblePos] = useState(true);
+
+  // Atributos Oficiais Wix Stores
+  const [ribbon, setRibbon] = useState(''); // Fita / Selo Promocional (ex: Lançamento, Mais Vendido, Oferta)
+  const [brand, setBrand] = useState('ANA Fitness Wear'); // Marca
+  const [generalSku, setGeneralSku] = useState(''); // SKU Geral
+  const [comparePrice, setComparePrice] = useState(''); // Preço de Comparação (De / Por)
+  const [isOnSale, setIsOnSale] = useState(false); // Toggle de Promoção
 
   // 2. Gerador de Cores e Tamanhos
   const [colors, setColors] = useState<Array<{ name: string; hex: string }>>([
@@ -160,18 +179,70 @@ export function ProductVariantMatrixForm({
       setCategoryId(initialProduct.category_id || '');
       setSupplierId(initialProduct.supplier_id || '');
 
+      let parsedMeta: any = {};
       // Extrai metadados do campo description caso esteja em JSON
       if (initialProduct.description) {
         try {
-          const parsed = JSON.parse(initialProduct.description);
-          setDescription(parsed.bio || '');
-          setComposition(parsed.composition || '');
-          setSizeGuide(parsed.sizeGuide || '');
-          if (Array.isArray(parsed.tags)) setTags(parsed.tags);
-          if (parsed.subcategory) setSubcategory(parsed.subcategory);
+          if (initialProduct.description.startsWith('{')) {
+            parsedMeta = JSON.parse(initialProduct.description);
+            setDescription(parsedMeta.bio || '');
+            setComposition(parsedMeta.composition || '');
+            if (parsedMeta.ribbon) setRibbon(parsedMeta.ribbon);
+            if (parsedMeta.brand) setBrand(parsedMeta.brand);
+            if (parsedMeta.general_sku) setGeneralSku(parsedMeta.general_sku);
+            if (parsedMeta.compare_price) {
+              setComparePrice(String(parsedMeta.compare_price));
+              setIsOnSale(true);
+            } else if (parsedMeta.promotional_price) {
+              setComparePrice(String(parsedMeta.promotional_price));
+              setIsOnSale(true);
+            }
+            setVisibleOnline(parsedMeta.visible_online === true || initialProduct.visible_online === true);
+            setVisiblePos(parsedMeta.visible_pos !== false && initialProduct.visible_pos !== false);
+          } else {
+            setDescription(initialProduct.description);
+            setVisibleOnline(initialProduct.visible_online === true);
+            setVisiblePos(initialProduct.visible_pos !== false);
+          }
         } catch {
           setDescription(initialProduct.description);
+          setVisibleOnline(initialProduct.visible_online === true);
+          setVisiblePos(initialProduct.visible_pos !== false);
         }
+      } else {
+        setVisibleOnline(initialProduct.visible_online === true);
+        setVisiblePos(initialProduct.visible_pos !== false);
+      }
+      if (initialProduct.sku) setGeneralSku(initialProduct.sku);
+
+      // Extrai todas as mídias já existentes (foto de capa, variantes, galeria)
+      const existingMedia: MediaItem[] = [];
+      const seenUrls = new Set<string>();
+
+      const addMediaIfNew = (url: string, color = 'all', name = 'Foto do Produto') => {
+        if (!url || typeof url !== 'string' || url.startsWith('data:') || seenUrls.has(url)) return;
+        seenUrls.add(url);
+        const isVid = url.endsWith('.mp4') || url.includes('video');
+        existingMedia.push({
+          id: `m-init-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          url,
+          type: isVid ? 'video' : 'image',
+          associatedColor: color,
+          fileName: name,
+          isUploading: false,
+        });
+      };
+
+      // 1. Candidatas a foto principal
+      const primaryCandidate =
+        initialProduct.primaryImage ||
+        initialProduct.primary_image ||
+        initialProduct.meta?.primary_image ||
+        parsedMeta.primary_image ||
+        '';
+
+      if (primaryCandidate) {
+        addMediaIfNew(primaryCandidate, 'all', 'Foto Principal');
       }
 
       // Se o produto tiver variantes cadastradas
@@ -188,10 +259,17 @@ export function ProductVariantMatrixForm({
           cost_price: v.cost_price || 16.0,
           allow_backorder: v.allow_backorder ?? true,
           estimated_production_days: v.estimated_production_days ?? 7,
-          images: Array.isArray(v.images) ? v.images : [],
+          images: (Array.isArray(v.images) ? v.images : v.image ? [v.image] : []).filter((u: string) => u && !u.startsWith('data:')),
+          image: (Array.isArray(v.images) && v.images[0] && !v.images[0].startsWith('data:')) ? v.images[0] : (v.image && !v.image.startsWith('data:') ? v.image : ''),
           video_url: v.video_url || '',
         }));
         setVariants(loadedVariants);
+
+        // Preço padrão das variantes
+        if (loadedVariants[0]) {
+          setDefaultPrice(String(loadedVariants[0].price));
+          setDefaultCostPrice(String(loadedVariants[0].cost_price));
+        }
 
         // Atualiza cores e tamanhos detectados
         const uniqueColors = Array.from(new Set(loadedVariants.map((v) => v.color)));
@@ -199,58 +277,45 @@ export function ProductVariantMatrixForm({
           const found = loadedVariants.find((v) => v.color === cName);
           return { name: cName, hex: found?.colorHex || '#0A0A0A' };
         });
-        setColors(colorObjs);
+        if (colorObjs.length > 0) {
+          setColors(colorObjs);
+        }
 
         const uniqueSizes = Array.from(new Set(loadedVariants.map((v) => v.size)));
-        setSelectedSizes(uniqueSizes);
-
-        // Extrai todas as mídias já existentes nas variantes e no produto
-        const existingMedia: MediaItem[] = [];
-        const seenUrls = new Set<string>();
+        if (uniqueSizes.length > 0) {
+          setSelectedSizes(uniqueSizes);
+        }
 
         loadedVariants.forEach((v) => {
           if (Array.isArray(v.images)) {
             v.images.forEach((imgUrl: string) => {
-              if (imgUrl && !seenUrls.has(imgUrl)) {
-                seenUrls.add(imgUrl);
-                existingMedia.push({
-                  id: `m-init-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                  url: imgUrl,
-                  type: 'image',
-                  associatedColor: v.color || 'all',
-                  fileName: 'Foto do Produto',
-                  isUploading: false,
-                });
-              }
+              addMediaIfNew(imgUrl, v.color || 'all', 'Foto da Variante');
             });
+          } else if (v.image) {
+            addMediaIfNew(v.image, v.color || 'all', 'Foto da Variante');
           }
-          if (v.video_url && !seenUrls.has(v.video_url)) {
-            seenUrls.add(v.video_url);
-            existingMedia.push({
-              id: `m-init-vid-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              url: v.video_url,
-              type: 'video',
-              associatedColor: v.color || 'all',
-              fileName: 'Vídeo da Peça',
-              isUploading: false,
-            });
+          if (v.video_url) {
+            addMediaIfNew(v.video_url, v.color || 'all', 'Vídeo da Peça');
           }
         });
-
-        if (initialProduct.primaryImage && !seenUrls.has(initialProduct.primaryImage)) {
-          seenUrls.add(initialProduct.primaryImage);
-          existingMedia.push({
-            id: `m-init-p-${Date.now()}`,
-            url: initialProduct.primaryImage,
-            type: 'image',
-            associatedColor: 'all',
-            fileName: 'Foto Principal',
-            isUploading: false,
-          });
+      } else if (initialProduct.colorName || (initialProduct.sizes && initialProduct.sizes.length > 0)) {
+        if (initialProduct.colorName) {
+          setColors([{ name: initialProduct.colorName, hex: initialProduct.colorHex || '#0A0A0A' }]);
         }
-
-        setMediaList(existingMedia);
+        if (initialProduct.sizes && initialProduct.sizes.length > 0) {
+          setSelectedSizes(initialProduct.sizes);
+        }
       }
+
+      setMediaList(existingMedia);
+    } else {
+      setVisibleOnline(false); // Novos produtos iniciam como rascunho por segurança
+      setVisiblePos(true);
+      setRibbon('');
+      setBrand('ANA Fitness Wear');
+      setGeneralSku('');
+      setComparePrice('');
+      setIsOnSale(false);
     }
   }, [initialProduct]);
 
@@ -279,54 +344,18 @@ export function ProductVariantMatrixForm({
     setTags(tags.filter((t) => t !== tagToRemove));
   };
 
-  // Gerenciamento de Cores
-  const handleAddColor = () => {
-    if (newColorName.trim() && !colors.some((c) => c.name.toLowerCase() === newColorName.trim().toLowerCase())) {
-      setColors([...colors, { name: newColorName.trim(), hex: newColorHex }]);
-      setNewColorName('');
-    }
-  };
-
-  const handleRemoveColor = (nameToRemove: string) => {
-    setColors(colors.filter((c) => c.name !== nameToRemove));
-  };
-
-  // Gerenciamento de Tamanhos
-  const toggleSize = (sz: string) => {
-    if (selectedSizes.includes(sz)) {
-      setSelectedSizes(selectedSizes.filter((s) => s !== sz));
-    } else {
-      setSelectedSizes([...selectedSizes, sz]);
-    }
-  };
-
-  const handleAddCustomSize = () => {
-    if (customSizeInput.trim()) {
-      const upper = customSizeInput.trim().toUpperCase();
-      if (!availableSizes.includes(upper)) {
-        setAvailableSizes([...availableSizes, upper]);
-      }
-      if (!selectedSizes.includes(upper)) {
-        setSelectedSizes([...selectedSizes, upper]);
-      }
-      setCustomSizeInput('');
-    }
-  };
-
-  // =========================================================================
-  // ⚡ GERADOR AUTOMÁTICO DE GRADE DE VARIAÇÕES (MATRIZ SKU)
-  // =========================================================================
-  const handleGenerateMatrix = () => {
-    if (colors.length === 0) {
-      alert('Por favor, adicione ao menos uma cor para gerar a grade.');
-      return;
-    }
-    if (selectedSizes.length === 0) {
-      alert('Por favor, selecione ao menos um tamanho para gerar a grade.');
+  // Sincronizador automático da grade de variações
+  const syncMatrixWithColorsAndSizes = (
+    currentColors: Array<{ name: string; hex: string }>,
+    currentSizes: string[],
+    existingVariants: VariantRow[]
+  ) => {
+    if (currentColors.length === 0 || currentSizes.length === 0) {
+      setVariants([]);
       return;
     }
 
-    const basePrefix = (title || 'PROD')
+    const basePrefix = (generalSku || title || 'PROD')
       .slice(0, 4)
       .toUpperCase()
       .replace(/[^\w]/g, '');
@@ -339,16 +368,16 @@ export function ProductVariantMatrixForm({
 
     const generated: VariantRow[] = [];
 
-    colors.forEach((colorObj) => {
-      // Localiza imagens associadas a esta cor na lista de mídias
+    currentColors.forEach((colorObj) => {
       const colorImages = mediaList
         .filter((m) => m.associatedColor === colorObj.name || m.associatedColor === 'all')
         .map((m) => m.url);
 
-      selectedSizes.forEach((sz) => {
-        // Verifica se já existia essa combinação para preservar valores editados
-        const existing = variants.find(
-          (v) => v.color.toLowerCase() === colorObj.name.toLowerCase() && v.size === sz
+      currentSizes.forEach((sz) => {
+        const existing = existingVariants.find(
+          (v) =>
+            (v.color || '').trim().toLowerCase() === colorObj.name.trim().toLowerCase() &&
+            (v.size || '').trim().toUpperCase() === sz.trim().toUpperCase()
         );
 
         const sku =
@@ -366,22 +395,76 @@ export function ProductVariantMatrixForm({
           size: sz,
           sku,
           barcode,
-          stock_quantity: existing ? existing.stock_quantity : 5,
-          price: existing ? existing.price : parseFloat(defaultPrice) || 44.9,
-          cost_price: existing ? existing.cost_price : parseFloat(defaultCostPrice) || 16.0,
-          allow_backorder: existing ? existing.allow_backorder : true,
-          estimated_production_days: existing ? existing.estimated_production_days : 7,
-          image: existing?.image || colorImages[0] || '',
-          images: existing?.images?.length ? existing.images : colorImages,
+          stock_quantity: existing !== undefined ? existing.stock_quantity : 5,
+          price: existing !== undefined ? existing.price : (parseFloat(defaultPrice) || 44.9),
+          cost_price: existing !== undefined ? existing.cost_price : (parseFloat(defaultCostPrice) || 16.0),
+          allow_backorder: existing !== undefined ? existing.allow_backorder : true,
+          estimated_production_days: existing !== undefined ? existing.estimated_production_days : 7,
+          image: existing?.image || colorImages[0] || mediaList[0]?.url || '',
+          images: existing?.images?.length ? existing.images : (colorImages.length ? colorImages : (mediaList[0]?.url ? [mediaList[0].url] : [])),
           video_url: existing?.video_url || '',
         });
       });
     });
 
     setVariants(generated);
+  };
+
+  // Gerenciamento de Cores
+  const handleAddColor = () => {
+    if (newColorName.trim() && !colors.some((c) => c.name.toLowerCase() === newColorName.trim().toLowerCase())) {
+      const updatedColors = [...colors, { name: newColorName.trim(), hex: newColorHex }];
+      setColors(updatedColors);
+      setNewColorName('');
+      syncMatrixWithColorsAndSizes(updatedColors, selectedSizes, variants);
+    }
+  };
+
+  const handleRemoveColor = (nameToRemove: string) => {
+    const updatedColors = colors.filter((c) => c.name !== nameToRemove);
+    setColors(updatedColors);
+    syncMatrixWithColorsAndSizes(updatedColors, selectedSizes, variants);
+  };
+
+  // Gerenciamento de Tamanhos
+  const toggleSize = (sz: string) => {
+    const updatedSizes = selectedSizes.includes(sz)
+      ? selectedSizes.filter((s) => s !== sz)
+      : [...selectedSizes, sz];
+    setSelectedSizes(updatedSizes);
+    syncMatrixWithColorsAndSizes(colors, updatedSizes, variants);
+  };
+
+  const handleAddCustomSize = () => {
+    if (customSizeInput.trim()) {
+      const upper = customSizeInput.trim().toUpperCase();
+      if (!availableSizes.includes(upper)) {
+        setAvailableSizes([...availableSizes, upper]);
+      }
+      const updatedSizes = selectedSizes.includes(upper) ? selectedSizes : [...selectedSizes, upper];
+      setSelectedSizes(updatedSizes);
+      setCustomSizeInput('');
+      syncMatrixWithColorsAndSizes(colors, updatedSizes, variants);
+    }
+  };
+
+  // =========================================================================
+  // ⚡ GERADOR AUTOMÁTICO DE GRADE DE VARIAÇÕES (MATRIZ SKU)
+  // =========================================================================
+  const handleGenerateMatrix = () => {
+    if (colors.length === 0) {
+      alert('Por favor, adicione ao menos uma cor para gerar a grade.');
+      return;
+    }
+    if (selectedSizes.length === 0) {
+      alert('Por favor, selecione ao menos um tamanho para gerar a grade.');
+      return;
+    }
+
+    syncMatrixWithColorsAndSizes(colors, selectedSizes, variants);
     setFeedback({
       type: 'success',
-      message: `Grade gerada com sucesso! ${generated.length} variações combinadas (${colors.length} cores × ${selectedSizes.length} tamanhos).`,
+      message: `Grade gerada com sucesso! ${colors.length * selectedSizes.length} variações combinadas (${colors.length} cores × ${selectedSizes.length} tamanhos).`,
     });
     setTimeout(() => setFeedback(null), 4000);
   };
@@ -400,36 +483,40 @@ export function ProductVariantMatrixForm({
     }
   };
 
-  // Upload de Mídias (Fotos e Vídeos) com Prévia Instantânea (0ms)
+  // Define uma foto como capa principal (move para índice 0)
+  const handleSetPrimaryMedia = (index: number) => {
+    if (index <= 0 || index >= mediaList.length) return;
+    const updated = [...mediaList];
+    const [selected] = updated.splice(index, 1);
+    updated.unshift(selected);
+    setMediaList(updated);
+
+    // Atualiza primeira foto das variantes caso não tenham imagem própria
+    setVariants((prev) =>
+      prev.map((vr) => ({
+        ...vr,
+        image: vr.image || selected.url,
+      }))
+    );
+  };
+
+  // Upload de Mídias (Fotos e Vídeos) Direto para o Supabase Storage (Sem Base64)
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     setIsUploadingMedia(true);
 
     const files = Array.from(e.target.files);
-    // Limpa o seletor para permitir selecionar o mesmo arquivo novamente
     if (fileInputRef.current) fileInputRef.current.value = '';
 
     for (const file of files) {
       const isVid = file.type.startsWith('video/');
       const tempId = `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      const defaultColor = colors[0]?.name || 'all';
+      const defaultColor = 'all';
 
-      // 1. Leitura imediata com FileReader para exibição instantânea no contador e na tela
-      const reader = new FileReader();
-      const readPromise = new Promise<string>((resolve) => {
-        reader.onload = (evt) => {
-          resolve((evt.target?.result as string) || '');
-        };
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(file);
-      });
-
-      const previewDataUrl = await readPromise;
-
-      // Adiciona na hora em mediaList -> Contador `{mediaList.length} ARQUIVOS CARREGADOS` sobe imediatamente!
+      // 1. Indicador visual imediato "Carregando imagem..." (0 Base64)
       const initialMediaItem: MediaItem = {
         id: tempId,
-        url: previewDataUrl || '',
+        url: '',
         type: isVid ? 'video' : 'image',
         associatedColor: defaultColor,
         fileName: file.name,
@@ -438,63 +525,63 @@ export function ProductVariantMatrixForm({
 
       setMediaList((prev) => [...prev, initialMediaItem]);
 
-      // 2. Envio para a API de upload (Supabase Storage Cloud + disco local)
       try {
-        const formData = new FormData();
-        formData.append('file', file);
+        // 2. Upload binário direto para o Supabase Storage (bucket 'products')
+        const fileExt = file.name.split('.').pop() || (isVid ? 'mp4' : 'jpg');
+        const filePath = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
+        const { data, error } = await supabase.storage
+          .from('products')
+          .upload(filePath, file, { contentType: file.type });
 
-        if (res.ok) {
-          const data = await res.json();
-          const finalUrl = data.url || previewDataUrl;
-
-          // Atualiza o item de mídia com a URL oficial da nuvem
-          setMediaList((prev) =>
-            prev.map((m) =>
-              m.id === tempId ? { ...m, url: finalUrl, isUploading: false } : m
-            )
-          );
-
-          // Sincroniza imediatamente com as variantes para gravar as fotos
-          setVariants((prev) =>
-            prev.map((vr) => {
-              if (defaultColor === 'all' || vr.color === defaultColor) {
-                const currentImgs = Array.isArray(vr.images) ? vr.images : [];
-                return {
-                  ...vr,
-                  image: currentImgs[0] || finalUrl,
-                  images: Array.from(new Set([...currentImgs, finalUrl])),
-                };
-              }
-              return vr;
-            })
-          );
-        } else {
-          console.warn('Upload de arquivo retornou código não-ok, mantendo prévia local');
-          setMediaList((prev) =>
-            prev.map((m) => (m.id === tempId ? { ...m, isUploading: false } : m))
-          );
+        if (error) {
+          console.error('Erro no upload para Supabase Storage:', error);
+          alert(`Erro ao enviar foto para o Supabase Storage: ${error.message}`);
+          setMediaList((prev) => prev.filter((m) => m.id !== tempId));
+          continue;
         }
-      } catch (err) {
-        console.error('Erro na requisição de upload:', err);
+
+        // 3. Obtenção da URL pública permanente
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from('products').getPublicUrl(filePath);
+
+        // 4. Salva unicamente a URL pública no estado da galeria
         setMediaList((prev) =>
-          prev.map((m) => (m.id === tempId ? { ...m, isUploading: false } : m))
+          prev.map((m) =>
+            m.id === tempId ? { ...m, url: publicUrl, isUploading: false } : m
+          )
         );
+
+        // 5. Salva unicamente a URL pública nas variações
+        setVariants((prev) =>
+          prev.map((vr) => {
+            if (defaultColor === 'all' || vr.color === defaultColor) {
+              const currentImgs = Array.isArray(vr.images) ? vr.images : [];
+              return {
+                ...vr,
+                image: currentImgs[0] || publicUrl,
+                images: Array.from(new Set([...currentImgs, publicUrl])),
+              };
+            }
+            return vr;
+          })
+        );
+      } catch (err: any) {
+        console.error('Erro no upload para Supabase Storage:', err);
+        alert(`Falha no upload para o Storage: ${err?.message || 'Erro desconhecido'}`);
+        setMediaList((prev) => prev.filter((m) => m.id !== tempId));
       }
     }
     setIsUploadingMedia(false);
   };
 
-  // Adição direta por URL externa (ex: Unsplash, CDN ou Google Drive)
+  // Adição direta por URL externa
   const handleAddDirectUrl = () => {
     const rawUrl = directImageUrlInput.trim();
     if (!rawUrl) return;
 
-    const defaultColor = colors[0]?.name || 'all';
+    const defaultColor = 'all';
     const isVid = rawUrl.endsWith('.mp4') || rawUrl.includes('video');
     const newMedia: MediaItem = {
       id: `m-url-${Date.now()}`,
@@ -508,7 +595,6 @@ export function ProductVariantMatrixForm({
     setMediaList((prev) => [...prev, newMedia]);
     setDirectImageUrlInput('');
 
-    // Sincroniza com as variantes
     setVariants((prev) =>
       prev.map((vr) => {
         if (defaultColor === 'all' || vr.color === defaultColor) {
@@ -525,7 +611,7 @@ export function ProductVariantMatrixForm({
   };
 
   // =========================================================================
-  // 💾 GRAVAÇÃO FINAL DIRETO NO SUPABASE
+  // 💾 GRAVAÇÃO FINAL NO SUPABASE
   // =========================================================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -533,32 +619,84 @@ export function ProductVariantMatrixForm({
       alert('Por favor, informe o nome do produto.');
       return;
     }
-    if (variants.length === 0) {
-      alert('Gere a grade de variações antes de salvar o produto.');
+
+    const activeColorNames = new Set(colors.map((c) => c.name.trim().toLowerCase()));
+    const activeSizeNames = new Set(selectedSizes.map((s) => s.trim().toUpperCase()));
+
+    // 1. Considera apenas variações que pertencem às cores e tamanhos ativos
+    const validVariants = variants.filter(
+      (v) =>
+        activeColorNames.has((v.color || '').trim().toLowerCase()) &&
+        activeSizeNames.has((v.size || '').trim().toUpperCase())
+    );
+
+    const basePrefix = (generalSku || title || 'PROD').slice(0, 4).toUpperCase().replace(/[^\w]/g, '');
+    const currentKeys = new Set(validVariants.map((v) => `${(v.color || '').trim().toLowerCase()}___${(v.size || '').trim().toUpperCase()}`));
+    const completedVariants = [...validVariants];
+
+    colors.forEach((c) => {
+      selectedSizes.forEach((s) => {
+        const key = `${c.name.trim().toLowerCase()}___${s.trim().toUpperCase()}`;
+        if (!currentKeys.has(key)) {
+          const colorImgs = mediaList
+            .filter((m) => m.associatedColor === c.name || m.associatedColor === 'all')
+            .map((m) => m.url);
+
+          completedVariants.push({
+            color: c.name,
+            colorHex: c.hex,
+            size: s,
+            sku: `${basePrefix}-${c.name.slice(0, 3).toUpperCase().replace(/[^\w]/g, '')}-${s}`,
+            barcode: `789${Math.floor(100000000 + Math.random() * 900000000)}`,
+            stock_quantity: 5,
+            price: parseFloat(defaultPrice) || 44.9,
+            cost_price: parseFloat(defaultCostPrice) || 16.0,
+            allow_backorder: true,
+            estimated_production_days: 7,
+            images: colorImgs.length ? colorImgs : mediaList.map((m) => m.url).filter(Boolean),
+            image: colorImgs[0] || mediaList[0]?.url || '',
+          });
+        }
+      });
+    });
+
+    if (completedVariants.length === 0) {
+      alert('Por favor, adicione ao menos uma cor e um tamanho para o produto.');
+      return;
+    }
+
+    if (mediaList.some((m) => m.isUploading)) {
+      alert('Aguarde o término do upload das imagens para o Supabase Storage antes de salvar.');
       return;
     }
 
     setIsSaving(true);
     setFeedback(null);
 
-    // Mapeia todas as mídias carregadas para as respectivas variantes da matriz
-    const enrichedVariants = variants.map((vr) => {
-      const matchingImages = mediaList
-        .filter((m) => m.associatedColor === 'all' || m.associatedColor === vr.color)
-        .map((m) => m.url)
-        .filter(Boolean);
+    const enrichedVariants = completedVariants.map((vr) => {
+      let matchingImages = mediaList
+        .filter((m) => (m.associatedColor === 'all' || m.associatedColor === vr.color) && m.url && !m.url.startsWith('data:') && !m.isUploading)
+        .map((m) => m.url);
 
-      const currentImgs = Array.isArray(vr.images) ? vr.images : [];
-      const mergedImages = Array.from(new Set([...currentImgs, ...matchingImages]));
+      if (matchingImages.length === 0 && mediaList.length > 0) {
+        matchingImages = mediaList
+          .filter((m) => m.url && !m.url.startsWith('data:') && !m.isUploading)
+          .map((m) => m.url);
+      }
+
+      const currentImgs = (Array.isArray(vr.images) ? vr.images : []).filter((u) => u && !u.startsWith('data:'));
+      const mergedImages = Array.from(new Set([...matchingImages, ...currentImgs]));
 
       return {
         ...vr,
         images: mergedImages,
-        image: mergedImages[0] || vr.image || '',
+        image: mergedImages[0] || (vr.image && !vr.image.startsWith('data:') ? vr.image : '') || '',
       };
     });
 
     try {
+      const validMedia = mediaList.filter((m) => m.url && !m.url.startsWith('data:') && !m.isUploading);
+      const primaryCoverImg = validMedia[0]?.url || enrichedVariants[0]?.images?.[0] || enrichedVariants[0]?.image || '';
       const payload = {
         id: initialProduct?.id,
         title,
@@ -571,6 +709,14 @@ export function ProductVariantMatrixForm({
         composition,
         sizeGuide,
         variants: enrichedVariants,
+        visible_online: visibleOnline,
+        visible_pos: visiblePos,
+        ribbon: ribbon.trim(),
+        brand: brand.trim() || 'ANA Fitness Wear',
+        sku: generalSku.trim() || enrichedVariants[0]?.sku || '',
+        compare_price: isOnSale && comparePrice ? parseFloat(comparePrice) : null,
+        promotional_price: isOnSale && comparePrice ? parseFloat(defaultPrice) : null,
+        primary_image: primaryCoverImg,
       };
 
       const res = await fetch('/api/backoffice/products', {
@@ -585,9 +731,14 @@ export function ProductVariantMatrixForm({
         throw new Error(data.error || 'Erro ao gravar no Supabase');
       }
 
+      // Garante recepção estruturada de { success: true, product, variants }
+      const { success, product: savedProduct, variants: savedVariants } = data;
+
       setFeedback({
         type: 'success',
-        message: `✓ Produto "${title}" e ${variants.length} variações gravados com sucesso nas tabelas 'products' e 'product_variants' do Supabase!`,
+        message: `✓ Produto "${title}" gravado com sucesso no Supabase! (${Array.isArray(savedVariants) ? savedVariants.length : 0} variações persistidas). Status: ${
+          visibleOnline ? '🟢 No ar na vitrine' : '⚪ Oculto na loja'
+        }`,
       });
 
       try {
@@ -595,7 +746,11 @@ export function ProductVariantMatrixForm({
       } catch (e) {}
 
       if (onSaveSuccess) {
-        onSaveSuccess(data);
+        onSaveSuccess({
+          success: Boolean(success),
+          product: savedProduct,
+          variants: savedVariants,
+        });
       }
     } catch (err: any) {
       console.error('Erro ao salvar no Supabase:', err);
@@ -608,13 +763,90 @@ export function ProductVariantMatrixForm({
     }
   };
 
+  // Cálculos em tempo real de Lucro e Margem (Widget Wix Stores)
+  const priceNum = parseFloat(defaultPrice) || 0;
+  const costNum = parseFloat(defaultCostPrice) || 0;
+  const compareNum = parseFloat(comparePrice) || 0;
+  const profitPerUnit = priceNum - costNum;
+  const marginPct = priceNum > 0 ? (profitPerUnit / priceNum) * 100 : 0;
+  const discountPct =
+    isOnSale && compareNum > priceNum
+      ? Math.round(((compareNum - priceNum) / compareNum) * 100)
+      : 0;
+
   const totalCalculatedStock = variants.reduce(
     (acc, v) => acc + (Number(v.stock_quantity) || 0),
     0
   );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8 bg-white selection:bg-deep-black selection:text-gold">
+    <form onSubmit={handleSubmit} className="space-y-6 bg-[#f8f9fa] selection:bg-deep-black selection:text-gold p-3 sm:p-6 rounded-lg border border-gray-200">
+      {/* =========================================================================
+          WIX STORES STYLE TOP BAR
+         ========================================================================= */}
+      <div className="bg-white border-2 border-deep-black p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-deep-black text-gold border border-gold shrink-0">
+            <Package className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-deep-black/60">
+              <span>CATÁLOGO DE PRODUTOS</span>
+              <ChevronRight className="w-3 h-3 text-gold" />
+              <span className="text-deep-black">{initialProduct ? 'EDIÇÃO DE PRODUTO FÍSICO' : 'NOVO PRODUTO FÍSICO'}</span>
+            </div>
+            <h1 className="text-base sm:text-lg font-black uppercase tracking-wider text-deep-black truncate max-w-md">
+              {title || 'NOVO PRODUTO'}
+            </h1>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap self-end sm:self-auto">
+          {/* Botão de Ativação Direta na Vitrine (Topo da Tela) */}
+          <button
+            type="button"
+            onClick={() => setVisibleOnline(!visibleOnline)}
+            className={`text-[10px] font-black uppercase tracking-widest px-3.5 py-2 border-2 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer ${
+              visibleOnline
+                ? 'bg-green-700 hover:bg-green-800 text-white border-green-800'
+                : 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-400'
+            }`}
+            title="Clique aqui para ativar ou desativar este produto na vitrine pública do site"
+          >
+            <span className={`w-2 h-2 rounded-full ${visibleOnline ? 'bg-white animate-pulse' : 'bg-amber-600'}`} />
+            <span>{visibleOnline ? '🟢 NO AR NA VITRINE (ATIVO)' : '⚪ OCULTO DO SITE (CLIQUE P/ ATIVAR)'}</span>
+          </button>
+
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 border-2 border-deep-black hover:bg-deep-black hover:text-white text-deep-black font-black text-xs uppercase tracking-wider transition"
+            >
+              CANCELAR
+            </button>
+          )}
+
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="px-6 py-2 bg-gold hover:bg-deep-black hover:text-gold text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 border-2 border-deep-black disabled:opacity-50 shadow-xs"
+          >
+            {isSaving ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>GRAVANDO...</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                <span>SALVAR PRODUTO</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* Alerta de Feedback */}
       {feedback && (
         <div
@@ -643,943 +875,1152 @@ export function ProductVariantMatrixForm({
       )}
 
       {/* =========================================================================
-          SEÇÃO 1: DADOS BÁSICOS DO PRODUTO
+          GRID DE 2 COLUNAS OFICIAL WIX STORES
          ========================================================================= */}
-      <div className="border-2 border-deep-black p-6 sm:p-8 space-y-6 bg-white shadow-sm">
-        <div className="border-b border-deep-black/10 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-2">
-              <Package className="w-5 h-5 text-gold" />
-              <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-deep-black">
-                1. DADOS BÁSICOS DO PRODUTO (CATÁLOGO GERAL)
-              </h2>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* =======================================================================
+            COLUNA PRINCIPAL (ESQUERDA - 8 COLUNAS)
+           ======================================================================= */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* CARD 1: MÍDIAS E IMAGENS DO PRODUTO */}
+          <div className="bg-white border-2 border-deep-black p-6 space-y-5 shadow-sm">
+            <div className="flex items-center justify-between border-b border-deep-black/10 pb-3">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-gold" />
+                <h2 className="text-sm font-black uppercase tracking-wider text-deep-black">
+                  Imagens e Vídeos
+                </h2>
+              </div>
+              <span className="text-[10px] font-black uppercase bg-deep-black text-white px-2.5 py-0.5">
+                {mediaList.length} ARQUIVOS CARREGADOS
+              </span>
             </div>
-            <p className="text-xs text-deep-black/60 uppercase mt-0.5">
-              Identificação comercial, categoria, confecção e preços padrões em Dólar ($ USD).
+
+            <p className="text-[11px] text-deep-black/70">
+              Faça upload das fotos da modelo usando a peça. A primeira foto é exibida como capa principal da vitrine.
             </p>
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-widest bg-deep-black text-gold border border-gold px-3 py-1 self-start sm:self-auto">
-            SUPABASE SYNC
-          </span>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {/* Nome do Produto */}
-          <div className="space-y-1 sm:col-span-2">
-            <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1">
-              <span>Nome do Produto *</span>
-              <span className="text-red-500">*</span>
-            </label>
+            {/* Input Oculto de Arquivos */}
             <input
-              type="text"
-              required
-              placeholder="EX: LEGGING SCULPT EFEITO LEVANTA BUMBUM"
-              value={title}
-              onChange={(e) => handleTitleChange(e.target.value)}
-              className="w-full p-3 border-2 border-deep-black font-bold text-xs uppercase focus:outline-none focus:border-gold"
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,video/mp4"
+              onChange={handleMediaUpload}
+              className="hidden"
             />
-          </div>
 
-          {/* Slug da URL */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
-              Slug da URL (ex: legging-sculpt)
-            </label>
-            <input
-              type="text"
-              placeholder="legging-sculpt"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              className="w-full p-3 border-2 border-deep-black font-mono text-xs focus:outline-none focus:border-gold"
-            />
-          </div>
-
-          {/* Categoria */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
-              <span>Categoria Principal (Supabase) *</span>
-            </label>
-            <select
-              required
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full p-3 border-2 border-deep-black font-black text-xs uppercase bg-white focus:outline-none focus:border-gold"
+            {/* Dropzone de Upload */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-deep-black/40 hover:border-gold hover:bg-gold/5 p-6 text-center cursor-pointer transition space-y-2 bg-gray-50/50"
             >
-              {categoriesList.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-              {categoriesList.length === 0 && (
-                <>
-                  <option value="">LEGGINGS</option>
-                  <option value="">TOPS</option>
-                  <option value="">CONJUNTOS</option>
-                  <option value="">MACAQUINHOS</option>
-                  <option value="">MACACÕES</option>
-                </>
-              )}
-            </select>
-          </div>
-
-          {/* Subcategoria */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
-              Subcategoria / Linha Fitness
-            </label>
-            <select
-              value={subcategory}
-              onChange={(e) => setSubcategory(e.target.value)}
-              className="w-full p-3 border-2 border-deep-black font-bold text-xs uppercase bg-white focus:outline-none focus:border-gold"
-            >
-              <option value="Alta Compressão">ALTA COMPRESSÃO</option>
-              <option value="Cós Anatômico Duplo">CÓS ANATÔMICO DUPLO</option>
-              <option value="Seamless Sculpt">SEAMLESS SCULPT (SEM COSTURA)</option>
-              <option value="Costas Nadador">COSTAS NADADOR</option>
-              <option value="Bojo Removível">BOJO REMOVÍVEL</option>
-              <option value="Atelier Sob Medida">ATELIER SOB MEDIDA (PRE-ORDER)</option>
-            </select>
-          </div>
-
-          {/* Fornecedor Vinculado */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1">
-              <Factory className="w-3.5 h-3.5 text-gold" />
-              <span>Fornecedor / Confecção Vinculada *</span>
-            </label>
-            <select
-              required
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-              className="w-full p-3 border-2 border-deep-black font-bold text-xs uppercase bg-white focus:outline-none focus:border-gold"
-            >
-              {suppliersList.map((sup) => (
-                <option key={sup.id} value={sup.id}>
-                  {sup.company_name} {sup.contact_name ? `(${sup.contact_name})` : ''}
-                </option>
-              ))}
-              {suppliersList.length === 0 && (
-                <option value="">CONFECÇÕES FITPRO BRASIL (ATELIER SEDE)</option>
-              )}
-            </select>
-          </div>
-
-          {/* Preço de Venda Padrão */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
-              Preço de Venda Padrão ($ USD) *
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-3 text-xs font-black text-deep-black">$</span>
-              <input
-                type="number"
-                step="0.01"
-                required
-                value={defaultPrice}
-                onChange={(e) => setDefaultPrice(e.target.value)}
-                className="w-full p-3 pl-7 border-2 border-deep-black font-mono font-bold text-xs focus:outline-none focus:border-gold"
-              />
-            </div>
-          </div>
-
-          {/* Preço de Custo */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-wider text-gold flex items-center gap-1">
-              <DollarSign className="w-3.5 h-3.5" />
-              <span>Preço de Custo ($ USD) - Confecção Privado</span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-3 text-xs font-black text-deep-black">$</span>
-              <input
-                type="number"
-                step="0.01"
-                value={defaultCostPrice}
-                onChange={(e) => setDefaultCostPrice(e.target.value)}
-                className="w-full p-3 pl-7 border-2 border-gold font-mono font-bold text-xs focus:outline-none focus:border-deep-black"
-              />
-            </div>
-            <span className="text-[9px] text-deep-black/50 block">Protegido por RLS contra clientes.</span>
-          </div>
-
-          {/* Tags de Busca (Chips) */}
-          <div className="space-y-2 sm:col-span-2 lg:col-span-3">
-            <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1">
-              <Tag className="w-3.5 h-3.5 text-gold" />
-              <span>Tags de Busca & Indexação (Pressione Enter para adicionar)</span>
-            </label>
-            <div className="flex flex-wrap items-center gap-2 p-2.5 border-2 border-deep-black bg-white min-h-[44px]">
-              {tags.map((tg) => (
-                <span
-                  key={tg}
-                  className="px-2.5 py-1 bg-deep-black text-white text-[10px] font-black uppercase flex items-center gap-1.5 shadow-xs"
-                >
-                  <span>#{tg}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTag(tg)}
-                    className="text-gold hover:text-white transition"
-                    title="Remover tag"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+              <div className="inline-flex p-2.5 bg-white border border-deep-black/20 text-gold shadow-xs">
+                <Upload className="w-5 h-5 text-gold" />
+              </div>
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-deep-black block">
+                  Adicionar Imagens ou Vídeos
                 </span>
-              ))}
+                <span className="text-[10px] text-deep-black/60 font-medium">
+                  PNG, JPG, WEBP e vídeos MP4 (Demonstração de caimento e squat-proof).
+                </span>
+              </div>
+              {isUploadingMedia && (
+                <div className="flex items-center justify-center gap-2 p-2.5 bg-gold/15 border-2 border-gold text-xs font-black uppercase text-deep-black animate-pulse">
+                  <Loader2 className="w-4 h-4 animate-spin text-gold" />
+                  <span>Carregando imagem para o Supabase Storage...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Adição Direta via URL */}
+            <div className="flex items-center gap-2">
               <input
-                type="text"
-                placeholder="+ Adicionar tag (ex: gymshark, compressao)"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
+                type="url"
+                placeholder="Ou cole uma URL direta de imagem (ex: https://.../foto.jpg)"
+                value={directImageUrlInput}
+                onChange={(e) => setDirectImageUrlInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    handleAddTag();
+                    handleAddDirectUrl();
                   }
                 }}
-                className="flex-1 min-w-[180px] p-1 font-bold text-xs uppercase focus:outline-none"
+                className="flex-1 p-2 border-2 border-deep-black text-xs font-medium focus:border-gold focus:outline-none"
               />
               <button
                 type="button"
-                onClick={handleAddTag}
-                className="px-3 py-1 bg-gold text-deep-black font-black text-[10px] uppercase hover:bg-deep-black hover:text-gold transition"
+                onClick={handleAddDirectUrl}
+                className="px-3.5 py-2 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition shrink-0"
               >
-                + ADICIONAR
+                + VINCULAR URL
               </button>
+            </div>
+
+            {/* Grade de Mídias Carregadas com Associação por Cor */}
+            {mediaList.length > 0 && (
+              <div className="space-y-3 pt-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-deep-black block">
+                  Galeria de Mídias ({mediaList.length}):
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {mediaList.map((media, mIdx) => {
+                    const isPrimary = mIdx === 0;
+                    return (
+                      <div
+                        key={media.id}
+                        className={`bg-white border-2 p-2 space-y-2 relative group shadow-xs transition ${
+                          isPrimary ? 'border-gold ring-2 ring-gold/30' : 'border-deep-black/30'
+                        }`}
+                      >
+                        <div className="relative aspect-[4/5] bg-deep-black/10 overflow-hidden border border-deep-black/10">
+                          {media.isUploading ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-deep-black text-white space-y-2">
+                              <Loader2 className="w-6 h-6 text-gold animate-spin" />
+                              <span className="text-[9px] font-black uppercase tracking-wider text-gold animate-pulse">
+                                Carregando imagem...
+                              </span>
+                              <span className="text-[7.5px] font-mono text-white/60 truncate max-w-[90%]">
+                                {media.fileName || 'Storage'}
+                              </span>
+                            </div>
+                          ) : media.type === 'video' ? (
+                            <video src={media.url} className="w-full h-full object-cover" />
+                          ) : (
+                            <img src={media.url} alt="Mídia" className="w-full h-full object-cover" />
+                          )}
+
+                          {isPrimary && !media.isUploading && (
+                            <span className="absolute top-1 left-1 bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 uppercase flex items-center gap-0.5 shadow-sm">
+                              <Star className="w-2.5 h-2.5 fill-deep-black" />
+                              <span>CAPA</span>
+                            </span>
+                          )}
+
+                          {/* Botão de Excluir */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const removed = mediaList[mIdx];
+                              setMediaList(mediaList.filter((_, i) => i !== mIdx));
+                              if (removed) {
+                                setVariants((prev) =>
+                                  prev.map((vr) => ({
+                                    ...vr,
+                                    images: (vr.images || []).filter((u) => u !== removed.url),
+                                    image: vr.image === removed.url ? (vr.images || []).find((u) => u !== removed.url) || '' : vr.image,
+                                  }))
+                                );
+                              }
+                            }}
+                            className="absolute top-1 right-1 p-1 bg-red-600 text-white opacity-0 group-hover:opacity-100 transition shadow-sm"
+                            title="Excluir mídia"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        {/* Botão Tornar Capa (se não for a primeira) */}
+                        {!isPrimary && (
+                          <button
+                            type="button"
+                            onClick={() => handleSetPrimaryMedia(mIdx)}
+                            className="w-full py-1 bg-deep-black/5 hover:bg-gold hover:text-deep-black text-deep-black text-[8px] font-black uppercase transition border border-deep-black/20"
+                          >
+                            Definir como Capa
+                          </button>
+                        )}
+
+                        {/* Seletor de Associação de Cor */}
+                        <div className="space-y-0.5">
+                          <label className="text-[7.5px] font-black uppercase tracking-wider text-deep-black/60 block">
+                            Cor da Peça:
+                          </label>
+                          <select
+                            value={media.associatedColor}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const updated = [...mediaList];
+                              updated[mIdx].associatedColor = val;
+                              setMediaList(updated);
+
+                              setVariants((prev) =>
+                                prev.map((vr) => {
+                                  if (val === 'all' || vr.color === val) {
+                                    const currentImgs = Array.isArray(vr.images) ? vr.images : [];
+                                    return {
+                                      ...vr,
+                                      image: currentImgs[0] || media.url,
+                                      images: Array.from(new Set([...currentImgs, media.url])),
+                                    };
+                                  } else {
+                                    return {
+                                      ...vr,
+                                      images: (vr.images || []).filter((u) => u !== media.url),
+                                    };
+                                  }
+                                })
+                              );
+                            }}
+                            className="w-full p-1 border border-deep-black/30 font-bold text-[8.5px] uppercase bg-white focus:outline-none focus:border-gold"
+                          >
+                            <option value="all">Todas as Cores</option>
+                            {colors.map((c) => (
+                              <option key={c.name} value={c.name}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* CARD 2: INFORMAÇÕES BÁSICAS DO PRODUTO (WIX BASIC INFO) */}
+          <div className="bg-white border-2 border-deep-black p-6 space-y-5 shadow-sm">
+            <div className="flex items-center gap-2 border-b border-deep-black/10 pb-3">
+              <FileText className="w-4 h-4 text-gold" />
+              <h2 className="text-sm font-black uppercase tracking-wider text-deep-black">
+                Informações do Produto
+              </h2>
+            </div>
+
+            {/* Nome do Produto */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
+                <span>Nome do Produto *</span>
+                <span className="text-deep-black/40 text-[9px]">Campo obrigatório</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ex: LEGGING SCULPT EFEITO LEVANTA BUMBUM"
+                value={title}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                className="w-full p-3 border-2 border-deep-black font-bold text-xs uppercase focus:outline-none focus:border-gold"
+              />
+            </div>
+
+            {/* Fita do Produto (Product Ribbon) */}
+            <div className="space-y-2 p-3.5 bg-gray-50 border border-deep-black/20">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-gold" />
+                  <span>Fita do Produto (Product Ribbon / Selo Promocional)</span>
+                </label>
+                {ribbon && (
+                  <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-gold text-deep-black border border-deep-black">
+                    Preview: {ribbon}
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-deep-black/60">
+                Aparece como um selo de destaque no canto superior da foto na vitrine da loja.
+              </p>
+              <input
+                type="text"
+                placeholder="Ex: LANÇAMENTO, BEST SELLER, OFERTA RELÂMPAGO, SOB MEDIDA"
+                value={ribbon}
+                onChange={(e) => setRibbon(e.target.value)}
+                className="w-full p-2.5 border-2 border-deep-black font-bold text-xs uppercase bg-white focus:outline-none focus:border-gold"
+              />
+              {/* Botões de Atalho Rápido para Ribbon */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <span className="text-[8.5px] font-bold text-deep-black/50 uppercase self-center mr-1">
+                  Atalhos:
+                </span>
+                {['LANÇAMENTO', 'BEST SELLER', 'OFERTA RELÂMPAGO', 'SOB MEDIDA', 'EDIÇÃO LIMITADA', '100% SQUAT-PROOF'].map((sug) => (
+                  <button
+                    key={sug}
+                    type="button"
+                    onClick={() => setRibbon(sug)}
+                    className="px-2 py-0.5 bg-white hover:bg-gold hover:text-deep-black text-deep-black border border-deep-black/30 text-[8.5px] font-black uppercase transition"
+                  >
+                    + {sug}
+                  </button>
+                ))}
+                {ribbon && (
+                  <button
+                    type="button"
+                    onClick={() => setRibbon('')}
+                    className="px-2 py-0.5 text-red-600 hover:underline text-[8.5px] font-black uppercase"
+                  >
+                    ✕ Limpar Fita
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Descrição Detalhada */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                Descrição Detalhada do Produto
+              </label>
+              <textarea
+                rows={4}
+                placeholder="Descreva o caimento, a compressão do tecido, a sustentação e os diferenciais esportivos da peça..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full p-3 border-2 border-deep-black font-medium text-xs focus:outline-none focus:border-gold"
+              />
             </div>
           </div>
 
-          {/* Descrição Detalhada */}
-          <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-            <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1">
-              <FileText className="w-3.5 h-3.5 text-gold" />
-              <span>Descrição Detalhada do Produto</span>
-            </label>
-            <textarea
-              rows={3}
-              placeholder="Descreva o caimento, os detalhes anatômicos e os diferenciais esportivos da peça..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full p-3 border-2 border-deep-black font-medium text-xs focus:outline-none focus:border-gold"
-            />
+          {/* CARD 3: PREÇO, PROMOÇÃO E LUCRO (WIX PRICING & PROFIT CALCULATOR) */}
+          <div className="bg-white border-2 border-deep-black p-6 space-y-5 shadow-sm">
+            <div className="flex items-center gap-2 border-b border-deep-black/10 pb-3">
+              <DollarSign className="w-4 h-4 text-gold" />
+              <h2 className="text-sm font-black uppercase tracking-wider text-deep-black">
+                Preços e Lucro por Peça
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 items-start">
+              {/* Preço de Venda Padrão */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                  Preço de Venda ($ USD) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs font-black text-deep-black">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={defaultPrice}
+                    onChange={(e) => setDefaultPrice(e.target.value)}
+                    className="w-full p-2.5 pl-7 border-2 border-deep-black font-mono font-bold text-xs focus:outline-none focus:border-gold"
+                  />
+                </div>
+              </div>
+
+              {/* Preço de Custo */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
+                  <span>Custo dos Produtos ($ USD)</span>
+                  <span className="text-[9px] text-deep-black/40">Confecção</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs font-black text-deep-black">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={defaultCostPrice}
+                    onChange={(e) => setDefaultCostPrice(e.target.value)}
+                    className="w-full p-2.5 pl-7 border-2 border-deep-black font-mono font-bold text-xs focus:outline-none focus:border-gold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Toggle Em Promoção / Preço de Comparação (Compare Price) */}
+            <div className="p-4 border-2 border-deep-black/20 bg-gray-50 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isOnSale}
+                    onChange={(e) => setIsOnSale(e.target.checked)}
+                    className="w-4 h-4 accent-gold"
+                  />
+                  <span className="text-xs font-black uppercase tracking-wider text-deep-black">
+                    Em promoção (Exibir preço de comparação "De / Por")
+                  </span>
+                </label>
+                {isOnSale && discountPct > 0 && (
+                  <span className="text-[9px] font-black px-2 py-0.5 bg-red-600 text-white uppercase">
+                    -{discountPct}% OFF
+                  </span>
+                )}
+              </div>
+
+              {isOnSale && (
+                <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                      Preço de Comparação ($ USD - Valor Original sem Desconto)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-xs font-black text-deep-black">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Ex: 59.90"
+                        value={comparePrice}
+                        onChange={(e) => setComparePrice(e.target.value)}
+                        className="w-full p-2.5 pl-7 border-2 border-deep-black font-mono font-bold text-xs focus:outline-none focus:border-gold bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-white border border-deep-black/20 text-xs font-bold text-deep-black">
+                    <span className="text-[9px] text-deep-black/50 uppercase block">Como o cliente verá no site:</span>
+                    <div className="flex items-baseline gap-2 mt-0.5">
+                      <span className="text-sm font-black font-mono">${priceNum.toFixed(2)}</span>
+                      {compareNum > priceNum && (
+                        <span className="text-xs text-deep-black/40 line-through font-mono">
+                          ${compareNum.toFixed(2)}
+                        </span>
+                      )}
+                      {discountPct > 0 && (
+                        <span className="text-[9px] font-black text-red-600 uppercase">
+                          ({discountPct}% de desconto)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Widget Oficial Wix de Lucro Líquido e Margem */}
+            <div className="bg-deep-black text-white p-4 border-2 border-gold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-luxury">
+              <div className="space-y-0.5">
+                <span className="text-[9px] font-black uppercase tracking-widest text-gold flex items-center gap-1">
+                  <TrendingUp className="w-3.5 h-3.5 text-gold" />
+                  <span>CALCULADORA DE RENTABILIDADE WIX</span>
+                </span>
+                <p className="text-xs text-white/80">
+                  Lucro líquido gerado por cada peça vendida com base no preço de venda e custo de confecção.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4 shrink-0 bg-white/10 px-4 py-2 border border-white/20">
+                <div className="text-right">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-gold block">
+                    LUCRO BRUTO / UNID
+                  </span>
+                  <span className="text-base font-black font-mono text-white">
+                    {profitPerUnit >= 0 ? '+' : ''}${profitPerUnit.toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="w-px h-8 bg-white/20" />
+
+                <div className="text-right">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-gold block">
+                    MARGEM DE LUCRO
+                  </span>
+                  <span className={`text-base font-black font-mono ${marginPct >= 50 ? 'text-green-400' : 'text-gold'}`}>
+                    {marginPct.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Composição do Tecido */}
-          <div className="space-y-1 sm:col-span-1 lg:col-span-1">
-            <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1">
-              <Shirt className="w-3.5 h-3.5 text-gold" />
-              <span>Composição do Tecido</span>
-            </label>
-            <input
-              type="text"
-              placeholder="88% Poliamida Nobre, 12% Elastano"
-              value={composition}
-              onChange={(e) => setComposition(e.target.value)}
-              className="w-full p-3 border-2 border-deep-black font-bold text-xs focus:outline-none focus:border-gold"
-            />
+          {/* CARD 4: OPÇÕES DO PRODUTO & MATRIZ DE VARIANTES (COR × TAMANHO) */}
+          <div className="bg-white border-2 border-deep-black p-6 space-y-6 shadow-sm">
+            <div className="flex items-center justify-between border-b border-deep-black/10 pb-3">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-gold" />
+                <h2 className="text-sm font-black uppercase tracking-wider text-deep-black">
+                  Opções do Produto (Cores e Tamanhos)
+                </h2>
+              </div>
+              <span className="text-[10px] font-mono text-deep-black/60 font-bold">
+                {colors.length} CORES × {selectedSizes.length} TAMANHOS
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              {/* Cores */}
+              <div className="p-4 border-2 border-deep-black/20 bg-gray-50/50 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5 text-gold" />
+                  <span>Cores Disponíveis ({colors.length})</span>
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={newColorHex}
+                    onChange={(e) => setNewColorHex(e.target.value)}
+                    className="w-9 h-9 border-2 border-deep-black cursor-pointer bg-transparent p-0.5 shrink-0"
+                    title="Escolha a cor da amostra"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Nome da Cor (ex: Amarelo Solar)"
+                    value={newColorName}
+                    onChange={(e) => setNewColorName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddColor();
+                      }
+                    }}
+                    className="flex-1 p-2 border-2 border-deep-black font-bold text-xs uppercase focus:outline-none focus:border-gold"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddColor}
+                    className="px-3 py-2 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[10px] font-black uppercase tracking-wider transition shrink-0"
+                  >
+                    + ADICIONAR
+                  </button>
+                </div>
+
+                {/* Amostras Rápidas da Coleção Ana Fitness */}
+                <div className="space-y-1 pt-1">
+                  <span className="text-[8.5px] font-bold uppercase tracking-wider text-deep-black/50 block">
+                    Amostras Frequentes:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { name: 'Preto Ônix', hex: '#0A0A0A' },
+                      { name: 'Amarelo Solar', hex: '#F59E0B' },
+                      { name: 'Verde Militar', hex: '#4B5320' },
+                      { name: 'Champagne Gold', hex: '#D4AF37' },
+                      { name: 'Pure White', hex: '#FFFFFF' },
+                      { name: 'Vinho Marsala', hex: '#800020' },
+                    ].map((sug) => (
+                      <button
+                        key={sug.name}
+                        type="button"
+                        onClick={() => {
+                          if (!colors.some((c) => c.name.toLowerCase() === sug.name.toLowerCase())) {
+                            setColors([...colors, sug]);
+                          }
+                        }}
+                        className="px-2 py-0.5 bg-white border border-deep-black/30 hover:border-gold text-[8.5px] font-bold uppercase inline-flex items-center gap-1 transition"
+                      >
+                        <span className="w-2 h-2 rounded-full border border-deep-black/30" style={{ backgroundColor: sug.hex }} />
+                        <span>{sug.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Lista de Cores Ativas */}
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-deep-black/10">
+                  {colors.map((c) => (
+                    <div
+                      key={c.name}
+                      className="p-1 pl-2 pr-1.5 bg-white border border-deep-black flex items-center gap-1.5 shadow-xs"
+                    >
+                      <span className="w-3 h-3 rounded-full border border-deep-black/30" style={{ backgroundColor: c.hex }} />
+                      <span className="text-[10px] font-black uppercase text-deep-black">{c.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveColor(c.name)}
+                        className="text-red-500 hover:text-red-700 p-0.5 transition"
+                        title="Remover cor"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tamanhos */}
+              <div className="p-4 border-2 border-deep-black/20 bg-gray-50/50 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <Shirt className="w-3.5 h-3.5 text-gold" />
+                  <span>Tamanhos Disponíveis ({selectedSizes.length})</span>
+                </span>
+
+                <div className="grid grid-cols-5 gap-1.5">
+                  {availableSizes.map((sz) => {
+                    const isSelected = selectedSizes.includes(sz);
+                    return (
+                      <button
+                        key={sz}
+                        type="button"
+                        onClick={() => toggleSize(sz)}
+                        className={`py-2 text-xs font-black uppercase tracking-wider border-2 transition-all flex flex-col items-center justify-center ${
+                          isSelected
+                            ? 'bg-deep-black text-white border-deep-black shadow-xs ring-1 ring-gold'
+                            : 'bg-white text-deep-black/60 border-deep-black/20 hover:border-deep-black hover:text-deep-black'
+                        }`}
+                      >
+                        <span>{sz}</span>
+                        <span className="text-[7px] font-bold">
+                          {isSelected ? '✓ ATIVO' : '+ ATIVAR'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    placeholder="Outro Tamanho (ex: XXL, ÚNICO)"
+                    value={customSizeInput}
+                    onChange={(e) => setCustomSizeInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCustomSize();
+                      }
+                    }}
+                    className="flex-1 p-2 border-2 border-deep-black font-bold text-xs uppercase focus:outline-none focus:border-gold"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomSize}
+                    className="px-3 py-2 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[10px] font-black uppercase tracking-wider transition shrink-0"
+                  >
+                    + ADICIONAR
+                  </button>
+                </div>
+
+                <div className="p-2 bg-white border border-deep-black/20 text-[10px] font-black uppercase text-deep-black flex items-center justify-between">
+                  <span>Tamanhos Ativos:</span>
+                  <span className="text-gold font-mono">{selectedSizes.join(' • ') || 'Nenhum'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Botão Gerador de Grade */}
+            <div className="pt-1 text-center">
+              <button
+                type="button"
+                onClick={handleGenerateMatrix}
+                className="w-full sm:w-auto px-8 py-3.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-wider transition inline-flex items-center justify-center gap-2 shadow-luxury border-2 border-gold"
+              >
+                <Sparkles className="w-4 h-4 text-gold" />
+                <span>⚡ Gerar Grade de Variações ({colors.length * selectedSizes.length} Combinações)</span>
+              </button>
+            </div>
+
+            {/* Tabela de Variantes */}
+            {variants.length > 0 && (
+              <div className="space-y-3 pt-3 border-t border-deep-black/10">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Grid className="w-4 h-4 text-gold" />
+                    <span className="text-xs font-black uppercase tracking-wider text-deep-black">
+                      Tabela de Estoque por Variação ({variants.length} SKUs)
+                    </span>
+                  </div>
+
+                  {/* Ação em Massa */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase text-deep-black/60">Estoque em Massa:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Qtd (ex: 5)"
+                      value={massStockValue}
+                      onChange={(e) => setMassStockValue(e.target.value)}
+                      className="w-20 p-1 border border-deep-black font-mono font-bold text-center text-xs bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyMassStock}
+                      className="px-2.5 py-1 bg-deep-black text-white hover:bg-gold hover:text-deep-black text-[9px] font-black uppercase transition"
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto border-2 border-deep-black max-h-96">
+                  <table className="w-full text-left text-xs uppercase tracking-wider">
+                    <thead className="bg-deep-black text-white text-[9px] font-black sticky top-0 z-10">
+                      <tr>
+                        <th className="p-2.5">Cor & Foto</th>
+                        <th className="p-2.5">Tam</th>
+                        <th className="p-2.5">Código SKU</th>
+                        <th className="p-2.5">Estoque</th>
+                        <th className="p-2.5">Preço ($)</th>
+                        <th className="p-2.5">Custo ($)</th>
+                        <th className="p-2.5">Encomenda</th>
+                        <th className="p-2.5 text-right">Excluir</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-deep-black/10">
+                      {variants.map((v, idx) => (
+                        <tr key={`${v.color}-${v.size}-${idx}`} className="hover:bg-deep-black/5">
+                          <td className="p-2.5">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-9 border border-deep-black/30 overflow-hidden bg-deep-black/10 shrink-0">
+                                {v.image || v.images?.[0] ? (
+                                  <img
+                                    src={v.image || v.images[0]}
+                                    alt={v.color}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-[7px] text-deep-black/40 font-bold">
+                                    SEM FOTO
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1">
+                                  <span
+                                    className="w-2.5 h-2.5 rounded-full border border-deep-black/40"
+                                    style={{ backgroundColor: v.colorHex }}
+                                  />
+                                  <span className="font-black text-deep-black text-[11px]">{v.color}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="p-2.5 font-black text-xs">{v.size}</td>
+
+                          <td className="p-2.5">
+                            <input
+                              type="text"
+                              value={v.sku}
+                              onChange={(e) => {
+                                const updated = [...variants];
+                                updated[idx].sku = e.target.value.toUpperCase();
+                                setVariants(updated);
+                              }}
+                              className="w-28 p-1 border border-deep-black font-mono font-bold text-[10px] uppercase bg-white"
+                            />
+                          </td>
+
+                          <td className="p-2.5">
+                            <input
+                              type="number"
+                              min="0"
+                              value={v.stock_quantity}
+                              onChange={(e) => {
+                                const updated = [...variants];
+                                updated[idx].stock_quantity = Math.max(0, parseInt(e.target.value) || 0);
+                                setVariants(updated);
+                              }}
+                              className="w-16 p-1 border border-deep-black text-center font-mono font-bold text-xs bg-white"
+                            />
+                          </td>
+
+                          <td className="p-2.5">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={v.price}
+                              onChange={(e) => {
+                                const updated = [...variants];
+                                updated[idx].price = parseFloat(e.target.value) || 0;
+                                setVariants(updated);
+                              }}
+                              className="w-20 p-1 border border-deep-black font-mono font-bold text-xs bg-white"
+                            />
+                          </td>
+
+                          <td className="p-2.5">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={v.cost_price}
+                              onChange={(e) => {
+                                const updated = [...variants];
+                                updated[idx].cost_price = parseFloat(e.target.value) || 0;
+                                setVariants(updated);
+                              }}
+                              className="w-20 p-1 border border-deep-black font-mono font-bold text-xs bg-white"
+                            />
+                          </td>
+
+                          <td className="p-2.5 text-center">
+                            <input
+                              type="checkbox"
+                              checked={v.allow_backorder}
+                              onChange={(e) => {
+                                const updated = [...variants];
+                                updated[idx].allow_backorder = e.target.checked;
+                                setVariants(updated);
+                              }}
+                              className="w-4 h-4 accent-gold"
+                            />
+                          </td>
+
+                          <td className="p-2.5 text-right">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVariants(variants.filter((_, i) => i !== idx));
+                              }}
+                              className="p-1 border border-red-300 text-red-600 hover:bg-red-600 hover:text-white transition"
+                              title="Remover variante"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Tabela de Medidas */}
-          <div className="space-y-1 sm:col-span-1 lg:col-span-2">
-            <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1">
-              <Ruler className="w-3.5 h-3.5 text-gold" />
-              <span>Tabela de Medidas (Guia de Tamanhos)</span>
-            </label>
-            <input
-              type="text"
-              placeholder="P: 34-36 (US 2-4) | M: 38-40 (US 6-8) | G: 42-44 (US 10-12)"
-              value={sizeGuide}
-              onChange={(e) => setSizeGuide(e.target.value)}
-              className="w-full p-3 border-2 border-deep-black font-medium text-xs focus:outline-none focus:border-gold"
-            />
-          </div>
-        </div>
-      </div>
+          {/* CARD 5: INFORMAÇÕES ADICIONAIS (COMPOSIÇÃO & TABELA DE MEDIDAS) */}
+          <div className="bg-white border-2 border-deep-black p-6 space-y-5 shadow-sm">
+            <div className="flex items-center gap-2 border-b border-deep-black/10 pb-3">
+              <Ruler className="w-4 h-4 text-gold" />
+              <h2 className="text-sm font-black uppercase tracking-wider text-deep-black">
+                Informações Adicionais (Atelier & Confecção)
+              </h2>
+            </div>
 
-      {/* =========================================================================
-          SEÇÃO 2: GERADOR DE GRADE E VARIAÇÕES (CORES & TAMANHOS)
-         ========================================================================= */}
-      <div className="border-2 border-deep-black p-6 sm:p-8 space-y-6 bg-white shadow-sm">
-        <div className="border-b border-deep-black/10 pb-4">
-          <div className="flex items-center gap-2">
-            <Layers className="w-5 h-5 text-gold" />
-            <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-deep-black">
-              2. GERADOR DE GRADE & VARIAÇÕES (MATRIZ COR × TAMANHO)
-            </h2>
-          </div>
-          <p className="text-xs text-deep-black/60 uppercase mt-0.5">
-            Configure as cores disponíveis e os tamanhos. O botão gerador cria automaticamente a tabela com todos os SKUs combinados.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          {/* Coluna A: Gerenciamento de Cores */}
-          <div className="p-5 border-2 border-deep-black/20 bg-deep-black/5 space-y-4">
-            <span className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
-              <Palette className="w-4 h-4 text-gold" />
-              <span>CORES DISPONÍVEIS DA PEÇA</span>
-            </span>
-
-            {/* Inputs para Nova Cor */}
-            <div className="flex items-center gap-2">
-              <div className="relative flex items-center">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1">
+                  <Shirt className="w-3.5 h-3.5 text-gold" />
+                  <span>Composição do Tecido</span>
+                </label>
                 <input
-                  type="color"
-                  value={newColorHex}
-                  onChange={(e) => setNewColorHex(e.target.value)}
-                  className="w-10 h-10 border-2 border-deep-black cursor-pointer bg-transparent p-0.5"
-                  title="Escolha a cor da amostra"
+                  type="text"
+                  placeholder="88% Poliamida Nobre, 12% Elastano"
+                  value={composition}
+                  onChange={(e) => setComposition(e.target.value)}
+                  className="w-full p-2.5 border-2 border-deep-black font-bold text-xs focus:outline-none focus:border-gold"
                 />
               </div>
 
-              <input
-                type="text"
-                placeholder="Nome da Cor (ex: Amarelo Solar)"
-                value={newColorName}
-                onChange={(e) => setNewColorName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddColor();
-                  }
-                }}
-                className="flex-1 p-2.5 border-2 border-deep-black font-bold text-xs uppercase focus:outline-none focus:border-gold"
-              />
-
-              <button
-                type="button"
-                onClick={handleAddColor}
-                className="px-4 py-2.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition shrink-0 shadow-xs"
-              >
-                + ADICIONAR COR
-              </button>
-            </div>
-
-            {/* Sugestões Rápidas de Cores da Coleção Ana Fitness */}
-            <div className="space-y-1.5 pt-1">
-              <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/60 block">
-                AMOSTRAS FREQUENTES DA MARCA:
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  { name: 'Preto Ônix', hex: '#0A0A0A' },
-                  { name: 'Amarelo Solar', hex: '#F59E0B' },
-                  { name: 'Verde Militar', hex: '#4B5320' },
-                  { name: 'Champagne Gold', hex: '#D4AF37' },
-                  { name: 'Pure White', hex: '#FFFFFF' },
-                  { name: 'Vinho Marsala', hex: '#800020' },
-                  { name: 'Azul Marinho', hex: '#000080' },
-                ].map((sug) => (
-                  <button
-                    key={sug.name}
-                    type="button"
-                    onClick={() => {
-                      if (!colors.some((c) => c.name.toLowerCase() === sug.name.toLowerCase())) {
-                        setColors([...colors, sug]);
-                      }
-                    }}
-                    className="px-2 py-1 bg-white border border-deep-black/30 hover:border-gold text-[9px] font-black uppercase inline-flex items-center gap-1.5 transition"
-                  >
-                    <span className="w-2.5 h-2.5 rounded-full border border-deep-black/30" style={{ backgroundColor: sug.hex }} />
-                    <span>{sug.name}</span>
-                  </button>
-                ))}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1">
+                  <Ruler className="w-3.5 h-3.5 text-gold" />
+                  <span>Tabela de Medidas (Guia de Tamanhos)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="P: 34-36 (US 2-4) | M: 38-40 (US 6-8) | G: 42-44 (US 10-12)"
+                  value={sizeGuide}
+                  onChange={(e) => setSizeGuide(e.target.value)}
+                  className="w-full p-2.5 border-2 border-deep-black font-medium text-xs focus:outline-none focus:border-gold"
+                />
               </div>
-            </div>
-
-            {/* Lista de Cores Ativas */}
-            <div className="space-y-1.5 pt-2 border-t border-deep-black/10">
-              <span className="text-[10px] font-black uppercase text-deep-black block">
-                CORES SELECIONADAS ({colors.length}):
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {colors.map((c) => (
-                  <div
-                    key={c.name}
-                    className="p-1.5 pl-2.5 pr-2 bg-white border-2 border-deep-black flex items-center gap-2 shadow-xs"
-                  >
-                    <span
-                      className="w-3.5 h-3.5 rounded-full border border-deep-black/40 shadow-xs"
-                      style={{ backgroundColor: c.hex }}
-                    />
-                    <span className="text-xs font-black uppercase text-deep-black">{c.name}</span>
-                    <span className="text-[9px] font-mono text-deep-black/40">{c.hex}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveColor(c.name)}
-                      className="text-red-500 hover:text-red-700 p-0.5 ml-1 transition"
-                      title="Remover cor"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Coluna B: Gerenciamento de Tamanhos */}
-          <div className="p-5 border-2 border-deep-black/20 bg-deep-black/5 space-y-4">
-            <span className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
-              <Shirt className="w-4 h-4 text-gold" />
-              <span>TAMANHOS DISPONÍVEIS NA GRADE</span>
-            </span>
-
-            {/* Botões de Seleção Rápida de Tamanho */}
-            <div className="grid grid-cols-5 gap-2">
-              {availableSizes.map((sz) => {
-                const isSelected = selectedSizes.includes(sz);
-                return (
-                  <button
-                    key={sz}
-                    type="button"
-                    onClick={() => toggleSize(sz)}
-                    className={`py-3 text-xs font-black uppercase tracking-wider border-2 transition-all flex flex-col items-center justify-center gap-0.5 ${
-                      isSelected
-                        ? 'bg-deep-black text-white border-deep-black shadow-md ring-2 ring-gold/40'
-                        : 'bg-white text-deep-black/60 border-deep-black/20 hover:border-deep-black hover:text-deep-black'
-                    }`}
-                  >
-                    <span>{sz}</span>
-                    <span className="text-[8px] font-bold">
-                      {isSelected ? '✓ ATIVO' : '+ ATIVAR'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Adicionar Tamanho Personalizado */}
-            <div className="flex items-center gap-2 pt-2">
-              <input
-                type="text"
-                placeholder="Outro Tamanho (ex: XXL, ÚNICO)"
-                value={customSizeInput}
-                onChange={(e) => setCustomSizeInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddCustomSize();
-                  }
-                }}
-                className="flex-1 p-2.5 border-2 border-deep-black font-bold text-xs uppercase focus:outline-none focus:border-gold"
-              />
-              <button
-                type="button"
-                onClick={handleAddCustomSize}
-                className="px-4 py-2.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition shrink-0"
-              >
-                + ADICIONAR
-              </button>
-            </div>
-
-            <div className="p-3 bg-white border border-deep-black/20 text-xs font-black uppercase text-deep-black flex items-center justify-between">
-              <span>TAMANHOS ATIVOS:</span>
-              <span className="text-gold font-mono">{selectedSizes.join(' • ') || 'NENHUM'}</span>
             </div>
           </div>
         </div>
 
-        {/* BOTÃO GERADOR DE GRADE EM DESTAQUE */}
-        <div className="pt-2 text-center">
-          <button
-            type="button"
-            onClick={handleGenerateMatrix}
-            className="w-full sm:w-auto px-10 py-4 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-ultra transition inline-flex items-center justify-center gap-3 shadow-luxury border-2 border-gold"
-          >
-            <Sparkles className="w-4 h-4 text-gold group-hover:text-deep-black" />
-            <span>⚡ GERAR GRADE DE VARIAÇÕES ({colors.length * selectedSizes.length} COMBINAÇÕES)</span>
-          </button>
-          <p className="text-[10px] text-deep-black/60 uppercase font-bold mt-2">
-            Multiplica as {colors.length} cores pelos {selectedSizes.length} tamanhos e monta a tabela de estoque por SKU abaixo.
-          </p>
-        </div>
-      </div>
-
-      {/* =========================================================================
-          SEÇÃO 3: TABELA DE ESTOQUE POR VARIAÇÃO (MATRIZ SKU INDIVIDUAL)
-         ========================================================================= */}
-      {variants.length > 0 && (
-        <div className="border-2 border-deep-black p-6 sm:p-8 space-y-6 bg-white shadow-sm">
-          <div className="border-b border-deep-black/10 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
+        {/* =======================================================================
+            COLUNA LATERAL (DIREITA - 4 COLUNAS / WIX SIDEBAR)
+           ======================================================================= */}
+        <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
+          {/* CARD LATERAL 1: VISIBILIDADE DO PRODUTO (CONTROLE LOJA ONLINE & PDV) */}
+          <div className="bg-white border-2 border-deep-black p-5 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-deep-black/10 pb-3">
               <div className="flex items-center gap-2">
-                <Grid className="w-5 h-5 text-gold" />
-                <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-deep-black">
-                  3. TABELA DE ESTOQUE POR VARIAÇÃO (MATRIZ SKU)
-                </h2>
+                <Eye className="w-4 h-4 text-gold" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-deep-black">
+                  Visibilidade do Produto
+                </h3>
               </div>
-              <p className="text-xs text-deep-black/60 uppercase mt-0.5">
-                Controle individual de quantidade, código de barras, pronta entrega vs. encomenda para cada tamanho e cor.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="bg-deep-black text-white px-3.5 py-1.5 border border-gold inline-flex items-center gap-2 shadow-sm">
-                <span className="text-[10px] font-black uppercase tracking-widest text-gold">ESTOQUE TOTAL:</span>
-                <span className="text-sm font-black font-mono">{totalCalculatedStock} PEÇAS</span>
-              </div>
-              <span className="text-xs font-mono font-bold text-deep-black/70">
-                ({variants.length} SKUs ATIVOS)
+              <span
+                className={`text-[8.5px] font-black uppercase tracking-widest px-2 py-0.5 border ${
+                  visibleOnline
+                    ? 'bg-green-700 text-white border-green-800'
+                    : 'bg-amber-100 text-amber-900 border-amber-300'
+                }`}
+              >
+                {visibleOnline ? '🟢 NO AR' : '⚪ OCULTO'}
               </span>
             </div>
-          </div>
 
-          {/* Barra de Ações em Massa */}
-          <div className="p-3.5 bg-deep-black/5 border border-deep-black/20 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase text-deep-black">Definir Estoque em Massa:</span>
-              <input
-                type="number"
-                min="0"
-                placeholder="Qtd (ex: 10)"
-                value={massStockValue}
-                onChange={(e) => setMassStockValue(e.target.value)}
-                className="w-24 p-1.5 border border-deep-black font-mono font-bold text-center text-xs bg-white"
-              />
-              <button
-                type="button"
-                onClick={handleApplyMassStock}
-                className="px-3 py-1.5 bg-deep-black text-white hover:bg-gold hover:text-deep-black text-[10px] font-black uppercase transition"
-              >
-                APLICAR A TODAS
-              </button>
-            </div>
+            {/* Toggle Loja Online */}
+            <div
+              className={`p-4 border-2 transition-all ${
+                visibleOnline
+                  ? 'border-deep-black bg-gold/5 shadow-xs'
+                  : 'border-deep-black/20 bg-gray-50'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-black uppercase tracking-wider text-deep-black block">
+                    Mostrar na loja online
+                  </span>
+                  <p className="text-[10px] text-deep-black/70 leading-relaxed">
+                    Quando ativado, a peça é publicada imediatamente na vitrine pública do site e nas buscas de categorias.
+                  </p>
+                </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  setVariants(variants.map((v) => ({ ...v, allow_backorder: true })))
-                }
-                className="px-2.5 py-1.5 bg-white border border-deep-black hover:bg-deep-black hover:text-white text-[10px] font-bold uppercase transition"
-              >
-                ✓ Permitir Encomenda em Todas
-              </button>
-            </div>
-          </div>
-
-          {/* Tabela Responsiva de Variações */}
-          <div className="overflow-x-auto border-2 border-deep-black">
-            <table className="w-full text-left text-xs uppercase tracking-wider">
-              <thead className="bg-deep-black text-white text-[10px] font-black">
-                <tr>
-                  <th className="p-3">COR & FOTO</th>
-                  <th className="p-3">TAM</th>
-                  <th className="p-3">CÓDIGO SKU</th>
-                  <th className="p-3">CÓD. BARRAS</th>
-                  <th className="p-3">ESTOQUE FÍSICO</th>
-                  <th className="p-3">PREÇO ($)</th>
-                  <th className="p-3">CUSTO ($)</th>
-                  <th className="p-3">ENCOMENDA</th>
-                  <th className="p-3">DIAS CONFECÇÃO</th>
-                  <th className="p-3 text-right">EXCLUIR</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-deep-black/10">
-                {variants.map((v, idx) => (
-                  <tr key={`${v.color}-${v.size}-${idx}`} className="hover:bg-deep-black/5">
-                    {/* Cor + Amostra + Miniatura */}
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-10 border border-deep-black/30 overflow-hidden bg-deep-black/10 shrink-0 relative">
-                          {v.image || v.images?.[0] ? (
-                            <img
-                              src={v.image || v.images[0]}
-                              alt={v.color}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[7px] text-deep-black/40 font-bold">
-                              SEM FOTO
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className="w-2.5 h-2.5 rounded-full border border-deep-black/40"
-                              style={{ backgroundColor: v.colorHex }}
-                            />
-                            <span className="font-black text-deep-black">{v.color}</span>
-                          </div>
-                          <span className="text-[8px] font-mono text-deep-black/50 block">{v.colorHex}</span>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Tamanho */}
-                    <td className="p-3">
-                      <span className="px-2 py-1 bg-deep-black text-white text-[10px] font-black inline-block">
-                        {v.size}
-                      </span>
-                    </td>
-
-                    {/* SKU */}
-                    <td className="p-3">
-                      <input
-                        type="text"
-                        value={v.sku}
-                        onChange={(e) => {
-                          const updated = [...variants];
-                          updated[idx].sku = e.target.value.toUpperCase();
-                          setVariants(updated);
-                        }}
-                        className="w-32 p-1.5 border border-deep-black font-mono font-bold text-xs uppercase bg-white focus:outline-none focus:border-gold"
-                      />
-                    </td>
-
-                    {/* Barcode */}
-                    <td className="p-3">
-                      <input
-                        type="text"
-                        value={v.barcode}
-                        onChange={(e) => {
-                          const updated = [...variants];
-                          updated[idx].barcode = e.target.value;
-                          setVariants(updated);
-                        }}
-                        className="w-28 p-1.5 border border-deep-black font-mono text-[11px] bg-white focus:outline-none focus:border-gold"
-                      />
-                    </td>
-
-                    {/* Estoque */}
-                    <td className="p-3">
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="number"
-                          min="0"
-                          value={v.stock_quantity}
-                          onChange={(e) => {
-                            const updated = [...variants];
-                            updated[idx].stock_quantity = Math.max(0, parseInt(e.target.value) || 0);
-                            setVariants(updated);
-                          }}
-                          className={`w-20 p-1.5 border-2 font-mono font-black text-center text-xs focus:outline-none ${
-                            v.stock_quantity > 0
-                              ? 'border-deep-black bg-white text-deep-black'
-                              : 'border-gold bg-gold/10 text-deep-black'
-                          }`}
-                        />
-                        <span
-                          className={`w-2 h-2 rounded-full shrink-0 ${
-                            v.stock_quantity > 0 ? 'bg-green-500' : 'bg-gold'
-                          }`}
-                          title={v.stock_quantity > 0 ? 'Pronta Entrega' : 'Sob Encomenda'}
-                        />
-                      </div>
-                    </td>
-
-                    {/* Preço de Venda */}
-                    <td className="p-3 font-mono">
-                      <div className="relative w-20">
-                        <span className="absolute left-1.5 top-1.5 text-[10px] font-bold text-deep-black">$</span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={v.price}
-                          onChange={(e) => {
-                            const updated = [...variants];
-                            updated[idx].price = parseFloat(e.target.value) || 0;
-                            setVariants(updated);
-                          }}
-                          className="w-full p-1 pl-4 border border-deep-black font-mono text-xs text-right bg-white"
-                        />
-                      </div>
-                    </td>
-
-                    {/* Preço de Custo */}
-                    <td className="p-3 font-mono">
-                      <div className="relative w-20">
-                        <span className="absolute left-1.5 top-1.5 text-[10px] font-bold text-gold">$</span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={v.cost_price}
-                          onChange={(e) => {
-                            const updated = [...variants];
-                            updated[idx].cost_price = parseFloat(e.target.value) || 0;
-                            setVariants(updated);
-                          }}
-                          className="w-full p-1 pl-4 border border-gold font-mono text-xs text-right bg-white text-deep-black"
-                        />
-                      </div>
-                    </td>
-
-                    {/* Checkbox Encomenda */}
-                    <td className="p-3 text-center">
-                      <label className="inline-flex items-center gap-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={v.allow_backorder}
-                          onChange={(e) => {
-                            const updated = [...variants];
-                            updated[idx].allow_backorder = e.target.checked;
-                            setVariants(updated);
-                          }}
-                          className="w-4 h-4 accent-gold"
-                        />
-                        <span className="text-[9px] font-bold">
-                          {v.allow_backorder ? 'SIM' : 'NÃO'}
-                        </span>
-                      </label>
-                    </td>
-
-                    {/* Dias Confecção */}
-                    <td className="p-3">
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min="1"
-                          value={v.estimated_production_days}
-                          onChange={(e) => {
-                            const updated = [...variants];
-                            updated[idx].estimated_production_days =
-                              parseInt(e.target.value) || 7;
-                            setVariants(updated);
-                          }}
-                          className="w-14 p-1 border border-deep-black text-center font-mono text-xs bg-white"
-                        />
-                        <span className="text-[9px] text-deep-black/60">DIAS</span>
-                      </div>
-                    </td>
-
-                    {/* Excluir Linha */}
-                    <td className="p-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setVariants(variants.filter((_, i) => i !== idx));
-                        }}
-                        className="p-1.5 border border-red-300 text-red-600 hover:bg-red-600 hover:text-white transition"
-                        title="Remover esta variação"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* =========================================================================
-          SEÇÃO 4: UPLOAD DE MÍDIAS & ASSOCIAÇÃO POR COR
-         ========================================================================= */}
-      <div className="border-2 border-deep-black p-6 sm:p-8 space-y-6 bg-white shadow-sm">
-        <div className="border-b border-deep-black/10 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-2">
-              <Camera className="w-5 h-5 text-gold" />
-              <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-deep-black">
-                4. UPLOAD DE MÍDIAS (FOTOS EM ALTA & VÍDEOS) COM ASSOCIAÇÃO POR COR
-              </h2>
-            </div>
-            <p className="text-xs text-deep-black/60 uppercase mt-0.5">
-              Faça upload das fotos da modelo e associe cada imagem à cor correspondente (ex: Amarelo Solar, Preto Ônix).
-            </p>
-          </div>
-          <span className="text-[10px] font-black uppercase bg-deep-black text-white px-3 py-1">
-            {mediaList.length} ARQUIVOS CARREGADOS
-          </span>
-        </div>
-
-        {/* Input Oculto de Arquivos */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*,video/mp4"
-          onChange={handleMediaUpload}
-          className="hidden"
-        />
-
-        {/* Dropzone de Upload */}
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-deep-black hover:border-gold hover:bg-gold/5 p-8 text-center cursor-pointer transition space-y-3"
-        >
-          <div className="inline-flex p-3 bg-white border border-deep-black text-gold shadow-xs">
-            <Upload className="w-6 h-6 text-gold" />
-          </div>
-          <div>
-            <span className="text-xs font-black uppercase tracking-widest text-deep-black block">
-              CLIQUE OU ARRASTE FOTOS EM ALTA RESOLUÇÃO E VÍDEOS CURTOS (MP4)
-            </span>
-            <span className="text-[10px] text-deep-black/60 uppercase font-medium">
-              Suporte a arquivos JPG, PNG, WEBP e vídeos MP4 (Demonstração de caimento e squat-proof).
-            </span>
-          </div>
-          {isUploadingMedia && (
-            <p className="text-xs font-black uppercase text-gold animate-pulse">
-              Enviando arquivos para o servidor...
-            </p>
-          )}
-        </div>
-
-        {/* Adição Direta via URL */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
-          <input
-            type="url"
-            placeholder="Ou cole uma URL direta de foto (ex: https://.../foto.jpg ou link do seu catálogo)"
-            value={directImageUrlInput}
-            onChange={(e) => setDirectImageUrlInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAddDirectUrl();
-              }
-            }}
-            className="flex-1 p-2.5 border-2 border-deep-black text-xs font-medium focus:border-gold focus:outline-none"
-          />
-          <button
-            type="button"
-            onClick={handleAddDirectUrl}
-            className="px-4 py-2.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition shrink-0"
-          >
-            + VINCULAR POR URL
-          </button>
-        </div>
-
-        {/* Grade de Mídias Carregadas com Associação por Cor */}
-        {mediaList.length > 0 && (
-          <div className="space-y-3 pt-2">
-            <span className="text-[10px] font-black uppercase tracking-wider text-deep-black block">
-              MÍDIAS VINCULADAS AO PRODUTO ({mediaList.length}):
-            </span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-              {mediaList.map((media, mIdx) => (
-                <div
-                  key={media.id}
-                  className="bg-white border-2 border-deep-black p-2 space-y-2 relative group shadow-xs"
+                {/* Switch Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setVisibleOnline(!visibleOnline)}
+                  className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    visibleOnline ? 'bg-deep-black' : 'bg-gray-300'
+                  }`}
+                  role="switch"
+                  aria-checked={visibleOnline}
                 >
-                  <div className="relative aspect-[4/5] bg-deep-black/10 overflow-hidden border border-deep-black/20">
-                    {media.type === 'video' ? (
-                      <video src={media.url} className="w-full h-full object-cover" />
-                    ) : (
-                      <img src={media.url} alt="Mídia" className="w-full h-full object-cover" />
-                    )}
-                    <span className="absolute top-1 left-1 bg-deep-black text-gold text-[7px] font-black px-1.5 py-0.5 uppercase">
-                      {media.type}
-                    </span>
-                    {media.isUploading && (
-                      <span className="absolute bottom-1 left-1 bg-gold text-deep-black text-[7px] font-black px-1 py-0.5 animate-pulse">
-                        ENVIANDO...
-                      </span>
-                    )}
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      visibleOnline ? 'translate-x-6 bg-gold' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="mt-2.5 pt-2.5 border-t border-deep-black/10 text-[9px] font-black uppercase flex items-center justify-between">
+                <span className="text-deep-black/60">Status na Loja Virtual:</span>
+                <span className={visibleOnline ? 'text-green-700' : 'text-amber-700'}>
+                  {visibleOnline ? '✓ VISÍVEL NA VITRINE' : '✕ NÃO APARECE NO SITE (OCULTO)'}
+                </span>
+              </div>
+            </div>
+
+            {/* Toggle PDV */}
+            <div
+              className={`p-4 border-2 transition-all ${
+                visiblePos
+                  ? 'border-deep-black bg-gold/5 shadow-xs'
+                  : 'border-deep-black/20 bg-gray-50'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-black uppercase tracking-wider text-deep-black block">
+                    Mostrar no ponto de venda (PDV)
+                  </span>
+                  <p className="text-[10px] text-deep-black/70 leading-relaxed">
+                    Disponível no sistema de caixa físico e no catálogo de vendas diretas das vendedoras.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setVisiblePos(!visiblePos)}
+                  className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    visiblePos ? 'bg-deep-black' : 'bg-gray-300'
+                  }`}
+                  role="switch"
+                  aria-checked={visiblePos}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      visiblePos ? 'translate-x-6 bg-gold' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="mt-2.5 pt-2.5 border-t border-deep-black/10 text-[9px] font-black uppercase flex items-center justify-between">
+                <span className="text-deep-black/60">Status no PDV:</span>
+                <span className={visiblePos ? 'text-green-700' : 'text-amber-700'}>
+                  {visiblePos ? '✓ ATIVO NO CAIXA' : '✕ INATIVO NO PDV'}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-2.5 bg-deep-black/5 text-[9.5px] text-deep-black/70 font-medium">
+              💡 <strong>Padrão de Segurança:</strong> Produtos importados iniciam como ocultos. Você confere fotos e dados e ativa em 1 clique.
+            </div>
+          </div>
+
+          {/* CARD LATERAL 2: ORGANIZAÇÃO (CATEGORIA, MARCA E TAGS) */}
+          <div className="bg-white border-2 border-deep-black p-5 space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 border-b border-deep-black/10 pb-3">
+              <Tag className="w-4 h-4 text-gold" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-deep-black">
+                Organização do Catálogo
+              </h3>
+            </div>
+
+            {/* Tipo de Produto */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                Tipo de Produto
+              </label>
+              <div className="p-2 bg-gray-100 border border-deep-black/20 text-xs font-black uppercase text-deep-black flex items-center justify-between">
+                <span>PRODUTO FÍSICO (PHYSICAL)</span>
+                <span className="text-[8.5px] bg-deep-black text-white px-2 py-0.5">ESTOQUE</span>
+              </div>
+            </div>
+
+            {/* Categoria */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                Categoria Principal *
+              </label>
+              <select
+                required
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="w-full p-2.5 border-2 border-deep-black font-black text-xs uppercase bg-white focus:outline-none focus:border-gold"
+              >
+                {categoriesList.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+                {categoriesList.length === 0 && (
+                  <>
+                    <option value="">LEGGINGS</option>
+                    <option value="">TOPS</option>
+                    <option value="">CONJUNTOS</option>
+                    <option value="">MACAQUINHOS</option>
+                    <option value="">MACACÕES</option>
+                  </>
+                )}
+              </select>
+            </div>
+
+            {/* Subcategoria */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                Subcategoria / Linha Fitness
+              </label>
+              <select
+                value={subcategory}
+                onChange={(e) => setSubcategory(e.target.value)}
+                className="w-full p-2.5 border-2 border-deep-black font-bold text-xs uppercase bg-white focus:outline-none focus:border-gold"
+              >
+                <option value="Alta Compressão">ALTA COMPRESSÃO</option>
+                <option value="Cós Anatômico Duplo">CÓS ANATÔMICO DUPLO</option>
+                <option value="Seamless Sculpt">SEAMLESS SCULPT (SEM COSTURA)</option>
+                <option value="Costas Nadador">COSTAS NADADOR</option>
+                <option value="Bojo Removível">BOJO REMOVÍVEL</option>
+                <option value="Atelier Sob Medida">ATELIER SOB MEDIDA (PRE-ORDER)</option>
+              </select>
+            </div>
+
+            {/* Marca (Brand) */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                Marca (Brand)
+              </label>
+              <input
+                type="text"
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                placeholder="ANA Fitness Wear"
+                className="w-full p-2.5 border-2 border-deep-black font-bold text-xs uppercase focus:outline-none focus:border-gold"
+              />
+            </div>
+
+            {/* Tags de Busca */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                Tags de Busca & Indexação
+              </label>
+              <div className="flex flex-wrap items-center gap-1.5 p-2 border-2 border-deep-black bg-white min-h-[36px]">
+                {tags.map((tg) => (
+                  <span
+                    key={tg}
+                    className="px-2 py-0.5 bg-deep-black text-white text-[9px] font-black uppercase flex items-center gap-1 shadow-xs"
+                  >
+                    <span>#{tg}</span>
                     <button
                       type="button"
-                      onClick={() => {
-                        const removed = mediaList[mIdx];
-                        setMediaList(mediaList.filter((_, i) => i !== mIdx));
-                        if (removed) {
-                          setVariants((prev) =>
-                            prev.map((vr) => ({
-                              ...vr,
-                              images: (vr.images || []).filter((u) => u !== removed.url),
-                              image: vr.image === removed.url ? (vr.images || []).find((u) => u !== removed.url) || '' : vr.image,
-                            }))
-                          );
-                        }
-                      }}
-                      className="absolute top-1 right-1 p-1 bg-red-600 text-white opacity-0 group-hover:opacity-100 transition shadow-sm"
-                      title="Excluir mídia"
+                      onClick={() => handleRemoveTag(tg)}
+                      className="text-gold hover:text-white transition"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <X className="w-2.5 h-2.5" />
                     </button>
-                  </div>
-
-                  {/* Seletor de Associação de Cor */}
-                  <div className="space-y-1">
-                    <label className="text-[8px] font-black uppercase tracking-wider text-deep-black/70 block">
-                      Associar à Cor:
-                    </label>
-                    <select
-                      value={media.associatedColor}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const updated = [...mediaList];
-                        updated[mIdx].associatedColor = val;
-                        setMediaList(updated);
-
-                        // Atualiza automaticamente as variantes dessa cor na matriz
-                        setVariants((prev) =>
-                          prev.map((vr) => {
-                            if (val === 'all' || vr.color === val) {
-                              const currentImgs = Array.isArray(vr.images) ? vr.images : [];
-                              return {
-                                ...vr,
-                                image: currentImgs[0] || media.url,
-                                images: Array.from(new Set([...currentImgs, media.url])),
-                              };
-                            } else {
-                              return {
-                                ...vr,
-                                images: (vr.images || []).filter((u) => u !== media.url),
-                              };
-                            }
-                          })
-                        );
-                      }}
-                      className="w-full p-1 border border-deep-black font-bold text-[9px] uppercase bg-white focus:outline-none focus:border-gold"
-                    >
-                      <option value="all">Todas as Cores (Geral)</option>
-                      {colors.map((c) => (
-                        <option key={c.name} value={c.name}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              ))}
+                  </span>
+                ))}
+                <input
+                  type="text"
+                  placeholder="+ Tag"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                  className="flex-1 min-w-[70px] p-0.5 font-bold text-xs uppercase focus:outline-none"
+                />
+              </div>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* =========================================================================
-          BOTÕES DE AÇÃO: SALVAR NO SUPABASE & CANCELAR
-         ========================================================================= */}
-      <div className="p-6 bg-deep-black text-white border-2 border-gold flex flex-col sm:flex-row items-center justify-between gap-4 shadow-luxury">
-        <div className="text-left space-y-0.5">
-          <span className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-gold" />
-            <span>PRONTO PARA GRAVAR NO BANCO DE DADOS SUPABASE</span>
-          </span>
-          <p className="text-xs text-white/70 uppercase">
-            Gravará 1 registro em <strong className="text-white">'products'</strong> e {variants.length} registros em <strong className="text-white">'product_variants'</strong>.
-          </p>
-        </div>
+          {/* CARD LATERAL 3: INVENTÁRIO GERAL & LOGÍSTICA */}
+          <div className="bg-white border-2 border-deep-black p-5 space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 border-b border-deep-black/10 pb-3">
+              <Factory className="w-4 h-4 text-gold" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-deep-black">
+                Inventário e Logística
+              </h3>
+            </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          {onCancel && (
+            {/* SKU Geral */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                SKU Geral do Produto (Product SKU)
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: ANA-LEG-SCULPT"
+                value={generalSku}
+                onChange={(e) => setGeneralSku(e.target.value.toUpperCase())}
+                className="w-full p-2.5 border-2 border-deep-black font-mono font-bold text-xs uppercase focus:outline-none focus:border-gold"
+              />
+            </div>
+
+            {/* Fornecedor Vinculado */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                Fornecedor / Confecção Vinculada *
+              </label>
+              <select
+                required
+                value={supplierId}
+                onChange={(e) => setSupplierId(e.target.value)}
+                className="w-full p-2.5 border-2 border-deep-black font-bold text-xs uppercase bg-white focus:outline-none focus:border-gold"
+              >
+                {suppliersList.map((sup) => (
+                  <option key={sup.id} value={sup.id}>
+                    {sup.company_name} {sup.contact_name ? `(${sup.contact_name})` : ''}
+                  </option>
+                ))}
+                {suppliersList.length === 0 && (
+                  <option value="">CONFECÇÕES FITPRO BRASIL (ATELIER SEDE)</option>
+                )}
+              </select>
+            </div>
+
+            {/* Resumo de Estoque */}
+            <div className="p-3 bg-gray-50 border border-deep-black/20 space-y-1 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-deep-black/60 font-bold uppercase text-[9.5px]">Estoque Total:</span>
+                <span className="font-mono font-black text-deep-black">{totalCalculatedStock} PEÇAS</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-deep-black/60 font-bold uppercase text-[9.5px]">Status Logístico:</span>
+                <span className={`font-black uppercase text-[9px] ${totalCalculatedStock > 0 ? 'text-green-700' : 'text-gold'}`}>
+                  {totalCalculatedStock > 0 ? '✓ PRONTA ENTREGA' : 'PRÉ-VENDA / ENCOMENDA'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD LATERAL 4: BOTÃO FINAL DE SALVAR */}
+          <div className="p-5 bg-deep-black text-white border-2 border-gold space-y-3 shadow-luxury">
+            <span className="text-[9px] font-black uppercase tracking-widest text-gold block">
+              SINCRONIZAÇÃO SUPABASE CLOUD
+            </span>
+            <p className="text-[11px] text-white/80 leading-relaxed">
+              Ao salvar, o produto e todas as suas variações serão atualizados imediatamente nas tabelas 'products' e 'product_variants'.
+            </p>
+
             <button
-              type="button"
-              onClick={onCancel}
-              className="flex-1 sm:flex-none px-6 py-4 bg-white/10 hover:bg-white/20 text-white font-black text-xs uppercase tracking-widest transition"
+              type="submit"
+              disabled={isSaving}
+              className="w-full py-3.5 bg-gold hover:bg-white hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 border border-gold disabled:opacity-50"
             >
-              CANCELAR
+              {isSaving ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-deep-black" />
+                  <span>SALVANDO PRODUTO...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>SALVAR PRODUTO NO SUPABASE</span>
+                </>
+              )}
             </button>
-          )}
-
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="flex-1 sm:flex-none px-8 py-4 bg-gold hover:bg-white hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
-          >
-            {isSaving ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin text-deep-black" />
-                <span>GRAVANDO NO SUPABASE...</span>
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>SALVAR PRODUTO E GRADE NO SUPABASE</span>
-              </>
-            )}
-          </button>
+          </div>
         </div>
       </div>
     </form>
