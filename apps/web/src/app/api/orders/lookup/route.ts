@@ -5,77 +5,8 @@ import path from 'path';
 
 const BACKUP_SALES_FILE = path.join(process.cwd(), 'sales_history_db.json');
 
-// Pedidos demonstrativos para consulta instantânea do cliente
-const DEMO_ORDERS = [
-  {
-    order_id: 'ANA-928104',
-    customer_name: 'Mariana Salles',
-    customer_email: 'mariana.salles@gmail.com',
-    customer_phone: '+1 (508) 492-8819',
-    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-    status: 'SHIPPED', // 'CONFIRMED' | 'IN_PRODUCTION' | 'SHIPPED' | 'DELIVERED'
-    tracking_code: '9400109205568104229103',
-    carrier: 'USPS Priority Mail',
-    estimated_delivery: '2-3 Business Days',
-    shipping_address: {
-      address: '742 Commonwealth Ave',
-      apt: 'Apt 4B',
-      city: 'Boston',
-      state: 'MA',
-      zip: '02215',
-    },
-    payment_method: 'CARD',
-    subtotal: 44.90,
-    shipping_fee: 9.99,
-    discount: 4.49,
-    total: 50.40,
-    items: [
-      {
-        title: 'SAMANTA ROMPER',
-        size: 'S',
-        color: 'Preto Ônix',
-        sku: 'SAM-BLK-S',
-        quantity: 1,
-        unit_price: 44.90,
-        image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=400&q=80',
-      },
-    ],
-  },
-  {
-    order_id: 'ANA-927552',
-    customer_name: 'Beatriz Figueiredo',
-    customer_email: 'beatriz.fig@miamifit.com',
-    customer_phone: '+1 (305) 881-2299',
-    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
-    status: 'IN_PRODUCTION',
-    tracking_code: 'USPS-PENDING-PRODUCTION',
-    carrier: 'USPS Ground Advantage',
-    estimated_delivery: 'Confeccionando sob medida (5-7 dias)',
-    shipping_address: {
-      address: '1200 Brickell Bay Dr',
-      apt: 'Suite 1205',
-      city: 'Miami',
-      state: 'FL',
-      zip: '33131',
-    },
-    payment_method: 'CARD',
-    subtotal: 79.80,
-    shipping_fee: 9.99,
-    discount: 0.00,
-    total: 89.79,
-    items: [
-      {
-        title: 'KELY PANTS SET (PRE-ORDER)',
-        size: 'S',
-        color: 'Vinho Marsala',
-        sku: 'KEL-VIN-S',
-        quantity: 2,
-        unit_price: 39.90,
-        image: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&q=80',
-      },
-    ],
-  },
-];
+// Pedidos demonstrativos zerados para exibir apenas pedidos 100% reais
+const DEMO_ORDERS: any[] = [];
 
 function readAllOrders(): any[] {
   let list = [...DEMO_ORDERS];

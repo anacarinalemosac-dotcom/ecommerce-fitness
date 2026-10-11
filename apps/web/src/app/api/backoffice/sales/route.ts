@@ -389,3 +389,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { order_id, status, tracking_code } = body;
+
+    if (!order_id) {
+      return NextResponse.json({ error: 'order_id é obrigatório' }, { status: 400 });
+    }
+
+    const sales = readSavedSales();
+    const updated = sales.map((s: any) => {
+      if (s.order_id === order_id || s.id === order_id) {
+        return {
+          ...s,
+          status: status || s.status,
+          tracking_code: tracking_code !== undefined ? tracking_code : s.tracking_code,
+        };
+      }
+      return s;
+    });
+
+    writeSavedSales(updated);
+
+    try {
+      await supabaseServer
+        .from('orders')
+        .update({ status })
+        .eq('order_number', order_id);
+    } catch (e) {
+      console.warn('Atualização opcional Supabase:', e);
+    }
+
+    return NextResponse.json({ success: true, sales: updated });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}

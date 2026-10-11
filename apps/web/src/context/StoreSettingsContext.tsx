@@ -23,6 +23,17 @@ export interface SiteInfo {
   heroTitle1: string;
   heroTitle2: string;
   heroSubtitle: string;
+  // CMS Visual: Paleta de cores, tipografia e páginas institucionais
+  primaryColor?: string;
+  secondaryColor?: string;
+  backgroundColor?: string;
+  ctaColor?: string;
+  headingFont?: string;
+  bodyFont?: string;
+  aboutUsText?: string;
+  returnPolicyText?: string;
+  shippingPolicyText?: string;
+  contactText?: string;
 }
 
 export interface SiteImages {
@@ -112,6 +123,16 @@ const DEFAULT_SITE_INFO: SiteInfo = {
   heroTitle1: 'WEAR YOUR',
   heroTitle2: 'STRENGTH.',
   heroSubtitle: 'High-performance athletic luxury based in Massachusetts. Lab-verified zero see-through, 4-way anatomical sculpt compression, and flat $9.99 shipping across all 50 US States.',
+  primaryColor: '#0A0A0A',
+  secondaryColor: '#D4AF37',
+  backgroundColor: '#FFFFFF',
+  ctaColor: '#0A0A0A',
+  headingFont: 'Montserrat',
+  bodyFont: 'Inter',
+  aboutUsText: 'A ANA FITNESS WEAR LLC nasceu em Leominster, Massachusetts, criada para atender a mulher que busca performance atlética sem abrir mão da sofisticação e elegância. Peças com zero transparência, compressão anatômica 4-way e tecidos tecnológicos de padrão internacional.',
+  returnPolicyText: 'Você tem até 30 dias corridos após o recebimento para solicitar troca ou devolução. As peças devem estar em perfeito estado, sem uso, com as etiquetas originais afixadas e na embalagem original.',
+  shippingPolicyText: 'Enviamos para todos os 50 estados dos Estados Unidos via USPS Priority Mail com taxa fixa de $9.99. O prazo de postagem para pronta-entrega é de até 24h úteis. Peças confeccionadas sob medida possuem prazo de produção informado na compra.',
+  contactText: 'Nosso atendimento oficial está disponível de Segunda a Sexta, das 9h às 18h (EST). WhatsApp: +1 (978) 313-9452 • E-mail: anafitweareua@gmail.com • Leominster, MA.',
 };
 
 const DEFAULT_SITE_IMAGES: SiteImages = {

@@ -56,12 +56,20 @@ import {
   Radio,
   Download,
   PackageMinus,
+  LayoutDashboard,
+  ShoppingBag,
+  Heart,
+  Settings,
 } from 'lucide-react';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
 import { CsvProductImportModal, downloadCsvTemplate, downloadExcelTemplate } from '../../components/CsvProductImportModal';
 import { StockWriteOffModal } from '../../components/StockWriteOffModal';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
+import { DashboardMetricsView } from '../../components/backoffice/DashboardMetricsView';
+import { AppearanceCmsView } from '../../components/backoffice/AppearanceCmsView';
+import { CustomersReviewsView } from '../../components/backoffice/CustomersReviewsView';
+import { TechnicalSettingsView } from '../../components/backoffice/TechnicalSettingsView';
 
 interface ProductProfit {
   sku: string;
@@ -194,7 +202,9 @@ export default function BackofficeDashboard() {
   const [authEmail, setAuthEmail] = useState('anafitweareua@gmail.com');
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
-  const [activeTab, setActiveTab] = useState<'catalog' | 'sales' | 'margins' | 'live' | 'backorders' | 'commissions' | 'theme'>('sales');
+  const [activeTab, setActiveTab] = useState<
+    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme'
+  >('dashboard');
   const [onlineCount, setOnlineCount] = useState(0);
 
   // Catálogo de produtos
@@ -212,8 +222,90 @@ export default function BackofficeDashboard() {
   const [loadingSales, setLoadingSales] = useState(false);
   const [salesChannelFilter, setSalesChannelFilter] = useState<'ALL' | 'ONLINE' | 'POS_COUNTER'>('ALL');
   const [salesPaymentFilter, setSalesPaymentFilter] = useState<'ALL' | 'CARD' | 'ZELLE' | 'VENMO' | 'CASH'>('ALL');
+  const [salesPreorderOnly, setSalesPreorderOnly] = useState(false);
   const [salesSearch, setSalesSearch] = useState('');
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<any | null>(null);
+
+  // Atualização interativa de status do pedido
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string, trackingCode?: string) => {
+    try {
+      const res = await fetch('/api/backoffice/sales', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: orderId,
+          status: newStatus,
+          tracking_code: trackingCode,
+        }),
+      });
+      if (res.ok) {
+        fetchSalesData();
+        setSaveSuccessMessage(true);
+        setTimeout(() => setSaveSuccessMessage(false), 3000);
+      } else {
+        const data = await res.json();
+        alert(`Erro ao atualizar status: ${data.error || 'Erro no servidor'}`);
+      }
+    } catch (err: any) {
+      alert(`Falha ao atualizar status: ${err.message}`);
+    }
+  };
+
+  // Exportação completa do catálogo atual em CSV
+  const handleExportCatalogCsv = () => {
+    const listToExport = supabaseProducts.length > 0 ? supabaseProducts : products;
+    if (!listToExport || listToExport.length === 0) {
+      alert('Nenhum produto cadastrado para exportar.');
+      return;
+    }
+    const headers = ['sku', 'title', 'category', 'tags', 'color', 'size', 'price', 'cost_price', 'stock_quantity', 'allow_backorder', 'description', 'image_url'];
+    const rows: string[] = [headers.join(',')];
+
+    listToExport.forEach((p: any) => {
+      if (p.product_variants && p.product_variants.length > 0) {
+        p.product_variants.forEach((v: any) => {
+          rows.push([
+            `"${v.sku || p.sku || ''}"`,
+            `"${(p.title || '').replace(/"/g, '""')}"`,
+            `"${p.categories?.name || p.category || ''}"`,
+            `"${(p.tags || []).join(';')}"`,
+            `"${v.color || p.colorName || 'Preto Ônix'}"`,
+            `"${v.size || 'M'}"`,
+            v.price || p.price || 0,
+            v.cost_price || p.costPrice || 0,
+            v.stock_quantity !== undefined ? v.stock_quantity : (p.stock || 0),
+            v.allow_backorder ? 'sim' : 'nao',
+            `"${(p.description || p.fit || '').replace(/"/g, '""')}"`,
+            `"${(v.images && v.images[0]) || p.primaryImage || ''}"`
+          ].join(','));
+        });
+      } else {
+        rows.push([
+          `"${p.sku || ''}"`,
+          `"${(p.title || '').replace(/"/g, '""')}"`,
+          `"${p.category || ''}"`,
+          `""`,
+          `"${p.colorName || 'Preto Ônix'}"`,
+          `"${(p.sizes || []).join('/') || 'M'}"`,
+          p.price || 0,
+          p.costPrice || 0,
+          p.stock || 0,
+          p.allowBackorder ? 'sim' : 'nao',
+          `"${(p.fit || '').replace(/"/g, '""')}"`,
+          `"${p.primaryImage || ''}"`
+        ].join(','));
+      }
+    });
+
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `catalogo_ana_fitness_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const fetchSupabaseProducts = async () => {
     setLoadingSupabase(true);
@@ -688,6 +780,11 @@ export default function BackofficeDashboard() {
     if (salesPaymentFilter !== 'ALL' && s.payment_method !== salesPaymentFilter) {
       return false;
     }
+    // Filtro Exclusivo de Pré-Vendas
+    if (salesPreorderOnly) {
+      const isPre = s.status === 'IN_PRODUCTION' || (s.items && s.items.some((i: any) => (i.title || '').toLowerCase().includes('pré-venda') || (i.title || '').toLowerCase().includes('pre-order')));
+      if (!isPre) return false;
+    }
     // Filtro de Busca
     if (salesSearch) {
       const q = salesSearch.toLowerCase();
@@ -915,8 +1012,22 @@ export default function BackofficeDashboard() {
         </div>
       </div>
 
-      {/* Tabs de Navegação do Backoffice */}
+      {/* Tabs de Navegação do Backoffice - Os 7 Pilares Profissionais */}
       <div className="flex border-b-2 border-deep-black/10 gap-2 sm:gap-4 text-xs font-black uppercase tracking-widest overflow-x-auto pb-1 scrollbar-none">
+        {/* 1. Painel Geral (Dashboard & Métricas) */}
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'dashboard'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 text-gold" />
+          <span>1. DASHBOARD & MÉTRICAS</span>
+        </button>
+
+        {/* 2. Gestão de Catálogo e Produtos */}
         <button
           onClick={() => setActiveTab('catalog')}
           className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
@@ -926,9 +1037,10 @@ export default function BackofficeDashboard() {
           }`}
         >
           <Package className="w-4 h-4 text-gold" />
-          <span>GESTÃO DE PRODUTOS ({supabaseProducts.length || products.length})</span>
+          <span>2. CATÁLOGO & PRODUTOS ({supabaseProducts.length || products.length})</span>
         </button>
 
+        {/* 3. Vendas, Pedidos e Omnichannel */}
         <button
           onClick={() => {
             setActiveTab('sales');
@@ -941,45 +1053,13 @@ export default function BackofficeDashboard() {
           }`}
         >
           <Receipt className="w-4 h-4 text-gold" />
-          <span>📦 PEDIDOS DOS CLIENTES & VENDAS</span>
-          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
-            AO VIVO
+          <span>3. PEDIDOS & OMNICHANNEL</span>
+          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
+            {salesData?.sales?.length || 0}
           </span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('margins')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'margins'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <DollarSign className="w-4 h-4 text-gold" /> CUSTOS & MARGEM UNITÁRIA
-        </button>
-
-        <button
-          onClick={() => setActiveTab('live')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'live'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Activity className="w-4 h-4 text-gold" /> VISITANTES ONLINE
-        </button>
-
-        <button
-          onClick={() => setActiveTab('backorders')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'backorders'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Factory className="w-4 h-4 text-gold" /> PRÉ-VENDAS SOB MEDIDA
-        </button>
-
+        {/* 4. Vendedoras, Cupons e Comissões */}
         <button
           onClick={() => setActiveTab('commissions')}
           className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
@@ -988,18 +1068,84 @@ export default function BackofficeDashboard() {
               : 'border-transparent text-deep-black/50 hover:text-deep-black'
           }`}
         >
-          <Users className="w-4 h-4 text-gold" /> COMISSÕES DE VENDEDORAS
+          <Users className="w-4 h-4 text-gold" />
+          <span>4. VENDEDORAS & CUPONS ({sellers.length})</span>
         </button>
 
+        {/* 5. Aparência da Loja (CMS Visual) */}
         <button
-          onClick={() => setActiveTab('theme')}
+          onClick={() => setActiveTab('cms')}
           className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'theme'
+            activeTab === 'cms'
               ? 'border-gold text-deep-black font-black'
               : 'border-transparent text-deep-black/50 hover:text-deep-black'
           }`}
         >
-          <Palette className="w-4 h-4 text-gold" /> CORES & DESIGN
+          <Palette className="w-4 h-4 text-gold" />
+          <span>5. APARÊNCIA DA LOJA (CMS)</span>
+        </button>
+
+        {/* 6. Clientes e Prova Social (Reviews) */}
+        <button
+          onClick={() => setActiveTab('customers')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'customers'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Star className="w-4 h-4 text-gold" />
+          <span>6. CLIENTES & REVIEWS</span>
+        </button>
+
+        {/* 7. Configurações Técnicas e Acessos */}
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'settings'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Settings className="w-4 h-4 text-gold" />
+          <span>7. CONFIGURAÇÕES & ACESSOS</span>
+        </button>
+
+        {/* Atalhos Rápidos */}
+        <button
+          onClick={() => setActiveTab('live')}
+          className={`pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 ${
+            activeTab === 'live'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Activity className="w-4 h-4 text-gold" />
+          <span>RADAR AO VIVO</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('backorders')}
+          className={`pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 ${
+            activeTab === 'backorders'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Factory className="w-4 h-4 text-gold" />
+          <span>PRÉ-VENDAS</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('margins')}
+          className={`pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 ${
+            activeTab === 'margins'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <DollarSign className="w-4 h-4 text-gold" />
+          <span>MARGENS</span>
         </button>
       </div>
 
@@ -1018,7 +1164,19 @@ export default function BackofficeDashboard() {
       )}
 
       {/* =========================================================================
-          TAB 0: CATÁLOGO & CADASTRO ÚNICO DE PRODUTOS COM GRADE
+          TAB 1: PAINEL GERAL (DASHBOARD & MÉTRICAS)
+         ========================================================================= */}
+      {activeTab === 'dashboard' && (
+        <DashboardMetricsView
+          salesData={salesData}
+          products={supabaseProducts.length > 0 ? supabaseProducts : products}
+          liveVisitors={liveFeed?.activeCount || onlineCount}
+          onNavigateTab={setActiveTab}
+        />
+      )}
+
+      {/* =========================================================================
+          TAB 2: CATÁLOGO & CADASTRO ÚNICO DE PRODUTOS COM GRADE
          ========================================================================= */}
       {activeTab === 'catalog' && (
         <div className="space-y-8">
@@ -1044,6 +1202,17 @@ export default function BackofficeDashboard() {
               >
                 <Download className="w-3.5 h-3.5 text-gold" />
                 <span>Baixar Modelo Excel (.xlsx)</span>
+              </button>
+
+              {/* Botão Exportar Catálogo Atual (CSV) */}
+              <button
+                type="button"
+                onClick={handleExportCatalogCsv}
+                className="px-3.5 py-3 border-2 border-deep-black bg-white hover:bg-gold hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm"
+                title="Exportar todo o catálogo cadastrado no Supabase em formato CSV"
+              >
+                <Download className="w-3.5 h-3.5 text-deep-black" />
+                <span>Exportar Catálogo (.csv)</span>
               </button>
 
               {/* Botão Importar Planilha (Excel / CSV) */}
@@ -1639,6 +1808,21 @@ export default function BackofficeDashboard() {
                   <option value="CASH">CASH</option>
                 </select>
               </div>
+
+              {/* Botão Filtro de Pré-Vendas Exclusivo */}
+              <button
+                type="button"
+                onClick={() => setSalesPreorderOnly(!salesPreorderOnly)}
+                className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider transition border flex items-center gap-1.5 ${
+                  salesPreorderOnly
+                    ? 'bg-gold text-deep-black border-gold shadow'
+                    : 'bg-white text-deep-black/70 border-deep-black/20 hover:border-deep-black'
+                }`}
+                title="Filtrar exclusivamente pedidos sob encomenda com confecção pendente"
+              >
+                <Factory className="w-3.5 h-3.5 text-gold" />
+                <span>{salesPreorderOnly ? '✓ APENAS PRÉ-VENDAS' : 'FILTRO PRÉ-VENDAS'}</span>
+              </button>
             </div>
           </div>
 
@@ -1670,6 +1854,7 @@ export default function BackofficeDashboard() {
                   <th className="p-3 text-right">COMISSÃO</th>
                   <th className="p-3 text-right">CUSTO PEÇAS</th>
                   <th className="p-3 text-right">LUCRO REAL</th>
+                  <th className="p-3 text-center">ETAPA / STATUS</th>
                   <th className="p-3 text-center">RAIO-X</th>
                 </tr>
               </thead>
@@ -1792,6 +1977,35 @@ export default function BackofficeDashboard() {
                         <span className="text-[8px] text-deep-black/50 block font-normal">
                           {isWriteOff ? 'CUSTO ABSORVIDO' : `${sale.profit_margin_pct}%`}
                         </span>
+                      </td>
+
+                      {/* Etapa e Status Operacional do Pedido */}
+                      <td className="p-3 text-center">
+                        <select
+                          value={sale.status || 'PAID'}
+                          onChange={(e) => handleUpdateOrderStatus(sale.order_id, e.target.value)}
+                          className={`text-[8px] font-black uppercase px-2 py-1 border cursor-pointer ${
+                            (sale.status || '') === 'COMPLETED' || (sale.status || '') === 'PAID'
+                              ? 'bg-green-100 text-green-900 border-green-400'
+                              : (sale.status || '') === 'IN_PRODUCTION'
+                              ? 'bg-blue-100 text-blue-900 border-blue-400'
+                              : (sale.status || '') === 'SHIPPED'
+                              ? 'bg-purple-100 text-purple-900 border-purple-400'
+                              : (sale.status || '') === 'DELIVERED'
+                              ? 'bg-deep-black text-gold border-gold'
+                              : (sale.status || '') === 'CANCELLED'
+                              ? 'bg-red-100 text-red-900 border-red-400'
+                              : 'bg-amber-100 text-amber-900 border-amber-400'
+                          }`}
+                          title="Clique para atualizar a etapa deste pedido"
+                        >
+                          <option value="WAITING_PAYMENT">AGUARDANDO PGTO</option>
+                          <option value="PAID">PAGO</option>
+                          <option value="IN_PRODUCTION">EM CONFECÇÃO</option>
+                          <option value="SHIPPED">ENVIADO (USPS)</option>
+                          <option value="DELIVERED">ENTREGUE</option>
+                          <option value="CANCELLED">CANCELADO</option>
+                        </select>
                       </td>
 
                       {/* Botão Raio-X */}
@@ -3222,54 +3436,19 @@ export default function BackofficeDashboard() {
       })()}
 
       {/* =========================================================================
-          TAB 6: GUIA DE TEMA
+          TAB 5: APARÊNCIA DA LOJA (CMS VISUAL)
          ========================================================================= */}
-      {activeTab === 'theme' && (
-        <div className="space-y-8 bg-white border-2 border-deep-black p-6 sm:p-10 shadow-luxury">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
-              GUIA DE EDIÇÃO E PERSONALIZAÇÃO
-            </span>
-            <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-deep-black mt-1">
-              PALETA OFICIAL BRANCO, PRETO E DOURADO
-            </h2>
-            <p className="text-xs text-deep-black/70 uppercase tracking-wide mt-1">
-              Design internacional de alto luxo configurado com moeda em Dólares ($ USD) e taxa fixa de frete de $9.99.
-            </p>
-          </div>
+      {(activeTab === 'cms' || activeTab === 'theme') && <AppearanceCmsView />}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-5 border border-deep-black/20 bg-white space-y-3">
-              <div className="flex items-center gap-2 text-deep-black font-black text-xs uppercase">
-                <Palette className="w-4 h-4 text-gold" /> 1. CORES DA MARCA
-              </div>
-              <ul className="text-[10px] text-deep-black/80 uppercase space-y-1 pt-1 font-bold">
-                <li>• Fundo Branco Puro: <span className="font-mono text-deep-black">#FFFFFF</span></li>
-                <li>• Preto Profundo: <span className="font-mono text-deep-black">#0A0A0A</span></li>
-                <li>• Dourado Nobre Metálico: <span className="font-mono text-gold">#D4AF37</span></li>
-              </ul>
-            </div>
+      {/* =========================================================================
+          TAB 6: CLIENTES E PROVA SOCIAL (REVIEWS)
+         ========================================================================= */}
+      {activeTab === 'customers' && <CustomersReviewsView salesData={salesData} />}
 
-            <div className="p-5 border border-deep-black/20 bg-white space-y-3">
-              <div className="flex items-center gap-2 text-deep-black font-black text-xs uppercase">
-                <Upload className="w-4 h-4 text-gold" /> 2. IMAGENS & VÍDEOS
-              </div>
-              <p className="text-[10px] uppercase font-bold text-deep-black/80">
-                Logotipos oficiais salvos em <code className="text-gold font-mono">apps/web/public/logo-ana-fitness.png</code> e <code className="text-gold font-mono">symbol-ana-fitness.png</code>.
-              </p>
-            </div>
-
-            <div className="p-5 border border-deep-black/20 bg-white space-y-3">
-              <div className="flex items-center gap-2 text-gold font-black text-xs uppercase">
-                <Eye className="w-4 h-4 text-gold" /> 3. IDIOMAS & MOEDA
-              </div>
-              <p className="text-[10px] text-deep-black/80 uppercase font-bold">
-                Chaveador de idiomas Português 🇧🇷 / Inglês 🇺🇸 ativo com moeda fixada em Dólares ($) e frete de $9.99.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* =========================================================================
+          TAB 7: CONFIGURAÇÕES TÉCNICAS E ACESSOS
+         ========================================================================= */}
+      {activeTab === 'settings' && <TechnicalSettingsView />}
     </div>
   );
 }
