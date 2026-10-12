@@ -538,11 +538,13 @@ export default function BackofficeDashboard() {
   const [approvingSeller, setApprovingSeller] = useState<any | null>(null);
   const [approveCommissionPct, setApproveCommissionPct] = useState<number>(10);
   const [approveDiscountPct, setApproveDiscountPct] = useState<number>(0);
+  const [approvePassword, setApprovePassword] = useState<string>('ana123');
 
   const handleOpenApproveModal = (seller: any) => {
     setApprovingSeller(seller);
     setApproveCommissionPct(seller.commission_pct !== undefined ? Number(seller.commission_pct) : 10);
     setApproveDiscountPct(seller.customer_discount_pct !== undefined ? Number(seller.customer_discount_pct) : 0);
+    setApprovePassword(seller.password || 'ana123');
   };
 
   const handleConfirmApprove = async (e: React.FormEvent) => {
@@ -557,6 +559,7 @@ export default function BackofficeDashboard() {
           seller_id: approvingSeller.id,
           commission_pct: approveCommissionPct,
           customer_discount_pct: approveDiscountPct,
+          password: approvePassword,
         }),
       });
       if (res.ok) {
@@ -649,7 +652,7 @@ export default function BackofficeDashboard() {
       name: seller.name,
       email: seller.email,
       phone: seller.phone,
-      password: seller.password,
+      password: seller.password || 'ana123',
       coupon_code: seller.coupon_code,
       commission_pct: seller.commission_pct,
       customer_discount_pct: seller.customer_discount_pct,
@@ -3971,8 +3974,9 @@ export default function BackofficeDashboard() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
-                        SENHA DE ACESSO DA VENDEDORA *
+                      <label className="text-[10px] font-black uppercase tracking-widest text-deep-black flex items-center justify-between">
+                        <span>SENHA DE ACESSO DA VENDEDORA *</span>
+                        <span className="text-[9px] text-green-700 font-bold">🔒 NUNCA É PERDIDA</span>
                       </label>
                       <input
                         type="text"
@@ -3982,6 +3986,9 @@ export default function BackofficeDashboard() {
                         placeholder="Ex: carol123"
                         className="w-full px-3 py-2 border border-deep-black/30 text-xs font-mono font-bold focus:outline-none focus:border-deep-black"
                       />
+                      <span className="text-[9px] text-deep-black/60 uppercase block">
+                        Ao alterar comissão, dados ou cupom, a senha é sempre preservada intacta.
+                      </span>
                     </div>
                   </div>
 
@@ -4321,6 +4328,15 @@ export default function BackofficeDashboard() {
                       {approvingSeller.payout_method || 'ZELLE'}: {approvingSeller.payout_key || 'Não informado'}
                     </span>
                   </div>
+                  <div className="flex justify-between border-t border-deep-black/10 pt-2">
+                    <span className="text-deep-black/60 font-bold uppercase">SENHA DE ACESSO:</span>
+                    <span className="font-mono font-bold text-deep-black flex items-center gap-1.5">
+                      <span className="px-1.5 py-0.5 bg-deep-black/10 text-deep-black font-bold text-[10px]">
+                        {approvingSeller.password || 'ana123'}
+                      </span>
+                      <span className="text-[9px] text-green-700 font-bold">✓ Preservada</span>
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-300 text-green-900 text-[10px] font-bold">
                     <ShieldCheck className="w-3.5 h-3.5 text-green-700 shrink-0" />
                     <span>Termo de Conduta Ética e Tolerância Zero: ACEITO PELA CANDIDATA</span>
@@ -4372,6 +4388,24 @@ export default function BackofficeDashboard() {
                         Coloque 0% se o cliente pagar preço normal.
                       </span>
                     </div>
+                  </div>
+
+                  <div className="space-y-1 pt-2 border-t border-deep-black/10">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-deep-black flex items-center justify-between">
+                      <span>SENHA DE ACESSO DA VENDEDORA:</span>
+                      <span className="text-[9px] text-green-700 font-bold">🔒 NUNCA É PERDIDA</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={approvePassword}
+                      onChange={(e) => setApprovePassword(e.target.value)}
+                      placeholder="Senha da vendedora"
+                      className="w-full px-3 py-2 border border-deep-black/30 text-xs font-mono font-bold focus:outline-none focus:border-deep-black bg-gray-50"
+                    />
+                    <span className="text-[9px] text-deep-black/60 uppercase block">
+                      A senha que a vendedora cadastrou é sempre preservada. Se desejar alterá-la para ela, você pode editar acima.
+                    </span>
                   </div>
 
                   <div className="p-3 bg-green-50 border border-green-300 text-green-900 text-[10px] uppercase font-bold leading-relaxed">

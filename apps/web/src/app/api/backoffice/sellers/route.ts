@@ -56,6 +56,7 @@ async function readSellers(): Promise<SellerRecord[]> {
         if (Array.isArray(parsed)) {
           memorySellers = parsed.map((s: any) => ({
             ...s,
+            password: (s.password && s.password.trim() !== '') ? s.password.trim() : 'ana123',
             approval_status: s.approval_status || (s.active ? 'APPROVED' : 'PENDING'),
           }));
           lastSellersFetch = now;
@@ -75,6 +76,7 @@ async function readSellers(): Promise<SellerRecord[]> {
       if (Array.isArray(parsed)) {
         memorySellers = parsed.map((s: any) => ({
           ...s,
+          password: (s.password && s.password.trim() !== '') ? s.password.trim() : 'ana123',
           approval_status: s.approval_status || (s.active ? 'APPROVED' : 'PENDING'),
         }));
         lastSellersFetch = now;
@@ -180,7 +182,7 @@ export async function POST(req: NextRequest) {
               name,
               email: email || s.email,
               phone: phone || s.phone,
-              password: password || s.password,
+              password: (password && password.trim() !== '') ? password.trim() : (s.password || 'ana123'),
               coupon_code: cleanCoupon,
               commission_pct: Number(commission_pct),
               customer_discount_pct: Number(customer_discount_pct),
@@ -357,7 +359,7 @@ export async function POST(req: NextRequest) {
 
     // 2.1 Ação de APROVAR Vendedora no Backoffice por Ana Carina
     if (body.action === 'approve') {
-      const { seller_id, commission_pct, customer_discount_pct } = body;
+      const { seller_id, commission_pct, customer_discount_pct, password } = body;
       const updatedList = sellers.map((s) => {
         if (s.id === seller_id) {
           return {
@@ -366,6 +368,7 @@ export async function POST(req: NextRequest) {
             approval_status: 'APPROVED' as const,
             commission_pct: commission_pct !== undefined ? Number(commission_pct) : s.commission_pct,
             customer_discount_pct: customer_discount_pct !== undefined ? Number(customer_discount_pct) : s.customer_discount_pct,
+            password: (password && password.trim() !== '') ? password.trim() : (s.password || 'ana123'),
           };
         }
         return s;
