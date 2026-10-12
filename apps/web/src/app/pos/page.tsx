@@ -297,7 +297,7 @@ export default function PosTerminalPage() {
             onSubmit={(e) => {
               e.preventDefault();
               const clean = posPinInput.trim();
-              if (clean === '1234' || clean === 'admin123' || clean === 'ana2026' || clean === 'anafit' || loginAdmin('pos@anafitwear.com', clean)) {
+              if (clean === '1234' || clean === 'admin123' || clean === 'ana2026' || clean === 'anafit' || clean === 'Anafit1234' || clean.toLowerCase() === 'anafit1234' || loginAdmin('pos@anafitwear.com', clean)) {
                 setPosUnlocked(true);
                 setPosPinError('');
               } else {

@@ -68,7 +68,8 @@ export default function AdminPortalPage() {
     const ok = loginAdmin(loginEmail, loginPass);
     if (ok) {
       setLoginError('');
-      triggerSuccess('Bem-vinda, Ana Carina! Acesso de Administradora autenticado com sucesso.');
+      const loggedName = loginEmail.includes('mayne') || loginEmail.includes('anacarinalemos.ac@gmail.com') || loginPass === 'Anafit1234' ? 'Mayne' : 'Ana Carina';
+      triggerSuccess(`Bem-vinda, ${loggedName}! Acesso de Administradora autenticado com sucesso.`);
     } else {
       setLoginError('Senha incorreta! Digite a senha master da loja.');
     }
@@ -124,7 +125,7 @@ export default function AdminPortalPage() {
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
                 className="w-full p-3 border-2 border-deep-black font-bold text-xs focus:outline-none focus:border-gold"
-                placeholder="anafitweareua@gmail.com"
+                placeholder="anafitweareua@gmail.com ou anacarinalemos.ac@gmail.com"
               />
             </div>
 

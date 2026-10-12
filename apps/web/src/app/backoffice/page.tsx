@@ -879,7 +879,7 @@ export default function BackofficeDashboard() {
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
                 className="w-full p-3 border-2 border-deep-black font-bold text-xs focus:outline-none focus:border-gold"
-                placeholder="anafitweareua@gmail.com"
+                placeholder="anafitweareua@gmail.com ou anacarinalemos.ac@gmail.com"
               />
             </div>
 
@@ -969,7 +969,7 @@ export default function BackofficeDashboard() {
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 px-2.5 py-0.5 bg-white/10 text-[10px] font-black uppercase tracking-widest text-gold border border-gold/30 mb-1">
             <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
-            <span>PAINEL MASTER • ANA CARINA</span>
+            <span>PAINEL MASTER • {adminUser?.name?.toUpperCase() || 'ADMINISTRADORA'}</span>
           </div>
           <span className="text-[10px] uppercase font-black text-gold tracking-widest flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5" /> GESTÃO OFICIAL: CATÁLOGO, VENDAS, LUCRO REAL & ESTOQUE (USD)

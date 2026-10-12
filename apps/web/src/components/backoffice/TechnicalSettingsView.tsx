@@ -20,7 +20,7 @@ import {
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 
 export function TechnicalSettingsView() {
-  const { siteInfo, updateSiteInfo, changeMasterPassword } = useStoreSettings();
+  const { siteInfo, updateSiteInfo, changeMasterPassword, adminProfiles } = useStoreSettings();
 
   const [shippingRate, setShippingRate] = useState(siteInfo.flatShippingRate || 9.99);
   const [returnDays, setReturnDays] = useState(siteInfo.returnDays || 30);
@@ -325,6 +325,38 @@ export function TechnicalSettingsView() {
                 <span>SEM ACESSO a configurações de tema ou dados de outras vendedoras</span>
               </li>
             </ul>
+          </div>
+        </div>
+
+        {/* Administradores Autorizados com Acesso Master Total */}
+        <div className="p-5 border-2 border-gold bg-gold/5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gold/30 pb-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-deep-black flex items-center gap-2">
+              <Key className="w-4 h-4 text-gold" />
+              <span>USUÁRIOS COM ACESSO MASTER TOTAL AO ERP ({adminProfiles?.length || 2} USUÁRIAS)</span>
+            </h4>
+            <span className="self-start sm:self-auto px-2 py-0.5 bg-green-700 text-white text-[9px] font-black uppercase tracking-widest">
+              ATIVOS & SINCRONIZADOS
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {(adminProfiles || []).map((adm) => (
+              <div key={adm.id} className="p-4 bg-white border border-deep-black/20 space-y-2 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-deep-black">{adm.name}</span>
+                  <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-deep-black text-gold">
+                    {adm.name === 'Mayne' ? 'CO-ADMINISTRADORA / MASTER' : 'PROPRIETÁRIA / MASTER'}
+                  </span>
+                </div>
+                <div className="text-[11px] font-mono text-deep-black/70 space-y-0.5">
+                  <span className="block font-bold">E-mail: {adm.email}</span>
+                  <span className="text-[10px] text-green-700 font-bold block pt-1">
+                    ✓ Permissões Idênticas: Catálogo, Vendas, DRE, Margens, POS e Configurações
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

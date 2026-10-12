@@ -9,6 +9,31 @@ export interface AdminUser {
   role: 'owner' | 'manager';
 }
 
+export interface AdminProfile {
+  id: string;
+  name: string;
+  email: string;
+  passwords: string[];
+  role: 'owner' | 'manager';
+}
+
+export const DEFAULT_ADMIN_PROFILES: AdminProfile[] = [
+  {
+    id: 'admin-ana',
+    name: 'Ana Carina',
+    email: 'anafitweareua@gmail.com',
+    passwords: ['ana2026', 'admin123', 'anafit2026', 'anafitwear', '1234'],
+    role: 'owner',
+  },
+  {
+    id: 'admin-mayne',
+    name: 'Mayne',
+    email: 'anacarinalemos.ac@gmail.com',
+    passwords: ['Anafit1234', 'anafit1234', 'ana2026', 'admin123'],
+    role: 'owner',
+  },
+];
+
 export interface SiteInfo {
   storeName: string;
   phone: string;
@@ -100,6 +125,7 @@ export interface ProductItem {
 
 interface StoreSettingsContextType {
   adminUser: AdminUser;
+  adminProfiles: AdminProfile[];
   siteInfo: SiteInfo;
   siteImages: SiteImages;
   products: ProductItem[];
@@ -411,6 +437,7 @@ const DEFAULT_PRODUCTS: ProductItem[] = [
 
 const StoreSettingsContext = createContext<StoreSettingsContextType>({
   adminUser: { isLoggedIn: false, name: '', email: '', role: 'owner' },
+  adminProfiles: DEFAULT_ADMIN_PROFILES,
   siteInfo: DEFAULT_SITE_INFO,
   siteImages: DEFAULT_SITE_IMAGES,
   products: DEFAULT_PRODUCTS,
@@ -433,6 +460,8 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     email: 'anafitweareua@gmail.com',
     role: 'owner',
   });
+
+  const [adminProfiles, setAdminProfiles] = useState<AdminProfile[]>(DEFAULT_ADMIN_PROFILES);
 
   const [siteInfo, setSiteInfoState] = useState<SiteInfo>(DEFAULT_SITE_INFO);
   const [siteImages, setSiteImagesState] = useState<SiteImages>(DEFAULT_SITE_IMAGES);
@@ -648,12 +677,14 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const loginAdmin = (email: string, pass: string): boolean => {
     const cleanPass = (pass || '').trim();
+    const cleanEmail = (email || '').trim().toLowerCase();
+
     let savedMaster = '';
     try {
       savedMaster = localStorage.getItem('ana_master_password') || '';
     } catch (e) {}
 
-    const validPasswords = [
+    const universalMasterPasswords = [
       savedMaster,
       'admin123',
       'ana2026',
@@ -662,14 +693,42 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       '1234',
     ].filter(Boolean);
 
-    if (!validPasswords.includes(cleanPass)) {
+    // Validação específica para Mayne
+    // Aceita a senha específica Anafit1234 OU se o e-mail for de Mayne e usar uma das senhas master
+    const isMaynePass = cleanPass === 'Anafit1234' || cleanPass.toLowerCase() === 'anafit1234';
+    const isMayneEmail =
+      cleanEmail === 'anacarinalemos.ac@gmail.com' ||
+      cleanEmail.includes('anacarinalemos.ac@gmail.com') ||
+      cleanEmail.includes('mayne');
+
+    if (isMaynePass || (isMayneEmail && (universalMasterPasswords.includes(cleanPass) || isMaynePass))) {
+      const user: AdminUser = {
+        isLoggedIn: true,
+        name: 'Mayne',
+        email: 'anacarinalemos.ac@gmail.com',
+        role: 'owner',
+      };
+      setAdminUser(user);
+      try {
+        localStorage.setItem('ana_admin_session', JSON.stringify(user));
+      } catch (e) {}
+      return true;
+    }
+
+    // Validação de senhas universais / Ana Carina
+    const isValidPass = universalMasterPasswords.includes(cleanPass);
+    if (!isValidPass) {
       return false;
     }
 
+    const matchedProfile = adminProfiles.find(
+      (p) => p.email.toLowerCase() === cleanEmail
+    );
+
     const user: AdminUser = {
       isLoggedIn: true,
-      name: 'Ana Carina',
-      email: email || 'anafitweareua@gmail.com',
+      name: matchedProfile?.name || (isMayneEmail ? 'Mayne' : 'Ana Carina'),
+      email: matchedProfile?.email || (cleanEmail || 'anafitweareua@gmail.com'),
       role: 'owner',
     };
     setAdminUser(user);
@@ -778,6 +837,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     <StoreSettingsContext.Provider
       value={{
         adminUser,
+        adminProfiles,
         siteInfo,
         siteImages,
         products,
