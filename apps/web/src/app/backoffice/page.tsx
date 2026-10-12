@@ -64,6 +64,7 @@ import {
   CalendarDays,
   Send,
   Printer,
+  Instagram,
 } from 'lucide-react';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
@@ -75,6 +76,7 @@ import { DashboardMetricsView } from '../../components/backoffice/DashboardMetri
 import { AppearanceCmsView } from '../../components/backoffice/AppearanceCmsView';
 import { CustomersReviewsView } from '../../components/backoffice/CustomersReviewsView';
 import { TechnicalSettingsView } from '../../components/backoffice/TechnicalSettingsView';
+import { InstagramDirectView } from '../../components/backoffice/InstagramDirectView';
 
 interface ProductProfit {
   sku: string;
@@ -287,7 +289,7 @@ export default function BackofficeDashboard() {
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog'
+    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct'
   >('dashboard');
   const [cmsSubTab, setCmsSubTab] = useState<'media' | 'categories' | 'colors' | 'typography' | 'pages'>('categories');
   const [onlineCount, setOnlineCount] = useState(0);
@@ -1490,6 +1492,21 @@ export default function BackofficeDashboard() {
         >
           <Smartphone className="w-4 h-4 text-green-600" />
           <span>📲 CATÁLOGO WHATSAPP (PDF)</span>
+        </button>
+
+        {/* Botão de Destaque: Direct Instagram & Bot */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('instagram-direct')}
+          className={`pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 ${
+            activeTab === 'instagram-direct'
+              ? 'border-pink-600 text-pink-700 font-black'
+              : 'border-transparent text-pink-700 hover:text-pink-900 font-black cursor-pointer'
+          }`}
+          title="Atendimento do Direct do Instagram e Respostas Automáticas do Robô"
+        >
+          <Instagram className="w-4 h-4 text-pink-600" />
+          <span>📸 DIRECT INSTAGRAM & BOT</span>
         </button>
       </div>
 
@@ -4408,6 +4425,9 @@ export default function BackofficeDashboard() {
           </div>
         </div>
       )}
+
+      {/* 12. Direct Instagram & Atendimento Automatizado (Robô Meta API) */}
+      {activeTab === 'instagram-direct' && <InstagramDirectView />}
 
       {/* Modal de Catálogo PDF para Divulgação no WhatsApp (Renderizado no nível raiz para funcionar em QUALQUER aba) */}
       <WhatsAppCatalogPdfModal
