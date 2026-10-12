@@ -239,9 +239,45 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'O cupom deve ter pelo menos 3 letras ou números.' }, { status: 400 });
       }
 
-      const existing = sellers.find((s) => s.coupon_code.toUpperCase() === cleanCoupon);
+      const existingByCoupon = sellers.find((s) => s.coupon_code.toUpperCase() === cleanCoupon);
+      const existingByEmail = email ? sellers.find((s) => s.email.toLowerCase() === email.trim().toLowerCase()) : null;
+      const existing = existingByCoupon || existingByEmail;
+
       if (existing) {
-        return NextResponse.json({ error: `O cupom ${cleanCoupon} já está em uso por outra vendedora. Escolha outro código.` }, { status: 400 });
+        // Se a vendedora está se recadastrando ou atualizando seu cadastro, atualiza seus dados reais e senha real!
+        const updatedList = sellers.map((s) => {
+          if (s.id === existing.id) {
+            return {
+              ...s,
+              name: name.trim(),
+              email: email ? email.trim().toLowerCase() : s.email,
+              phone: phone ? phone.trim() : (instagram ? `@${instagram.replace('@', '')}` : s.phone),
+              password: password.trim(), // Salva a senha real digitada pela vendedora
+              coupon_code: cleanCoupon,
+              payout_method: payout_method ? (payout_method as any) : (s.payout_method || 'ZELLE'),
+              payout_key: payout_key ? payout_key.trim() : s.payout_key,
+              payout_beneficiary: payout_beneficiary ? payout_beneficiary.trim() : (s.payout_beneficiary || name.trim()),
+              accepted_ethics_terms: true,
+              accepted_ethics_terms_at: new Date().toISOString(),
+              active: s.active,
+              approval_status: s.approval_status || 'PENDING',
+            };
+          }
+          return s;
+        });
+        await writeSellers(updatedList);
+
+        const updated = updatedList.find((s) => s.id === existing.id);
+
+        return NextResponse.json({
+          success: true,
+          updated: true,
+          seller: updated,
+          pending_approval: updated?.approval_status === 'PENDING',
+          message: updated?.active
+            ? 'Cadastro e senha atualizados com sucesso! Seu acesso já está liberado.'
+            : 'Cadastro e senha atualizados com sucesso e enviados para análise de Ana Carina.',
+        });
       }
 
       const newSeller: SellerRecord = {
@@ -306,17 +342,87 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, seller: updated });
     }
 
+    // 1.3 Ação de Redefinir Senha pela Vendedora (Recuperação direta de acesso)
+    if (body.action === 'reset_password') {
+      const { identifier, new_password } = body;
+      if (!identifier || !new_password || new_password.trim().length < 4) {
+        return NextResponse.json(
+          { error: 'Informe seu e-mail ou cupom e a nova senha desejada (mínimo 4 caracteres).' },
+          { status: 400 }
+        );
+      }
+
+      const cleanIdent = identifier.trim().toLowerCase();
+      const cleanDigits = cleanIdent.replace(/\D/g, '');
+      const isPhoneMatch = (s: SellerRecord) => {
+        if (!s.phone || cleanDigits.length < 8) return false;
+        const sDigits = s.phone.replace(/\D/g, '');
+        return sDigits.endsWith(cleanDigits) || cleanDigits.endsWith(sDigits);
+      };
+
+      const matched = sellers.find(
+        (s) =>
+          s.email.toLowerCase() === cleanIdent ||
+          s.coupon_code.toLowerCase() === cleanIdent ||
+          isPhoneMatch(s)
+      );
+
+      if (!matched) {
+        return NextResponse.json(
+          { error: 'Nenhuma vendedora encontrada com este e-mail ou cupom. Verifique se digitou corretamente.' },
+          { status: 404 }
+        );
+      }
+
+      const updatedList = sellers.map((s) => {
+        if (s.id === matched.id) {
+          return {
+            ...s,
+            password: new_password.trim(),
+          };
+        }
+        return s;
+      });
+      await writeSellers(updatedList);
+      const updated = updatedList.find((s) => s.id === matched.id);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Senha atualizada com sucesso!',
+        seller: updated,
+      });
+    }
+
     // 2. Ação de Login da Vendedora no Portal
     if (body.action === 'login') {
       const { identifier, password } = body;
       const cleanIdent = (identifier || '').trim().toLowerCase();
       const cleanPass = (password || '').trim();
+      const cleanDigits = cleanIdent.replace(/\D/g, '');
+      const isPhoneMatch = (s: SellerRecord) => {
+        if (!s.phone || cleanDigits.length < 8) return false;
+        const sDigits = s.phone.replace(/\D/g, '');
+        return sDigits.endsWith(cleanDigits) || cleanDigits.endsWith(sDigits);
+      };
 
-      const matched = sellers.find(
+      let matched = sellers.find(
         (s) =>
-          (s.email.toLowerCase() === cleanIdent || s.coupon_code.toLowerCase() === cleanIdent) &&
+          (s.email.toLowerCase() === cleanIdent ||
+            s.coupon_code.toLowerCase() === cleanIdent ||
+            isPhoneMatch(s)) &&
           s.password === cleanPass
       );
+
+      // Fallback: se não bateu exata, tenta case-insensitive para evitar erro de maiúscula automática do celular
+      if (!matched) {
+        matched = sellers.find(
+          (s) =>
+            (s.email.toLowerCase() === cleanIdent ||
+              s.coupon_code.toLowerCase() === cleanIdent ||
+              isPhoneMatch(s)) &&
+            s.password.trim().toLowerCase() === cleanPass.toLowerCase()
+        );
+      }
 
       if (!matched) {
         return NextResponse.json(

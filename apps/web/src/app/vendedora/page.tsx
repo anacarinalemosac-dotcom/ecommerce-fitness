@@ -114,6 +114,57 @@ export default function SellerPortalPage() {
     }
   };
 
+  // Estado de Redefinir Senha
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetIdentifier, setResetIdentifier] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetSuccessMsg, setResetSuccessMsg] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetLoading(true);
+    setErrorMsg('');
+    setResetSuccessMsg('');
+
+    try {
+      const res = await fetch('/api/backoffice/sellers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reset_password',
+          identifier: resetIdentifier,
+          new_password: resetNewPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao redefinir senha.');
+      }
+
+      setResetSuccessMsg('Senha alterada com sucesso!');
+
+      if (data.seller && data.seller.active) {
+        setLoggedSeller(data.seller);
+        setPayoutFormData({
+          payout_method: data.seller.payout_method || 'ZELLE',
+          payout_key: data.seller.payout_key || data.seller.phone || '',
+          payout_beneficiary: data.seller.payout_beneficiary || data.seller.name || '',
+        });
+        fetchSellerSales(data.seller.coupon_code, data.seller.name);
+      } else {
+        setIdentifier(resetIdentifier);
+        setPassword(resetNewPassword);
+        setShowResetPassword(false);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Erro ao redefinir senha.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -142,12 +193,25 @@ export default function SellerPortalPage() {
         throw new Error(data.error || 'Falha ao realizar cadastro.');
       }
 
-      // ⚠️ NÃO AUTOLOGA: Fica aguardando aprovação de Ana Carina!
+      // Se a vendedora já é aprovada/ativa (foi uma atualização/recadastro para definir sua senha real):
+      if (data.seller && data.seller.active) {
+        setLoggedSeller(data.seller);
+        setPayoutFormData({
+          payout_method: data.seller.payout_method || 'ZELLE',
+          payout_key: data.seller.payout_key || data.seller.phone || '',
+          payout_beneficiary: data.seller.payout_beneficiary || data.seller.name || '',
+        });
+        fetchSellerSales(data.seller.coupon_code, data.seller.name);
+        return;
+      }
+
+      // Caso seja novo cadastro em análise:
       setRegistrationPendingNotice({
         name: registerData.name,
         coupon: registerData.coupon_code.toUpperCase(),
       });
       setAuthTab('login');
+      setIdentifier(registerData.email || registerData.coupon_code);
       setTermsAccepted(false);
       setRegisterData({
         name: '',
@@ -348,16 +412,86 @@ export default function SellerPortalPage() {
                 )}
               </button>
 
-              {/* Informação sobre como obter cadastro */}
-              <div className="pt-4 border-t border-deep-black/10 text-center space-y-1 text-[10px] text-deep-black/60 uppercase">
-                <p>Ainda não tem cupom cadastrado?</p>
-                <button
-                  type="button"
-                  onClick={() => setAuthTab('register')}
-                  className="text-gold font-black underline hover:text-deep-black"
-                >
-                  Clique aqui para criar seu cupom de vendedora
-                </button>
+              {/* Redefinição de Senha e Opção de Cadastro */}
+              <div className="pt-4 border-t border-deep-black/10 space-y-3">
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowResetPassword(!showResetPassword);
+                      setResetIdentifier(identifier || '');
+                      setErrorMsg('');
+                    }}
+                    className="text-[10px] text-deep-black/70 hover:text-deep-black font-bold uppercase underline tracking-wider"
+                  >
+                    {showResetPassword ? '← Voltar para entrar com senha atual' : '🔑 Esqueceu ou deseja redefinir sua senha?'}
+                  </button>
+                </div>
+
+                {showResetPassword && (
+                  <div className="p-4 bg-gold/10 border-2 border-gold space-y-3 animate-fadeIn">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-deep-black block">
+                        REDEFINIR SENHA DE ACESSO
+                      </span>
+                      <p className="text-[10px] text-deep-black/70">
+                        Informe seu e-mail ou código de cupom e defina sua nova senha:
+                      </p>
+                    </div>
+
+                    {resetSuccessMsg && (
+                      <div className="p-2.5 bg-green-100 border border-green-500 text-green-900 text-[10px] font-black uppercase">
+                        ✓ {resetSuccessMsg}
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase text-deep-black">
+                        SEU E-MAIL OU CUPOM CADASTRADO:
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="EX: ANA06 OU SEU E-MAIL"
+                        value={resetIdentifier}
+                        onChange={(e) => setResetIdentifier(e.target.value)}
+                        className="w-full px-3 py-2 text-xs uppercase font-mono font-bold border border-deep-black/30 focus:outline-none focus:border-deep-black bg-white"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase text-deep-black">
+                        NOVA SENHA (MÍNIMO 4 DÍGITOS):
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={resetNewPassword}
+                        onChange={(e) => setResetNewPassword(e.target.value)}
+                        className="w-full px-3 py-2 text-xs font-mono border border-deep-black/30 focus:outline-none focus:border-deep-black bg-white"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleResetPassword}
+                      disabled={resetLoading}
+                      className="w-full py-2.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[10px] font-black uppercase tracking-wider transition shadow"
+                    >
+                      {resetLoading ? 'SALVANDO NOVA SENHA...' : 'SALVAR NOVA SENHA E ENTRAR'}
+                    </button>
+                  </div>
+                )}
+
+                <div className="text-center space-y-1 text-[10px] text-deep-black/60 uppercase pt-2">
+                  <p>Ainda não tem cupom cadastrado?</p>
+                  <button
+                    type="button"
+                    onClick={() => setAuthTab('register')}
+                    className="text-gold font-black underline hover:text-deep-black"
+                  >
+                    Clique aqui para criar seu cupom de vendedora
+                  </button>
+                </div>
               </div>
             </form>
           )}
