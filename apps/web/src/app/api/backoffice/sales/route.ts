@@ -538,6 +538,131 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'order_id é obrigatório' }, { status: 400 });
     }
 
+    // =========================================================================
+    // AÇÃO 1: EDITAR VENDA COMPLETA DO PDV (DATA, CLIENTE, ITENS, PGTO, TOTAL)
+    // =========================================================================
+    if (action === 'edit_sale') {
+      const {
+        customer_name,
+        customer_phone,
+        customer_email,
+        created_at,
+        payment_method,
+        seller_name,
+        discount_amount,
+        subtotal_products,
+        total_amount,
+        items,
+        notes,
+      } = body;
+
+      const pMethod = (payment_method || 'CASH').toUpperCase();
+      const disc = Math.max(0, Number(discount_amount) || 0);
+      const subtotal = Math.max(0, Number(subtotal_products) || 0);
+      const grossTotal = Math.max(0, Number(total_amount) || (subtotal - disc));
+      const pFee = calculatePaymentFee(pMethod, grossTotal);
+
+      // Custo de confecção / aquisição das peças
+      const formattedItems: SaleItemPayload[] = Array.isArray(items)
+        ? items.map((it: any) => ({
+            title: it.title || 'Peça Fitness',
+            size: it.size || 'One Size',
+            color: it.color || 'Preto Ônix',
+            sku: it.sku || 'ANA-ITEM',
+            quantity: Number(it.quantity) || 1,
+            unit_price: Number(it.unit_price) || 44.9,
+            cost_price: Number(it.cost_price) || 16.0,
+          }))
+        : [];
+
+      const totalCostOfGoods = formattedItems.reduce((acc, it) => acc + (it.cost_price * it.quantity), 0);
+      const commRate = 0.10;
+      const commissionAmount = Number(((subtotal - disc) * commRate).toFixed(2));
+      const netProfit = Number((grossTotal - totalCostOfGoods - pFee - commissionAmount).toFixed(2));
+      const marginPct = grossTotal > 0 ? Number(((netProfit / grossTotal) * 100).toFixed(1)) : 0;
+
+      // 1. Atualiza no Supabase orders
+      try {
+        const { data: dbOrders } = await supabaseServer.from('orders').select('*');
+        if (dbOrders) {
+          const target = dbOrders.find((o: any) => {
+            const meta = typeof o.shipping_address === 'object' && o.shipping_address ? o.shipping_address : {};
+            return meta.order_number === order_id || o.id === order_id || (body.id && o.id === body.id);
+          });
+
+          if (target) {
+            const currentMeta = typeof target.shipping_address === 'object' ? target.shipping_address : {};
+            const updatedMeta = {
+              ...currentMeta,
+              seller_name: seller_name || currentMeta.seller_name || 'Juliana Silva (PDV Balcão Leominster)',
+              payment_fee: pFee,
+              cost_of_goods: totalCostOfGoods,
+              net_profit: netProfit,
+              profit_margin_pct: marginPct,
+              items: formattedItems,
+              notes: notes !== undefined ? notes : currentMeta.notes,
+            };
+
+            const updateFields: any = {
+              customer_name: (customer_name || target.customer_name || '').toUpperCase(),
+              customer_phone: customer_phone ? String(customer_phone).trim() : null,
+              customer_email: customer_email || null,
+              payment_method: pMethod,
+              subtotal_amount: subtotal,
+              discount_amount: disc,
+              total_amount: grossTotal,
+              commission_amount: commissionAmount,
+              status: status || target.status || 'COMPLETED',
+              shipping_address: updatedMeta,
+            };
+
+            if (created_at) {
+              updateFields.created_at = created_at;
+            }
+
+            await supabaseServer
+              .from('orders')
+              .update(updateFields)
+              .eq('id', target.id);
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao atualizar Supabase orders na edição:', e);
+      }
+
+      // 2. Atualiza no backup local
+      const sales = readSavedSales();
+      const updated = sales.map((s: any) => {
+        if (s.order_id === order_id || s.id === order_id || (body.id && s.id === body.id)) {
+          return {
+            ...s,
+            created_at: created_at || s.created_at,
+            customer_name: (customer_name || s.customer_name || '').toUpperCase(),
+            customer_phone: customer_phone || s.customer_phone,
+            customer_email: customer_email || s.customer_email,
+            payment_method: pMethod,
+            seller_name: seller_name || s.seller_name,
+            subtotal_products: subtotal,
+            discount_amount: disc,
+            shipping_fee: s.shipping_fee || 0,
+            payment_fee: pFee,
+            cost_of_goods: totalCostOfGoods,
+            commission_amount: commissionAmount,
+            net_profit: netProfit,
+            profit_margin_pct: marginPct,
+            items: formattedItems,
+            status: status || s.status || 'COMPLETED',
+            notes: notes !== undefined ? notes : s.notes,
+          };
+        }
+        return s;
+      });
+
+      writeSavedSales(updated);
+
+      return NextResponse.json({ success: true, message: 'Venda atualizada com sucesso!', sales: updated });
+    }
+
     let updatedCrediario: any = null;
 
     // 1. Atualiza no Supabase 'orders'

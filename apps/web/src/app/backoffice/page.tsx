@@ -72,6 +72,7 @@ import { CsvProductImportModal, downloadCsvTemplate, downloadExcelTemplate } fro
 import { StockWriteOffModal } from '../../components/StockWriteOffModal';
 import { WhatsAppCatalogPdfModal } from '../../components/WhatsAppCatalogPdfModal';
 import { CategoryManagementModal } from '../../components/CategoryManagementModal';
+import { EditSaleModal } from '../../components/EditSaleModal';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 import { DashboardMetricsView } from '../../components/backoffice/DashboardMetricsView';
 import { AppearanceCmsView } from '../../components/backoffice/AppearanceCmsView';
@@ -320,6 +321,7 @@ export default function BackofficeDashboard() {
   const [salesPreorderOnly, setSalesPreorderOnly] = useState(false);
   const [salesSearch, setSalesSearch] = useState('');
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<any | null>(null);
+  const [editingSale, setEditingSale] = useState<any | null>(null);
 
   // Atualização interativa de status do pedido
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string, trackingCode?: string) => {
@@ -2733,16 +2735,27 @@ export default function BackofficeDashboard() {
                         </select>
                       </td>
 
-                      {/* Botão Raio-X */}
+                      {/* Botões Ação: Editar Venda & Raio-X */}
                       <td className="p-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedSaleDetail(sale)}
-                          className="px-2 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black uppercase transition tracking-wider"
-                          title="Ver Raio-X Detalhado do Lucro"
-                        >
-                          VER RAIO-X
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setEditingSale(sale)}
+                            className="px-2.5 py-1 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border border-deep-black shadow-2xs"
+                            title="Editar esta venda (data, cliente, itens, pagamento)"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            <span>EDITAR</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSaleDetail(sale)}
+                            className="px-2 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black uppercase transition tracking-wider"
+                            title="Ver Raio-X Detalhado do Lucro"
+                          >
+                            RAIO-X
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -3014,11 +3027,22 @@ export default function BackofficeDashboard() {
                   </div>
                 </div>
 
-                <div className="text-center">
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingSale(selectedSaleDetail);
+                      setSelectedSaleDetail(null);
+                    }}
+                    className="w-full py-3 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    <span>EDITAR ESTA VENDA (DATA, CLIENTE, PEÇAS, PGTO)</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setSelectedSaleDetail(null)}
-                    className="w-full py-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition"
+                    className="w-full py-2.5 bg-gray-100 hover:bg-deep-black hover:text-white text-deep-black text-xs font-black uppercase tracking-widest transition"
                   >
                     FECHAR DETALHES
                   </button>
@@ -3026,6 +3050,18 @@ export default function BackofficeDashboard() {
               </div>
             </div>
           )}
+
+          {/* Modal de Edição de Venda */}
+          <EditSaleModal
+            isOpen={Boolean(editingSale)}
+            onClose={() => setEditingSale(null)}
+            sale={editingSale}
+            onSaveSuccess={() => {
+              fetchSalesData();
+              setSaveSuccessMessage(true);
+              setTimeout(() => setSaveSuccessMessage(false), 5000);
+            }}
+          />
         </div>
       )}
 

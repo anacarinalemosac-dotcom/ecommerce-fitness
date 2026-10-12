@@ -262,7 +262,6 @@ const CATEGORIES = [
   { key: 'rompers', namePt: 'MACAQUINHOS', nameEn: 'ROMPERS', descPt: 'ALTA PERFORMANCE', descEn: 'HIGH PERFORMANCE', image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=700&q=80' },
   { key: 'jumpsuits', namePt: 'MACACÕES', nameEn: 'JUMPSUITS', descPt: 'SILHUETA ESCULPIDA', descEn: 'SCULPTED SILHOUETTE', image: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=700&q=80' },
   { key: 'tops', namePt: 'TOPS', nameEn: 'TOPS', descPt: 'SUSTENTAÇÃO TOTAL', descEn: 'MAXIMUM SUPPORT', image: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=700&q=80' },
-  { key: 'preorder', namePt: 'PRÉ-VENDA', nameEn: 'PRE-ORDERS', descPt: 'SOB MEDIDA ATELIER', descEn: 'MADE-TO-ORDER ATELIER', image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=700&q=80' },
 ];
 
 const COMMUNITY_POSTS = [
@@ -302,7 +301,7 @@ export default function HomePage() {
   const { lang, t } = useLanguage();
   const { products: storeProducts, siteInfo, siteImages } = useStoreSettings();
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'preorder'>('all');
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops'>('all');
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
   const [quickAddedItem, setQuickAddedItem] = useState<{ id: string; size: string } | null>(null);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -326,8 +325,6 @@ export default function HomePage() {
 
   const filteredProducts = activeCategoryFilter === 'all'
     ? activeProducts
-    : activeCategoryFilter === 'preorder'
-    ? activeProducts.filter((p) => p.categoryKey === 'preorder' || p.stock === 0 || p.badgeEn === 'PRE-ORDER')
     : activeProducts.filter((p) => p.categoryKey === activeCategoryFilter);
 
   const categoriesData = [
@@ -335,7 +332,6 @@ export default function HomePage() {
     { key: 'rompers', namePt: 'MACAQUINHOS', nameEn: 'ROMPERS', descPt: 'ALTA PERFORMANCE', descEn: 'HIGH PERFORMANCE', image: siteImages?.categoryImages?.rompers || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=700&q=80' },
     { key: 'jumpsuits', namePt: 'MACACÕES', nameEn: 'JUMPSUITS', descPt: 'SILHUETA ESCULPIDA', descEn: 'SCULPTED SILHOUETTE', image: siteImages?.categoryImages?.jumpsuits || 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=700&q=80' },
     { key: 'tops', namePt: 'TOPS', nameEn: 'TOPS', descPt: 'SUSTENTAÇÃO TOTAL', descEn: 'MAXIMUM SUPPORT', image: siteImages?.categoryImages?.tops || 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=700&q=80' },
-    { key: 'preorder', namePt: 'PRÉ-VENDA', nameEn: 'PRE-ORDERS', descPt: 'SOB MEDIDA ATELIER', descEn: 'MADE-TO-ORDER ATELIER', image: siteImages?.categoryImages?.preorder || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=700&q=80' },
   ];
 
   const communityPostsData = siteImages?.communityImages && siteImages.communityImages.length > 0
@@ -452,7 +448,7 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {categoriesData.map((cat) => (
             <button
               key={cat.key}
@@ -513,7 +509,6 @@ export default function HomePage() {
               { id: 'rompers', labelPt: 'MACAQUINHOS', labelEn: 'ROMPERS' },
               { id: 'jumpsuits', labelPt: 'MACACÕES', labelEn: 'JUMPSUITS' },
               { id: 'tops', labelPt: 'TOPS', labelEn: 'TOPS' },
-              { id: 'preorder', labelPt: 'PRÉ-VENDA', labelEn: 'PRE-ORDERS' },
             ].map((filter) => {
               const isActive = activeCategoryFilter === filter.id;
               return (

@@ -411,25 +411,6 @@ export function AppearanceCmsView({ initialSubTab }: AppearanceCmsViewProps = {}
                   aspectRatio="aspect-[4/5]"
                 />
               </div>
-
-              {/* 5. PRÉ-VENDA (PRE-ORDERS) */}
-              <div className="p-4 border-2 border-deep-black/20 bg-neutral-50/50 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-deep-black">
-                    5. PRÉ-VENDA (PRE-ORDERS)
-                  </span>
-                  <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 bg-gold/20 text-deep-black">
-                    SOB MEDIDA ATELIER
-                  </span>
-                </div>
-                <ImageUploadBox
-                  label="Foto de Capa - Pré-Venda"
-                  helperText="Exibida no 5º card da vitrine"
-                  value={categoryImages.preorder}
-                  onChange={(url) => setCategoryImages((prev) => ({ ...prev, preorder: url }))}
-                  aspectRatio="aspect-[4/5]"
-                />
-              </div>
             </div>
           </div>
         )}
