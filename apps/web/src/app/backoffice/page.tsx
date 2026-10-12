@@ -778,15 +778,24 @@ export default function BackofficeDashboard() {
     }, 7000);
   };
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        setBrowserNotificationsActive(true);
+      }
+    }
+  }, []);
+
   const handleEnableBrowserNotifications = async () => {
     const granted = await requestNotificationPermission();
     setBrowserNotificationsActive(granted);
     if (granted) {
-      sendBrowserNotification('✅ Notificações Ativadas!', {
-        body: 'Você será avisada de novos clientes online e compras mesmo com o navegador em segundo plano.',
+      if (soundEnabled) soundManager.playCashRegister();
+      sendBrowserNotification('🎉 Alertas de Venda Ativados!', {
+        body: 'Perfeito! Seu celular agora vai apitar e tocar o som de caixa registradora a cada nova venda.',
       });
     } else {
-      alert('As notificações foram negadas pelo navegador. Você pode liberá-las clicando no cadeado ao lado da barra de endereço.');
+      alert('As notificações precisam ser autorizadas no seu aparelho. Se o aviso não apareceu, verifique as Configurações do seu celular > Notificações > Navegador/Web.');
     }
   };
 
@@ -1254,15 +1263,15 @@ export default function BackofficeDashboard() {
           <button
             type="button"
             onClick={handleEnableBrowserNotifications}
-            className={`p-2.5 border transition flex items-center gap-1.5 text-xs font-black uppercase tracking-wider ${
+            className={`p-2 sm:p-2.5 border transition flex items-center gap-1.5 text-xs font-black uppercase tracking-wider ${
               browserNotificationsActive
-                ? 'bg-gold text-deep-black border-gold'
-                : 'bg-white/10 text-white/70 border-white/20 hover:text-white'
+                ? 'bg-gold text-deep-black border-gold shadow-sm'
+                : 'bg-white/10 text-white/80 border-white/20 hover:text-white'
             }`}
             title="Receber notificações no computador/celular"
           >
-            {browserNotificationsActive ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
-            <span className="hidden md:inline">{browserNotificationsActive ? 'ALERTAS ATIVOS' : 'ALERTAS PUSH'}</span>
+            {browserNotificationsActive ? <BellRing className="w-4 h-4 text-deep-black" /> : <Bell className="w-4 h-4 text-gold" />}
+            <span className="text-[10px] sm:text-xs font-black">{browserNotificationsActive ? 'ALERTAS ATIVOS' : 'ALERTAS PUSH'}</span>
           </button>
 
           <button
@@ -1292,6 +1301,33 @@ export default function BackofficeDashboard() {
           </button>
         </div>
       </div>
+
+      {/* Banner de Ativação de Notificações Push para Celular */}
+      {!browserNotificationsActive && (
+        <div className="bg-amber-50 border-2 border-gold p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gold text-deep-black font-black shrink-0 shadow-xs">
+              <BellRing className="w-5 h-5 text-deep-black animate-bounce" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase text-deep-black tracking-wide">
+                ATIVAR AVISO DE VENDAS NO CELULAR
+              </p>
+              <p className="text-[11px] text-deep-black/80 font-medium">
+                Toque no botão ao lado para seu celular tocar o som de caixa registradora e notificar toda nova venda!
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleEnableBrowserNotifications}
+            className="px-4 py-2.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 border border-gold shrink-0 cursor-pointer shadow-md"
+          >
+            <Bell className="w-4 h-4 text-gold" />
+            <span>ATIVAR ALERTAS NO MEU CELULAR</span>
+          </button>
+        </div>
+      )}
 
       {/* Tabs de Navegação do Backoffice - Os 7 Pilares Profissionais */}
       <div className="flex border-b-2 border-deep-black/10 gap-2 sm:gap-4 text-xs font-black uppercase tracking-widest overflow-x-auto pb-1 scrollbar-none">

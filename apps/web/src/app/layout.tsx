@@ -10,8 +10,15 @@ import { TrackingScripts } from '../components/TrackingScripts';
 export const metadata: Metadata = {
   title: 'ANA FITNESS WEAR | ✨Wear Your Strength✨ | Official US Store',
   description: 'Luxury activewear crafted for maximum confidence. Zero see-through, anatomical compression and sculpt fit. Shipping across all United States from Leominster, MA. Flat rate $9.99.',
+  manifest: '/manifest.json',
   icons: {
     icon: '/symbol-ana-fitness.png',
+    apple: '/symbol-ana-fitness.png',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'ANA Backoffice',
   },
 };
 

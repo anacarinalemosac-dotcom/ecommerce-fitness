@@ -1,0 +1,25 @@
+{
+  "name": "ANA Fitness Wear - Backoffice",
+  "short_name": "ANA Backoffice",
+  "description": "Painel de Gestão e Vendas em Tempo Real ANA Fitness Wear",
+  "start_url": "/backoffice",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "/symbol-ana-fitness.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/symbol-ana-fitness.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
