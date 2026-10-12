@@ -33,6 +33,12 @@ import {
   Info,
   ExternalLink,
   ChevronRight,
+  ChevronLeft,
+  ArrowLeft,
+  ArrowRight,
+  GripVertical,
+  Image as ImageIcon,
+  Link2,
   TrendingUp,
   Loader2,
 } from 'lucide-react';
@@ -133,6 +139,16 @@ export function ProductVariantMatrixForm({
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [directImageUrlInput, setDirectImageUrlInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [draggedMediaIndex, setDraggedMediaIndex] = useState<number | null>(null);
+
+  // Vínculo de Foto com Variação
+  const [variantPhotoModal, setVariantPhotoModal] = useState<{
+    variantIndex: number;
+    currentVariant: VariantRow;
+  } | null>(null);
+  const [applyToAllSizesOfColor, setApplyToAllSizesOfColor] = useState(true);
+  const [isUploadingVariantPhoto, setIsUploadingVariantPhoto] = useState(false);
+  const variantFileInputRef = useRef<HTMLInputElement>(null);
 
   // Estados de Supabase & Carregamento
   const [suppliersList, setSuppliersList] = useState<any[]>([]);
@@ -494,6 +510,42 @@ export function ProductVariantMatrixForm({
     }
   };
 
+  // Reordenação de fotos (mover para esquerda / direita)
+  const handleMoveMedia = (fromIndex: number, direction: 'left' | 'right') => {
+    const toIndex = direction === 'left' ? fromIndex - 1 : fromIndex + 1;
+    if (toIndex < 0 || toIndex >= mediaList.length) return;
+
+    const updated = [...mediaList];
+    const [movedItem] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, movedItem);
+    setMediaList(updated);
+  };
+
+  // Drag & drop para reordenação de fotos na galeria
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedMediaIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedMediaIndex === null || draggedMediaIndex === targetIndex) {
+      setDraggedMediaIndex(null);
+      return;
+    }
+
+    const updated = [...mediaList];
+    const [movedItem] = updated.splice(draggedMediaIndex, 1);
+    updated.splice(targetIndex, 0, movedItem);
+    setMediaList(updated);
+    setDraggedMediaIndex(null);
+  };
+
   // Define uma foto como capa principal (move para índice 0)
   const handleSetPrimaryMedia = (index: number) => {
     if (index <= 0 || index >= mediaList.length) return;
@@ -509,6 +561,100 @@ export function ProductVariantMatrixForm({
         image: vr.image || selected.url,
       }))
     );
+  };
+
+  // Vincular foto a uma variante específica ou a todos os tamanhos da cor
+  const handleBindPhotoToVariant = (
+    variantIndex: number,
+    photoUrl: string,
+    applyToAllSizes: boolean = true
+  ) => {
+    const targetVariant = variants[variantIndex];
+    if (!targetVariant) return;
+
+    setVariants((prev) =>
+      prev.map((v, i) => {
+        if (applyToAllSizes && v.color.toLowerCase() === targetVariant.color.toLowerCase()) {
+          const currentImgs = Array.isArray(v.images) ? v.images : [];
+          return {
+            ...v,
+            image: photoUrl,
+            images: photoUrl ? [photoUrl, ...currentImgs.filter((u) => u !== photoUrl)] : currentImgs,
+          };
+        }
+
+        if (i === variantIndex) {
+          const currentImgs = Array.isArray(v.images) ? v.images : [];
+          return {
+            ...v,
+            image: photoUrl,
+            images: photoUrl ? [photoUrl, ...currentImgs.filter((u) => u !== photoUrl)] : currentImgs,
+          };
+        }
+
+        return v;
+      })
+    );
+  };
+
+  // Upload direto de foto no Storage para uma variante específica
+  const handleUploadPhotoForVariant = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !variantPhotoModal) return;
+    const file = e.target.files[0];
+    setIsUploadingVariantPhoto(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const { error: uploadErr } = await supabase.storage.from('products').upload(filePath, file, {
+        contentType: file.type,
+      });
+
+      if (uploadErr) {
+        alert(`Erro no upload: ${uploadErr.message}`);
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(filePath);
+
+      // Adiciona na galeria geral
+      setMediaList((prev) => [
+        ...prev,
+        {
+          id: `m-var-${Date.now()}`,
+          url: publicUrl,
+          type: 'image',
+          associatedColor: variantPhotoModal.currentVariant.color,
+          fileName: file.name,
+          isUploading: false,
+        },
+      ]);
+
+      // Vincula na variante
+      handleBindPhotoToVariant(
+        variantPhotoModal.variantIndex,
+        publicUrl,
+        applyToAllSizesOfColor
+      );
+
+      // Atualiza o modal
+      setVariantPhotoModal((prev) =>
+        prev
+          ? {
+              ...prev,
+              currentVariant: {
+                ...prev.currentVariant,
+                image: publicUrl,
+              },
+            }
+          : null
+      );
+    } catch (err: any) {
+      alert(`Erro ao carregar foto: ${err?.message}`);
+    } finally {
+      setIsUploadingVariantPhoto(false);
+      if (variantFileInputRef.current) variantFileInputRef.current.value = '';
+    }
   };
 
   // Upload de Mídias (Fotos e Vídeos) Direto para o Supabase Storage (Sem Base64)
@@ -685,23 +831,44 @@ export function ProductVariantMatrixForm({
     setFeedback(null);
 
     const enrichedVariants = completedVariants.map((vr) => {
-      let matchingImages = mediaList
-        .filter((m) => (m.associatedColor === 'all' || m.associatedColor === vr.color) && m.url && !m.url.startsWith('data:') && !m.isUploading)
+      const explicitImg = vr.image && !vr.image.startsWith('data:') ? vr.image : '';
+
+      // 1. Fotos vinculadas à cor desta variante
+      const colorMatching = mediaList
+        .filter((m) => m.associatedColor === vr.color && m.url && !m.url.startsWith('data:') && !m.isUploading)
         .map((m) => m.url);
 
-      if (matchingImages.length === 0 && mediaList.length > 0) {
-        matchingImages = mediaList
-          .filter((m) => m.url && !m.url.startsWith('data:') && !m.isUploading)
-          .map((m) => m.url);
-      }
+      // 2. Fotos gerais da peça ('all')
+      const allMatching = mediaList
+        .filter((m) => m.associatedColor === 'all' && m.url && !m.url.startsWith('data:') && !m.isUploading)
+        .map((m) => m.url);
 
       const currentImgs = (Array.isArray(vr.images) ? vr.images : []).filter((u) => u && !u.startsWith('data:'));
-      const mergedImages = Array.from(new Set([...matchingImages, ...currentImgs]));
+
+      // Ordena com prioridade máxima para a foto explícita da variação
+      const orderedImages: string[] = [];
+      if (explicitImg) orderedImages.push(explicitImg);
+      colorMatching.forEach((img) => {
+        if (!orderedImages.includes(img)) orderedImages.push(img);
+      });
+      currentImgs.forEach((img) => {
+        if (!orderedImages.includes(img)) orderedImages.push(img);
+      });
+      allMatching.forEach((img) => {
+        if (!orderedImages.includes(img)) orderedImages.push(img);
+      });
+      if (orderedImages.length === 0 && mediaList.length > 0) {
+        mediaList.forEach((m) => {
+          if (m.url && !orderedImages.includes(m.url)) orderedImages.push(m.url);
+        });
+      }
+
+      const finalPrimary = orderedImages[0] || explicitImg || '';
 
       return {
         ...vr,
-        images: mergedImages,
-        image: mergedImages[0] || (vr.image && !vr.image.startsWith('data:') ? vr.image : '') || '',
+        images: orderedImages,
+        image: finalPrimary,
       };
     });
 
@@ -996,14 +1163,42 @@ export function ProductVariantMatrixForm({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {mediaList.map((media, mIdx) => {
                     const isPrimary = mIdx === 0;
+                    const isBeingDragged = draggedMediaIndex === mIdx;
+
                     return (
                       <div
                         key={media.id}
-                        className={`bg-white border-2 p-2 space-y-2 relative group shadow-xs transition ${
-                          isPrimary ? 'border-gold ring-2 ring-gold/30' : 'border-deep-black/30'
+                        draggable={!media.isUploading}
+                        onDragStart={(e) => handleDragStart(e, mIdx)}
+                        onDragOver={(e) => handleDragOver(e, mIdx)}
+                        onDrop={(e) => handleDrop(e, mIdx)}
+                        className={`bg-white border-2 p-2 space-y-2 relative group shadow-xs transition select-none ${
+                          isBeingDragged ? 'opacity-40 border-gold border-dashed ring-2 ring-gold' : ''
+                        } ${
+                          isPrimary ? 'border-gold ring-2 ring-gold/30' : 'border-deep-black/30 hover:border-deep-black'
                         }`}
                       >
-                        <div className="relative aspect-[4/5] bg-deep-black/10 overflow-hidden border border-deep-black/10">
+                        {/* Barra Superior do Card de Mídia */}
+                        <div className="flex items-center justify-between text-[8px] font-black uppercase pb-1 border-b border-deep-black/10">
+                          <span
+                            className={`px-1.5 py-0.5 rounded-none flex items-center gap-1 ${
+                              isPrimary ? 'bg-gold text-deep-black font-black' : 'bg-deep-black/10 text-deep-black/70'
+                            }`}
+                          >
+                            {isPrimary && <Star className="w-2.5 h-2.5 fill-deep-black shrink-0" />}
+                            <span>#{mIdx + 1} {isPrimary ? '(CAPA)' : ''}</span>
+                          </span>
+
+                          <div
+                            className="cursor-grab active:cursor-grabbing text-deep-black/40 hover:text-gold p-0.5"
+                            title="Arraste para reordenar a posição desta foto"
+                          >
+                            <GripVertical className="w-3.5 h-3.5" />
+                          </div>
+                        </div>
+
+                        {/* Visualizador da Mídia */}
+                        <div className="relative aspect-[4/5] bg-deep-black/10 overflow-hidden border border-deep-black/10 group">
                           {media.isUploading ? (
                             <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-deep-black text-white space-y-2">
                               <Loader2 className="w-6 h-6 text-gold animate-spin" />
@@ -1020,14 +1215,7 @@ export function ProductVariantMatrixForm({
                             <img src={media.url} alt="Mídia" className="w-full h-full object-cover" />
                           )}
 
-                          {isPrimary && !media.isUploading && (
-                            <span className="absolute top-1 left-1 bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 uppercase flex items-center gap-0.5 shadow-sm">
-                              <Star className="w-2.5 h-2.5 fill-deep-black" />
-                              <span>CAPA</span>
-                            </span>
-                          )}
-
-                          {/* Botão de Excluir */}
+                          {/* Botão de Excluir Foto */}
                           <button
                             type="button"
                             onClick={() => {
@@ -1043,26 +1231,55 @@ export function ProductVariantMatrixForm({
                                 );
                               }
                             }}
-                            className="absolute top-1 right-1 p-1 bg-red-600 text-white opacity-0 group-hover:opacity-100 transition shadow-sm"
+                            className="absolute top-1 right-1 p-1 bg-red-600 text-white opacity-0 group-hover:opacity-100 transition shadow-sm hover:bg-red-700"
                             title="Excluir mídia"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
                         </div>
 
-                        {/* Botão Tornar Capa (se não for a primeira) */}
-                        {!isPrimary && (
+                        {/* Controles de Movimentação de Ordem (← Mover | Tornar Capa | Mover →) */}
+                        <div className="flex items-center gap-1 pt-0.5">
                           <button
                             type="button"
-                            onClick={() => handleSetPrimaryMedia(mIdx)}
-                            className="w-full py-1 bg-deep-black/5 hover:bg-gold hover:text-deep-black text-deep-black text-[8px] font-black uppercase transition border border-deep-black/20"
+                            disabled={mIdx === 0}
+                            onClick={() => handleMoveMedia(mIdx, 'left')}
+                            className="flex-1 py-1 px-1 bg-gray-100 hover:bg-deep-black hover:text-white disabled:opacity-30 disabled:hover:bg-gray-100 disabled:hover:text-deep-black text-deep-black text-[9px] font-black uppercase transition border border-deep-black/20 flex items-center justify-center gap-0.5"
+                            title="Mover foto para a esquerda (posição anterior)"
                           >
-                            Definir como Capa
+                            <ChevronLeft className="w-3 h-3" />
+                            <span>←</span>
                           </button>
-                        )}
 
-                        {/* Seletor de Associação de Cor */}
-                        <div className="space-y-0.5">
+                          {!isPrimary ? (
+                            <button
+                              type="button"
+                              onClick={() => handleSetPrimaryMedia(mIdx)}
+                              className="flex-[2] py-1 px-1 bg-deep-black/5 hover:bg-gold hover:text-deep-black text-deep-black text-[8px] font-black uppercase transition border border-deep-black/20 truncate"
+                              title="Tornar esta foto a capa principal da vitrine"
+                            >
+                              ★ Tornar Capa
+                            </button>
+                          ) : (
+                            <span className="flex-[2] py-1 px-1 bg-gold text-deep-black text-[8px] font-black uppercase text-center border border-gold truncate">
+                              ★ Capa Ativa
+                            </span>
+                          )}
+
+                          <button
+                            type="button"
+                            disabled={mIdx === mediaList.length - 1}
+                            onClick={() => handleMoveMedia(mIdx, 'right')}
+                            className="flex-1 py-1 px-1 bg-gray-100 hover:bg-deep-black hover:text-white disabled:opacity-30 disabled:hover:bg-gray-100 disabled:hover:text-deep-black text-deep-black text-[9px] font-black uppercase transition border border-deep-black/20 flex items-center justify-center gap-0.5"
+                            title="Mover foto para a direita (próxima posição)"
+                          >
+                            <span>→</span>
+                            <ChevronRight className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        {/* Seletor de Associação de Cor & Vínculo */}
+                        <div className="space-y-1 pt-1 border-t border-deep-black/10">
                           <label className="text-[7.5px] font-black uppercase tracking-wider text-deep-black/60 block">
                             Cor da Peça:
                           </label>
@@ -1076,19 +1293,15 @@ export function ProductVariantMatrixForm({
 
                               setVariants((prev) =>
                                 prev.map((vr) => {
-                                  if (val === 'all' || vr.color === val) {
+                                  if (val === 'all' || vr.color.toLowerCase() === val.toLowerCase()) {
                                     const currentImgs = Array.isArray(vr.images) ? vr.images : [];
                                     return {
                                       ...vr,
-                                      image: currentImgs[0] || media.url,
-                                      images: Array.from(new Set([...currentImgs, media.url])),
-                                    };
-                                  } else {
-                                    return {
-                                      ...vr,
-                                      images: (vr.images || []).filter((u) => u !== media.url),
+                                      image: media.url,
+                                      images: [media.url, ...currentImgs.filter((u) => u !== media.url)],
                                     };
                                   }
+                                  return vr;
                                 })
                               );
                             }}
@@ -1101,6 +1314,37 @@ export function ProductVariantMatrixForm({
                               </option>
                             ))}
                           </select>
+
+                          {media.associatedColor !== 'all' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVariants((prev) =>
+                                  prev.map((vr) => {
+                                    if (vr.color.toLowerCase() === media.associatedColor.toLowerCase()) {
+                                      const cur = Array.isArray(vr.images) ? vr.images : [];
+                                      return {
+                                        ...vr,
+                                        image: media.url,
+                                        images: [media.url, ...cur.filter((u) => u !== media.url)],
+                                      };
+                                    }
+                                    return vr;
+                                  })
+                                );
+                                setFeedback({
+                                  type: 'success',
+                                  message: `✓ Foto vinculada a todas as variantes da cor "${media.associatedColor}"!`,
+                                });
+                                setTimeout(() => setFeedback(null), 3500);
+                              }}
+                              className="w-full py-1 bg-gold/15 hover:bg-gold text-deep-black text-[7.5px] font-black uppercase tracking-wider transition border border-gold/40 flex items-center justify-center gap-1 shadow-2xs"
+                              title={`Vincular esta foto a todos os tamanhos da cor ${media.associatedColor}`}
+                            >
+                              <Link2 className="w-2.5 h-2.5 text-deep-black" />
+                              <span>Vincular a {media.associatedColor}</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -1582,7 +1826,13 @@ export function ProductVariantMatrixForm({
                         <tr key={`${v.color}-${v.size}-${idx}`} className="hover:bg-deep-black/5">
                           <td className="p-2.5">
                             <div className="flex items-center gap-2">
-                              <div className="w-7 h-9 border border-deep-black/30 overflow-hidden bg-deep-black/10 shrink-0">
+                              {/* Botão de Foto da Variação (Interativo) */}
+                              <button
+                                type="button"
+                                onClick={() => setVariantPhotoModal({ variantIndex: idx, currentVariant: v })}
+                                className="w-8 h-10 border-2 border-deep-black/30 hover:border-gold hover:ring-2 hover:ring-gold/30 overflow-hidden bg-deep-black/10 shrink-0 relative group transition shadow-2xs"
+                                title="Clique para vincular ou trocar foto desta variação"
+                              >
                                 {v.image || v.images?.[0] ? (
                                   <img
                                     src={v.image || v.images[0]}
@@ -1590,18 +1840,51 @@ export function ProductVariantMatrixForm({
                                     className="w-full h-full object-cover"
                                   />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-[7px] text-deep-black/40 font-bold">
-                                    SEM FOTO
+                                  <div className="w-full h-full flex flex-col items-center justify-center p-0.5 text-[6.5px] text-deep-black/40 font-bold leading-tight">
+                                    <Camera className="w-3 h-3 text-deep-black/30 mb-0.5" />
+                                    <span>+ FOTO</span>
                                   </div>
                                 )}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-1">
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                                  <Camera className="w-3.5 h-3.5 text-gold" />
+                                </div>
+                              </button>
+
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5">
                                   <span
-                                    className="w-2.5 h-2.5 rounded-full border border-deep-black/40"
+                                    className="w-2.5 h-2.5 rounded-full border border-deep-black/40 shrink-0"
                                     style={{ backgroundColor: v.colorHex }}
                                   />
                                   <span className="font-black text-deep-black text-[11px]">{v.color}</span>
+                                </div>
+
+                                {/* Seletor Rápido de Foto da Galeria */}
+                                <div className="flex items-center gap-1">
+                                  <select
+                                    value={v.image || ''}
+                                    onChange={(e) => {
+                                      handleBindPhotoToVariant(idx, e.target.value, false);
+                                    }}
+                                    className="p-0.5 text-[8.5px] border border-deep-black/30 font-bold uppercase bg-white max-w-[120px] truncate focus:outline-none focus:border-gold"
+                                    title="Selecione diretamente a foto para esta variação"
+                                  >
+                                    <option value="">(Capa Geral)</option>
+                                    {mediaList.map((m, mIdx) => (
+                                      <option key={m.id} value={m.url}>
+                                        Foto #{mIdx + 1} {m.associatedColor !== 'all' ? `(${m.associatedColor})` : ''} {mIdx === 0 ? '★' : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setVariantPhotoModal({ variantIndex: idx, currentVariant: v })}
+                                    className="px-1.5 py-0.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[7.5px] font-black uppercase transition shrink-0"
+                                    title="Abrir seletor visual com miniaturas grandes"
+                                  >
+                                    Ver
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -2063,6 +2346,227 @@ export function ProductVariantMatrixForm({
           </div>
         </div>
       </div>
+
+      {/* =========================================================================
+          MODAL INTERATIVO: VINCULAR FOTO À VARIAÇÃO
+         ========================================================================= */}
+      {variantPhotoModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white border-2 border-deep-black max-w-xl w-full p-6 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-deep-black/10 pb-3">
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-widest text-gold block">
+                  PERSONALIZAÇÃO POR COR E TAMANHO
+                </span>
+                <h3 className="text-sm font-black uppercase tracking-wider text-deep-black flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-gold" />
+                  <span>Vincular Foto à Variação</span>
+                </h3>
+                <p className="text-xs text-deep-black/70 font-bold uppercase pt-0.5">
+                  Cor: <span className="text-gold">{variantPhotoModal.currentVariant.color}</span> • Tamanho: <span className="text-deep-black">{variantPhotoModal.currentVariant.size}</span>
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setVariantPhotoModal(null)}
+                className="p-1 border border-deep-black/30 hover:bg-deep-black hover:text-white transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Foto Atualmente Vinculada */}
+            <div className="p-3 bg-stone-50 border border-deep-black/20 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-16 border-2 border-deep-black overflow-hidden bg-white shrink-0">
+                  {variantPhotoModal.currentVariant.image ? (
+                    <img
+                      src={variantPhotoModal.currentVariant.image}
+                      alt="Foto Vinculada"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[7px] text-deep-black/40 font-bold text-center p-1">
+                      CAPA PADRÃO
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase text-deep-black block">
+                    {variantPhotoModal.currentVariant.image ? 'Foto Vinculada Atualmente' : 'Usando Foto Padrão da Capa'}
+                  </span>
+                  <span className="text-[9px] text-deep-black/60">
+                    {variantPhotoModal.currentVariant.image
+                      ? 'Esta é a imagem exibida quando a cliente selecionar esta cor.'
+                      : 'Nenhuma foto exclusiva vinculada ainda.'}
+                  </span>
+                </div>
+              </div>
+
+              {variantPhotoModal.currentVariant.image && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleBindPhotoToVariant(variantPhotoModal.variantIndex, '', false);
+                    setVariantPhotoModal((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            currentVariant: {
+                              ...prev.currentVariant,
+                              image: '',
+                            },
+                          }
+                        : null
+                    );
+                  }}
+                  className="px-2.5 py-1.5 border border-red-300 text-red-600 hover:bg-red-600 hover:text-white text-[9px] font-black uppercase transition shrink-0"
+                >
+                  Desvincular
+                </button>
+              )}
+            </div>
+
+            {/* Galeria de Fotos Disponíveis */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-deep-black block">
+                Escolha uma foto da galeria do produto ({mediaList.length} disponíveis):
+              </span>
+
+              {mediaList.length === 0 ? (
+                <div className="p-6 border-2 border-dashed border-deep-black/30 text-center text-xs text-deep-black/60 font-bold uppercase">
+                  Nenhuma foto carregada na galeria ainda. Faça upload abaixo.
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-56 overflow-y-auto p-1 border border-deep-black/15">
+                  {mediaList.map((m, mIdx) => {
+                    const isSelected = variantPhotoModal.currentVariant.image === m.url;
+                    const isColorMatch =
+                      m.associatedColor.toLowerCase() ===
+                      variantPhotoModal.currentVariant.color.toLowerCase();
+
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => {
+                          handleBindPhotoToVariant(
+                            variantPhotoModal.variantIndex,
+                            m.url,
+                            applyToAllSizesOfColor
+                          );
+                          setVariantPhotoModal((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  currentVariant: {
+                                    ...prev.currentVariant,
+                                    image: m.url,
+                                  },
+                                }
+                              : null
+                          );
+                        }}
+                        className={`aspect-[4/5] border-2 relative cursor-pointer group overflow-hidden transition ${
+                          isSelected
+                            ? 'border-gold ring-3 ring-gold/40 scale-[0.98]'
+                            : 'border-deep-black/30 hover:border-deep-black'
+                        }`}
+                      >
+                        <img src={m.url} alt={`Foto ${mIdx + 1}`} className="w-full h-full object-cover" />
+
+                        {/* Badges */}
+                        <div className="absolute top-1 left-1 flex flex-col gap-0.5">
+                          <span className="px-1 py-0.5 bg-deep-black/80 text-white text-[7.5px] font-black uppercase">
+                            #{mIdx + 1}
+                          </span>
+                          {isColorMatch && (
+                            <span className="px-1 py-0.5 bg-gold text-deep-black text-[7px] font-black uppercase">
+                              Cor
+                            </span>
+                          )}
+                        </div>
+
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-gold/20 flex items-center justify-center">
+                            <span className="p-1 bg-deep-black text-gold rounded-full shadow">
+                              <Check className="w-4 h-4 stroke-[3]" />
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Upload de Nova Foto Exclusiva */}
+            <div className="p-3 border-2 border-dashed border-deep-black/30 bg-stone-50 space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-deep-black block">
+                Ou envie uma nova foto do seu dispositivo para esta variação:
+              </span>
+              <input
+                ref={variantFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleUploadPhotoForVariant}
+                className="hidden"
+              />
+              <button
+                type="button"
+                disabled={isUploadingVariantPhoto}
+                onClick={() => variantFileInputRef.current?.click()}
+                className="w-full py-2 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-2"
+              >
+                {isUploadingVariantPhoto ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-gold" />
+                    <span>Enviando foto para o Supabase Storage...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-3.5 h-3.5 text-gold" />
+                    <span>+ Carregar Foto do Computador / Celular</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Checkbox de Replicação Inteligente por Cor */}
+            <div className="p-3 bg-gold/10 border border-gold/40">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={applyToAllSizesOfColor}
+                  onChange={(e) => setApplyToAllSizesOfColor(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-gold"
+                />
+                <div>
+                  <span className="text-xs font-black uppercase tracking-wide text-deep-black block">
+                    Aplicar esta mesma foto a todos os tamanhos da cor "{variantPhotoModal.currentVariant.color}"
+                  </span>
+                  <span className="text-[9.5px] text-deep-black/70">
+                    Recomendado: Vinculará a foto a todas as variantes desta cor (ex: P, M, G) com 1 único clique.
+                  </span>
+                </div>
+              </label>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-deep-black/10">
+              <button
+                type="button"
+                onClick={() => setVariantPhotoModal(null)}
+                className="px-5 py-2.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition font-bold"
+              >
+                Concluir e Salvar Vínculo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

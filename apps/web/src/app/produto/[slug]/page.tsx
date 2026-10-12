@@ -182,8 +182,13 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           cName.toLowerCase().includes('verd') ? '#2E4F4F' : '#0A0A0A';
 
         const varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
-        if (varImg && !mediaList.some((m) => m.url === varImg)) {
-          mediaList.push({ type: 'image', url: varImg, label: `${cName} Foto`, color: cName });
+        if (varImg) {
+          const existingMedia = mediaList.find((m) => m.url === varImg);
+          if (existingMedia) {
+            existingMedia.color = cName;
+          } else {
+            mediaList.push({ type: 'image', url: varImg, label: `${cName} Foto`, color: cName });
+          }
         }
 
         return {
@@ -303,7 +308,21 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   // Troca de Cor com atualização visual de foto vinculada
   const handleSelectColor = (colorName: string) => {
     setSelectedColor(colorName);
-    // Tenta encontrar foto vinculada a essa cor na galeria
+
+    // 1. Procura variante desta cor que possua imagem própria vinculada
+    const matchingVariant = (productData.variants || []).find(
+      (v: Variant) => v.color.toLowerCase() === colorName.toLowerCase() && v.image
+    );
+
+    if (matchingVariant && matchingVariant.image) {
+      const idx = productData.media.findIndex((m: any) => m.url === matchingVariant.image);
+      if (idx >= 0) {
+        setSelectedMediaIdx(idx);
+        return;
+      }
+    }
+
+    // 2. Fallback: Procura foto vinculada a essa cor na galeria
     const colorMediaIdx = productData.media.findIndex(
       (m: any) => m.color && m.color.toLowerCase() === colorName.toLowerCase()
     );
