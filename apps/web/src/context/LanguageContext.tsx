@@ -51,7 +51,7 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     'prod.inStock': 'IN STOCK • READY TO SHIP IN THE US',
     'prod.outOfStock': 'MADE-TO-ORDER PRE-ORDER (30 DAYS)',
     'prod.bestSeller': 'BEST SELLER',
-    'prod.preOrderBadge': 'PRE-ORDER (30 DAYS)',
+    'prod.preOrderBadge': 'Pre-order: 30 days',
     'prod.newBadge': 'NEW ARRIVAL',
     'prod.freeShippingBanner': 'FLAT RATE SHIPPING: $9.99 ACROSS ALL US STATES',
 
@@ -149,7 +149,7 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     'prod.inStock': 'EM ESTOQUE • PRONTA ENTREGA NOS EUA',
     'prod.outOfStock': 'PRODUÇÃO SOB ENCOMENDA (PRAZO 30 DIAS)',
     'prod.bestSeller': 'BEST SELLER',
-    'prod.preOrderBadge': 'PRÉ-VENDA (30 DIAS)',
+    'prod.preOrderBadge': 'Pré-venda: 30 dias',
     'prod.newBadge': 'LANÇAMENTO',
     'prod.freeShippingBanner': 'TAXA FIXA DE FRETE: $9.99 PARA QUALQUER ESTADO DOS EUA',
 

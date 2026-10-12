@@ -491,19 +491,14 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               />
             )}
 
-            {/* Selos de Destaque */}
-            <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
-              {(productData.ribbon || productData.badgePt) && (
+            {/* Selos de Destaque (Apenas promocionais para itens em estoque; nunca pré-venda em cima da foto) */}
+            {!isBackorder && productData.badgeEn !== 'PRE-ORDER' && productData.badgePt !== 'PRÉ-VENDA' && (productData.ribbon || productData.badgePt) && (
+              <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
                 <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm ${productData.badgeStyle || 'bg-gold text-deep-black'}`}>
                   {productData.ribbon || (lang === 'pt' ? productData.badgePt : productData.badgeEn)}
                 </span>
-              )}
-              {isBackorder && (
-                <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-deep-black text-gold border border-gold">
-                  {lang === 'pt' ? 'PRÉ-VENDA EXCLUSIVA' : 'PRE-ORDER EXCLUSIVE'}
-                </span>
-              )}
-            </div>
+              </div>
+            )}
 
             <button
               onClick={() => setIsZoomed(!isZoomed)}

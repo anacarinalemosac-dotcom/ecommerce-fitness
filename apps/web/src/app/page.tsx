@@ -552,6 +552,10 @@ export default function HomePage() {
             const isFavorited = !!wishlist[product.id];
             const wasJustAdded = quickAddedItem?.id === product.id;
 
+            // Flag de pré-venda: nunca exibe badges em cima do rosto da modelo / topo da imagem
+            const isPreOrder = isBackorder || product.badgeEn === 'PRE-ORDER' || product.badgePt === 'PRÉ-VENDA';
+            const showTopPromoBadge = !isPreOrder && Boolean(product.badgeEn && product.badgeEn !== 'PRE-ORDER' && product.badgePt !== 'PRÉ-VENDA');
+
             return (
               <div
                 key={product.id}
@@ -570,19 +574,16 @@ export default function HomePage() {
                     />
                   </Link>
 
-                  {/* Badges Minimalistas Gymshark (Top Left) */}
-                  <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10 pointer-events-none">
-                    <span
-                      className={`text-[9px] uppercase tracking-widest px-2.5 py-1 font-black shadow-sm ${product.badgeStyle}`}
-                    >
-                      {lang === 'pt' ? product.badgePt : product.badgeEn}
-                    </span>
-                    {isBackorder && (
-                      <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-deep-black text-gold border border-gold">
-                        {lang === 'pt' ? 'PRÉ-VENDA (30 DIAS)' : 'PRE-ORDER (30 DAYS)'}
+                  {/* Badges Promocionais no Topo Esquerdo (Apenas se NÃO for pré-venda, para não tampar o rosto) */}
+                  {showTopPromoBadge && (
+                    <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10 pointer-events-none">
+                      <span
+                        className={`text-[9px] uppercase tracking-widest px-2.5 py-1 font-black shadow-sm ${product.badgeStyle}`}
+                      >
+                        {lang === 'pt' ? product.badgePt : product.badgeEn}
                       </span>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {/* Botões do Topo Direito (Favoritos e Compartilhar WhatsApp) */}
                   <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
@@ -719,13 +720,15 @@ export default function HomePage() {
                     </div>
 
                     <span
-                      className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 border ${
-                        isBackorder
-                          ? 'bg-deep-black text-gold border-gold'
+                      className={`text-[10px] font-bold tracking-wide px-2.5 py-1 border shrink-0 ${
+                        isPreOrder
+                          ? 'bg-deep-black text-gold border-gold shadow-sm'
                           : 'bg-white text-deep-black border-deep-black'
                       }`}
                     >
-                      {isBackorder ? (lang === 'pt' ? 'PRÉ-VENDA (30 DIAS)' : 'PRE-ORDER (30 DAYS)') : (lang === 'pt' ? 'EM ESTOQUE' : 'IN STOCK')}
+                      {isPreOrder
+                        ? (lang === 'pt' ? 'Pré-venda: 30 dias' : 'Pre-order: 30 days')
+                        : (lang === 'pt' ? 'Em estoque' : 'In stock')}
                     </span>
                   </div>
                 </div>
