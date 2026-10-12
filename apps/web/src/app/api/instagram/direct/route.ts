@@ -55,8 +55,11 @@ export async function POST(req: NextRequest) {
       let metaDispatched = false;
       if (state.config.enabled && state.config.pageAccessToken) {
         try {
+          const apiBase = state.config.pageAccessToken.startsWith('IGAA')
+            ? 'https://graph.instagram.com/v19.0'
+            : 'https://graph.facebook.com/v19.0';
           const metaRes = await fetch(
-            `https://graph.facebook.com/v19.0/me/messages?access_token=${state.config.pageAccessToken}`,
+            `${apiBase}/me/messages?access_token=${state.config.pageAccessToken}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -68,6 +71,9 @@ export async function POST(req: NextRequest) {
           );
           if (metaRes.ok) {
             metaDispatched = true;
+          } else {
+            const errData = await metaRes.json().catch(() => null);
+            console.warn('Resposta Meta API no envio direto:', metaRes.status, errData);
           }
         } catch (metaErr) {
           console.warn('Erro ao disparar mensagem para Meta Graph API:', metaErr);

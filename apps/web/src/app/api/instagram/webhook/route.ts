@@ -123,8 +123,11 @@ export async function POST(req: NextRequest) {
             // Se as credenciais oficiais estiverem configuradas, envia a resposta para o direct do Instagram
             if (state.config.enabled && state.config.pageAccessToken) {
               try {
-                await fetch(
-                  `https://graph.facebook.com/v19.0/me/messages?access_token=${state.config.pageAccessToken}`,
+                const apiBase = state.config.pageAccessToken.startsWith('IGAA')
+                  ? 'https://graph.instagram.com/v19.0'
+                  : 'https://graph.facebook.com/v19.0';
+                const dispatchRes = await fetch(
+                  `${apiBase}/me/messages?access_token=${state.config.pageAccessToken}`,
                   {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -134,6 +137,12 @@ export async function POST(req: NextRequest) {
                     }),
                   }
                 );
+                if (!dispatchRes.ok) {
+                  const errJson = await dispatchRes.json().catch(() => null);
+                  console.warn('Erro ao responder Meta Graph API no webhook:', dispatchRes.status, errJson);
+                } else {
+                  console.log('✅ Resposta do robô despachada com sucesso no Instagram Direct!');
+                }
               } catch (dispatchErr) {
                 console.warn('Erro ao despachar resposta automática via Meta Graph API:', dispatchErr);
               }
