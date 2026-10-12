@@ -21,6 +21,7 @@ import {
   Eye,
   SlidersHorizontal,
   Flame,
+  Share2,
 } from 'lucide-react';
 
 interface ColorOption {
@@ -583,21 +584,35 @@ export default function HomePage() {
                     )}
                   </div>
 
-                  {/* Botão de Wishlist / Coração (Top Right) */}
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      toggleWishlist(product.id);
-                    }}
-                    className="absolute top-3 right-3 z-10 p-2 bg-white/90 hover:bg-white text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
-                    aria-label="Save to Wishlist"
-                  >
-                    <Heart
-                      className={`w-4 h-4 transition ${
-                        isFavorited ? 'fill-gold text-gold' : 'text-deep-black'
-                      }`}
-                    />
-                  </button>
+                  {/* Botões do Topo Direito (Favoritos e Compartilhar WhatsApp) */}
+                  <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(`Olha essa peça linda da Ana Fitness Wear: ${product.title} ($${product.price.toFixed(2)}) - https://anafitnesswear.com/produto/${product.slug}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-2 bg-white/90 hover:bg-[#25D366] text-deep-black hover:text-white backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
+                      title="Compartilhar no WhatsApp"
+                      aria-label="Compartilhar no WhatsApp"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </a>
+
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        toggleWishlist(product.id);
+                      }}
+                      className="p-2 bg-white/90 hover:bg-white text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
+                      aria-label="Save to Wishlist"
+                    >
+                      <Heart
+                        className={`w-4 h-4 transition ${
+                          isFavorited ? 'fill-gold text-gold' : 'text-deep-black'
+                        }`}
+                      />
+                    </button>
+                  </div>
 
                   {/* =========================================================
                       ASSINATURA GYMSHARK: GAVETA DE QUICK ADD DE TAMANHOS NO HOVER
@@ -672,14 +687,9 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    {/* Fit & Tecnologia em Caixa Alta Pequena */}
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gold block mb-1">
-                      {lang === 'pt' ? product.fitPt : product.fitEn}
-                    </span>
-
                     {/* Título do Produto */}
                     <Link href={`/produto/${product.slug}`}>
-                      <h3 className="text-sm font-black uppercase tracking-wider text-deep-black group-hover:text-gold transition line-clamp-1">
+                      <h3 className="text-sm font-black uppercase tracking-wider text-deep-black group-hover:text-gold transition line-clamp-1 mt-1">
                         {product.title}
                       </h3>
                     </Link>

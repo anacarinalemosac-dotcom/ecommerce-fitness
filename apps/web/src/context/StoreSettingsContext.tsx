@@ -127,6 +127,9 @@ export interface ProductItem {
   brand?: string;
   comparePrice?: number;
   productType?: string;
+  description?: string;
+  descriptionPt?: string;
+  descriptionEn?: string;
 }
 
 interface StoreSettingsContextType {
@@ -566,15 +569,20 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             sellingPrice = pCompare;
           }
 
+          const productBio = meta.bio || (typeof p.description === 'string' && !p.description.startsWith('{') ? p.description : '') || '';
+
           return {
             id: p.id,
             title: p.title,
             slug: p.slug,
+            description: productBio,
+            descriptionPt: productBio,
+            descriptionEn: productBio,
             categoryPt: p.categories?.name || 'CONJUNTOS',
             categoryEn: p.categories?.name || 'SETS',
             categoryKey,
-            fitPt: meta.bio || 'ALTA SUSTENTAÇÃO • SEAMLESS SCULPT',
-            fitEn: meta.bio || 'HIGH SUPPORT • SEAMLESS SCULPT',
+            fitPt: 'ALTA SUSTENTAÇÃO • SEAMLESS SCULPT',
+            fitEn: 'HIGH SUPPORT • SEAMLESS SCULPT',
             price: sellingPrice,
             originalPrice: regularPrice,
             costPrice: Number(firstVar.cost_price) || 15.0,

@@ -28,6 +28,9 @@ import {
   Sun,
   Wind,
   Phone,
+  Share2,
+  MessageSquare,
+  Copy,
 } from 'lucide-react';
 
 interface Variant {
@@ -251,8 +254,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       badgePt: dynamicProduct.badgePt || 'BEST SELLER',
       badgeEn: dynamicProduct.badgeEn || 'BEST SELLER',
       badgeStyle: dynamicProduct.badgeStyle || 'bg-gold text-deep-black',
-      descriptionPt: dynamicProduct.fitPt || `${dynamicProduct.title} com modelagem de alta compressão e corte anatômico da Ana Fitness Wear. Tecido testado e aprovado com 100% zero transparência e toque amanteigado.`,
-      descriptionEn: dynamicProduct.fitEn || `${dynamicProduct.title} crafted with anatomical contour support and 4-way stretch fabric. Lab-verified zero see-through athletic luxury fit.`,
+      descriptionPt: dynamicProduct.description || dynamicProduct.descriptionPt || (dynamicProduct.fitPt && dynamicProduct.fitPt.length > 30 ? dynamicProduct.fitPt : `${dynamicProduct.title} com modelagem de alta compressão e corte anatômico da Ana Fitness Wear. Tecido testado e aprovado com 100% zero transparência e toque amanteigado.`),
+      descriptionEn: dynamicProduct.description || dynamicProduct.descriptionEn || (dynamicProduct.fitEn && dynamicProduct.fitEn.length > 30 ? dynamicProduct.fitEn : `${dynamicProduct.title} crafted with anatomical contour support and 4-way stretch fabric. Lab-verified zero see-through athletic luxury fit.`),
       media: mediaList,
       variants: variantsList,
     };
@@ -289,6 +292,29 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [isZoomed, setIsZoomed] = useState(false);
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'desc' | 'sizing' | 'care' | 'preorder'>('desc');
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentUrl(window.location.href);
+    }
+  }, []);
+
+  const shareText = `Olha essa peça linda da Ana Fitness Wear: ${productData.title} ($${productData.price.toFixed(2)})`;
+  const productShareUrl = currentUrl || (typeof window !== 'undefined' ? window.location.href : `https://anafitnesswear.com/produto/${slug}`);
+  const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} - ${productShareUrl}`)}`;
+  const smsShareUrl = `sms:?&body=${encodeURIComponent(`${shareText} - ${productShareUrl}`)}`;
+
+  const handleCopyLink = () => {
+    if (typeof window !== 'undefined') {
+      const urlToCopy = productShareUrl;
+      navigator.clipboard.writeText(urlToCopy).then(() => {
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 3000);
+      });
+    }
+  };
 
   // Localiza a variante exata (Cor Selecionada + Tamanho Selecionado)
   const currentVariant: Variant =
@@ -521,6 +547,18 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             </Link>
           </div>
 
+          {/* Descrição do Produto / Bio da Peça (Lugar Oficial & Certo) */}
+          {(productData.descriptionPt || productData.descriptionEn) && (
+            <div className="p-4 bg-warm-light/20 border-l-2 border-gold space-y-1.5 animate-fadeIn">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                {lang === 'pt' ? 'SOBRE A PEÇA:' : 'ABOUT THIS PIECE:'}
+              </span>
+              <p className="text-xs text-deep-black/80 font-medium leading-relaxed uppercase tracking-wide">
+                {lang === 'pt' ? productData.descriptionPt : productData.descriptionEn}
+              </p>
+            </div>
+          )}
+
           {/* Seletor de Cores com Swatches Hexadecimais e Nome da Cor */}
           <div className="space-y-3">
             <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider">
@@ -711,6 +749,58 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 </Link>
               </div>
             )}
+          </div>
+
+          {/* Módulo de Compartilhamento Oficial: WhatsApp & SMS */}
+          <div className="space-y-2.5 pt-4 border-t border-deep-black/10">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/70 flex items-center gap-1.5">
+                <Share2 className="w-3.5 h-3.5 text-gold" />
+                <span>{lang === 'pt' ? 'COMPARTILHAR ESTA PEÇA:' : 'SHARE THIS PIECE:'}</span>
+              </span>
+              {copySuccess && (
+                <span className="text-[9px] font-black text-green-700 bg-green-50 px-2 py-0.5 border border-green-200 animate-fadeIn">
+                  ✓ {lang === 'pt' ? 'LINK COPIADO!' : 'LINK COPIED!'}
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {/* Compartilhar WhatsApp */}
+              <a
+                href={whatsappShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2.5 px-3 bg-[#25D366] hover:bg-[#20ba59] text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 transition shadow-sm"
+                title="Compartilhar no WhatsApp"
+              >
+                <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+                </svg>
+                <span>WHATSAPP</span>
+              </a>
+
+              {/* Compartilhar SMS */}
+              <a
+                href={smsShareUrl}
+                className="py-2.5 px-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 transition border border-deep-black shadow-sm"
+                title="Compartilhar por SMS / Mensagem de Texto"
+              >
+                <MessageSquare className="w-4 h-4 shrink-0" />
+                <span>SMS</span>
+              </a>
+
+              {/* Copiar Link */}
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="col-span-2 sm:col-span-1 py-2.5 px-3 bg-white hover:bg-deep-black hover:text-white text-deep-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 transition border border-deep-black/30 shadow-xs"
+                title="Copiar link da peça"
+              >
+                <Copy className="w-3.5 h-3.5 shrink-0" />
+                <span>COPIAR LINK</span>
+              </button>
+            </div>
           </div>
 
           {/* Garantias */}
