@@ -660,7 +660,7 @@ export default function BackofficeDashboard() {
 
   const fetchLiveFeed = async () => {
     try {
-      const res = await fetch('/api/live/feed');
+      const res = await fetch(`/api/live/feed?t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setLiveFeed(data);
@@ -2385,7 +2385,37 @@ export default function BackofficeDashboard() {
                 <span>TESTAR SOM VENDA 💰</span>
               </button>
 
-
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const demoCities = ['Leominster, MA', 'Boston, MA', 'Worcester, MA', 'Framingham, MA', 'Miami, FL', 'New York, NY'];
+                    const randomCity = demoCities[Math.floor(Math.random() * demoCities.length)];
+                    const [cName, cState] = randomCity.split(', ');
+                    const simId = `sim-${Date.now()}`;
+                    await fetch('/api/live/heartbeat', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        id: simId,
+                        page: '/',
+                        pageTitle: 'Vitrine Ana Fitness Wear (Oficial)',
+                        device: 'iPhone 15 Pro (Apple)',
+                        userCity: cName,
+                        userRegion: cState,
+                      }),
+                    });
+                    setTimeout(fetchLiveFeed, 300);
+                  } catch (e) {
+                    console.warn('Erro ao simular visita:', e);
+                  }
+                }}
+                className="px-3 py-2 bg-green-700 hover:bg-green-600 text-white text-[10px] font-black uppercase tracking-wider transition shadow flex items-center gap-1.5"
+                title="Simula um cliente navegando para validar o radar, o sino e o contador"
+              >
+                <Radio className="w-3.5 h-3.5 text-white animate-pulse" />
+                <span>SIMULAR VISITA AO VIVO 📡</span>
+              </button>
             </div>
           </div>
 

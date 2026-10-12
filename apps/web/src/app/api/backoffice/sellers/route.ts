@@ -215,7 +215,7 @@ export async function POST(req: NextRequest) {
       writeSellers(newList);
 
       // Dispara notificação em tempo real no Backoffice para alertar Ana Carina
-      recordLiveEvent({
+      await recordLiveEvent({
         type: 'NEW_VISITOR',
         title: 'NOVA SOLICITAÇÃO DE VENDEDORA!',
         description: `📋 ${name.trim()} solicitou cadastro com o cupom ${cleanCoupon}. Acesse o Backoffice para aprovar!`,

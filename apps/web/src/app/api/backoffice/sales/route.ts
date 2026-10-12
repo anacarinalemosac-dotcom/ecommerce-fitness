@@ -350,7 +350,7 @@ export async function POST(req: NextRequest) {
 
     // 1.1 Dispara evento em tempo real para o radar Wix do Backoffice
     try {
-      recordOrderEvent({
+      await recordOrderEvent({
         orderId: newSale.order_id,
         customerName: newSale.customer_name,
         city: isPOS ? 'Leominster, MA (Loja Física)' : 'Online (EUA)',

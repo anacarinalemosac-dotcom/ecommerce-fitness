@@ -59,10 +59,11 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Busca todos os produtos com suas variações
+    // Busca todos os produtos com suas variações (excluindo estado técnico do radar)
     const { data: products, error: prodsErr } = await supabaseServer
       .from('products')
       .select('*, categories(*), suppliers(*)')
+      .neq('slug', '__live_radar_state__')
       .order('created_at', { ascending: false });
 
     if (prodsErr) {
