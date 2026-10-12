@@ -37,8 +37,11 @@ import {
   Phone,
   AlertCircle,
   Check,
+  Instagram,
+  MessageCircle,
 } from 'lucide-react';
 import { StockWriteOffModal } from '../../components/StockWriteOffModal';
+import { PosInstagramChat } from '../../components/pos/PosInstagramChat';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 
 interface CartItem {
@@ -617,7 +620,7 @@ export default function PosTerminalPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 space-y-8 bg-white min-h-[85vh]">
+    <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 bg-white min-h-[90vh]">
       {/* Banner de Uso Interno */}
       <div className="bg-deep-black text-gold p-3 border border-gold flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-black uppercase tracking-wider">
         <span className="flex items-center gap-2">
@@ -625,6 +628,14 @@ export default function PosTerminalPage() {
           <span>TERMINAL PDV BALCÃO • SHOWROOM LEOMINSTER, MA (USO INTERNO)</span>
         </span>
         <div className="flex items-center gap-3">
+          <a
+            href="#pos-instagram-chat"
+            className="px-2.5 py-1 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-[10px] font-black uppercase flex items-center gap-1.5 transition hover:brightness-110 shadow-xs"
+          >
+            <Instagram className="w-3.5 h-3.5" />
+            <span>INSTAGRAM DIRECT AO VIVO</span>
+          </a>
+          <span className="text-white/40">|</span>
           <button
             type="button"
             onClick={() => setPosUnlocked(false)}
@@ -979,9 +990,9 @@ export default function PosTerminalPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         {/* Painel Esquerdo: Leitor de Código de Barras, Busca de Produtos & Lista de Itens */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className="xl:col-span-4 lg:col-span-6 space-y-6">
           {/* Scanner / Input de Barcode */}
           <div className="bg-white border-2 border-deep-black p-5 space-y-3 shadow-sm">
             <label className="text-[10px] font-black uppercase tracking-widest text-deep-black flex items-center justify-between">
@@ -1165,8 +1176,8 @@ export default function PosTerminalPage() {
           </div>
         </div>
 
-        {/* Painel Direito: Dados do Cliente, Fechamento de Venda & Pagamentos EUA */}
-        <div className="lg:col-span-5 bg-deep-black text-white p-6 sm:p-8 space-y-6 shadow-luxury">
+        {/* Painel Central: Dados do Cliente, Fechamento de Venda & Pagamentos EUA */}
+        <div className="xl:col-span-4 lg:col-span-6 bg-deep-black text-white p-6 sm:p-8 space-y-6 shadow-luxury">
           {/* Identificação do Cliente Balcão */}
           <div className="space-y-3 pb-4 border-b border-white/10">
             <div className="flex items-center justify-between">
@@ -1867,6 +1878,11 @@ export default function PosTerminalPage() {
               <span>CONCLUIR VENDA NO BALCÃO (${totalAfterDiscount.toFixed(2)})</span>
             )}
           </button>
+        </div>
+
+        {/* Painel Direito: CHAT DO INSTAGRAM DIRECT AO VIVO NO BALCÃO */}
+        <div id="pos-instagram-chat" className="xl:col-span-4 lg:col-span-12 space-y-6">
+          <PosInstagramChat />
         </div>
       </div>
     </div>
