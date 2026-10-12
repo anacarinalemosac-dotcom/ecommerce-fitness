@@ -59,6 +59,12 @@ export interface SiteInfo {
   returnPolicyText?: string;
   shippingPolicyText?: string;
   contactText?: string;
+  // Pixels de Rastreamento & Analytics
+  metaPixelId?: string;
+  googleAnalyticsId?: string;
+  googleTagManagerId?: string;
+  tiktokPixelId?: string;
+  pinterestTagId?: string;
 }
 
 export interface SiteImages {
@@ -165,6 +171,11 @@ const DEFAULT_SITE_INFO: SiteInfo = {
   returnPolicyText: 'Você tem até 30 dias corridos após o recebimento para solicitar troca ou devolução. As peças devem estar em perfeito estado, sem uso, com as etiquetas originais afixadas e na embalagem original.',
   shippingPolicyText: 'Enviamos para todos os 50 estados dos Estados Unidos via USPS Priority Mail com taxa fixa de $9.99. O prazo de postagem para pronta-entrega é de até 24h úteis. Peças confeccionadas sob medida possuem prazo de produção informado na compra.',
   contactText: 'Nosso atendimento oficial está disponível de Segunda a Sexta, das 9h às 18h (EST). WhatsApp: +1 (978) 313-9452 • E-mail: anafitweareua@gmail.com • Leominster, MA.',
+  metaPixelId: '',
+  googleAnalyticsId: '',
+  googleTagManagerId: '',
+  tiktokPixelId: '',
+  pinterestTagId: '',
 };
 
 const DEFAULT_SITE_IMAGES: SiteImages = {
@@ -652,6 +663,22 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     // Busca do Supabase em tempo real
     syncProductsFromApi();
 
+    // Sincroniza configurações globais e pixels de rastreamento do Supabase
+    fetch(`/api/site-settings?t=${Date.now()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.settings && typeof data.settings === 'object' && Object.keys(data.settings).length > 0) {
+          setSiteInfoState((prev) => {
+            const updated = { ...prev, ...data.settings };
+            try {
+              localStorage.setItem('ana_site_info', JSON.stringify(updated));
+            } catch (_) {}
+            return updated;
+          });
+        }
+      })
+      .catch(() => {});
+
     // Sincroniza capas das categorias salvas no servidor
     fetch(`/api/backoffice/categories?t=${Date.now()}`)
       .then((res) => res.json())
@@ -764,6 +791,14 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         localStorage.setItem('ana_site_info', JSON.stringify(updated));
       } catch (e) {}
+
+      // Sincroniza configurações e pixels com Supabase na nuvem
+      fetch('/api/site-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: updated }),
+      }).catch((err) => console.warn('Erro ao sincronizar site-settings:', err));
+
       return updated;
     });
   };

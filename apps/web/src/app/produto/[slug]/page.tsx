@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../../../context/LanguageContext';
 import { useStoreSettings } from '../../../context/StoreSettingsContext';
+import { trackEvent } from '../../../lib/tracking';
 import {
   Star,
   ShieldCheck,
@@ -316,6 +317,18 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     setSelectedSize(sz);
   };
 
+  // Dispara evento de ViewContent / view_item nos Pixels
+  useEffect(() => {
+    if (productData) {
+      trackEvent.viewItem({
+        id: slug,
+        title: productData.title,
+        price: currentVariant?.price || productData.price,
+        category: productData.categoryPt || productData.categoryEn,
+      });
+    }
+  }, [slug, productData?.title]);
+
   // Ação de Compra / Adicionar à Sacola
   const handleActionClick = () => {
     if (isOutOfStock) return;
@@ -337,6 +350,16 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       localStorage.setItem('ana_cart_item', JSON.stringify(cartItemToSave));
       window.dispatchEvent(new Event('ana_cart_updated'));
     } catch (e) {}
+
+    // Dispara evento de AddToCart nos Pixels de Rastreamento (Meta, Google, TikTok, Pinterest)
+    trackEvent.addToCart({
+      id: slug,
+      title: productData.title,
+      price: currentVariant?.price || productData.price,
+      quantity: 1,
+      size: selectedSize,
+      color: selectedColor,
+    });
 
     setCartFeedback(isBackorder ? 'backorder' : 'added');
     setTimeout(() => setCartFeedback(null), 4000);

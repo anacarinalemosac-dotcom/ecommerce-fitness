@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle2, Package, ArrowRight, Phone, Sparkles, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '../../../context/LanguageContext';
+import { trackEvent } from '../../../lib/tracking';
 
 function StripeSuccessContent() {
   const searchParams = useSearchParams();
@@ -19,8 +20,31 @@ function StripeSuccessContent() {
     if (oId) setOrderId(oId);
     if (sId) setSessionId(sId);
 
-    // Limpa carrinho local após pagamento concluído
+    // Dispara Purchase nos Pixels e limpa carrinho local
     try {
+      const savedCart = localStorage.getItem('ana_cart_item');
+      if (savedCart) {
+        const item = JSON.parse(savedCart);
+        trackEvent.purchase({
+          orderId: oId || 'ANA-STRIPE-ORDER',
+          value: (Number(item.price || 0) * Number(item.quantity || 1)) + 9.99,
+          currency: 'USD',
+          items: [
+            {
+              id: item.sku || item.slug || 'cart-item',
+              title: item.title,
+              price: Number(item.price || 0),
+              quantity: Number(item.quantity || 1),
+            },
+          ],
+        });
+      } else {
+        trackEvent.purchase({
+          orderId: oId || 'ANA-STRIPE-ORDER',
+          value: 54.89,
+          currency: 'USD',
+        });
+      }
       localStorage.removeItem('ana_cart_item');
     } catch (e) {}
   }, [searchParams]);

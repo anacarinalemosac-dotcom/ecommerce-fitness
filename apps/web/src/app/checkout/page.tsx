@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
+import { trackEvent } from '../../lib/tracking';
 import {
   ShieldCheck,
   Truck,
@@ -116,7 +117,22 @@ export default function CheckoutPage() {
     try {
       const savedCart = localStorage.getItem('ana_cart_item');
       if (savedCart) {
-        setCartItem(JSON.parse(savedCart));
+        const parsed = JSON.parse(savedCart);
+        setCartItem(parsed);
+
+        // Dispara evento de InitiateCheckout / begin_checkout nos Pixels
+        trackEvent.initiateCheckout({
+          value: Number(parsed.price || 0) * Number(parsed.quantity || 1),
+          currency: 'USD',
+          items: [
+            {
+              id: parsed.sku || parsed.slug || 'cart-item',
+              title: parsed.title,
+              price: Number(parsed.price || 0),
+              quantity: Number(parsed.quantity || 1),
+            },
+          ],
+        });
       } else {
         setCartItem(null);
       }
@@ -365,6 +381,21 @@ export default function CheckoutPage() {
     } catch (err) {
       console.warn('Erro ao registrar venda na API:', err);
     }
+
+    // Dispara evento de Purchase nos Pixels de Rastreamento
+    trackEvent.purchase({
+      orderId: generatedOrderId,
+      value: total,
+      currency: 'USD',
+      items: [
+        {
+          id: (cartItem as any).sku || 'ANA-ITEM',
+          title: cartItem.title,
+          price: cartItem.price,
+          quantity: cartItem.quantity,
+        },
+      ],
+    });
 
     // Esvazia a sacola com sucesso e despacha evento global
     localStorage.removeItem('ana_cart_item');

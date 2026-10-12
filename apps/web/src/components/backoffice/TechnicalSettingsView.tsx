@@ -16,6 +16,8 @@ import {
   Copy,
   Check,
   Smartphone,
+  Activity,
+  BarChart3,
 } from 'lucide-react';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 
@@ -31,10 +33,45 @@ export function TechnicalSettingsView() {
   const [saveSettingsSuccess, setSaveSettingsSuccess] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  // Estados dos Pixels de Rastreamento
+  const [metaPixelId, setMetaPixelId] = useState(siteInfo.metaPixelId || '');
+  const [googleAnalyticsId, setGoogleAnalyticsId] = useState(siteInfo.googleAnalyticsId || '');
+  const [googleTagManagerId, setGoogleTagManagerId] = useState(siteInfo.googleTagManagerId || '');
+  const [tiktokPixelId, setTiktokPixelId] = useState(siteInfo.tiktokPixelId || '');
+  const [pinterestTagId, setPinterestTagId] = useState(siteInfo.pinterestTagId || '');
+  const [savePixelsSuccess, setSavePixelsSuccess] = useState(false);
+
+  React.useEffect(() => {
+    if (siteInfo.metaPixelId !== undefined) setMetaPixelId(siteInfo.metaPixelId || '');
+    if (siteInfo.googleAnalyticsId !== undefined) setGoogleAnalyticsId(siteInfo.googleAnalyticsId || '');
+    if (siteInfo.googleTagManagerId !== undefined) setGoogleTagManagerId(siteInfo.googleTagManagerId || '');
+    if (siteInfo.tiktokPixelId !== undefined) setTiktokPixelId(siteInfo.tiktokPixelId || '');
+    if (siteInfo.pinterestTagId !== undefined) setPinterestTagId(siteInfo.pinterestTagId || '');
+  }, [
+    siteInfo.metaPixelId,
+    siteInfo.googleAnalyticsId,
+    siteInfo.googleTagManagerId,
+    siteInfo.tiktokPixelId,
+    siteInfo.pinterestTagId,
+  ]);
+
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(id);
     setTimeout(() => setCopiedKey(null), 3000);
+  };
+
+  const handleSavePixels = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateSiteInfo({
+      metaPixelId: metaPixelId.trim(),
+      googleAnalyticsId: googleAnalyticsId.trim(),
+      googleTagManagerId: googleTagManagerId.trim(),
+      tiktokPixelId: tiktokPixelId.trim(),
+      pinterestTagId: pinterestTagId.trim(),
+    });
+    setSavePixelsSuccess(true);
+    setTimeout(() => setSavePixelsSuccess(false), 4000);
   };
 
   const handleSaveShipping = (e: React.FormEvent) => {
@@ -420,6 +457,189 @@ export function TechnicalSettingsView() {
             </button>
           </form>
         </div>
+      </div>
+
+      {/* 4. PIXELS DE RASTREAMENTO & MARKETING ANALYTICS */}
+      <div className="bg-white border-2 border-deep-black p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-deep-black/10 pb-3">
+          <h3 className="text-xs font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
+            <Activity className="w-4 h-4 text-gold" />
+            <span>4. PIXELS DE RASTREAMENTO & MARKETING ANALYTICS</span>
+          </h3>
+          <span className="text-[10px] text-deep-black/60 font-mono">
+            Meta (FB/IG) • Google Analytics • GTM • TikTok • Pinterest
+          </span>
+        </div>
+
+        <p className="text-xs text-deep-black/70 uppercase tracking-wide">
+          Insira abaixo os IDs oficiais das suas contas de anúncio. O e-commerce injeta os scripts automaticamente e dispara eventos de conversão e-commerce padrão (<span className="font-mono font-bold">PageView</span>, <span className="font-mono font-bold">ViewContent</span>, <span className="font-mono font-bold">AddToCart</span>, <span className="font-mono font-bold">InitiateCheckout</span> e <span className="font-mono font-bold">Purchase</span>).
+        </p>
+
+        {savePixelsSuccess && (
+          <div className="p-4 bg-green-50 border-2 border-green-600 text-green-900 text-xs font-black uppercase tracking-wider flex items-center gap-2 animate-fadeIn">
+            <CheckCircle2 className="w-5 h-5 text-green-700" />
+            <span>✓ IDs dos Pixels de rastreamento salvos e sincronizados na nuvem com sucesso!</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSavePixels} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Meta Pixel */}
+            <div className="p-4 border border-deep-black/20 bg-stone-50 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                  META PIXEL (FACEBOOK & INSTAGRAM ADS)
+                </label>
+                <span
+                  className={`text-[9px] font-black uppercase px-2 py-0.5 ${
+                    metaPixelId
+                      ? 'bg-green-100 text-green-800 border border-green-300'
+                      : 'bg-stone-200 text-stone-600'
+                  }`}
+                >
+                  {metaPixelId ? '● ATIVO' : 'NÃO CONFIGURADO'}
+                </span>
+              </div>
+              <input
+                type="text"
+                value={metaPixelId}
+                onChange={(e) => setMetaPixelId(e.target.value)}
+                placeholder="Ex: 1234567890123456"
+                className="w-full px-3 py-2 border border-deep-black/30 font-mono text-xs bg-white font-bold focus:outline-none focus:border-deep-black"
+              />
+              <p className="text-[10px] text-deep-black/60 uppercase">
+                Copie o ID numérico do seu Pixel no Gerenciador de Eventos da Meta (Meta Business Suite).
+              </p>
+            </div>
+
+            {/* Google Analytics 4 */}
+            <div className="p-4 border border-deep-black/20 bg-stone-50 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <BarChart3 className="w-3.5 h-3.5 text-amber-600" />
+                  GOOGLE ANALYTICS 4 (GA4 MEASUREMENT ID)
+                </label>
+                <span
+                  className={`text-[9px] font-black uppercase px-2 py-0.5 ${
+                    googleAnalyticsId
+                      ? 'bg-green-100 text-green-800 border border-green-300'
+                      : 'bg-stone-200 text-stone-600'
+                  }`}
+                >
+                  {googleAnalyticsId ? '● ATIVO' : 'NÃO CONFIGURADO'}
+                </span>
+              </div>
+              <input
+                type="text"
+                value={googleAnalyticsId}
+                onChange={(e) => setGoogleAnalyticsId(e.target.value)}
+                placeholder="Ex: G-XXXXXXXXXX"
+                className="w-full px-3 py-2 border border-deep-black/30 font-mono text-xs bg-white font-bold focus:outline-none focus:border-deep-black"
+              />
+              <p className="text-[10px] text-deep-black/60 uppercase">
+                ID da métrica encontrado no painel do Google Analytics 4 em Administrador &gt; Fluxos de Dados.
+              </p>
+            </div>
+
+            {/* Google Tag Manager */}
+            <div className="p-4 border border-deep-black/20 bg-stone-50 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-cyan-600"></span>
+                  GOOGLE TAG MANAGER (GTM CONTAINER ID)
+                </label>
+                <span
+                  className={`text-[9px] font-black uppercase px-2 py-0.5 ${
+                    googleTagManagerId
+                      ? 'bg-green-100 text-green-800 border border-green-300'
+                      : 'bg-stone-200 text-stone-600'
+                  }`}
+                >
+                  {googleTagManagerId ? '● ATIVO' : 'OPCIONAL'}
+                </span>
+              </div>
+              <input
+                type="text"
+                value={googleTagManagerId}
+                onChange={(e) => setGoogleTagManagerId(e.target.value)}
+                placeholder="Ex: GTM-XXXXXXX"
+                className="w-full px-3 py-2 border border-deep-black/30 font-mono text-xs bg-white font-bold focus:outline-none focus:border-deep-black"
+              />
+              <p className="text-[10px] text-deep-black/60 uppercase">
+                Opcional se você já usar Google Analytics direto. ID do contêiner GTM (formato GTM-XXXXXXX).
+              </p>
+            </div>
+
+            {/* TikTok Pixel */}
+            <div className="p-4 border border-deep-black/20 bg-stone-50 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-pink-600"></span>
+                  TIKTOK PIXEL (TIKTOK ADS)
+                </label>
+                <span
+                  className={`text-[9px] font-black uppercase px-2 py-0.5 ${
+                    tiktokPixelId
+                      ? 'bg-green-100 text-green-800 border border-green-300'
+                      : 'bg-stone-200 text-stone-600'
+                  }`}
+                >
+                  {tiktokPixelId ? '● ATIVO' : 'NÃO CONFIGURADO'}
+                </span>
+              </div>
+              <input
+                type="text"
+                value={tiktokPixelId}
+                onChange={(e) => setTiktokPixelId(e.target.value)}
+                placeholder="Ex: CXXXXXXXXXXXXXXX"
+                className="w-full px-3 py-2 border border-deep-black/30 font-mono text-xs bg-white font-bold focus:outline-none focus:border-deep-black"
+              />
+              <p className="text-[10px] text-deep-black/60 uppercase">
+                ID do Pixel do TikTok Ads encontrado em Ferramentas &gt; Eventos &gt; Web Events.
+              </p>
+            </div>
+
+            {/* Pinterest Tag */}
+            <div className="p-4 border border-deep-black/20 bg-stone-50 space-y-3 md:col-span-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-red-600"></span>
+                  PINTEREST TAG (PINTEREST ADS)
+                </label>
+                <span
+                  className={`text-[9px] font-black uppercase px-2 py-0.5 ${
+                    pinterestTagId
+                      ? 'bg-green-100 text-green-800 border border-green-300'
+                      : 'bg-stone-200 text-stone-600'
+                  }`}
+                >
+                  {pinterestTagId ? '● ATIVO' : 'NÃO CONFIGURADO'}
+                </span>
+              </div>
+              <input
+                type="text"
+                value={pinterestTagId}
+                onChange={(e) => setPinterestTagId(e.target.value)}
+                placeholder="Ex: 2612345678901"
+                className="w-full max-w-md px-3 py-2 border border-deep-black/30 font-mono text-xs bg-white font-bold focus:outline-none focus:border-deep-black"
+              />
+              <p className="text-[10px] text-deep-black/60 uppercase">
+                Tag ID encontrado no Gerenciador de Anúncios do Pinterest &gt; Conversões &gt; Tag do Pinterest.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              className="px-6 py-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shadow"
+            >
+              <Save className="w-4 h-4" />
+              <span>SALVAR PIXELS DE RASTREAMENTO</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
