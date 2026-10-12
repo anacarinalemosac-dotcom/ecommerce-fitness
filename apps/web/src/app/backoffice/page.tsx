@@ -918,10 +918,60 @@ export default function BackofficeDashboard() {
     },
   ]);
 
-  const updateCost = (sku: string, newCost: number) => {
+  const [savingCostId, setSavingCostId] = useState<string | null>(null);
+
+  const updateCost = async (idOrSku: string, newCost: number) => {
     setProductsMargin((prev) =>
-      prev.map((p) => (p.sku === sku ? { ...p, costPrice: newCost } : p))
+      prev.map((p) => (p.sku === idOrSku ? { ...p, costPrice: newCost } : p))
     );
+
+    setSupabaseProducts((prev) =>
+      prev.map((p) => {
+        const match = p.id === idOrSku || p.sku === idOrSku || p.meta?.general_sku === idOrSku || p.variants?.[0]?.sku === idOrSku;
+        if (match) {
+          return {
+            ...p,
+            cost_price: newCost,
+            costPrice: newCost,
+            variants: (p.variants || []).map((v: any) => ({ ...v, cost_price: newCost, costPrice: newCost })),
+          };
+        }
+        return p;
+      })
+    );
+
+    setProducts((prev) =>
+      prev.map((p) => {
+        const match = p.id === idOrSku || p.sku === idOrSku;
+        if (match) {
+          return {
+            ...p,
+            costPrice: newCost,
+          };
+        }
+        return p;
+      })
+    );
+
+    const targetProduct = supabaseProducts.find(
+      (p) => p.id === idOrSku || p.sku === idOrSku || p.meta?.general_sku === idOrSku || p.variants?.[0]?.sku === idOrSku
+    );
+    const targetId = targetProduct?.id || idOrSku;
+
+    if (targetId && !targetId.startsWith('p') && typeof targetId === 'string' && targetId.length > 10) {
+      setSavingCostId(targetId);
+      try {
+        await fetch('/api/backoffice/products', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: targetId, cost_price: newCost }),
+        });
+      } catch (err) {
+        console.warn('Erro ao salvar custo no Supabase:', err);
+      } finally {
+        setTimeout(() => setSavingCostId(null), 1200);
+      }
+    }
   };
 
   useEffect(() => {
@@ -1901,7 +1951,20 @@ export default function BackofficeDashboard() {
                       </td>
 
                       <td className="p-4 font-mono text-deep-black/70">
-                        ${Number(baseCost).toFixed(2)}
+                        <div className="flex items-center gap-1">
+                          <span>$</span>
+                          <input
+                            type="number"
+                            step="0.5"
+                            value={Number(baseCost)}
+                            onChange={(e) => updateCost(item.id, parseFloat(e.target.value) || 0)}
+                            className="w-16 p-1 border border-deep-black/20 hover:border-deep-black text-xs font-mono font-bold bg-white focus:outline-none focus:border-gold"
+                            title="Preço de Custo (atualiza automaticamente no Supabase)"
+                          />
+                          {savingCostId === item.id && (
+                            <span className="text-[8px] text-green-700 font-black animate-pulse">✓</span>
+                          )}
+                        </div>
                       </td>
 
                       <td className="p-4 font-mono font-bold">
@@ -1959,6 +2022,8 @@ export default function BackofficeDashboard() {
                             onClick={() => {
                               setEditingProduct({
                                 ...item,
+                                cost_price: baseCost,
+                                costPrice: baseCost,
                                 variants: itemVariants,
                                 primaryImage: item.primaryImage || item.primary_image || item.meta?.primary_image || firstImage,
                                 primary_image: item.primary_image || item.primaryImage || item.meta?.primary_image || firstImage,
@@ -2875,24 +2940,52 @@ export default function BackofficeDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-deep-black/10">
-                {productsMargin.map((item) => {
+                {((baseCatalogList && baseCatalogList.length > 0)
+                  ? baseCatalogList.map((p: any) => {
+                      const itemVariants = p.variants || [];
+                      const baseCost = (p.cost_price !== undefined && p.cost_price !== null)
+                        ? Number(p.cost_price)
+                        : (p.costPrice !== undefined && p.costPrice !== null)
+                        ? Number(p.costPrice)
+                        : (itemVariants[0]?.cost_price !== undefined && itemVariants[0]?.cost_price !== null)
+                        ? Number(itemVariants[0].cost_price)
+                        : 16.0;
+                      const basePrice = Number(p.price ?? itemVariants[0]?.price ?? 44.9);
+                      const sku = p.sku || p.meta?.general_sku || itemVariants[0]?.sku || `PROD-${p.id?.slice(0, 4) || '1'}`;
+                      return {
+                        id: p.id,
+                        sku,
+                        title: p.title || 'Produto sem título',
+                        costPrice: baseCost,
+                        salePrice: basePrice,
+                        sellerCommissionRate: 10.0,
+                        gatewayRate: 2.9,
+                      };
+                    })
+                  : productsMargin
+                ).map((item) => {
                   const comm = item.salePrice * (item.sellerCommissionRate / 100);
                   const gateway = item.salePrice * (item.gatewayRate / 100);
                   const netProfit = item.salePrice - item.costPrice - comm - gateway;
-                  const marginPct = ((netProfit / item.salePrice) * 100).toFixed(1);
+                  const marginPct = item.salePrice > 0 ? ((netProfit / item.salePrice) * 100).toFixed(1) : '0.0';
 
                   return (
-                    <tr key={item.sku} className="hover:bg-deep-black/5">
+                    <tr key={item.id || item.sku} className="hover:bg-deep-black/5">
                       <td className="p-4 font-mono font-bold text-deep-black">{item.sku}</td>
                       <td className="p-4 font-black text-deep-black">{item.title}</td>
                       <td className="p-4">
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={item.costPrice}
-                          onChange={(e) => updateCost(item.sku, parseFloat(e.target.value) || 0)}
-                          className="w-20 p-1.5 border border-deep-black/30 text-xs font-mono font-bold bg-white focus:outline-none focus:border-deep-black"
-                        />
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            step="0.5"
+                            value={item.costPrice}
+                            onChange={(e) => updateCost(item.id || item.sku, parseFloat(e.target.value) || 0)}
+                            className="w-20 p-1.5 border border-deep-black/30 text-xs font-mono font-bold bg-white focus:outline-none focus:border-deep-black"
+                          />
+                          {savingCostId === item.id && (
+                            <span className="text-[9px] text-green-700 font-black animate-pulse">✓ SALVO</span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-4 font-mono font-bold">${item.salePrice.toFixed(2)}</td>
                       <td className="p-4 font-mono text-deep-black/70">-${comm.toFixed(2)}</td>

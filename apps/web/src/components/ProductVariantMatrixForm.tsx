@@ -268,6 +268,18 @@ export function ProductVariantMatrixForm({
         addMediaIfNew(primaryCandidate, 'all', 'Foto Principal');
       }
 
+      const resolvedInitialCost = (initialProduct.cost_price !== undefined && initialProduct.cost_price !== null)
+        ? initialProduct.cost_price
+        : (initialProduct.costPrice !== undefined && initialProduct.costPrice !== null)
+        ? initialProduct.costPrice
+        : (parsedMeta.cost_price !== undefined && parsedMeta.cost_price !== null)
+        ? parsedMeta.cost_price
+        : (initialProduct.variants?.[0]?.cost_price !== undefined && initialProduct.variants?.[0]?.cost_price !== null)
+        ? initialProduct.variants[0].cost_price
+        : '16.00';
+
+      setDefaultCostPrice(String(resolvedInitialCost));
+
       // Se o produto tiver variantes cadastradas
       if (initialProduct.variants && initialProduct.variants.length > 0) {
         const loadedVariants: VariantRow[] = initialProduct.variants.map((v: any) => ({
@@ -279,7 +291,7 @@ export function ProductVariantMatrixForm({
           barcode: v.barcode || '',
           stock_quantity: v.stock_quantity ?? 0,
           price: v.price || 44.9,
-          cost_price: v.cost_price || 16.0,
+          cost_price: (v.cost_price !== undefined && v.cost_price !== null && !isNaN(Number(v.cost_price))) ? Number(v.cost_price) : Number(resolvedInitialCost) || 16.0,
           allow_backorder: v.allow_backorder ?? true,
           estimated_production_days: v.estimated_production_days ?? 7,
           images: (Array.isArray(v.images) ? v.images : v.image ? [v.image] : []).filter((u: string) => u && !u.startsWith('data:')),
@@ -295,7 +307,9 @@ export function ProductVariantMatrixForm({
           } else {
             setDefaultPrice(String(loadedVariants[0].price));
           }
-          setDefaultCostPrice(String(loadedVariants[0].cost_price));
+          if (loadedVariants[0].cost_price !== undefined && loadedVariants[0].cost_price !== null) {
+            setDefaultCostPrice(String(loadedVariants[0].cost_price));
+          }
         }
 
         // Atualiza cores e tamanhos detectados
@@ -895,9 +909,13 @@ export function ProductVariantMatrixForm({
         finalComparePrice = higher;
       }
 
+      const numCost = parseFloat(defaultCostPrice) || 0;
       const variantsWithPromoPrice = enrichedVariants.map((vr) => ({
         ...vr,
         price: finalSellingPrice,
+        cost_price: (vr.cost_price !== undefined && vr.cost_price !== null && !isNaN(Number(vr.cost_price)))
+          ? Number(vr.cost_price)
+          : numCost,
       }));
 
       const payload = {
@@ -911,6 +929,8 @@ export function ProductVariantMatrixForm({
         description,
         composition,
         sizeGuide,
+        cost_price: numCost,
+        costPrice: numCost,
         variants: variantsWithPromoPrice,
         visible_online: visibleOnline,
         visible_pos: visiblePos,
@@ -1497,7 +1517,14 @@ export function ProductVariantMatrixForm({
                     type="number"
                     step="0.01"
                     value={defaultCostPrice}
-                    onChange={(e) => setDefaultCostPrice(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDefaultCostPrice(val);
+                      const num = parseFloat(val);
+                      if (!isNaN(num)) {
+                        setVariants((prev) => prev.map((v) => ({ ...v, cost_price: num })));
+                      }
+                    }}
                     className="w-full p-2.5 pl-7 border-2 border-deep-black font-mono font-bold text-xs focus:outline-none focus:border-gold"
                   />
                 </div>

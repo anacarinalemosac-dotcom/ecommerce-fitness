@@ -37,18 +37,28 @@ export async function GET(req: NextRequest) {
       } catch (e) {}
 
       const primaryImage = meta.primary_image || (variants?.[0]?.images?.[0]) || '';
+      const resolvedCost = (variants?.[0]?.cost_price !== undefined && variants?.[0]?.cost_price !== null)
+        ? Number(variants[0].cost_price)
+        : (meta.cost_price !== undefined ? Number(meta.cost_price) : 16.0);
+
       const enrichedProduct = {
         ...product,
         meta,
         primary_image: primaryImage,
         primaryImage: primaryImage,
+        cost_price: resolvedCost,
+        costPrice: resolvedCost,
         visible_online: meta.visible_online === true,
         visible_pos: meta.visible_pos !== false,
-        variants: variants || [],
+        variants: (variants || []).map((v: any) => ({
+          ...v,
+          cost_price: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
+          costPrice: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
+        })),
       };
 
       return NextResponse.json(
-        { product: enrichedProduct, variants: variants || [] },
+        { product: enrichedProduct, variants: enrichedProduct.variants },
         {
           headers: {
             'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -90,14 +100,24 @@ export async function GET(req: NextRequest) {
 
       const pVariants = (allVariants || []).filter((v) => v.product_id === p.id);
       const primaryImage = meta.primary_image || (pVariants[0]?.images?.[0]) || '';
+      const resolvedCost = (pVariants[0]?.cost_price !== undefined && pVariants[0]?.cost_price !== null)
+        ? Number(pVariants[0].cost_price)
+        : (meta.cost_price !== undefined ? Number(meta.cost_price) : 16.0);
+
       return {
         ...p,
         meta,
         primary_image: primaryImage,
         primaryImage: primaryImage,
+        cost_price: resolvedCost,
+        costPrice: resolvedCost,
         visible_online: meta.visible_online === true,
         visible_pos: meta.visible_pos !== false,
-        variants: pVariants,
+        variants: pVariants.map((v) => ({
+          ...v,
+          cost_price: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
+          costPrice: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
+        })),
         total_stock: pVariants.reduce((sum, v) => sum + (v.stock_quantity || 0), 0),
       };
     });
@@ -141,6 +161,8 @@ export async function POST(req: NextRequest) {
       brand,
       sku: generalSku,
       primary_image,
+      cost_price,
+      costPrice,
     } = body;
 
     if (!title) {
@@ -159,6 +181,18 @@ export async function POST(req: NextRequest) {
       typeof val === 'string' &&
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
+    const rawExplicitCost = (cost_price !== undefined && cost_price !== null && cost_price !== '')
+      ? cost_price
+      : (costPrice !== undefined && costPrice !== null && costPrice !== '')
+      ? costPrice
+      : (variants?.[0]?.cost_price !== undefined && variants?.[0]?.cost_price !== null && variants?.[0]?.cost_price !== '')
+      ? variants[0].cost_price
+      : null;
+
+    const parsedExplicitCost = rawExplicitCost !== null && !isNaN(Number(rawExplicitCost))
+      ? Number(rawExplicitCost)
+      : 16.0;
+
     // Empacota metadados detalhados (composição, tabela de medidas, tags, subcategoria, visibilidade e atributos Wix)
     const primaryImg = primary_image || (variants?.[0]?.images?.[0]) || '';
     const metadataPayload = {
@@ -176,6 +210,7 @@ export async function POST(req: NextRequest) {
       visible_online: visible_online === true,
       visible_pos: visible_pos !== false,
       primary_image: primaryImg,
+      cost_price: parsedExplicitCost,
     };
     const structuredDescription = JSON.stringify(metadataPayload);
 
@@ -221,6 +256,13 @@ export async function POST(req: NextRequest) {
 
       const variantsData = variants.map((v: any, i: number) => {
         const genBarcode = `789${Math.floor(100000000 + Math.random() * 900000000)}`;
+        const rawVarCost = (v.cost_price !== undefined && v.cost_price !== null && v.cost_price !== '')
+          ? v.cost_price
+          : (v.costPrice !== undefined && v.costPrice !== null && v.costPrice !== '')
+          ? v.costPrice
+          : parsedExplicitCost;
+        const vCost = !isNaN(Number(rawVarCost)) ? Number(rawVarCost) : parsedExplicitCost;
+
         const variantPayload: any = {
           product_id: targetProductId,
           sku: v.sku || `${title.slice(0, 3).toUpperCase()}-${(v.color || 'COR').slice(0, 3).toUpperCase()}-${v.size || 'TAM'}-${i + 1}`,
@@ -228,7 +270,7 @@ export async function POST(req: NextRequest) {
           size: v.size || 'M',
           color: v.color || 'Preto Ônix',
           price: parseFloat(v.price) || 39.9,
-          cost_price: parseFloat(v.cost_price) || 15.0,
+          cost_price: vCost,
           stock_quantity: parseInt(v.stock_quantity) || 0,
           allow_backorder: Boolean(v.allow_backorder),
           estimated_production_days: parseInt(v.estimated_production_days) || 7,
@@ -279,6 +321,8 @@ export async function POST(req: NextRequest) {
       success: true,
       productId: targetProductId,
       product: product || { id: targetProductId, title, slug: cleanSlug },
+      cost_price: parsedExplicitCost,
+      costPrice: parsedExplicitCost,
       variants: savedVariants,
       message: 'Produto e variações gravados com sucesso no Supabase!',
     });
@@ -314,7 +358,7 @@ export async function DELETE(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, visible_online, visible_pos } = body;
+    const { id, visible_online, visible_pos, cost_price, costPrice } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'ID do produto é obrigatório.' }, { status: 400 });
@@ -348,6 +392,19 @@ export async function PATCH(req: NextRequest) {
       meta.visible_pos = Boolean(visible_pos);
     }
 
+    const inputCost = cost_price !== undefined ? cost_price : costPrice;
+    if (inputCost !== undefined && inputCost !== null && inputCost !== '') {
+      const numCost = parseFloat(inputCost);
+      if (!isNaN(numCost)) {
+        meta.cost_price = numCost;
+        // Atualiza o custo em todas as variações do produto na tabela product_variants
+        await supabaseServer
+          .from('product_variants')
+          .update({ cost_price: numCost })
+          .eq('product_id', id);
+      }
+    }
+
     const { data: updatedRows, error: updErr } = await supabaseServer
       .from('products')
       .update({ description: JSON.stringify(meta) })
@@ -363,9 +420,12 @@ export async function PATCH(req: NextRequest) {
       product: updatedRows?.[0] || null,
       visible_online: meta.visible_online,
       visible_pos: meta.visible_pos,
+      cost_price: meta.cost_price,
+      costPrice: meta.cost_price,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
 
