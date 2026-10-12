@@ -184,9 +184,16 @@ export function WhatsAppCatalogPdfModal({
 
   // Função para abrir janela de impressão e gerar o PDF
   const handlePrintPdf = () => {
-    const printWindow = window.open('', '_blank', 'width=1100,height=900');
+    let printWindow: Window | null = null;
+    try {
+      printWindow = window.open('', '_blank', 'width=1100,height=900');
+    } catch (e) {
+      console.warn('Erro ao abrir popup de impressão:', e);
+    }
+
     if (!printWindow) {
-      alert('Por favor, permita pop-ups para gerar e visualizar o PDF.');
+      // Fallback seguro se o navegador bloquear popup:
+      window.open('/backoffice/catalogo-pdf', '_blank');
       return;
     }
 
@@ -574,7 +581,18 @@ export function WhatsAppCatalogPdfModal({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+            <a
+              href="/backoffice/catalogo-pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2.5 bg-white/10 hover:bg-white hover:text-deep-black text-white font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 border border-white/30 cursor-pointer"
+              title="Abrir diretamente em página dedicada para salvar como PDF"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Página Cheia</span>
+            </a>
+
             <button
               type="button"
               onClick={handlePrintPdf}
@@ -835,7 +853,16 @@ export function WhatsAppCatalogPdfModal({
             Mostrando <strong>{totalFilteredCount}</strong> peças prontas para divulgação
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              href="/backoffice/catalogo-pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 border-2 border-deep-black bg-white hover:bg-gray-100 text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>PÁGINA CHEIA (PDF)</span>
+            </a>
             <button
               type="button"
               onClick={onClose}

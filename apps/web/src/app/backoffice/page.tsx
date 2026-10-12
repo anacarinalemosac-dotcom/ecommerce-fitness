@@ -287,7 +287,7 @@ export default function BackofficeDashboard() {
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme'
+    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog'
   >('dashboard');
   const [cmsSubTab, setCmsSubTab] = useState<'media' | 'categories' | 'colors' | 'typography' | 'pages'>('categories');
   const [onlineCount, setOnlineCount] = useState(0);
@@ -1441,9 +1441,16 @@ export default function BackofficeDashboard() {
         {/* Botão de Destaque: Catálogo WhatsApp (PDF) */}
         <button
           type="button"
-          onClick={() => setShowWhatsAppCatalogModal(true)}
-          className="pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 border-transparent text-green-700 hover:text-green-900 font-black cursor-pointer"
-          title="Gerar catálogo em PDF para divulgação no WhatsApp"
+          onClick={() => {
+            setActiveTab('whatsapp-catalog');
+            setShowWhatsAppCatalogModal(true);
+          }}
+          className={`pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 ${
+            activeTab === 'whatsapp-catalog'
+              ? 'border-green-600 text-green-700 font-black'
+              : 'border-transparent text-green-700 hover:text-green-900 font-black cursor-pointer'
+          }`}
+          title="Ver e gerar catálogo em PDF para divulgação no WhatsApp"
         >
           <Smartphone className="w-4 h-4 text-green-600" />
           <span>📲 CATÁLOGO WHATSAPP (PDF)</span>
@@ -1609,14 +1616,6 @@ export default function BackofficeDashboard() {
               fetchSalesData();
             }}
             catalogProducts={supabaseProducts.length > 0 ? supabaseProducts : products}
-          />
-
-          {/* Modal de Catálogo PDF para Divulgação no WhatsApp */}
-          <WhatsAppCatalogPdfModal
-            isOpen={showWhatsAppCatalogModal}
-            onClose={() => setShowWhatsAppCatalogModal(false)}
-            catalogProducts={baseCatalogList}
-            siteInfo={siteInfo}
           />
 
           {/* FORMULÁRIO DE CADASTRO E EDIÇÃO COM GRADE DE VARIAÇÕES (MATRIZ COR X TAMANHO) */}
@@ -4292,6 +4291,95 @@ export default function BackofficeDashboard() {
           TAB 7: CONFIGURAÇÕES TÉCNICAS E ACESSOS
          ========================================================================= */}
       {activeTab === 'settings' && <TechnicalSettingsView />}
+
+      {/* =========================================================================
+          TAB 8: CATÁLOGO DE DIVULGAÇÃO EM PDF (WHATSAPP)
+         ========================================================================= */}
+      {activeTab === 'whatsapp-catalog' && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="bg-white border-2 border-deep-black p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div>
+              <div className="flex items-center gap-2 text-green-700 font-black text-xs uppercase tracking-wider">
+                <Smartphone className="w-4 h-4 text-green-600" />
+                <span>RELATÓRIO & CATÁLOGO OFICIAL DE DIVULGAÇÃO (WHATSAPP)</span>
+              </div>
+              <p className="text-xs text-deep-black/70 uppercase tracking-wide mt-1">
+                Visualização formatada para divulgação com fotos lado a lado, preços originais, promoções e estoque por tamanho.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <Link
+                href="/backoffice/catalogo-pdf"
+                target="_blank"
+                className="px-4 py-2.5 border-2 border-deep-black bg-white hover:bg-gray-100 text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Abrir em Nova Aba (PDF)</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowWhatsAppCatalogModal(true)}
+                className="px-5 py-2.5 bg-gold hover:bg-deep-black hover:text-gold text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 border-2 border-deep-black shadow-sm cursor-pointer"
+              >
+                <Printer className="w-4 h-4 stroke-[3]" />
+                <span>CONFIGURAR & BAIXAR PDF</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Banner de Capa */}
+          <div className="bg-deep-black text-white p-6 border-2 border-gold shadow-luxury flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-gold">
+                {siteInfo?.storeName || 'ANA FITNESS WEAR'}
+              </h2>
+              <p className="text-xs font-black uppercase tracking-widest text-white/80 mt-1">
+                CATÁLOGO DE PRODUTOS & PRONTA ENTREGA • GRUPOS WHATSAPP
+              </p>
+            </div>
+            <div className="text-left md:text-right space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#25d366] text-black font-black text-xs">
+                <span>📲 PEDIDOS WHATSAPP: {siteInfo?.whatsapp || siteInfo?.phone || '(978) 555-0199'}</span>
+              </div>
+              <div className="text-[10px] text-gray-400 font-bold uppercase">
+                {siteInfo?.address || 'Showroom Leominster, MA'} • ATUALIZADO EM {new Date().toLocaleDateString('pt-BR')}
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center p-8 bg-white border-2 border-deep-black space-y-4">
+            <p className="text-sm font-black uppercase text-deep-black">
+              Clique abaixo para abrir a janela com os filtros ou abrir a página direta para salvar o PDF:
+            </p>
+            <div className="flex justify-center gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowWhatsAppCatalogModal(true)}
+                className="px-6 py-3 bg-[#25d366] hover:bg-green-600 text-black font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shadow-md border-2 border-deep-black cursor-pointer"
+              >
+                <Printer className="w-4 h-4 stroke-[3]" />
+                <span>ABRIR CATÁLOGO & GERAR PDF</span>
+              </button>
+              <Link
+                href="/backoffice/catalogo-pdf"
+                target="_blank"
+                className="px-6 py-3 bg-white hover:bg-gray-100 text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center gap-2 border-2 border-deep-black shadow-md"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>VER EM PÁGINA CHEIA (PRONTO P/ SALVAR)</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Catálogo PDF para Divulgação no WhatsApp (Renderizado no nível raiz para funcionar em QUALQUER aba) */}
+      <WhatsAppCatalogPdfModal
+        isOpen={showWhatsAppCatalogModal}
+        onClose={() => setShowWhatsAppCatalogModal(false)}
+        catalogProducts={baseCatalogList}
+        siteInfo={siteInfo}
+      />
     </div>
   );
 }
