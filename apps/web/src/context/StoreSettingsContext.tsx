@@ -546,11 +546,53 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
           }
 
           const categorySlug = (p.categories?.slug || '').toLowerCase();
+          const categoryName = (p.categories?.name || '').toLowerCase();
+          const productTitle = (p.title || '').toLowerCase();
+
           let categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'preorder' = 'sets';
-          if (categorySlug.includes('romper') || categorySlug.includes('macaquinh')) categoryKey = 'rompers';
-          else if (categorySlug.includes('top') || categorySlug.includes('sutia')) categoryKey = 'tops';
-          else if (categorySlug.includes('macacao') || categorySlug.includes('jumpsuit')) categoryKey = 'jumpsuits';
-          else if (categorySlug.includes('preorder') || categorySlug.includes('encomenda')) categoryKey = 'preorder';
+          if (
+            categorySlug.includes('romper') ||
+            categorySlug.includes('macaquinh') ||
+            categoryName.includes('romper') ||
+            categoryName.includes('macaquinh') ||
+            productTitle.includes('romper') ||
+            productTitle.includes('macaquinho')
+          ) {
+            categoryKey = 'rompers';
+          } else if (
+            categorySlug.includes('top') ||
+            categorySlug.includes('sutia') ||
+            categoryName.includes('top') ||
+            productTitle.includes('top') ||
+            productTitle.includes('blusa')
+          ) {
+            categoryKey = 'tops';
+          } else if (
+            categorySlug.includes('macacao') ||
+            categorySlug.includes('jumpsuit') ||
+            categoryName.includes('macac') ||
+            categoryName.includes('jumpsuit') ||
+            productTitle.includes('macac') ||
+            productTitle.includes('jumpsuit')
+          ) {
+            categoryKey = 'jumpsuits';
+          } else if (
+            categorySlug.includes('preorder') ||
+            categorySlug.includes('encomenda') ||
+            categoryName.includes('pré-venda') ||
+            categoryName.includes('pre-order')
+          ) {
+            categoryKey = 'preorder';
+          } else if (
+            categorySlug.includes('set') ||
+            categorySlug.includes('conjunt') ||
+            categoryName.includes('conjunt') ||
+            categoryName.includes('set') ||
+            productTitle.includes('conjunto') ||
+            productTitle.includes('set')
+          ) {
+            categoryKey = 'sets';
+          }
 
           const colors = Array.from(colorsMap.entries()).map(([name, hex]) => ({ name, hex }));
           if (colors.length === 0) colors.push({ name: 'Preto Ônix', hex: '#0A0A0A' });

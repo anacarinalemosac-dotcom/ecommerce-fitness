@@ -71,6 +71,7 @@ import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixF
 import { CsvProductImportModal, downloadCsvTemplate, downloadExcelTemplate } from '../../components/CsvProductImportModal';
 import { StockWriteOffModal } from '../../components/StockWriteOffModal';
 import { WhatsAppCatalogPdfModal } from '../../components/WhatsAppCatalogPdfModal';
+import { CategoryManagementModal } from '../../components/CategoryManagementModal';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 import { DashboardMetricsView } from '../../components/backoffice/DashboardMetricsView';
 import { AppearanceCmsView } from '../../components/backoffice/AppearanceCmsView';
@@ -304,6 +305,7 @@ export default function BackofficeDashboard() {
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
   const [showWriteOffModal, setShowWriteOffModal] = useState(false);
   const [showWhatsAppCatalogModal, setShowWhatsAppCatalogModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   // Filtros e Busca Rápida no Catálogo de Produtos
   const [productSearch, setProductSearch] = useState('');
@@ -1624,6 +1626,17 @@ export default function BackofficeDashboard() {
                 <span>Capas das Categorias</span>
               </button>
 
+              {/* Botão Gerenciar Categorias */}
+              <button
+                type="button"
+                onClick={() => setShowCategoryModal(true)}
+                className="px-3.5 py-3 border-2 border-deep-black bg-white hover:bg-gold hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm cursor-pointer"
+                title="Cadastrar novas categorias, excluir ou organizar o catálogo"
+              >
+                <Tag className="w-3.5 h-3.5 text-gold" />
+                <span>+ Categorias</span>
+              </button>
+
               <button
                 type="button"
                 onClick={fetchSupabaseProducts}
@@ -1646,6 +1659,16 @@ export default function BackofficeDashboard() {
               </button>
             </div>
           </div>
+
+          {/* Modal de Gerenciamento de Categorias */}
+          <CategoryManagementModal
+            isOpen={showCategoryModal}
+            onClose={() => setShowCategoryModal(false)}
+            onCategoriesChanged={() => {
+              fetchSupabaseProducts();
+            }}
+            catalogProducts={supabaseProducts.length > 0 ? supabaseProducts : products}
+          />
 
           {/* Modal de Importação em Massa via CSV */}
           <CsvProductImportModal

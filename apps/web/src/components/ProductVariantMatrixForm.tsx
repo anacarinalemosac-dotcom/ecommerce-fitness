@@ -153,10 +153,46 @@ export function ProductVariantMatrixForm({
   // Estados de Supabase & Carregamento
   const [suppliersList, setSuppliersList] = useState<any[]>([]);
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
+  const [showNewCategoryModal, setShowNewCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    setIsCreatingCategory(true);
+    try {
+      const res = await fetch('/api/backoffice/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCategoryName.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.category) {
+        setCategoriesList((prev) => {
+          if (prev.some((c) => c.id === data.category.id)) return prev;
+          return [...prev, data.category].sort((a, b) => a.name.localeCompare(b.name));
+        });
+        setCategoryId(data.category.id);
+        setNewCategoryName('');
+        setShowNewCategoryModal(false);
+        setFeedback({
+          type: 'success',
+          message: data.message || `✓ Categoria "${data.category.name}" cadastrada e selecionada!`,
+        });
+        setTimeout(() => setFeedback(null), 4000);
+      } else {
+        alert(data.error || 'Erro ao cadastrar categoria.');
+      }
+    } catch (err: any) {
+      alert(`Erro ao cadastrar categoria: ${err.message}`);
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
 
   // Carrega fornecedores e categorias do Supabase via API
   useEffect(() => {
@@ -175,9 +211,15 @@ export function ProductVariantMatrixForm({
         }
         if (catRes.ok) {
           const catData = await catRes.json();
-          setCategoriesList(catData.categories || []);
-          if (catData.categories?.length > 0 && !categoryId) {
-            setCategoryId(catData.categories[0].id);
+          const list = catData.categories || [];
+          setCategoriesList(list);
+          if (list.length > 0 && !categoryId) {
+            const initialCatId = initialProduct?.category_id || initialProduct?.categories?.id;
+            if (initialCatId) {
+              setCategoryId(initialCatId);
+            } else {
+              setCategoryId(list[0].id);
+            }
           }
         }
       } catch (err) {
@@ -1471,6 +1513,74 @@ export function ProductVariantMatrixForm({
               />
             </div>
 
+            {/* Categoria do Produto & Cadastro Rápido de Nova Categoria */}
+            <div className="p-4 bg-warm-light/25 border-2 border-deep-black space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-gold" />
+                  <span>Categoria Principal do Produto *</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowNewCategoryModal(!showNewCategoryModal)}
+                  className="px-3 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9.5px] font-black uppercase tracking-wider transition flex items-center gap-1.5 self-start sm:self-auto border border-gold shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5 text-gold" />
+                  <span>{showNewCategoryModal ? '✕ Fechar Nova Categoria' : '+ Cadastrar Nova Categoria'}</span>
+                </button>
+              </div>
+
+              {/* Seletor de Categoria com Lista Completa */}
+              <select
+                required
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="w-full p-3 border-2 border-deep-black font-black text-xs uppercase bg-white focus:outline-none focus:border-gold shadow-xs"
+              >
+                <option value="">-- SELECIONE UMA CATEGORIA --</option>
+                {categoriesList.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Mini-Formulário Inline para Cadastrar Nova Categoria em 1 Clique */}
+              {showNewCategoryModal && (
+                <div className="p-3.5 bg-white border-2 border-gold space-y-2 animate-fadeIn shadow-sm">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-deep-black block">
+                    Cadastrar Nova Categoria no Catálogo:
+                  </span>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      placeholder="Ex: SAIAS, BIKINIS, ACESSÓRIOS..."
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleCreateCategory();
+                        }
+                      }}
+                      className="flex-1 p-2 border-2 border-deep-black font-bold text-xs uppercase focus:outline-none focus:border-gold"
+                    />
+                    <button
+                      type="button"
+                      disabled={isCreatingCategory || !newCategoryName.trim()}
+                      onClick={handleCreateCategory}
+                      className="px-4 py-2 bg-gold hover:bg-deep-black hover:text-gold text-deep-black font-black text-xs uppercase tracking-wider transition border-2 border-deep-black disabled:opacity-50 shrink-0"
+                    >
+                      {isCreatingCategory ? 'SALVANDO...' : '+ CADASTRAR CATEGORIA'}
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-deep-black/60 uppercase">
+                    A categoria será gravada diretamente no banco Supabase e associada a este produto.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Fita do Produto (Product Ribbon) */}
             <div className="space-y-2 p-3.5 bg-gray-50 border border-deep-black/20">
               <div className="flex items-center justify-between">
@@ -2258,30 +2368,31 @@ export function ProductVariantMatrixForm({
             </div>
 
             {/* Categoria */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
-                Categoria Principal *
-              </label>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                  Categoria Principal *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowNewCategoryModal(!showNewCategoryModal)}
+                  className="text-[9px] font-black text-gold hover:underline uppercase"
+                >
+                  {showNewCategoryModal ? '✕ Fechar' : '+ Nova Categoria'}
+                </button>
+              </div>
               <select
                 required
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
                 className="w-full p-2.5 border-2 border-deep-black font-black text-xs uppercase bg-white focus:outline-none focus:border-gold"
               >
+                <option value="">-- SELECIONE UMA CATEGORIA --</option>
                 {categoriesList.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
                   </option>
                 ))}
-                {categoriesList.length === 0 && (
-                  <>
-                    <option value="">LEGGINGS</option>
-                    <option value="">TOPS</option>
-                    <option value="">CONJUNTOS</option>
-                    <option value="">MACAQUINHOS</option>
-                    <option value="">MACACÕES</option>
-                  </>
-                )}
               </select>
             </div>
 

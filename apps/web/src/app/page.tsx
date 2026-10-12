@@ -326,6 +326,8 @@ export default function HomePage() {
 
   const filteredProducts = activeCategoryFilter === 'all'
     ? activeProducts
+    : activeCategoryFilter === 'preorder'
+    ? activeProducts.filter((p) => p.categoryKey === 'preorder' || p.stock === 0 || p.badgeEn === 'PRE-ORDER')
     : activeProducts.filter((p) => p.categoryKey === activeCategoryFilter);
 
   const categoriesData = [
