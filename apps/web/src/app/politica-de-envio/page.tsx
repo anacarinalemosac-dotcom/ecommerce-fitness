@@ -162,8 +162,8 @@ export default function PoliticaDeEnvioPage() {
           </h3>
           <p className="text-xs text-deep-black/70 font-medium uppercase tracking-wide leading-relaxed">
             {lang === 'pt'
-              ? 'Modelos sob encomenda levam de 5 a 7 dias úteis para confecção antes do envio prioritário.'
-              : 'Made-to-order silhouettes take 5 to 7 business days for atelier cutting and sewing before dispatch.'}
+              ? 'Modelos sob encomenda (pré-venda) possuem prazo de até 30 dias para entrega. Nossa equipe entra em contato com o cliente para esclarecer e confirmar todas as informações com relação ao prazo.'
+              : 'Made-to-order silhouettes (pre-orders) have an estimated delivery timeframe of ~30 days. Our team contacts each customer directly to confirm and clarify all details regarding the timeframe.'}
           </p>
         </div>
       </div>

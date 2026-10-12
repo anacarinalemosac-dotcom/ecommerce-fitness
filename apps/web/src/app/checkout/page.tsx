@@ -41,6 +41,8 @@ interface CartItem {
   price: number;
   quantity: number;
   image: string;
+  isBackorder?: boolean;
+  productionDays?: number;
 }
 
 export default function CheckoutPage() {
@@ -50,6 +52,7 @@ export default function CheckoutPage() {
   const [cartItem, setCartItem] = useState<CartItem | null>(null);
   const [isCartLoaded, setIsCartLoaded] = useState(false);
   const [customerUser, setCustomerUser] = useState<any | null>(null);
+  const [orderWasBackorder, setOrderWasBackorder] = useState(false);
 
   // Endereço de Envio nos EUA
   const [shippingForm, setShippingForm] = useState({
@@ -397,6 +400,10 @@ export default function CheckoutPage() {
       ],
     });
 
+    if (cartItem.isBackorder) {
+      setOrderWasBackorder(true);
+    }
+
     // Esvazia a sacola com sucesso e despacha evento global
     localStorage.removeItem('ana_cart_item');
     window.dispatchEvent(new Event('ana_cart_updated'));
@@ -430,11 +437,26 @@ export default function CheckoutPage() {
           <h3 className="text-xs font-black uppercase tracking-wider text-deep-black border-b border-deep-black/10 pb-2">
             {lang === 'pt' ? 'DETALHES DO ENVIO DOMÉSTICO (EUA)' : 'DOMESTIC US SHIPPING DETAILS'}
           </h3>
-          <div className="text-xs space-y-1 text-deep-black/80 uppercase font-medium">
+          <div className="text-xs space-y-2 text-deep-black/80 uppercase font-medium">
             <p><strong>{lang === 'pt' ? 'Cliente' : 'Customer'}:</strong> {shippingForm.firstName || 'Cliente'} {shippingForm.lastName}</p>
             <p><strong>{lang === 'pt' ? 'E-mail de Notificação' : 'Notification Email'}:</strong> {shippingForm.email || 'cliente@exemplo.com'}</p>
             <p><strong>{lang === 'pt' ? 'Destino' : 'Destination'}:</strong> {shippingForm.address || '742 Commonwealth Ave'}, {shippingForm.city || 'Boston'} {shippingForm.state} {shippingForm.zip || '02215'}</p>
-            <p><strong>{lang === 'pt' ? 'Prazo de Preparação' : 'Handling Time'}:</strong> 1 a 5 dias úteis com rastreamento oficial USPS</p>
+            <p>
+              <strong>{lang === 'pt' ? 'Prazo de Entrega' : 'Delivery Estimate'}:</strong>{' '}
+              {orderWasBackorder ? (
+                <span className="text-amber-800 font-bold">
+                  {lang === 'pt'
+                    ? 'Pré-Venda sob encomenda: até 30 dias para receber sua mercadoria. Nossa equipe entrará em contato para esclarecer todas as informações com relação ao prazo.'
+                    : 'Made-to-Order Pre-Order: ~30 days delivery. Our team will contact you directly to clarify and confirm all details regarding your delivery timeframe.'}
+                </span>
+              ) : (
+                <span>
+                  {lang === 'pt'
+                    ? 'Pronta entrega: 1 a 5 dias úteis com rastreamento oficial USPS'
+                    : '1 to 5 business days with official USPS tracking'}
+                </span>
+              )}
+            </p>
             <p><strong>{lang === 'pt' ? 'Total Pago' : 'Total Paid'}:</strong> <span className="font-bold text-gold font-mono">${total.toFixed(2)}</span></p>
           </div>
         </div>
@@ -980,6 +1002,19 @@ export default function CheckoutPage() {
               <span className="text-[10px] text-gold font-black uppercase block">
                 {lang === 'pt' ? 'ZERO TRANSPARÊNCIA' : 'ZERO SEE-THROUGH'}
               </span>
+              {cartItem.isBackorder && (
+                <div className="p-2.5 bg-amber-50 border border-gold/60 text-deep-black space-y-1 mt-1">
+                  <span className="text-[9.5px] font-black text-amber-900 uppercase flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-600" />
+                    {lang === 'pt' ? 'PRÉ-VENDA • PRAZO DE 30 DIAS' : 'PRE-ORDER • ~30 DAYS DELIVERY'}
+                  </span>
+                  <p className="text-[9.5px] text-deep-black/80 font-medium leading-relaxed">
+                    {lang === 'pt'
+                      ? 'Nós vamos entrar em contato com você para esclarecer e confirmar todas as informações com relação ao prazo.'
+                      : 'Our team will contact you directly to confirm and clarify all details regarding your delivery timeframe.'}
+                  </p>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={handleRemoveCartItem}

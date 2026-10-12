@@ -47,11 +47,11 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     'prod.featured': 'FEATURED STYLES',
     'prod.featuredSubtitle': 'ICONIC PIECES WITH VERIFIED ZERO SEE-THROUGH AND PREMIUM COMPRESSION',
     'prod.addToBag': 'ADD TO BAG',
-    'prod.orderPreorder': 'PRE-ORDER PIECE (MADE-TO-ORDER)',
+    'prod.orderPreorder': 'MAKE PRE-ORDER (30 DAYS)',
     'prod.inStock': 'IN STOCK • READY TO SHIP IN THE US',
-    'prod.outOfStock': 'OUT OF STOCK • TAILORED PRE-ORDER',
+    'prod.outOfStock': 'MADE-TO-ORDER PRE-ORDER (30 DAYS)',
     'prod.bestSeller': 'BEST SELLER',
-    'prod.preOrderBadge': 'PRE-ORDER',
+    'prod.preOrderBadge': 'PRE-ORDER (30 DAYS)',
     'prod.newBadge': 'NEW ARRIVAL',
     'prod.freeShippingBanner': 'FLAT RATE SHIPPING: $9.99 ACROSS ALL US STATES',
 
@@ -59,7 +59,7 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     'tab.desc': 'DESCRIPTION & PERFORMANCE',
     'tab.sizing': 'SIZE GUIDE & MEASUREMENTS',
     'tab.care': 'CARE & WASHING',
-    'tab.preorder': 'PRE-ORDER PRODUCTION',
+    'tab.preorder': 'PRE-ORDER PRODUCTION (30 DAYS)',
 
     // Gymshark UI Additions
     'gymshark.quickAdd': 'QUICK ADD',
@@ -145,11 +145,11 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     'prod.featured': 'PRODUTOS EM DESTAQUE',
     'prod.featuredSubtitle': 'PEÇAS ICÔNICAS COM ZERO TRANSPARÊNCIA E TECIDOS DE ALTA COMPRESSÃO',
     'prod.addToBag': 'ADICIONAR À SACOLA',
-    'prod.orderPreorder': 'ENCOMENDAR PEÇA (PRÉ-VENDA)',
+    'prod.orderPreorder': 'FAZER PRÉ-VENDA (PRAZO 30 DIAS)',
     'prod.inStock': 'EM ESTOQUE • PRONTA ENTREGA NOS EUA',
-    'prod.outOfStock': 'ESTOQUE ESGOTADO • PRODUÇÃO SOB ENCOMENDA',
+    'prod.outOfStock': 'PRODUÇÃO SOB ENCOMENDA (PRAZO 30 DIAS)',
     'prod.bestSeller': 'BEST SELLER',
-    'prod.preOrderBadge': 'PRÉ-VENDA',
+    'prod.preOrderBadge': 'PRÉ-VENDA (30 DIAS)',
     'prod.newBadge': 'LANÇAMENTO',
     'prod.freeShippingBanner': 'TAXA FIXA DE FRETE: $9.99 PARA QUALQUER ESTADO DOS EUA',
 
@@ -157,7 +157,7 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     'tab.desc': 'DESCRIÇÃO & PERFORMANCE',
     'tab.sizing': 'TABELA DE MEDIDAS (US)',
     'tab.care': 'CUIDADOS & LAVAGEM',
-    'tab.preorder': 'PRODUÇÃO SOB ENCOMENDA',
+    'tab.preorder': 'PRODUÇÃO SOB ENCOMENDA (PRAZO 30 DIAS)',
 
     // Gymshark UI Additions
     'gymshark.quickAdd': 'COMPRA RÁPIDA',

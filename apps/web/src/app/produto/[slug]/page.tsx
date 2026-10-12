@@ -123,9 +123,9 @@ const CATALOG_ITEMS: Record<string, any> = {
     price: 39.9,
     originalPrice: 49.9,
     descriptionPt:
-      'Conjunto completo de calça legging cós anatômico + top de sustentação. Atualmente esgotado para pronta entrega e disponível exclusivamente sob encomenda sob medida na nossa confecção (5 a 7 dias úteis).',
+      'Conjunto completo de calça legging cós anatômico + top de sustentação. Atualmente esgotado para pronta entrega e disponível exclusivamente sob encomenda sob medida na nossa confecção (prazo de até 30 dias para receber sua mercadoria. Nossa equipe entrará em contato para esclarecer todas as informações com relação ao prazo).',
     descriptionEn:
-      'Complete luxury set featuring sculpting leggings with double anatomical waistband and matching support top. Currently sold out for ready stock, available exclusively via made-to-order pre-order (5 to 7 business days).',
+      'Complete luxury set featuring sculpting leggings with double anatomical waistband and matching support top. Currently sold out for ready stock, available exclusively via made-to-order pre-order (~30 days delivery. Our team will contact you to confirm and clarify all details regarding your timeframe).',
     media: [
       { type: 'image', url: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=1200&q=85', label: 'Set Overview', color: 'Preto Ônix' },
       { type: 'image', url: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=1200&q=85', label: 'Side Fit', color: 'Preto Ônix' },
@@ -272,14 +272,26 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       });
     }
   });
+  (productData.colors || []).forEach((c: any) => {
+    if (c.name && !availableColorsMap.has(c.name.toLowerCase())) {
+      availableColorsMap.set(c.name.toLowerCase(), {
+        name: c.name,
+        hex: c.hex || '#0A0A0A',
+      });
+    }
+  });
   const availableColors = Array.from(availableColorsMap.values());
 
-  // Lista de tamanhos únicos
-  const availableSizesSet = new Set<string>();
+  // Grade completa padrão de tamanhos exigidos: S, M, L, XL (P, M, G, GG)
+  const STANDARD_SIZES = ['S', 'M', 'L', 'XL'];
+  const availableSizesSet = new Set<string>(STANDARD_SIZES);
   (productData.variants || []).forEach((v: Variant) => {
-    if (v.size) availableSizesSet.add(v.size);
+    if (v.size) availableSizesSet.add(v.size.toUpperCase());
   });
-  const availableSizes = Array.from(availableSizesSet);
+  const sizeOrder: Record<string, number> = { S: 1, P: 1, M: 2, L: 3, G: 3, XL: 4, GG: 4 };
+  const availableSizes = Array.from(availableSizesSet).sort(
+    (a, b) => (sizeOrder[a.toUpperCase()] || 99) - (sizeOrder[b.toUpperCase()] || 99)
+  );
 
   // Estados de seleção
   const [selectedColor, setSelectedColor] = useState(
@@ -317,19 +329,19 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   };
 
   // Localiza a variante exata (Cor Selecionada + Tamanho Selecionado)
-  const currentVariant: Variant =
+  const currentVariant: Variant | undefined =
     (productData.variants || []).find(
       (v: Variant) =>
         v.color.toLowerCase() === selectedColor.toLowerCase() &&
-        v.size.toLowerCase() === selectedSize.toLowerCase()
+        v.size.toUpperCase() === selectedSize.toUpperCase()
     ) ||
     (productData.variants || []).find(
       (v: Variant) => v.color.toLowerCase() === selectedColor.toLowerCase()
-    ) ||
-    productData.variants[0];
+    );
 
-  const isBackorder = currentVariant?.stock === 0 && Boolean(currentVariant?.allowBackorder);
-  const isOutOfStock = currentVariant?.stock === 0 && !currentVariant?.allowBackorder;
+  // Se não houver estoque disponível para essa cor e tamanho, ativa Pré-Venda de 30 dias automaticamente
+  const currentStock = currentVariant?.stock ? Number(currentVariant.stock) : 0;
+  const isBackorder = currentStock <= 0;
 
   // Troca de Cor com atualização visual de foto vinculada
   const handleSelectColor = (colorName: string) => {
@@ -374,21 +386,27 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     }
   }, [slug, productData?.title]);
 
-  // Ação de Compra / Adicionar à Sacola
+  // Ação de Compra / Adicionar à Sacola (Sempre liberado: se sem estoque, entra como Pré-Venda 30 dias)
   const handleActionClick = () => {
-    if (isOutOfStock) return;
+    const matchedVariant = (productData.variants || []).find(
+      (v: Variant) =>
+        v.color.toLowerCase() === selectedColor.toLowerCase() &&
+        v.size.toUpperCase() === selectedSize.toUpperCase()
+    );
+    const hasStock = matchedVariant ? Number(matchedVariant.stock) > 0 : false;
+    const isItemPreOrder = !hasStock;
 
     const cartItemToSave = {
       title: productData.title,
       slug: slug,
       size: selectedSize,
       color: selectedColor,
-      sku: currentVariant?.sku || `${slug}-${selectedColor.slice(0, 3)}-${selectedSize}`,
-      price: currentVariant?.price || productData.price,
+      sku: matchedVariant?.sku || `${slug}-${selectedColor.slice(0, 3)}-${selectedSize}`,
+      price: matchedVariant?.price || productData.price,
       quantity: 1,
-      image: currentVariant?.image || productData.media[selectedMediaIdx]?.url || productData.media[0]?.url,
-      isBackorder: isBackorder,
-      productionDays: currentVariant?.productionDays || 7,
+      image: matchedVariant?.image || productData.media[selectedMediaIdx]?.url || productData.media[0]?.url,
+      isBackorder: isItemPreOrder,
+      productionDays: 30,
     };
 
     try {
@@ -618,37 +636,50 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {availableSizes.map((sz: string) => {
-                const isSelected = sz.toLowerCase() === selectedSize.toLowerCase();
+                const isSelected = sz.toUpperCase() === selectedSize.toUpperCase();
                 const matchedVariant = (productData.variants || []).find(
                   (v: Variant) =>
                     v.color.toLowerCase() === selectedColor.toLowerCase() &&
-                    v.size.toLowerCase() === sz.toLowerCase()
+                    v.size.toUpperCase() === sz.toUpperCase()
                 );
-                const stockQty = matchedVariant ? matchedVariant.stock : 0;
-                const canBackorder = matchedVariant ? matchedVariant.allowBackorder : false;
+                const stockQty = matchedVariant ? Number(matchedVariant.stock) : 0;
                 const hasStock = stockQty > 0;
+
+                const sizeLabel = lang === 'pt'
+                  ? (sz === 'S' ? 'P (S)' : sz === 'M' ? 'M' : sz === 'L' ? 'G (L)' : sz === 'XL' ? 'GG (XL)' : sz)
+                  : sz;
+
+                const subLabel = sz === 'S' ? 'US 2-4' : sz === 'M' ? 'US 6-8' : sz === 'L' ? 'US 10-12' : sz === 'XL' ? 'US 14-16' : '';
 
                 return (
                   <button
                     key={sz}
+                    type="button"
                     onClick={() => handleSelectSize(sz)}
-                    className={`py-3 text-xs font-black uppercase tracking-wider border transition-all relative flex flex-col items-center justify-center gap-0.5 ${
+                    className={`py-3 px-2 text-xs font-black uppercase tracking-wider border transition-all relative flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
                       isSelected
-                        ? 'border-deep-black bg-deep-black text-white ring-2 ring-gold'
-                        : hasStock || canBackorder
-                        ? 'border-deep-black/20 hover:border-gold text-deep-black bg-white'
-                        : 'border-deep-black/10 text-deep-black/30 bg-deep-black/5 opacity-60'
+                        ? 'border-deep-black bg-deep-black text-white ring-2 ring-gold shadow-md'
+                        : hasStock
+                        ? 'border-deep-black/30 hover:border-gold text-deep-black bg-white'
+                        : 'border-gold/50 bg-amber-50/40 hover:border-gold text-deep-black'
                     }`}
                   >
-                    <span>{sz}</span>
+                    <span className="text-xs font-black">{sizeLabel}</span>
+                    {subLabel && (
+                      <span className={`text-[8.5px] font-mono ${isSelected ? 'text-white/60' : 'text-deep-black/50'}`}>
+                        {subLabel}
+                      </span>
+                    )}
                     <span
-                      className={`text-[8px] font-black tracking-widest ${
-                        hasStock ? (isSelected ? 'text-white/80' : 'text-deep-black/70') : 'text-gold'
+                      className={`text-[8px] font-black tracking-widest mt-0.5 ${
+                        hasStock
+                          ? (isSelected ? 'text-emerald-300' : 'text-emerald-700')
+                          : (isSelected ? 'text-gold' : 'text-amber-800')
                       }`}
                     >
-                      {hasStock ? `${stockQty} IN STOCK` : canBackorder ? 'PRE-ORDER' : 'OUT OF STOCK'}
+                      {hasStock ? `${stockQty} IN STOCK` : 'PRE-ORDER'}
                     </span>
                   </button>
                 );
@@ -666,26 +697,34 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             </div>
           </div>
 
-          {/* Status do Estoque */}
+          {/* Status do Estoque & Pré-Venda 30 Dias */}
           <div className="p-4 border-2 border-deep-black bg-white">
             {isBackorder ? (
-              <div className="flex items-start gap-3 text-deep-black">
-                <Clock className="w-5 h-5 text-gold shrink-0 mt-0.5" />
-                <div className="space-y-1 text-xs">
-                  <p className="font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-gold" />
-                    {lang === 'pt' ? 'PRODUÇÃO SOB ENCOMENDA (PRÉ-VENDA)' : 'MADE-TO-ORDER PRE-ORDER'}
-                  </p>
-                  <p className="text-deep-black/70 font-medium">
+              <div className="flex items-start gap-3.5 text-deep-black">
+                <Clock className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-deep-black text-gold text-[9px] font-black tracking-widest uppercase">
+                      MADE-TO-ORDER
+                    </span>
+                    <p className="font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      {lang === 'pt' ? 'PRODUÇÃO SOB ENCOMENDA • PRÉ-VENDA (PRAZO DE 30 DIAS)' : 'MADE-TO-ORDER PRE-ORDER (~30 DAYS DELIVERY)'}
+                    </p>
+                  </div>
+                  <p className="text-deep-black/85 font-medium leading-relaxed">
                     {lang === 'pt'
-                      ? `Confeccionada sob medida em até ${currentVariant.productionDays} dias úteis com envio prioritário via USPS.`
-                      : `Handcrafted in our atelier within ${currentVariant.productionDays} business days followed by priority USPS shipping.`}
+                      ? 'Prazo de entrega estimado em até 30 dias para receber sua mercadoria. Nós vamos entrar em contato com você para esclarecer e confirmar todas as informações com relação ao prazo.'
+                      : 'Estimated delivery within ~30 days. Our team will contact you directly to clarify and confirm all details regarding your delivery timeframe.'}
+                  </p>
+                  <p className="text-[10px] text-amber-900 font-bold uppercase tracking-wider">
+                    {lang === 'pt' ? 'Atendimento concierge via WhatsApp / SMS após o pedido' : 'Concierge WhatsApp & SMS support included with every order'}
                   </p>
                 </div>
               </div>
             ) : (
               <div className="flex items-start gap-3 text-deep-black">
-                <CheckCircle2 className="w-5 h-5 text-deep-black shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                 <div className="space-y-1 text-xs">
                   <p className="font-black uppercase tracking-wider text-deep-black">
                     {lang === 'pt' ? 'EM ESTOQUE • PRONTA ENTREGA' : 'IN STOCK • READY TO SHIP'}
@@ -718,7 +757,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           <div className="space-y-3">
             <button
               onClick={handleActionClick}
-              className={`w-full py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-luxury ${
+              className={`w-full py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-luxury cursor-pointer ${
                 isBackorder
                   ? 'bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black'
                   : 'bg-deep-black hover:bg-gold hover:text-deep-black text-white'
@@ -741,7 +780,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               <div className="p-3 bg-deep-black text-white border border-gold text-xs font-bold uppercase tracking-wider flex items-center justify-between animate-fadeIn">
                 <span>
                   {cartFeedback === 'backorder'
-                    ? (lang === 'pt' ? '✓ Peça adicionada como Encomenda Prioritária!' : '✓ Added as Priority Pre-Order!')
+                    ? (lang === 'pt' ? '✓ Peça adicionada como Pré-Venda (Prazo de 30 dias)!' : '✓ Added as Made-to-Order Pre-Order (~30 Days)!')
                     : (lang === 'pt' ? '✓ Peça adicionada à sacola!' : '✓ Added to your bag!')}
                 </span>
                 <Link href="/checkout" className="text-gold underline hover:text-white font-bold">
@@ -957,7 +996,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                     {[
                       { size: 'P (S)', us: 'US 2 - 4', bust: '32 - 34"', waist: '25 - 27"', hip: '35 - 37"', stock: 'IN STOCK' },
                       { size: 'M (M)', us: 'US 6 - 8', bust: '35 - 37"', waist: '28 - 30"', hip: '38 - 40"', stock: 'IN STOCK' },
-                      { size: 'G (L)', us: 'US 10 - 12', bust: '38 - 40"', waist: '31 - 33"', hip: '41 - 43"', stock: 'PRE-ORDER (7 DAYS)' },
+                      { size: 'G (L)', us: 'US 10 - 12', bust: '38 - 40"', waist: '31 - 33"', hip: '41 - 43"', stock: 'PRE-ORDER (30 DAYS)' },
+                      { size: 'GG (XL)', us: 'US 14 - 16', bust: '41 - 43"', waist: '34 - 36"', hip: '44 - 46"', stock: 'PRE-ORDER (30 DAYS)' },
                     ].map((row, idx) => (
                       <tr key={idx} className="hover:bg-deep-black/5 transition">
                         <td className="py-3.5 px-4 font-black text-deep-black">{row.size}</td>
@@ -1040,15 +1080,15 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 </h3>
                 <p className="text-xs text-deep-black/70 font-medium uppercase tracking-wide leading-relaxed">
                   {lang === 'pt'
-                    ? 'Quando um modelo esgota na pronta entrega, ativamos a confecção sob medida exclusiva para você em 5 a 7 dias úteis.'
-                    : 'When inventory sells out, we tailor your silhouette on-demand within 5 to 7 business days, backed by our 30-day return policy.'}
+                    ? 'Quando um modelo esgota na pronta entrega, ativamos a confecção sob encomenda exclusiva para você com prazo de até 30 dias para receber sua mercadoria. Nossa equipe entrará em contato para esclarecer todas as informações com relação ao prazo.'
+                    : 'When inventory sells out, we tailor your silhouette on-demand with delivery estimated in ~30 days. Our team will contact you to confirm and clarify all details regarding your delivery timeframe.'}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 {[
-                  { step: '01', title: 'ORDER CONFIRMED', desc: 'Placed in tailored queue.' },
-                  { step: '02', title: 'CUT & SEW (5-7 DAYS)', desc: 'Precision artisanal crafting.' },
+                  { step: '01', title: 'ORDER CONFIRMED', desc: 'Placed in queue & team contacts you.' },
+                  { step: '02', title: 'CUT & SEW (~30 DAYS)', desc: 'Artisanal tailoring & crafting.' },
                   { step: '03', title: 'QUALITY INSPECTION', desc: 'Scrutinized & packaged.' },
                   { step: '04', title: 'DISPATCHED VIA USPS', desc: 'Tracking sent to your phone.' },
                 ].map((st, i) => (

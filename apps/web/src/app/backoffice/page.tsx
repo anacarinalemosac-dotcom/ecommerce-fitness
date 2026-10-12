@@ -188,15 +188,15 @@ const INITIAL_CATALOG: CatalogProduct[] = [
     originalPrice: 49.9,
     costPrice: 16.0,
     badge: 'PRÉ-VENDA',
-    fit: 'CONFECCIONADO SOB MEDIDA (5-7 DIAS)',
+    fit: 'CONFECCIONADO SOB MEDIDA (PRAZO 30 DIAS)',
     primaryImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=900&q=80',
     secondaryImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=900&q=80',
     stock: 0,
     allowBackorder: true,
-    productionDays: 7,
+    productionDays: 30,
     zeroTransparency: true,
     removableCups: true,
-    sizes: ['S', 'M', 'L'],
+    sizes: ['S', 'M', 'L', 'XL'],
     colorName: 'Preto Ônix',
     colorHex: '#0A0A0A',
     sku: 'KEL-BLK-M',
@@ -2076,7 +2076,7 @@ export default function BackofficeDashboard() {
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 bg-deep-black text-gold text-[9px] font-black border border-gold inline-block">
-                            PRÉ-VENDA (5-7 DIAS)
+                            PRÉ-VENDA (30 DIAS)
                           </span>
                         )}
                       </td>
@@ -3412,7 +3412,7 @@ export default function BackofficeDashboard() {
           <div className="bg-white border-2 border-deep-black p-5 space-y-2">
             <div className="flex items-center gap-2 text-deep-black font-black text-xs uppercase tracking-wider">
               <Factory className="w-4 h-4 text-gold" />
-              <span>PEDIDOS EM CONFECÇÃO SOB MEDIDA (PRAZO 5 A 7 DIAS ÚTEIS)</span>
+              <span>PEDIDOS EM CONFECÇÃO SOB MEDIDA (PRAZO DE 30 DIAS)</span>
             </div>
             <p className="text-xs text-deep-black/70 uppercase tracking-wide">
               Pedidos que o cliente comprou mesmo quando o estoque estava zerado (allow_backorder ativo).

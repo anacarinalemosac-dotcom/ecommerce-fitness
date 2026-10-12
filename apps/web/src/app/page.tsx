@@ -138,8 +138,8 @@ const FEATURED_PRODUCTS: ProductItem[] = [
     categoryPt: 'CONJUNTOS',
     categoryEn: 'SETS',
     categoryKey: 'preorder',
-    fitPt: 'CONFECCIONADO SOB MEDIDA (5-7 DIAS)',
-    fitEn: 'MADE-TO-ORDER ATELIER (5-7 DAYS)',
+    fitPt: 'CONFECCIONADO SOB MEDIDA (PRAZO 30 DIAS)',
+    fitEn: 'MADE-TO-ORDER ATELIER (~30 DAYS DELIVERY)',
     price: 39.9,
     originalPrice: 49.9,
     badgePt: 'PRÉ-VENDA',
@@ -152,7 +152,7 @@ const FEATURED_PRODUCTS: ProductItem[] = [
     colors: [
       { name: 'Onyx Black', hex: '#0A0A0A' },
     ],
-    sizes: ['S', 'M', 'L'],
+    sizes: ['S', 'M', 'L', 'XL'],
     stock: 0,
     allowBackorder: true,
   },
@@ -548,7 +548,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7">
           {filteredProducts.map((product) => {
             const isHovered = hoveredProduct === product.id;
-            const isBackorder = product.stock === 0 && product.allowBackorder;
+            const isBackorder = (product.stock === 0) || product.categoryKey === 'preorder' || Boolean(product.allowBackorder && product.stock === 0);
             const isFavorited = !!wishlist[product.id];
             const wasJustAdded = quickAddedItem?.id === product.id;
 
@@ -579,7 +579,7 @@ export default function HomePage() {
                     </span>
                     {isBackorder && (
                       <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-deep-black text-gold border border-gold">
-                        {lang === 'pt' ? 'SOB ENCOMENDA' : 'MADE-TO-ORDER'}
+                        {lang === 'pt' ? 'PRÉ-VENDA (30 DIAS)' : 'PRE-ORDER (30 DAYS)'}
                       </span>
                     )}
                   </div>
@@ -725,7 +725,7 @@ export default function HomePage() {
                           : 'bg-white text-deep-black border-deep-black'
                       }`}
                     >
-                      {isBackorder ? 'PRE-ORDER' : (lang === 'pt' ? 'EM ESTOQUE' : 'IN STOCK')}
+                      {isBackorder ? (lang === 'pt' ? 'PRÉ-VENDA (30 DIAS)' : 'PRE-ORDER (30 DAYS)') : (lang === 'pt' ? 'EM ESTOQUE' : 'IN STOCK')}
                     </span>
                   </div>
                 </div>

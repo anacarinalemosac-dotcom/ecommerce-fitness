@@ -457,7 +457,7 @@ export function DashboardMetricsView({
                       </span>
                     </div>
                     <span className="px-2 py-0.5 bg-deep-black text-gold font-mono font-black text-[9px] uppercase">
-                      5-7 DIAS
+                      30 DIAS
                     </span>
                   </div>
                 ))}
