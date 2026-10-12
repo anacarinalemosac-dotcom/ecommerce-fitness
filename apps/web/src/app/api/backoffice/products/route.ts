@@ -36,9 +36,22 @@ export async function GET(req: NextRequest) {
         }
       } catch (e) {}
 
-      const primaryImage = meta.primary_image || (variants?.[0]?.images?.[0]) || '';
-      const resolvedCost = (variants?.[0]?.cost_price !== undefined && variants?.[0]?.cost_price !== null)
-        ? Number(variants[0].cost_price)
+      const effectiveVariants = (variants && variants.length > 0)
+        ? variants
+        : (Array.isArray(meta.variants) && meta.variants.length > 0 ? meta.variants : []);
+
+      const primaryImage = meta.primary_image || (meta.images?.[0]) || (effectiveVariants?.[0]?.images?.[0]) || '';
+      const galleryImages = Array.isArray(meta.images) && meta.images.length > 0
+        ? meta.images
+        : Array.isArray(meta.gallery) && meta.gallery.length > 0
+        ? meta.gallery
+        : Array.from(new Set([
+            primaryImage,
+            ...effectiveVariants.flatMap((v: any) => Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []))
+          ].filter(Boolean)));
+
+      const resolvedCost = (effectiveVariants?.[0]?.cost_price !== undefined && effectiveVariants?.[0]?.cost_price !== null)
+        ? Number(effectiveVariants[0].cost_price)
         : (meta.cost_price !== undefined ? Number(meta.cost_price) : 16.0);
 
       const enrichedProduct = {
@@ -46,12 +59,18 @@ export async function GET(req: NextRequest) {
         meta,
         primary_image: primaryImage,
         primaryImage: primaryImage,
+        images: galleryImages,
+        galleryImages: galleryImages,
+        media_list: meta.media_list || [],
+        colors: meta.colors || [],
+        sizes: meta.sizes || [],
         cost_price: resolvedCost,
         costPrice: resolvedCost,
         visible_online: meta.visible_online === true,
         visible_pos: meta.visible_pos !== false,
-        variants: (variants || []).map((v: any) => ({
+        variants: (effectiveVariants || []).map((v: any) => ({
           ...v,
+          images: Array.isArray(v.images) && v.images.length > 0 ? v.images : (v.image ? [v.image] : galleryImages),
           cost_price: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
           costPrice: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
         })),
@@ -75,6 +94,7 @@ export async function GET(req: NextRequest) {
       .select('*, categories(*), suppliers(*)')
       .neq('slug', '__live_radar_state__')
       .neq('slug', '__site_settings_state__')
+      .neq('slug', '__instagram_direct_state__')
       .order('created_at', { ascending: false });
 
     if (prodsErr) {
@@ -99,9 +119,22 @@ export async function GET(req: NextRequest) {
       } catch (e) {}
 
       const pVariants = (allVariants || []).filter((v) => v.product_id === p.id);
-      const primaryImage = meta.primary_image || (pVariants[0]?.images?.[0]) || '';
-      const resolvedCost = (pVariants[0]?.cost_price !== undefined && pVariants[0]?.cost_price !== null)
-        ? Number(pVariants[0].cost_price)
+      const effectiveVariants = (pVariants && pVariants.length > 0)
+        ? pVariants
+        : (Array.isArray(meta.variants) && meta.variants.length > 0 ? meta.variants : []);
+
+      const primaryImage = meta.primary_image || (meta.images?.[0]) || (effectiveVariants[0]?.images?.[0]) || '';
+      const galleryImages = Array.isArray(meta.images) && meta.images.length > 0
+        ? meta.images
+        : Array.isArray(meta.gallery) && meta.gallery.length > 0
+        ? meta.gallery
+        : Array.from(new Set([
+            primaryImage,
+            ...effectiveVariants.flatMap((v: any) => Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []))
+          ].filter(Boolean)));
+
+      const resolvedCost = (effectiveVariants[0]?.cost_price !== undefined && effectiveVariants[0]?.cost_price !== null)
+        ? Number(effectiveVariants[0].cost_price)
         : (meta.cost_price !== undefined ? Number(meta.cost_price) : 16.0);
 
       return {
@@ -109,16 +142,22 @@ export async function GET(req: NextRequest) {
         meta,
         primary_image: primaryImage,
         primaryImage: primaryImage,
+        images: galleryImages,
+        galleryImages: galleryImages,
+        media_list: meta.media_list || [],
+        colors: meta.colors || [],
+        sizes: meta.sizes || [],
         cost_price: resolvedCost,
         costPrice: resolvedCost,
         visible_online: meta.visible_online === true,
         visible_pos: meta.visible_pos !== false,
-        variants: pVariants.map((v) => ({
+        variants: effectiveVariants.map((v: any) => ({
           ...v,
+          images: Array.isArray(v.images) && v.images.length > 0 ? v.images : (v.image ? [v.image] : galleryImages),
           cost_price: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
           costPrice: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
         })),
-        total_stock: pVariants.reduce((sum, v) => sum + (v.stock_quantity || 0), 0),
+        total_stock: effectiveVariants.reduce((sum: number, v: any) => sum + (v.stock_quantity || 0), 0),
       };
     });
 
@@ -161,6 +200,11 @@ export async function POST(req: NextRequest) {
       brand,
       sku: generalSku,
       primary_image,
+      images,
+      gallery,
+      media_list,
+      colors,
+      sizes,
       cost_price,
       costPrice,
     } = body;
@@ -193,8 +237,32 @@ export async function POST(req: NextRequest) {
       ? Number(rawExplicitCost)
       : 16.0;
 
-    // Empacota metadados detalhados (composição, tabela de medidas, tags, subcategoria, visibilidade e atributos Wix)
-    const primaryImg = primary_image || (variants?.[0]?.images?.[0]) || '';
+    // Constrói galeria completa com todas as fotos passadas
+    const rawImagesList: string[] = [];
+    if (Array.isArray(images)) rawImagesList.push(...images);
+    if (Array.isArray(gallery)) rawImagesList.push(...gallery);
+    if (Array.isArray(media_list)) {
+      media_list.forEach((m: any) => {
+        if (m?.url && !rawImagesList.includes(m.url)) rawImagesList.push(m.url);
+      });
+    }
+    if (Array.isArray(variants)) {
+      variants.forEach((v: any) => {
+        if (Array.isArray(v.images)) {
+          v.images.forEach((u: string) => { if (u && !rawImagesList.includes(u)) rawImagesList.push(u); });
+        } else if (v.image && !rawImagesList.includes(v.image)) {
+          rawImagesList.push(v.image);
+        }
+      });
+    }
+
+    const primaryImg = primary_image || rawImagesList[0] || (variants?.[0]?.images?.[0]) || '';
+    if (primaryImg && !rawImagesList.includes(primaryImg)) {
+      rawImagesList.unshift(primaryImg);
+    }
+    const finalGalleryImages = Array.from(new Set(rawImagesList.filter((u) => u && !u.startsWith('data:'))));
+
+    // Empacota metadados detalhados (composição, tabela de medidas, tags, subcategoria, galeria de fotos, cores, tamanhos e variações de backup)
     const metadataPayload = {
       bio: description || '',
       composition: composition || '',
@@ -210,11 +278,17 @@ export async function POST(req: NextRequest) {
       visible_online: visible_online === true,
       visible_pos: visible_pos !== false,
       primary_image: primaryImg,
+      images: finalGalleryImages,
+      gallery: finalGalleryImages,
+      media_list: Array.isArray(media_list) ? media_list : [],
+      colors: Array.isArray(colors) ? colors : [],
+      sizes: Array.isArray(sizes) ? sizes : [],
+      variants: Array.isArray(variants) ? variants : [], // Persistência dupla no JSON da descrição
       cost_price: parsedExplicitCost,
     };
     const structuredDescription = JSON.stringify(metadataPayload);
 
-    // 1. Grava ou atualiza na tabela 'products' usando upsert sem .single()
+    // 1. Grava ou atualiza na tabela 'products'
     const productData: any = {
       title: title.toUpperCase(),
       slug: cleanSlug,
@@ -244,7 +318,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Falha ao salvar produto: ID não pôde ser gerado.' }, { status: 500 });
     }
 
-    // 2. Grava ou atualiza a matriz de variações na tabela 'product_variants' usando upsert sem .single()
+    // 2. Grava ou atualiza a matriz de variações na tabela 'product_variants'
     let savedVariants: any[] = [];
 
     if (Array.isArray(variants) && variants.length > 0 && targetProductId) {
@@ -254,8 +328,11 @@ export async function POST(req: NextRequest) {
         .delete()
         .eq('product_id', targetProductId);
 
+      const batchSkus = new Set<string>();
+      const batchBarcodes = new Set<string>();
+      const shortId = targetProductId.replace(/-/g, '').slice(0, 4).toUpperCase();
+
       const variantsData = variants.map((v: any, i: number) => {
-        const genBarcode = `789${Math.floor(100000000 + Math.random() * 900000000)}`;
         const rawVarCost = (v.cost_price !== undefined && v.cost_price !== null && v.cost_price !== '')
           ? v.cost_price
           : (v.costPrice !== undefined && v.costPrice !== null && v.costPrice !== '')
@@ -263,10 +340,34 @@ export async function POST(req: NextRequest) {
           : parsedExplicitCost;
         const vCost = !isNaN(Number(rawVarCost)) ? Number(rawVarCost) : parsedExplicitCost;
 
+        // Gera SKU garantidamente único por variação
+        let finalSku = v.sku?.trim() || `${title.slice(0, 3).toUpperCase()}-${(v.color || 'COR').slice(0, 3).toUpperCase()}-${v.size || 'TAM'}-${shortId}-${i + 1}`;
+        if (batchSkus.has(finalSku)) {
+          finalSku = `${finalSku}-${i + 1}`;
+        }
+        batchSkus.add(finalSku);
+
+        // Gera Código de Barras garantidamente único por variação
+        let genBarcode = v.barcode && String(v.barcode).trim() ? String(v.barcode).trim() : `789${Math.floor(100000000 + Math.random() * 900000000)}`;
+        while (batchBarcodes.has(genBarcode)) {
+          genBarcode = `789${Math.floor(100000000 + Math.random() * 900000000)}`;
+        }
+        batchBarcodes.add(genBarcode);
+
+        const vImages = Array.isArray(v.images) && v.images.length > 0
+          ? v.images
+          : v.image
+          ? [v.image]
+          : finalGalleryImages.length > 0
+          ? finalGalleryImages
+          : primaryImg
+          ? [primaryImg]
+          : [];
+
         const variantPayload: any = {
           product_id: targetProductId,
-          sku: v.sku || `${title.slice(0, 3).toUpperCase()}-${(v.color || 'COR').slice(0, 3).toUpperCase()}-${v.size || 'TAM'}-${i + 1}`,
-          barcode: v.barcode && String(v.barcode).trim() ? String(v.barcode).trim() : genBarcode,
+          sku: finalSku,
+          barcode: genBarcode,
           size: v.size || 'M',
           color: v.color || 'Preto Ônix',
           price: parseFloat(v.price) || 39.9,
@@ -274,13 +375,7 @@ export async function POST(req: NextRequest) {
           stock_quantity: parseInt(v.stock_quantity) || 0,
           allow_backorder: Boolean(v.allow_backorder),
           estimated_production_days: parseInt(v.estimated_production_days) || 7,
-          images: Array.isArray(v.images) && v.images.length > 0
-            ? v.images
-            : v.image
-            ? [v.image]
-            : primaryImg
-            ? [primaryImg]
-            : [],
+          images: vImages,
           video_url: v.video_url || null,
         };
 
@@ -296,12 +391,18 @@ export async function POST(req: NextRequest) {
         .upsert(variantsData)
         .select();
 
-      // Fallback em caso de colisão de código de barras
-      if (varError && varError.code === '23505' && varError.message?.includes('barcode')) {
-        const retryVariantsData = variantsData.map((vd: any) => ({
-          ...vd,
-          barcode: `789${Math.floor(100000000 + Math.random() * 900000000)}`,
-        }));
+      // Retry robusto caso ocorra colisão de barcode ou SKU único no Postgres
+      if (varError && varError.code === '23505') {
+        console.warn('Colisão de constraint detectada, executando retry com salt único...', varError.message);
+        const retryVariantsData = variantsData.map((vd: any, idx: number) => {
+          const randSalt = Math.random().toString(36).substring(2, 6).toUpperCase();
+          const randBarcode = `789${Math.floor(100000000 + Math.random() * 900000000)}`;
+          return {
+            ...vd,
+            sku: `${vd.sku}-${randSalt}-${idx + 1}`,
+            barcode: randBarcode,
+          };
+        });
         const retry = await supabaseServer
           .from('product_variants')
           .upsert(retryVariantsData)
@@ -311,9 +412,13 @@ export async function POST(req: NextRequest) {
       }
 
       if (varError) {
-        console.warn('Erro ao salvar variantes no Supabase:', varError);
-      } else if (upsertedVariants) {
+        console.warn('Erro ao salvar na tabela product_variants:', varError);
+        // Fallback: se a tabela falhou, garantimos que variantsData seja retornado ao cliente
+        savedVariants = variantsData;
+      } else if (upsertedVariants && upsertedVariants.length > 0) {
         savedVariants = upsertedVariants;
+      } else {
+        savedVariants = variantsData;
       }
     }
 

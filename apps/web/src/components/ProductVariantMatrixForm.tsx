@@ -268,6 +268,31 @@ export function ProductVariantMatrixForm({
         addMediaIfNew(primaryCandidate, 'all', 'Foto Principal');
       }
 
+      // 2. Extrai TODAS as fotos da galeria e mídias associadas (evita perder fotos adicionais)
+      const gallerySources = [
+        initialProduct.images,
+        initialProduct.galleryImages,
+        parsedMeta.images,
+        parsedMeta.gallery,
+      ];
+      gallerySources.forEach((list) => {
+        if (Array.isArray(list)) {
+          list.forEach((u: string, idx: number) => {
+            if (u && typeof u === 'string') addMediaIfNew(u, 'all', `Foto da Galeria ${idx + 1}`);
+          });
+        }
+      });
+
+      if (Array.isArray(parsedMeta.media_list)) {
+        parsedMeta.media_list.forEach((m: any) => {
+          if (m?.url) addMediaIfNew(m.url, m.associatedColor || 'all', m.fileName || 'Foto');
+        });
+      } else if (Array.isArray(initialProduct.media_list)) {
+        initialProduct.media_list.forEach((m: any) => {
+          if (m?.url) addMediaIfNew(m.url, m.associatedColor || 'all', m.fileName || 'Foto');
+        });
+      }
+
       const resolvedInitialCost = (initialProduct.cost_price !== undefined && initialProduct.cost_price !== null)
         ? initialProduct.cost_price
         : (initialProduct.costPrice !== undefined && initialProduct.costPrice !== null)
@@ -280,12 +305,18 @@ export function ProductVariantMatrixForm({
 
       setDefaultCostPrice(String(resolvedInitialCost));
 
-      // Se o produto tiver variantes cadastradas
-      if (initialProduct.variants && initialProduct.variants.length > 0) {
-        const loadedVariants: VariantRow[] = initialProduct.variants.map((v: any) => ({
+      // 3. Carrega variantes (do array direto ou do backup no JSON da descrição)
+      const rawVariants = (Array.isArray(initialProduct.variants) && initialProduct.variants.length > 0)
+        ? initialProduct.variants
+        : (Array.isArray(parsedMeta.variants) && parsedMeta.variants.length > 0)
+        ? parsedMeta.variants
+        : [];
+
+      if (rawVariants.length > 0) {
+        const loadedVariants: VariantRow[] = rawVariants.map((v: any) => ({
           id: v.id,
           color: v.color || 'Preto Ônix',
-          colorHex: v.color === 'Amarelo Solar' ? '#F59E0B' : v.color === 'Verde Militar' ? '#4B5320' : '#0A0A0A',
+          colorHex: v.colorHex || (v.color === 'Amarelo Solar' ? '#F59E0B' : v.color === 'Verde Militar' ? '#4B5320' : '#0A0A0A'),
           size: v.size || 'M',
           sku: v.sku,
           barcode: v.barcode || '',
@@ -313,18 +344,38 @@ export function ProductVariantMatrixForm({
         }
 
         // Atualiza cores e tamanhos detectados
-        const uniqueColors = Array.from(new Set(loadedVariants.map((v) => v.color)));
-        const colorObjs = uniqueColors.map((cName) => {
-          const found = loadedVariants.find((v) => v.color === cName);
-          return { name: cName, hex: found?.colorHex || '#0A0A0A' };
-        });
-        if (colorObjs.length > 0) {
-          setColors(colorObjs);
+        const savedColors = Array.isArray(parsedMeta.colors) && parsedMeta.colors.length > 0
+          ? parsedMeta.colors
+          : Array.isArray(initialProduct.colors) && initialProduct.colors.length > 0
+          ? initialProduct.colors
+          : null;
+
+        if (savedColors) {
+          setColors(savedColors);
+        } else {
+          const uniqueColors = Array.from(new Set(loadedVariants.map((v) => v.color)));
+          const colorObjs = uniqueColors.map((cName) => {
+            const found = loadedVariants.find((v) => v.color === cName);
+            return { name: cName, hex: found?.colorHex || '#0A0A0A' };
+          });
+          if (colorObjs.length > 0) {
+            setColors(colorObjs);
+          }
         }
 
-        const uniqueSizes = Array.from(new Set(loadedVariants.map((v) => v.size)));
-        if (uniqueSizes.length > 0) {
-          setSelectedSizes(uniqueSizes);
+        const savedSizes = Array.isArray(parsedMeta.sizes) && parsedMeta.sizes.length > 0
+          ? parsedMeta.sizes
+          : Array.isArray(initialProduct.sizes) && initialProduct.sizes.length > 0
+          ? initialProduct.sizes
+          : null;
+
+        if (savedSizes) {
+          setSelectedSizes(savedSizes);
+        } else {
+          const uniqueSizes = Array.from(new Set(loadedVariants.map((v) => v.size)));
+          if (uniqueSizes.length > 0) {
+            setSelectedSizes(uniqueSizes);
+          }
         }
 
         loadedVariants.forEach((v) => {
@@ -339,11 +390,15 @@ export function ProductVariantMatrixForm({
             addMediaIfNew(v.video_url, v.color || 'all', 'Vídeo da Peça');
           }
         });
-      } else if (initialProduct.colorName || (initialProduct.sizes && initialProduct.sizes.length > 0)) {
-        if (initialProduct.colorName) {
+      } else {
+        if (Array.isArray(parsedMeta.colors) && parsedMeta.colors.length > 0) {
+          setColors(parsedMeta.colors);
+        } else if (initialProduct.colorName) {
           setColors([{ name: initialProduct.colorName, hex: initialProduct.colorHex || '#0A0A0A' }]);
         }
-        if (initialProduct.sizes && initialProduct.sizes.length > 0) {
+        if (Array.isArray(parsedMeta.sizes) && parsedMeta.sizes.length > 0) {
+          setSelectedSizes(parsedMeta.sizes);
+        } else if (initialProduct.sizes && initialProduct.sizes.length > 0) {
           setSelectedSizes(initialProduct.sizes);
         }
       }
@@ -940,6 +995,16 @@ export function ProductVariantMatrixForm({
         compare_price: finalComparePrice,
         promotional_price: isOnSale ? finalSellingPrice : null,
         primary_image: primaryCoverImg,
+        images: validMedia.map((m) => m.url),
+        gallery: validMedia.map((m) => m.url),
+        media_list: validMedia.map((m) => ({
+          url: m.url,
+          type: m.type,
+          associatedColor: m.associatedColor,
+          fileName: m.fileName,
+        })),
+        colors,
+        sizes: selectedSizes,
       };
 
       const res = await fetch('/api/backoffice/products', {

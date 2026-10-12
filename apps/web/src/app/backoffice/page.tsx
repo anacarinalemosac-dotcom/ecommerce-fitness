@@ -1713,6 +1713,7 @@ export default function BackofficeDashboard() {
                               variants: itemVariants,
                               primaryImage: firstImage,
                               primary_image: firstImage,
+                              images: found.images || found.galleryImages || found.meta?.images || found.meta?.gallery || (firstImage ? [firstImage] : []),
                             });
                           }
                         }
@@ -1750,6 +1751,17 @@ export default function BackofficeDashboard() {
                   setEditingProduct(null);
                   setSaveSuccessMessage(true);
                   setTimeout(() => setSaveSuccessMessage(false), 5000);
+                  if (saved?.product) {
+                    setSupabaseProducts((prev) => {
+                      const idx = prev.findIndex((p: any) => p.id === saved.product.id);
+                      if (idx >= 0) {
+                        const copy = [...prev];
+                        copy[idx] = { ...copy[idx], ...saved.product, variants: saved.variants || copy[idx].variants };
+                        return copy;
+                      }
+                      return [saved.product, ...prev];
+                    });
+                  }
                   fetchSupabaseProducts();
                 }}
                 onCancel={() => {
@@ -2111,6 +2123,7 @@ export default function BackofficeDashboard() {
                                 variants: itemVariants,
                                 primaryImage: item.primaryImage || item.primary_image || item.meta?.primary_image || firstImage,
                                 primary_image: item.primary_image || item.primaryImage || item.meta?.primary_image || firstImage,
+                                images: item.images || item.galleryImages || item.meta?.images || item.meta?.gallery || (firstImage ? [firstImage] : []),
                               });
                               setShowAddForm(true);
                               window.scrollTo({ top: 300, behavior: 'smooth' });

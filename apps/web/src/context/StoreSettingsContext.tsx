@@ -525,6 +525,22 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             }
           });
 
+          if (Array.isArray(p.images)) {
+            p.images.forEach((img: string) => {
+              if (img && !allImages.includes(img)) allImages.push(img);
+            });
+          }
+          if (Array.isArray(meta.images)) {
+            meta.images.forEach((img: string) => {
+              if (img && !allImages.includes(img)) allImages.push(img);
+            });
+          }
+          if (Array.isArray(meta.gallery)) {
+            meta.gallery.forEach((img: string) => {
+              if (img && !allImages.includes(img)) allImages.push(img);
+            });
+          }
+
           if (meta.primary_image && !allImages.includes(meta.primary_image)) {
             allImages.unshift(meta.primary_image);
           }
