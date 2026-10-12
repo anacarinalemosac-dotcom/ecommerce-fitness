@@ -295,6 +295,43 @@ export function InstagramDirectView() {
     }
   };
 
+  // Limpar todo o histórico de conversas
+  const handleClearConversations = async () => {
+    if (!confirm('Tem certeza que deseja limpar todo o histórico de conversas do Direct?')) return;
+    try {
+      await fetch('/api/instagram/direct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear_conversations' }),
+      });
+      setConversations([]);
+      setSelectedConvId(null);
+      setNotificationBanner('🧹 Histórico de conversas limpo com sucesso!');
+      setTimeout(() => setNotificationBanner(null), 3000);
+    } catch (err) {
+      console.error('Erro ao limpar conversas:', err);
+    }
+  };
+
+  // Excluir conversa individual
+  const handleDeleteConversation = async (convId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Deseja excluir esta conversa?')) return;
+    try {
+      await fetch('/api/instagram/direct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_conversation', conversationId: convId }),
+      });
+      setConversations((prev) => prev.filter((c) => c.id !== convId));
+      if (selectedConvId === convId) setSelectedConvId(null);
+      setNotificationBanner('Conversa removida com sucesso!');
+      setTimeout(() => setNotificationBanner(null), 2500);
+    } catch (err) {
+      console.error('Erro ao excluir conversa:', err);
+    }
+  };
+
   // Salvar Configurações da Meta API
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -436,53 +473,69 @@ export function InstagramDirectView() {
               />
             </div>
 
-            {/* Filtros Rápidos */}
-            <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider">
-              <button
-                onClick={() => setFilterType('all')}
-                className={`px-2.5 py-1 transition border ${
-                  filterType === 'all'
-                    ? 'bg-gold text-black border-gold'
-                    : 'text-gray-400 border-zinc-800 hover:text-white'
-                }`}
-              >
-                Todas ({conversations.length})
-              </button>
-              <button
-                onClick={() => setFilterType('unread')}
-                className={`px-2.5 py-1 transition border ${
-                  filterType === 'unread'
-                    ? 'bg-gold text-black border-gold'
-                    : 'text-gray-400 border-zinc-800 hover:text-white'
-                }`}
-              >
-                Não Lidas ({conversations.filter((c) => c.unreadCount > 0).length})
-              </button>
-              <button
-                onClick={() => setFilterType('bot')}
-                className={`px-2.5 py-1 transition border ${
-                  filterType === 'bot'
-                    ? 'bg-gold text-black border-gold'
-                    : 'text-gray-400 border-zinc-800 hover:text-white'
-                }`}
-              >
-                Atendidas pelo Bot
-              </button>
+            {/* Filtros Rápidos & Limpar */}
+            <div className="flex items-center justify-between gap-1 text-[11px] font-bold uppercase tracking-wider">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setFilterType('all')}
+                  className={`px-2.5 py-1 transition border ${
+                    filterType === 'all'
+                      ? 'bg-gold text-black border-gold'
+                      : 'text-gray-400 border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  Todas ({conversations.length})
+                </button>
+                <button
+                  onClick={() => setFilterType('unread')}
+                  className={`px-2.5 py-1 transition border ${
+                    filterType === 'unread'
+                      ? 'bg-gold text-black border-gold'
+                      : 'text-gray-400 border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  Não Lidas ({conversations.filter((c) => c.unreadCount > 0).length})
+                </button>
+                <button
+                  onClick={() => setFilterType('bot')}
+                  className={`px-2.5 py-1 transition border ${
+                    filterType === 'bot'
+                      ? 'bg-gold text-black border-gold'
+                      : 'text-gray-400 border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  Bot
+                </button>
+              </div>
+
+              {conversations.length > 0 && (
+                <button
+                  onClick={handleClearConversations}
+                  className="px-2 py-1 text-gray-500 hover:text-red-400 hover:border-red-500/40 border border-transparent transition flex items-center gap-1"
+                  title="Limpar todo o histórico de conversas"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span className="text-[10px]">Limpar</span>
+                </button>
+              )}
             </div>
           </div>
 
           {/* Lista de Itens */}
           <div className="flex-1 overflow-y-auto divide-y divide-zinc-900 max-h-[580px]">
             {filteredConversations.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 text-xs">
-                <MessageSquare className="w-6 h-6 mx-auto mb-2 opacity-40 text-gray-400" />
-                Nenhuma conversa encontrada.
+              <div className="p-10 text-center text-gray-500 text-xs space-y-2">
+                <Instagram className="w-8 h-8 mx-auto mb-2 text-pink-500/60" />
+                <p className="font-bold text-gray-300">Caixa de entrada limpa</p>
+                <p className="text-[11px] text-gray-500 max-w-xs mx-auto leading-relaxed">
+                  Nenhuma mensagem no momento. Novas mensagens enviadas para o Instagram @anafitnessweareua aparecerão aqui automaticamente.
+                </p>
               </div>
             ) : (
               filteredConversations.map((conv) => {
                 const isSelected = conv.id === selectedConvId;
                 return (
-                  <button
+                  <div
                     key={conv.id}
                     onClick={() => {
                       setSelectedConvId(conv.id);
@@ -498,7 +551,7 @@ export function InstagramDirectView() {
                         });
                       }
                     }}
-                    className={`w-full p-3.5 text-left transition flex items-start gap-3 relative ${
+                    className={`w-full p-3.5 text-left transition flex items-start gap-3 relative cursor-pointer ${
                       isSelected
                         ? 'bg-zinc-900 border-l-4 border-gold'
                         : 'hover:bg-zinc-900/40 border-l-4 border-transparent'
@@ -525,9 +578,18 @@ export function InstagramDirectView() {
                         <span className="text-xs font-black text-white truncate">
                           @{conv.username}
                         </span>
-                        <span className="text-[10px] text-gray-500 shrink-0 font-medium">
-                          {new Date(conv.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[10px] text-gray-500 font-medium">
+                            {new Date(conv.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <button
+                            onClick={(e) => handleDeleteConversation(conv.id, e)}
+                            className="p-1 text-gray-600 hover:text-red-400 hover:bg-zinc-800 rounded transition"
+                            title="Excluir esta conversa"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
 
                       <p className="text-[11px] text-gray-400 truncate leading-relaxed">
@@ -544,12 +606,12 @@ export function InstagramDirectView() {
                         {conv.messages[conv.messages.length - 1]?.sender === 'store' && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gold/10 border border-gold/30 text-[9px] font-bold text-gold">
                             <User className="w-2.5 h-2.5" />
-                            Você respondeu
+                            <span>Você respondeu</span>
                           </span>
                         )}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}

@@ -187,9 +187,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // 6. Resetar / Restaurar padrão de fábrica
+    // 6. Limpar todas as conversas
+    if (action === 'clear_conversations') {
+      state.conversations = [];
+      await saveInstagramDirectState(state);
+      return NextResponse.json({ success: true, conversations: [] });
+    }
+
+    // 7. Excluir uma conversa específica
+    if (action === 'delete_conversation') {
+      const { conversationId } = body;
+      state.conversations = state.conversations.filter((c) => c.id !== conversationId);
+      await saveInstagramDirectState(state);
+      return NextResponse.json({ success: true, conversations: state.conversations });
+    }
+
+    // 8. Resetar / Restaurar padrão de fábrica
     if (action === 'reset_defaults') {
-      const resetState = await saveInstagramDirectState({
+      await saveInstagramDirectState({
         config: {
           enabled: false,
           pageAccessToken: '',
@@ -198,7 +213,7 @@ export async function POST(req: NextRequest) {
           autoResponderActive: true,
         },
         rules: state.rules,
-        conversations: state.conversations,
+        conversations: [],
         updatedAt: new Date().toISOString(),
       });
       return NextResponse.json({ success: true });
