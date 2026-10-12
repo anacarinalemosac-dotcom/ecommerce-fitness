@@ -262,7 +262,7 @@ export default function WhatsAppCatalogPdfPage() {
 
           <div className="text-left md:text-right space-y-1">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#25d366] text-black font-black text-xs">
-              <span>📲 PEDIDOS WHATSAPP: {siteInfo?.whatsapp || siteInfo?.phone || '(978) 555-0199'}</span>
+              <span>📲 PEDIDOS WHATSAPP: {siteInfo?.whatsapp || siteInfo?.phone || '+1 (978) 313-9452'}</span>
             </div>
             <div className="text-[10px] text-gray-400 font-bold uppercase">
               {siteInfo?.address || 'Showroom Leominster, MA'} • ATUALIZADO EM {new Date().toLocaleDateString('pt-BR')}

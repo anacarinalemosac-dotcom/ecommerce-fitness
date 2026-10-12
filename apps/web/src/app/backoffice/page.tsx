@@ -259,7 +259,7 @@ function printCrediarioCarnet(sale: any) {
         <div class="header">
           <div class="title">ANA FITNESS WEAR</div>
           <div style="font-size: 11px; letter-spacing: 2px;">CARNÊ DE CREDIÁRIO & NOTA PROMISSÓRIA</div>
-          <div style="font-size: 10px; color: #555; margin-top: 4px;">SHOWROOM LEOMINSTER, MASSACHUSETTS • (978) 555-0199</div>
+          <div style="font-size: 10px; color: #555; margin-top: 4px;">SHOWROOM LEOMINSTER, MASSACHUSETTS • +1 (978) 313-9452</div>
         </div>
         <div class="info">
           <div><strong>CLIENTE:</strong> ${customer}</div>
@@ -4375,7 +4375,7 @@ export default function BackofficeDashboard() {
             </div>
             <div className="text-left md:text-right space-y-1">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#25d366] text-black font-black text-xs">
-                <span>📲 PEDIDOS WHATSAPP: {siteInfo?.whatsapp || siteInfo?.phone || '(978) 555-0199'}</span>
+                <span>📲 PEDIDOS WHATSAPP: {siteInfo?.whatsapp || siteInfo?.phone || '+1 (978) 313-9452'}</span>
               </div>
               <div className="text-[10px] text-gray-400 font-bold uppercase">
                 {siteInfo?.address || 'Showroom Leominster, MA'} • ATUALIZADO EM {new Date().toLocaleDateString('pt-BR')}
