@@ -69,6 +69,7 @@ import { soundManager, requestNotificationPermission, sendBrowserNotification } 
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
 import { CsvProductImportModal, downloadCsvTemplate, downloadExcelTemplate } from '../../components/CsvProductImportModal';
 import { StockWriteOffModal } from '../../components/StockWriteOffModal';
+import { WhatsAppCatalogPdfModal } from '../../components/WhatsAppCatalogPdfModal';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 import { DashboardMetricsView } from '../../components/backoffice/DashboardMetricsView';
 import { AppearanceCmsView } from '../../components/backoffice/AppearanceCmsView';
@@ -281,7 +282,7 @@ function printCrediarioCarnet(sale: any) {
 }
 
 export default function BackofficeDashboard() {
-  const { adminUser, loginAdmin, logoutAdmin, refreshProducts } = useStoreSettings();
+  const { adminUser, loginAdmin, logoutAdmin, refreshProducts, siteInfo } = useStoreSettings();
   const [authEmail, setAuthEmail] = useState('anafitweareua@gmail.com');
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
@@ -300,6 +301,7 @@ export default function BackofficeDashboard() {
   const [saveSuccessMessage, setSaveSuccessMessage] = useState(false);
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
   const [showWriteOffModal, setShowWriteOffModal] = useState(false);
+  const [showWhatsAppCatalogModal, setShowWhatsAppCatalogModal] = useState(false);
 
   // Filtros e Busca Rápida no Catálogo de Produtos
   const [productSearch, setProductSearch] = useState('');
@@ -1435,6 +1437,17 @@ export default function BackofficeDashboard() {
           <DollarSign className="w-4 h-4 text-gold" />
           <span>MARGENS</span>
         </button>
+
+        {/* Botão de Destaque: Catálogo WhatsApp (PDF) */}
+        <button
+          type="button"
+          onClick={() => setShowWhatsAppCatalogModal(true)}
+          className="pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 border-transparent text-green-700 hover:text-green-900 font-black cursor-pointer"
+          title="Gerar catálogo em PDF para divulgação no WhatsApp"
+        >
+          <Smartphone className="w-4 h-4 text-green-600" />
+          <span>📲 CATÁLOGO WHATSAPP (PDF)</span>
+        </button>
       </div>
 
       {/* Notificação de Sucesso */}
@@ -1526,6 +1539,17 @@ export default function BackofficeDashboard() {
                 <span>- RETIRADA / USO PRÓPRIO & MOSTRUÁRIO</span>
               </button>
 
+              {/* Botão Gerar Catálogo WhatsApp (PDF) */}
+              <button
+                type="button"
+                onClick={() => setShowWhatsAppCatalogModal(true)}
+                className="px-4 py-3 bg-[#25d366] hover:bg-[#1ebd5b] text-black font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border-2 border-deep-black cursor-pointer"
+                title="Gerar catálogo com foto, preço original, promoção e estoque por tamanho para divulgação no WhatsApp"
+              >
+                <Smartphone className="w-4 h-4 text-black" />
+                <span>CATÁLOGO WHATSAPP (PDF)</span>
+              </button>
+
               {/* Botão Trocar Capas das Categorias */}
               <button
                 type="button"
@@ -1585,6 +1609,14 @@ export default function BackofficeDashboard() {
               fetchSalesData();
             }}
             catalogProducts={supabaseProducts.length > 0 ? supabaseProducts : products}
+          />
+
+          {/* Modal de Catálogo PDF para Divulgação no WhatsApp */}
+          <WhatsAppCatalogPdfModal
+            isOpen={showWhatsAppCatalogModal}
+            onClose={() => setShowWhatsAppCatalogModal(false)}
+            catalogProducts={baseCatalogList}
+            siteInfo={siteInfo}
           />
 
           {/* FORMULÁRIO DE CADASTRO E EDIÇÃO COM GRADE DE VARIAÇÕES (MATRIZ COR X TAMANHO) */}
