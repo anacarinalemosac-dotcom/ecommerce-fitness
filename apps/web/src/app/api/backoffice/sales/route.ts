@@ -4,8 +4,14 @@ import { recordOrderEvent } from '@/lib/liveStore';
 import fs from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Arquivo de persistência local para garantir histórico contínuo
-const BACKUP_SALES_FILE = path.join(process.cwd(), 'sales_history_db.json');
+function getBackupSalesFilePath(): string {
+  const primary = path.join(process.cwd(), 'sales_history_db.json');
+  return primary;
+}
 
 export interface SaleItemPayload {
   title: string;
@@ -45,28 +51,27 @@ export interface SaleRecord {
   net_profit: number; // LUCRO LÍQUIDO REAL
   profit_margin_pct: number; // Margem líquida percentual
   items: SaleItemPayload[];
-  status: 'COMPLETED' | 'PENDING' | 'IN_PRODUCTION';
+  status: 'COMPLETED' | 'PENDING' | 'IN_PRODUCTION' | 'WAITING_PAYMENT' | 'PAID' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 }
-
-// Vendas históricas: zerado por padrão para exibir apenas vendas 100% reais
-const INITIAL_DEMO_SALES: SaleRecord[] = [];
 
 function readSavedSales(): SaleRecord[] {
   try {
-    if (fs.existsSync(BACKUP_SALES_FILE)) {
-      const raw = fs.readFileSync(BACKUP_SALES_FILE, 'utf8');
+    const filePath = getBackupSalesFilePath();
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf8');
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch (e) {
     console.warn('Erro ao ler sales_history_db.json:', e);
   }
-  return INITIAL_DEMO_SALES;
+  return [];
 }
 
 function writeSavedSales(sales: SaleRecord[]) {
   try {
-    fs.writeFileSync(BACKUP_SALES_FILE, JSON.stringify(sales, null, 2), 'utf8');
+    const filePath = getBackupSalesFilePath();
+    fs.writeFileSync(filePath, JSON.stringify(sales, null, 2), 'utf8');
   } catch (e) {
     console.warn('Erro ao salvar sales_history_db.json:', e);
   }
@@ -87,73 +92,108 @@ function calculatePaymentFee(method: string, totalGross: number): number {
 
 export async function GET(req: NextRequest) {
   try {
-    let sales = readSavedSales();
+    let sales: SaleRecord[] = readSavedSales();
 
-    // Tenta enriquecer com pedidos vindos do Supabase 'orders' se houver
+    // 1. Busca todos os pedidos persistidos no Supabase 'orders'
     try {
-      const { data: dbOrders } = await supabaseServer
+      const { data: dbOrders, error: dbError } = await supabaseServer
         .from('orders')
-        .select('*, order_items(*)')
+        .select('*')
         .order('created_at', { ascending: false });
+
+      if (dbError) {
+        console.warn('Aviso Supabase orders query:', dbError);
+      }
 
       if (dbOrders && dbOrders.length > 0) {
         const transformedDbSales: SaleRecord[] = dbOrders.map((ord: any) => {
-          const isOnline = ord.channel === 'ONLINE';
-          const gross = Number(ord.total_amount) || Number(ord.subtotal_amount) || 0;
-          const shippingFee = isOnline ? 9.99 : 0.00;
-          const shippingCost = isOnline ? 7.50 : 0.00;
-          const pMethod = ord.payment_method || 'CARD';
-          const pFee = calculatePaymentFee(pMethod, gross + shippingFee);
-          const comm = Number(ord.commission_amount) || (isOnline ? 0 : gross * 0.1);
-          const cogs = (ord.order_items || []).reduce((acc: number, item: any) => {
-            return acc + (Number(item.quantity || 1) * 15.00); // estimativa de custo base $15
-          }, 0);
+          const meta = (typeof ord.shipping_address === 'object' && ord.shipping_address !== null)
+            ? ord.shipping_address
+            : {};
 
-          const net = Number(((gross + shippingFee) - cogs - pFee - shippingCost - comm).toFixed(2));
-          const margin = gross + shippingFee > 0 ? Number(((net / (gross + shippingFee)) * 100).toFixed(1)) : 0;
+          const isOnline = ord.channel === 'ONLINE' && meta.channel_detail !== 'POS_COUNTER';
+          const gross = Number(ord.subtotal_amount) || Number(ord.total_amount) || 0;
+          const disc = Number(ord.discount_amount) || Number(meta.discount_amount) || 0;
+          const shipFee = meta.shipping_fee !== undefined
+            ? Number(meta.shipping_fee)
+            : (isOnline ? 9.99 : 0.00);
+          const shipCost = meta.shipping_cost !== undefined
+            ? Number(meta.shipping_cost)
+            : (isOnline ? 7.50 : 0.00);
+
+          const pMethod = (ord.payment_method || meta.payment_method || 'CARD').toUpperCase() as any;
+          const grossTotal = Math.max(0, gross - disc + shipFee);
+          const pFee = meta.payment_fee !== undefined
+            ? Number(meta.payment_fee)
+            : calculatePaymentFee(pMethod, grossTotal);
+
+          const comm = Number(ord.commission_amount) || Number(meta.commission_amount) || (isOnline ? 0 : Number(((gross - disc) * 0.1).toFixed(2)));
+
+          // Itens desempacotados do JSONB ou fallback
+          const rawItems = Array.isArray(meta.items) && meta.items.length > 0
+            ? meta.items
+            : (Array.isArray(ord.order_items) ? ord.order_items : []);
+
+          const items: SaleItemPayload[] = rawItems.map((it: any) => ({
+            title: it.title || 'Peça Fitness',
+            size: it.size || 'M',
+            color: it.color || 'Preto Ônix',
+            sku: it.sku || 'ANA-ITEM',
+            quantity: Number(it.quantity) || 1,
+            unit_price: Number(it.unit_price) || 39.9,
+            cost_price: Number(it.cost_price) || 15.00,
+          }));
+
+          const cogs = meta.cost_of_goods !== undefined
+            ? Number(meta.cost_of_goods)
+            : items.reduce((acc: number, it: any) => acc + (Number(it.cost_price || 15) * Number(it.quantity || 1)), 0);
+
+          const net = meta.net_profit !== undefined
+            ? Number(meta.net_profit)
+            : Number((grossTotal - cogs - pFee - shipCost - comm).toFixed(2));
+
+          const margin = meta.profit_margin_pct !== undefined
+            ? Number(meta.profit_margin_pct)
+            : (grossTotal > 0 ? Number(((net / grossTotal) * 100).toFixed(1)) : 0);
+
+          const orderNumber = meta.order_number || ord.order_number || `ANA-${ord.id.slice(0, 8).toUpperCase()}`;
+          const sellerName = meta.seller_name || ord.seller_name || (isOnline ? 'Loja Oficial Online' : 'Juliana Silva (PDV Balcão Leominster)');
 
           return {
             id: ord.id,
-            order_id: ord.order_number || `ANA-${ord.id.slice(0, 6).toUpperCase()}`,
+            order_id: orderNumber,
             created_at: ord.created_at || new Date().toISOString(),
             customer_name: ord.customer_name || 'Cliente Showroom',
-            customer_email: ord.customer_email || undefined,
-            customer_phone: ord.customer_phone || undefined,
+            customer_email: ord.customer_email || meta.customer_email || undefined,
+            customer_phone: ord.customer_phone || meta.customer_phone || undefined,
             channel: isOnline ? 'ONLINE' : 'POS_COUNTER',
-            seller_name: ord.seller_name || (isOnline ? 'Loja Oficial Online' : 'Juliana Silva (PDV Balcão)'),
-            coupon_code: ord.coupon_code || undefined,
+            seller_name: sellerName,
+            coupon_code: ord.coupon_code || meta.coupon_code || undefined,
             payment_method: pMethod,
             subtotal_products: gross,
-            shipping_fee: shippingFee,
-            shipping_cost: shippingCost,
-            discount_amount: Number(ord.discount_amount) || 0,
+            shipping_fee: shipFee,
+            shipping_cost: shipCost,
+            discount_amount: disc,
             payment_fee: pFee,
             commission_amount: Number(comm.toFixed(2)),
             cost_of_goods: cogs,
             net_profit: net,
             profit_margin_pct: margin,
-            items: (ord.order_items || []).map((it: any) => ({
-              title: it.title || 'PEÇA FITNESS',
-              size: it.size || 'M',
-              color: it.color || 'Preto Ônix',
-              sku: it.sku || 'ANA-ITEM',
-              quantity: it.quantity || 1,
-              unit_price: Number(it.unit_price) || 39.9,
-              cost_price: 15.00,
-            })),
+            items,
             status: ord.status || 'COMPLETED',
+            shipping_address: meta.address && typeof meta.address === 'object' ? meta.address : undefined,
           };
         });
 
-        // Mescla sem duplicatas
-        const orderIds = new Set(transformedDbSales.map((s) => s.order_id));
-        sales = [...transformedDbSales, ...sales.filter((s) => !orderIds.has(s.order_id))];
+        // Mescla garantindo que pedidos do Supabase substituam ou complementem sem duplicidade
+        const dbOrderIds = new Set(transformedDbSales.map((s) => s.order_id));
+        sales = [...transformedDbSales, ...sales.filter((s) => !dbOrderIds.has(s.order_id))];
       }
     } catch (e) {
       console.warn('Erro ao consultar Supabase orders:', e);
     }
 
-    // Calcula consolidação e totais
+    // Calcula consolidação e totais matemáticos
     const totalGrossRevenue = sales.reduce((acc, s) => acc + s.subtotal_products + s.shipping_fee, 0);
     const totalProductsRevenue = sales.reduce((acc, s) => acc + s.subtotal_products, 0);
     const totalShippingCollected = sales.reduce((acc, s) => acc + s.shipping_fee, 0);
@@ -189,23 +229,32 @@ export async function GET(req: NextRequest) {
       channelBreakdown[ch].profit += s.net_profit;
     });
 
-    return NextResponse.json({
-      sales,
-      summary: {
-        totalGrossRevenue: Number(totalGrossRevenue.toFixed(2)),
-        totalProductsRevenue: Number(totalProductsRevenue.toFixed(2)),
-        totalShippingCollected: Number(totalShippingCollected.toFixed(2)),
-        totalShippingCost: Number(totalShippingCost.toFixed(2)),
-        totalPaymentFees: Number(totalPaymentFees.toFixed(2)),
-        totalCommissions: Number(totalCommissions.toFixed(2)),
-        totalCostOfGoods: Number(totalCostOfGoods.toFixed(2)),
-        totalNetProfit: Number(totalNetProfit.toFixed(2)),
-        averageMarginPct: Number(averageMarginPct.toFixed(1)),
-        ordersCount: sales.length,
+    return NextResponse.json(
+      {
+        sales,
+        summary: {
+          totalGrossRevenue: Number(totalGrossRevenue.toFixed(2)),
+          totalProductsRevenue: Number(totalProductsRevenue.toFixed(2)),
+          totalShippingCollected: Number(totalShippingCollected.toFixed(2)),
+          totalShippingCost: Number(totalShippingCost.toFixed(2)),
+          totalPaymentFees: Number(totalPaymentFees.toFixed(2)),
+          totalCommissions: Number(totalCommissions.toFixed(2)),
+          totalCostOfGoods: Number(totalCostOfGoods.toFixed(2)),
+          totalNetProfit: Number(totalNetProfit.toFixed(2)),
+          averageMarginPct: Number(averageMarginPct.toFixed(1)),
+          ordersCount: sales.length,
+        },
+        paymentBreakdown,
+        channelBreakdown,
       },
-      paymentBreakdown,
-      channelBreakdown,
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    );
   } catch (err: any) {
     console.error('Erro no GET de vendas:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -232,11 +281,14 @@ export async function POST(req: NextRequest) {
       items = [],
     } = body;
 
+    const isPOS = channel === 'POS_COUNTER' || channel === 'POS';
+    const dbChannel = isPOS ? 'POS' : 'ONLINE';
+
     const gross = Number(subtotal_products) || 0;
     const shipFee = Number(shipping_fee) || 0;
     const shipCost = Number(shipping_cost) || 0;
     const disc = Number(discount_amount) || 0;
-    const grossTotal = gross - disc + shipFee;
+    const grossTotal = Math.max(0, gross - disc + shipFee);
 
     const pFee = calculatePaymentFee(payment_method, grossTotal);
 
@@ -261,7 +313,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Comissão: se houver vendedora cadastrada, usa commission_pct dela. Caso contrário balcão 10%
-    const isPOS = channel === 'POS_COUNTER' || channel === 'POS';
     const hasCoupon = Boolean(coupon_code);
     let commRate = 0.00;
     if (matchedSeller) {
@@ -282,11 +333,25 @@ export async function POST(req: NextRequest) {
     const netProfit = Number((grossTotal - totalCostOfGoods - pFee - shipCost - commissionAmount).toFixed(2));
     const marginPct = grossTotal > 0 ? Number(((netProfit / grossTotal) * 100).toFixed(1)) : 0;
 
-    const finalSellerName = matchedSeller ? matchedSeller.name : (seller_name || (isPOS ? 'Juliana Silva (PDV Balcão)' : 'Loja Oficial Online'));
+    const finalSellerName = matchedSeller
+      ? matchedSeller.name
+      : (seller_name || (isPOS ? 'Juliana Silva (PDV Balcão Leominster)' : 'Loja Oficial Online'));
+
+    const finalOrderId = order_id || (isPOS ? `POS-LEO-${Math.floor(1000 + Math.random() * 9000)}` : `ANA-${Math.floor(100000 + Math.random() * 900000)}`);
+
+    const formattedItems: SaleItemPayload[] = (items || []).map((it: any) => ({
+      title: it.title || 'Peça Fitness',
+      size: it.size || 'M',
+      color: it.color || 'Preto Ônix',
+      sku: it.sku || 'ANA-ITEM',
+      quantity: Number(it.quantity) || 1,
+      unit_price: Number(it.unit_price) || 39.9,
+      cost_price: Number(it.cost_price) || 15.0,
+    }));
 
     const newSale: SaleRecord = {
       id: `sale-${Date.now()}`,
-      order_id: order_id || `ANA-${Math.floor(100000 + Math.random() * 900000)}`,
+      order_id: finalOrderId,
       created_at: new Date().toISOString(),
       customer_name,
       customer_email,
@@ -301,7 +366,7 @@ export async function POST(req: NextRequest) {
       channel: isPOS ? 'POS_COUNTER' : 'ONLINE',
       seller_name: finalSellerName,
       coupon_code,
-      payment_method: payment_method.toUpperCase() as any,
+      payment_method: (payment_method || 'CARD').toUpperCase() as any,
       subtotal_products: gross,
       shipping_fee: shipFee,
       shipping_cost: shipCost,
@@ -311,19 +376,79 @@ export async function POST(req: NextRequest) {
       cost_of_goods: totalCostOfGoods,
       net_profit: netProfit,
       profit_margin_pct: marginPct,
-      items: items.map((it: any) => ({
-        title: it.title || 'Peça Fitness',
-        size: it.size || 'M',
-        color: it.color || 'Preto Ônix',
-        sku: it.sku || 'ANA-ITEM',
-        quantity: Number(it.quantity) || 1,
-        unit_price: Number(it.unit_price) || 39.9,
-        cost_price: Number(it.cost_price) || 15.0,
-      })),
+      items: formattedItems,
       status: 'COMPLETED',
     };
 
-    // Atualiza acumulado da vendedora no sellers_db.json
+    // 1. Grava no Supabase 'orders' com dados completos e metadados no shipping_address JSONB
+    try {
+      const metadataPayload = {
+        order_number: newSale.order_id,
+        seller_name: finalSellerName,
+        channel_detail: isPOS ? 'POS_COUNTER' : 'ONLINE',
+        payment_fee: pFee,
+        shipping_fee: shipFee,
+        shipping_cost: shipCost,
+        cost_of_goods: totalCostOfGoods,
+        net_profit: netProfit,
+        profit_margin_pct: marginPct,
+        items: formattedItems,
+        address: newSale.shipping_address || undefined,
+        discount_reason: coupon_code || undefined,
+      };
+
+      const { data: insertedOrder, error: orderInsertError } = await supabaseServer
+        .from('orders')
+        .insert([
+          {
+            channel: dbChannel, // 'POS' ou 'ONLINE' válido pelo constraint CHECK do banco
+            customer_name: newSale.customer_name,
+            customer_phone: newSale.customer_phone || null,
+            customer_email: newSale.customer_email || null,
+            coupon_code: newSale.coupon_code || null,
+            subtotal_amount: newSale.subtotal_products,
+            discount_amount: newSale.discount_amount,
+            total_amount: Math.max(0, newSale.subtotal_products + newSale.shipping_fee - newSale.discount_amount),
+            commission_amount: newSale.commission_amount,
+            payment_method: newSale.payment_method,
+            status: 'COMPLETED',
+            shipping_address: metadataPayload,
+          },
+        ])
+        .select();
+
+      if (orderInsertError) {
+        console.error('Erro ao gravar pedido no Supabase orders:', orderInsertError);
+      } else {
+        console.log('Pedido salvo no Supabase orders com sucesso:', insertedOrder?.[0]?.id);
+      }
+    } catch (e) {
+      console.warn('Exceção ao gravar no Supabase orders:', e);
+    }
+
+    // 2. Baixa de estoque automática para peças vendidas com SKU correspondente
+    for (const it of formattedItems) {
+      if (it.sku) {
+        try {
+          const { data: v } = await supabaseServer
+            .from('product_variants')
+            .select('id, stock_quantity')
+            .eq('sku', it.sku)
+            .maybeSingle();
+
+          if (v) {
+            await supabaseServer
+              .from('product_variants')
+              .update({ stock_quantity: Math.max(0, (v.stock_quantity || 0) - (Number(it.quantity) || 1)) })
+              .eq('id', v.id);
+          }
+        } catch (stockErr) {
+          console.warn('Erro ao atualizar estoque da variante no banco:', stockErr);
+        }
+      }
+    }
+
+    // 3. Atualiza acumulado da vendedora no sellers_db.json
     if (matchedSeller && sellersList.length > 0) {
       try {
         const updatedSellers = sellersList.map((s: any) => {
@@ -343,44 +468,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 1. Salva no arquivo local persistente
-    const saved = readSavedSales();
-    const updated = [newSale, ...saved];
-    writeSavedSales(updated);
+    // 4. Salva no arquivo local persistente como backup
+    try {
+      const saved = readSavedSales();
+      const updated = [newSale, ...saved.filter((s) => s.order_id !== newSale.order_id)];
+      writeSavedSales(updated);
+    } catch (e) {
+      console.warn('Erro ao salvar cópia local:', e);
+    }
 
-    // 1.1 Dispara evento em tempo real para o radar Wix do Backoffice
+    // 5. Dispara evento em tempo real para o radar Wix do Backoffice (alerta de áudio e tela)
     try {
       await recordOrderEvent({
         orderId: newSale.order_id,
         customerName: newSale.customer_name,
-        city: isPOS ? 'Leominster, MA (Loja Física)' : 'Online (EUA)',
+        city: isPOS ? 'Leominster, MA (Loja Física Balcão)' : 'Online (EUA)',
         amount: newSale.subtotal_products + newSale.shipping_fee - newSale.discount_amount,
         itemsSummary: (newSale.items || []).map((i: any) => `${i.title} (${i.size})`).join(', '),
       });
     } catch (e) {
       console.warn('Erro ao disparar evento de live order:', e);
-    }
-
-    // 2. Tenta gravar no Supabase orders se disponível
-    try {
-      await supabaseServer.from('orders').insert([
-        {
-          channel: newSale.channel,
-          customer_name: newSale.customer_name,
-          customer_phone: newSale.customer_phone,
-          customer_email: newSale.customer_email,
-          coupon_code: newSale.coupon_code,
-          seller_name: newSale.seller_name,
-          subtotal_amount: newSale.subtotal_products,
-          discount_amount: newSale.discount_amount,
-          total_amount: Math.max(0, newSale.subtotal_products + newSale.shipping_fee - newSale.discount_amount),
-          commission_amount: newSale.commission_amount,
-          payment_method: newSale.payment_method,
-          status: 'COMPLETED',
-        },
-      ]);
-    } catch (e) {
-      console.warn('Gravação em Supabase orders opcional:', e);
     }
 
     return NextResponse.json({ success: true, sale: newSale });
@@ -399,6 +506,34 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'order_id é obrigatório' }, { status: 400 });
     }
 
+    // 1. Atualiza no Supabase 'orders'
+    try {
+      // Tenta atualizar por order_number no JSONB ou id direto
+      const { data: dbOrders } = await supabaseServer.from('orders').select('id, shipping_address');
+      if (dbOrders) {
+        const target = dbOrders.find((o: any) => {
+          const meta = typeof o.shipping_address === 'object' && o.shipping_address ? o.shipping_address : {};
+          return meta.order_number === order_id || o.id === order_id;
+        });
+        if (target) {
+          const updatedMeta = {
+            ...(typeof target.shipping_address === 'object' ? target.shipping_address : {}),
+            ...(tracking_code !== undefined ? { tracking_code } : {}),
+          };
+          await supabaseServer
+            .from('orders')
+            .update({
+              status: status || undefined,
+              shipping_address: updatedMeta,
+            })
+            .eq('id', target.id);
+        }
+      }
+    } catch (e) {
+      console.warn('Atualização opcional Supabase:', e);
+    }
+
+    // 2. Atualiza no backup local
     const sales = readSavedSales();
     const updated = sales.map((s: any) => {
       if (s.order_id === order_id || s.id === order_id) {
@@ -412,15 +547,6 @@ export async function PATCH(req: NextRequest) {
     });
 
     writeSavedSales(updated);
-
-    try {
-      await supabaseServer
-        .from('orders')
-        .update({ status })
-        .eq('order_number', order_id);
-    } catch (e) {
-      console.warn('Atualização opcional Supabase:', e);
-    }
 
     return NextResponse.json({ success: true, sales: updated });
   } catch (err: any) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { recordOrderEvent } from '@/lib/liveStore';
+import { supabaseServer } from '@/lib/supabaseServer';
 import fs from 'fs';
 import path from 'path';
 
@@ -78,7 +79,44 @@ export async function POST(req: NextRequest) {
         status: 'COMPLETED',
       };
 
-      // Grava no arquivo persistente
+      // 1. Grava no Supabase 'orders' permanente
+      try {
+        const metadataPayload = {
+          order_number: orderId,
+          seller_name: newSaleRecord.seller_name,
+          channel_detail: 'ONLINE',
+          payment_fee: newSaleRecord.payment_fee,
+          shipping_fee: newSaleRecord.shipping_fee,
+          shipping_cost: newSaleRecord.shipping_cost,
+          cost_of_goods: newSaleRecord.cost_of_goods,
+          net_profit: newSaleRecord.net_profit,
+          profit_margin_pct: newSaleRecord.profit_margin_pct,
+          items: newSaleRecord.items,
+          address: newSaleRecord.shipping_address,
+          discount_reason: newSaleRecord.coupon_code,
+        };
+
+        await supabaseServer.from('orders').insert([
+          {
+            channel: 'ONLINE',
+            customer_name: newSaleRecord.customer_name,
+            customer_email: newSaleRecord.customer_email || null,
+            customer_phone: newSaleRecord.customer_phone || null,
+            coupon_code: newSaleRecord.coupon_code || null,
+            subtotal_amount: newSaleRecord.subtotal_products,
+            discount_amount: newSaleRecord.discount_amount,
+            total_amount: totalAmountPaid,
+            commission_amount: newSaleRecord.commission_amount,
+            payment_method: 'CARD',
+            status: 'COMPLETED',
+            shipping_address: metadataPayload,
+          },
+        ]);
+      } catch (dbErr) {
+        console.warn('Erro ao salvar pedido Stripe no Supabase orders:', dbErr);
+      }
+
+      // 2. Grava no arquivo persistente como fallback
       try {
         let existingSales: any[] = [];
         if (fs.existsSync(BACKUP_SALES_FILE)) {

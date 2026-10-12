@@ -363,7 +363,10 @@ export default function BackofficeDashboard() {
   const fetchSalesData = async () => {
     setLoadingSales(true);
     try {
-      const res = await fetch('/api/backoffice/sales');
+      const res = await fetch(`/api/backoffice/sales?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store' },
+      });
       if (res.ok) {
         const data = await res.json();
         setSalesData(data);
