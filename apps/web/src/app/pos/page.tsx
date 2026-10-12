@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   ScanBarcode,
@@ -26,6 +26,17 @@ import {
   Percent,
   Tag,
   X,
+  Calendar,
+  CalendarDays,
+  FileText,
+  Send,
+  Printer,
+  Clock,
+  User,
+  MapPin,
+  Phone,
+  AlertCircle,
+  Check,
 } from 'lucide-react';
 import { StockWriteOffModal } from '../../components/StockWriteOffModal';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
@@ -43,6 +54,126 @@ interface CartItem {
   itemDiscount?: number; // Desconto em dólar ($) específico por peça
 }
 
+// Gera mensagem formatada para cobrança/carnê no WhatsApp
+function generateCrediarioWhatsAppMessage(sale: any): string {
+  const customer = sale.customer_name || 'Cliente';
+  const orderId = sale.order_id;
+  const cred = sale.crediario;
+  const total = Number(sale.subtotal_products - (sale.discount_amount || 0)).toFixed(2);
+  const downPayment = Number(cred?.down_payment || 0).toFixed(2);
+  const remaining = Number(cred?.remaining_balance || total).toFixed(2);
+
+  let msg = `✨ *ANA FITNESS WEAR • CARNÊ DE CREDIÁRIO* ✨\n\n`;
+  msg += `Olá *${customer}*! Segue o comprovante e as datas de vencimento da sua compra em crediário:\n\n`;
+  msg += `🛍️ *Pedido:* #${orderId}\n`;
+  msg += `💰 *Valor Total:* $${total} USD\n`;
+  if (Number(downPayment) > 0) {
+    msg += `💵 *Entrada Paga:* $${downPayment} USD (${cred?.down_payment_method || 'CASH'})\n`;
+  }
+  msg += `📋 *Saldo Parcelado:* $${remaining} USD em *${cred?.installments_count || 1}x*\n\n`;
+  msg += `📅 *DATAS DE VENCIMENTO DAS PARCELAS:*\n`;
+
+  (cred?.installments || []).forEach((inst: any) => {
+    const [y, m, d] = (inst.due_date || '').split('-');
+    const dateFormatted = d && m && y ? `${d}/${m}/${y}` : inst.due_date;
+    msg += `▫️ *Parcela ${inst.number}/${cred?.installments_count}:* $${Number(inst.amount).toFixed(2)} USD • *Vence em ${dateFormatted}*\n`;
+  });
+
+  msg += `\n📍 *Showroom:* Leominster, Massachusetts\n`;
+  msg += `Muito obrigada pela preferência e confiança! Qualquer dúvida estamos à disposição. 💕`;
+  return msg;
+}
+
+// Abre janela de impressão com carnê e nota promissória oficial
+function printCrediarioCarnet(sale: any) {
+  if (typeof window === 'undefined') return;
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
+
+  const cred = sale.crediario;
+  const customer = sale.customer_name || 'Cliente';
+  const phone = sale.customer_phone || '';
+  const doc = cred?.customer_doc || 'Não informado';
+  const address = cred?.customer_address || 'Não informado';
+  const total = Number(sale.subtotal_products - (sale.discount_amount || 0)).toFixed(2);
+  const downPayment = Number(cred?.down_payment || 0).toFixed(2);
+  const remaining = Number(cred?.remaining_balance || total).toFixed(2);
+
+  const installmentsHtml = (cred?.installments || []).map((inst: any) => {
+    const [y, m, d] = (inst.due_date || '').split('-');
+    const dateFormatted = d && m && y ? `${d}/${m}/${y}` : inst.due_date;
+    return `
+      <div style="border: 2px dashed #000; padding: 12px; margin-bottom: 12px; font-family: monospace; page-break-inside: avoid;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 4px;">
+          <span>CARNÊ / PROMISSÓRIA - PARCELA ${inst.number}/${cred?.installments_count}</span>
+          <span style="font-size: 15px;">VALOR: $${Number(inst.amount).toFixed(2)} USD</span>
+        </div>
+        <div style="margin-top: 8px; font-size: 11px; line-height: 1.5;">
+          <div><strong>PEDIDO:</strong> #${sale.order_id} | <strong>DATA COMPRA:</strong> ${new Date(sale.created_at || Date.now()).toLocaleDateString('pt-BR')}</div>
+          <div><strong>CLIENTE:</strong> ${customer} | <strong>DOC:</strong> ${doc}</div>
+          <div><strong>TELEFONE:</strong> ${phone}</div>
+          <div style="margin-top: 4px; font-size: 13px;"><strong>DATA DE VENCIMENTO:</strong> <span style="font-size: 15px; font-weight: bold; background-color: #fef08a; padding: 2px 6px;">${dateFormatted}</span></div>
+        </div>
+        <div style="margin-top: 14px; border-top: 1px solid #999; padding-top: 6px; font-size: 9px; display: flex; justify-content: space-between; color: #555;">
+          <span>Data Pgto: ___/___/______</span>
+          <span>Meio: [ ] Dinheiro  [ ] Zelle</span>
+          <span>Visto do Recebedor: ____________________</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Carnê de Crediário - ${sale.order_id}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #000; }
+          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; }
+          .title { font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+          .info { margin-bottom: 16px; font-size: 12px; line-height: 1.6; background: #f9f9f9; padding: 12px; border: 1px solid #ddd; }
+          .terms { font-size: 10px; border: 1px solid #000; padding: 10px; margin-top: 20px; line-height: 1.4; background: #fdfdfd; }
+          .sig { margin-top: 36px; text-align: center; border-top: 1px solid #000; width: 60%; margin-left: auto; margin-right: auto; padding-top: 8px; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="title">ANA FITNESS WEAR LLC</div>
+          <div style="font-size: 12px; margin-top: 2px;">Showroom & Loja Oficial • Leominster, Massachusetts</div>
+          <div style="font-weight: bold; margin-top: 6px; font-size: 14px; text-transform: uppercase;">CARNÊ DE CREDIÁRIO & NOTA PROMISSÓRIA DA LOJA</div>
+        </div>
+        <div class="info">
+          <div><strong>PEDIDO:</strong> #${sale.order_id} | <strong>VENDEDORA:</strong> ${sale.seller_name || 'Showroom Leominster'}</div>
+          <div><strong>CLIENTE:</strong> ${customer} | <strong>DOC:</strong> ${doc}</div>
+          <div><strong>TELEFONE:</strong> ${phone} | <strong>ENDEREÇO:</strong> ${address}</div>
+          <div style="margin-top: 4px; font-weight: bold;">
+            TOTAL: $${total} USD | ENTRADA: $${downPayment} USD | SALDO PARCELADO: $${remaining} USD em ${cred?.installments_count || 1}x
+          </div>
+        </div>
+
+        <h3 style="text-transform: uppercase; font-size: 13px; margin-bottom: 10px; font-weight: bold;">Lâminas / Canhotos das Parcelas:</h3>
+        ${installmentsHtml}
+
+        <div class="terms">
+          <strong>TERMO DE COMPROMISSO E CONFISSÃO DE DÍVIDA:</strong><br/>
+          Pelo presente instrumento, reconheço e declaro-me devedor(a) da quantia total mencionada acima perante a <strong>ANA FITNESS WEAR LLC</strong>, comprometendo-me irrevogavelmente a efetuar a liquidação das parcelas discriminadas nas suas respectivas datas de vencimento.
+        </div>
+
+        <div class="sig">
+          <strong>${customer}</strong><br/>
+          Assinatura da Devedora / Cliente
+        </div>
+
+        <script>
+          window.onload = function() { window.print(); }
+        </script>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
 export default function PosTerminalPage() {
   const { products, refreshProducts, adminUser, loginAdmin } = useStoreSettings();
   const [posUnlocked, setPosUnlocked] = useState(false);
@@ -55,10 +186,35 @@ export default function PosTerminalPage() {
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedSize, setSelectedSize] = useState<string>('');
   
-  const [seller, setSeller] = useState('Balcão Loja');
+  const [seller, setSeller] = useState('Juliana Silva (PDV Balcão Leominster)');
   const [customerName, setCustomerName] = useState('Cliente Balcão');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'ZELLE' | 'VENMO' | 'CARD' | 'CASH'>('ZELLE');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerDoc, setCustomerDoc] = useState(''); // CPF, ID ou Passaporte
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerNotes, setCustomerNotes] = useState('');
+
+  // Meios de Pagamento (incluindo CREDIÁRIO / Carnê Próprio da Loja)
+  const [paymentMethod, setPaymentMethod] = useState<'ZELLE' | 'VENMO' | 'CARD' | 'CASH' | 'CREDIARIO'>('ZELLE');
+
+  // Helper para gerar datas de vencimento no formato YYYY-MM-DD
+  const getFutureDateStr = (daysAhead: number = 30) => {
+    const d = new Date();
+    d.setDate(d.getDate() + daysAhead);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Configurações do Crediário
+  const [crediarioInstallmentsCount, setCrediarioInstallmentsCount] = useState<number>(2);
+  const [crediarioDownPayment, setCrediarioDownPayment] = useState<number>(0);
+  const [crediarioDownPaymentMethod, setCrediarioDownPaymentMethod] = useState<'CASH' | 'ZELLE' | 'CARD'>('CASH');
+  const [crediarioFirstDueDate, setCrediarioFirstDueDate] = useState<string>(() => getFutureDateStr(30));
+  const [crediarioInterval, setCrediarioInterval] = useState<'MONTHLY' | 'BIWEEKLY'>('MONTHLY');
+  const [customInstallmentDates, setCustomInstallmentDates] = useState<Record<number, string>>({});
+  const [customInstallmentAmounts, setCustomInstallmentAmounts] = useState<Record<number, number>>({});
   
   // Sistema de Desconto Flexível do PDV (% ou $ e Motivo/Cupom)
   const [discountType, setDiscountType] = useState<'PERCENT' | 'FIXED'>('PERCENT');
@@ -229,18 +385,99 @@ export default function PosTerminalPage() {
   const totalAfterDiscount = Math.max(0, subtotal - calculatedDiscountAmount);
   const commission = totalAfterDiscount * 0.1; // 10% comissão vendedora balcão calculada sobre o líquido
 
+  // Saldo que fica no Crediário (após abater eventual entrada em dinheiro/Zelle)
+  const effectiveDownPayment = Math.min(totalAfterDiscount, Math.max(0, crediarioDownPayment));
+  const remainingCrediarioBalance = Math.max(0, totalAfterDiscount - effectiveDownPayment);
+
+  // Lista gerada de parcelas do Crediário com datas de vencimento automáticas e customizáveis
+  const generatedInstallments = useMemo(() => {
+    if (paymentMethod !== 'CREDIARIO') return [];
+
+    const count = Math.max(1, crediarioInstallmentsCount);
+    const baseAmt = Math.floor((remainingCrediarioBalance / count) * 100) / 100;
+    const remainder = Number((remainingCrediarioBalance - (baseAmt * count)).toFixed(2));
+
+    const list = [];
+    const dateParts = (crediarioFirstDueDate || getFutureDateStr(30)).split('-').map(Number);
+    const startYear = dateParts[0] || new Date().getFullYear();
+    const startMonth = (dateParts[1] || (new Date().getMonth() + 1)) - 1;
+    const startDay = dateParts[2] || new Date().getDate();
+
+    for (let i = 0; i < count; i++) {
+      const d = new Date(startYear, startMonth, startDay);
+      if (crediarioInterval === 'BIWEEKLY') {
+        d.setDate(d.getDate() + (i * 15));
+      } else {
+        d.setMonth(d.getMonth() + i);
+      }
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dayStr = String(d.getDate()).padStart(2, '0');
+      const autoDate = `${y}-${m}-${dayStr}`;
+
+      const finalDate = customInstallmentDates[i + 1] || autoDate;
+      const defaultAmount = i === 0 ? Number((baseAmt + remainder).toFixed(2)) : baseAmt;
+      const finalAmount = customInstallmentAmounts[i + 1] !== undefined
+        ? customInstallmentAmounts[i + 1]
+        : defaultAmount;
+
+      list.push({
+        number: i + 1,
+        amount: finalAmount,
+        due_date: finalDate,
+        status: 'PENDING' as const,
+      });
+    }
+
+    return list;
+  }, [
+    paymentMethod,
+    remainingCrediarioBalance,
+    crediarioInstallmentsCount,
+    crediarioFirstDueDate,
+    crediarioInterval,
+    customInstallmentDates,
+    customInstallmentAmounts,
+  ]);
+
   // Finalização da venda com registro direto no ERP / API
   const handleFinalizeSale = async () => {
     if (cart.length === 0) return;
     setIsSubmitting(true);
     setErrorMessage('');
 
+    // Validação específica de dados para Crediário
+    if (paymentMethod === 'CREDIARIO') {
+      if (!customerName.trim() || customerName.trim() === 'Cliente Balcão') {
+        setErrorMessage('⚠️ Para venda em Crediário, digite o Nome Completo da cliente.');
+        setIsSubmitting(false);
+        return;
+      }
+      if (!customerPhone.trim()) {
+        setErrorMessage('⚠️ Para venda em Crediário, informe o Telefone / WhatsApp da cliente para envio dos carnês e lembretes.');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     try {
+      const crediarioPayload = paymentMethod === 'CREDIARIO' ? {
+        customer_doc: customerDoc.trim() || undefined,
+        customer_address: customerAddress.trim() || undefined,
+        notes: customerNotes.trim() || undefined,
+        down_payment: effectiveDownPayment,
+        down_payment_method: effectiveDownPayment > 0 ? crediarioDownPaymentMethod : undefined,
+        remaining_balance: remainingCrediarioBalance,
+        installments_count: crediarioInstallmentsCount,
+        installments: generatedInstallments,
+      } : undefined;
+
       const payload = {
         order_id: `POS-LEO-${Math.floor(1000 + Math.random() * 9000)}`,
         channel: 'POS_COUNTER',
         customer_name: customerName.trim() || 'Cliente Balcão Leominster',
         customer_phone: customerPhone.trim() || undefined,
+        customer_email: customerEmail.trim() || undefined,
         seller_name: seller,
         coupon_code: discountReason.trim() ? discountReason.trim().toUpperCase() : undefined,
         payment_method: paymentMethod,
@@ -257,6 +494,7 @@ export default function PosTerminalPage() {
           unit_price: Math.max(0, item.price - (item.itemDiscount || 0)),
           cost_price: item.costPrice,
         })),
+        crediario: crediarioPayload,
       };
 
       const res = await fetch('/api/backoffice/sales', {
@@ -504,11 +742,23 @@ export default function PosTerminalPage() {
                 </div>
               )}
               <div className="flex justify-between border-t border-deep-black/10 pt-2 text-sm font-black">
-                <span>VALOR TOTAL RECEBIDO:</span>
+                <span>{completedSale.payment_method === 'CREDIARIO' ? 'TOTAL DA COMPRA:' : 'VALOR TOTAL RECEBIDO:'}</span>
                 <span className="font-mono text-deep-black">
                   ${(Number(completedSale.total_paid ?? (completedSale.subtotal_products - (completedSale.discount_amount || 0)))).toFixed(2)}
                 </span>
               </div>
+              {completedSale.payment_method === 'CREDIARIO' && (
+                <>
+                  <div className="flex justify-between text-xs text-deep-black/80 font-bold">
+                    <span>ENTRADA RECEBIDA ({completedSale.crediario?.down_payment_method || 'CASH'}):</span>
+                    <span className="font-mono text-green-700">${Number(completedSale.crediario?.down_payment || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-amber-900 font-black">
+                    <span>SALDO NO CREDIÁRIO ({completedSale.crediario?.installments_count || 1}X):</span>
+                    <span className="font-mono">${Number(completedSale.crediario?.remaining_balance || 0).toFixed(2)}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between text-gold font-bold text-[11px]">
                 <span>COMISSÃO DA VENDEDORA (10% SOBRE LÍQUIDO):</span>
                 <span className="font-mono">
@@ -516,6 +766,72 @@ export default function PosTerminalPage() {
                 </span>
               </div>
             </div>
+
+            {/* SEÇÃO ESPECIAL DE CARNÊ QUANDO FOR CREDIÁRIO */}
+            {completedSale.crediario && (
+              <div className="bg-amber-50/80 border-2 border-amber-300 p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-amber-200 pb-2">
+                  <div className="flex items-center gap-2 text-amber-900 font-black text-xs uppercase tracking-wider">
+                    <CalendarDays className="w-4 h-4 text-amber-700" />
+                    <span>CARNÊ GERADO COM DATAS DE VENCIMENTO</span>
+                  </div>
+                  {completedSale.crediario.customer_doc && (
+                    <span className="text-[10px] font-mono text-amber-800 bg-amber-100 px-2 py-0.5 rounded font-bold">
+                      DOC: {completedSale.crediario.customer_doc}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                  {(completedSale.crediario.installments || []).map((inst: any) => {
+                    const [y, m, d] = (inst.due_date || '').split('-');
+                    const dateFormatted = d && m && y ? `${d}/${m}/${y}` : inst.due_date;
+                    return (
+                      <div key={inst.number} className="flex justify-between items-center text-xs bg-white p-2 border border-amber-200">
+                        <span className="font-bold text-deep-black">
+                          Parcela {inst.number}/{completedSale.crediario.installments_count}:
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono font-black text-deep-black">
+                            ${Number(inst.amount).toFixed(2)}
+                          </span>
+                          <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded border border-amber-300">
+                            Vence: {dateFormatted}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const msg = generateCrediarioWhatsAppMessage(completedSale);
+                      const cleanPhone = (completedSale.customer_phone || '').replace(/\D/g, '');
+                      const url = cleanPhone
+                        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
+                        : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+                      window.open(url, '_blank');
+                    }}
+                    className="py-2.5 px-3 bg-green-600 hover:bg-green-700 text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>ENVIAR NO WHATSAPP</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => printCrediarioCarnet(completedSale)}
+                    className="py-2.5 px-3 bg-amber-700 hover:bg-amber-800 text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>IMPRIMIR CARNÊ</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-3">
               <button
@@ -527,6 +843,14 @@ export default function PosTerminalPage() {
                   setDiscountReason('');
                   setCustomerName('Cliente Balcão');
                   setCustomerPhone('');
+                  setCustomerEmail('');
+                  setCustomerDoc('');
+                  setCustomerAddress('');
+                  setCustomerNotes('');
+                  setPaymentMethod('ZELLE');
+                  setCrediarioDownPayment(0);
+                  setCustomInstallmentDates({});
+                  setCustomInstallmentAmounts({});
                 }}
                 className="flex-1 py-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2"
               >
@@ -833,24 +1157,76 @@ export default function PosTerminalPage() {
         <div className="lg:col-span-5 bg-deep-black text-white p-6 sm:p-8 space-y-6 shadow-luxury">
           {/* Identificação do Cliente Balcão */}
           <div className="space-y-3 pb-4 border-b border-white/10">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gold block">
-              IDENTIFICAÇÃO DO CLIENTE (BALCÃO / SHOWROOM):
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-gold" />
+                <span>IDENTIFICAÇÃO DO CLIENTE (BALCÃO / SHOWROOM):</span>
+              </label>
+              {paymentMethod === 'CREDIARIO' && (
+                <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-gold text-deep-black animate-pulse">
+                  DADOS OBRIGATÓRIOS P/ CREDIÁRIO
+                </span>
+              )}
+            </div>
             <div className="space-y-2">
               <input
                 type="text"
-                placeholder="NOME DA CLIENTE"
+                placeholder={paymentMethod === 'CREDIARIO' ? "NOME COMPLETO DA CLIENTE *" : "NOME DA CLIENTE"}
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 className="w-full px-3 py-2 text-xs uppercase tracking-wider font-bold bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold"
+                required={paymentMethod === 'CREDIARIO'}
               />
               <input
                 type="text"
-                placeholder="TELEFONE / WHATSAPP (+1 978...)"
+                placeholder={paymentMethod === 'CREDIARIO' ? "WHATSAPP / TELEFONE (+1 978...)* P/ LEMBRETES" : "TELEFONE / WHATSAPP (+1 978...)"}
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 className="w-full px-3 py-2 text-xs uppercase tracking-wider font-mono bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold"
+                required={paymentMethod === 'CREDIARIO'}
               />
+
+              {/* Dados Adicionais Obrigatórios para Crediário */}
+              {paymentMethod === 'CREDIARIO' && (
+                <div className="space-y-2 pt-1 animate-fadeIn bg-gold/10 p-3 border border-gold/30">
+                  <span className="text-[9px] font-black uppercase tracking-wider text-gold block flex items-center gap-1">
+                    <FileText className="w-3 h-3 text-gold" />
+                    <span>DADOS DE CADASTRO DO CREDIÁRIO / CARNÊ:</span>
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      placeholder="CPF / SOCIAL SECURITY / ID / PASSAPORTE"
+                      value={customerDoc}
+                      onChange={(e) => setCustomerDoc(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs font-mono uppercase bg-deep-black/60 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold"
+                      title="Documento da cliente para identificação no carnê e promissória"
+                    />
+                    <input
+                      type="email"
+                      placeholder="E-MAIL (OPCIONAL)"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs font-mono lowercase bg-deep-black/60 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold"
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="ENDEREÇO RESIDENCIAL (RUA, NÚMERO, CIDADE, ZIP)"
+                    value={customerAddress}
+                    onChange={(e) => setCustomerAddress(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs uppercase bg-deep-black/60 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold"
+                    title="Endereço da cliente para o carnê"
+                  />
+                  <input
+                    type="text"
+                    placeholder="OBSERVAÇÕES DO CREDIÁRIO (EX: PAGA AOS SÁBADOS, TRABALHA NO RESTAURANTE)"
+                    value={customerNotes}
+                    onChange={(e) => setCustomerNotes(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-[11px] uppercase bg-deep-black/60 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -1048,79 +1424,355 @@ export default function PosTerminalPage() {
             </div>
           </div>
 
-          {/* Formas de Pagamento dos EUA */}
-          <div className="space-y-2">
+          {/* Formas de Pagamento dos EUA & Crediário Próprio */}
+          <div className="space-y-3">
             <label className="text-[10px] font-black uppercase tracking-widest text-white/70 flex items-center justify-between">
-              <span>FORMA DE PAGAMENTO (EUA):</span>
-              <span className="text-gold text-[9px]">
+              <span>FORMA DE PAGAMENTO:</span>
+              <span className="text-gold text-[9px] font-mono font-bold">
                 {paymentMethod === 'ZELLE' && 'TAXA 0% • INSTANTÂNEO'}
                 {paymentMethod === 'VENMO' && 'TAXA 1.9%'}
                 {paymentMethod === 'CARD' && 'TAXA 2.9% + $0.30'}
                 {paymentMethod === 'CASH' && 'TAXA 0% • DINHEIRO'}
+                {paymentMethod === 'CREDIARIO' && 'CARNÊ DA LOJA • PARCELADO'}
               </span>
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setPaymentMethod('ZELLE')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider flex flex-col items-center gap-1.5 border transition ${
+                className={`p-2 sm:p-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider flex flex-col items-center gap-1 border transition ${
                   paymentMethod === 'ZELLE'
                     ? 'border-gold bg-gold text-deep-black font-black'
                     : 'border-white/20 text-white/70 hover:border-white'
                 }`}
               >
-                <QrCode className="w-4 h-4" />
+                <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>ZELLE</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setPaymentMethod('VENMO')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider flex flex-col items-center gap-1.5 border transition ${
+                className={`p-2 sm:p-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider flex flex-col items-center gap-1 border transition ${
                   paymentMethod === 'VENMO'
                     ? 'border-gold bg-gold text-deep-black font-black'
                     : 'border-white/20 text-white/70 hover:border-white'
                 }`}
               >
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>VENMO</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setPaymentMethod('CARD')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider flex flex-col items-center gap-1.5 border transition ${
+                className={`p-2 sm:p-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider flex flex-col items-center gap-1 border transition ${
                   paymentMethod === 'CARD'
                     ? 'border-gold bg-gold text-deep-black font-black'
                     : 'border-white/20 text-white/70 hover:border-white'
                 }`}
               >
-                <CreditCard className="w-4 h-4" />
+                <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>CARD</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setPaymentMethod('CASH')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider flex flex-col items-center gap-1.5 border transition ${
+                className={`p-2 sm:p-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider flex flex-col items-center gap-1 border transition ${
                   paymentMethod === 'CASH'
                     ? 'border-gold bg-gold text-deep-black font-black'
                     : 'border-white/20 text-white/70 hover:border-white'
                 }`}
               >
-                <Banknote className="w-4 h-4" />
+                <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>CASH</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('CREDIARIO')}
+                className={`p-2 sm:p-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider flex flex-col items-center gap-1 border transition ${
+                  paymentMethod === 'CREDIARIO'
+                    ? 'border-gold bg-gold text-deep-black font-black shadow-luxury'
+                    : 'border-gold/40 text-gold hover:border-gold hover:bg-gold/10'
+                }`}
+                title="Vender a prazo com carnê e datas de vencimento"
+              >
+                <CalendarDays className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>CREDIÁRIO</span>
               </button>
             </div>
           </div>
 
+          {/* PAINEL COMPLETO DO PLANO DE CREDIÁRIO */}
+          {paymentMethod === 'CREDIARIO' && (
+            <div className="space-y-4 bg-white/5 p-4 sm:p-5 border-2 border-gold animate-fadeIn">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-gold" />
+                  <span>PLANO DO CREDIÁRIO & VENCIMENTOS</span>
+                </span>
+                <span className="text-[9px] font-mono text-gold uppercase font-bold">
+                  CARNÊ DA LOJA
+                </span>
+              </div>
+
+              {/* 1. Entrada Paga no Ato */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-white/80">
+                    VALOR DA ENTRADA PAGA NO ATO ($ USD):
+                  </label>
+                  <span className="text-gold font-mono font-bold">
+                    SALDO PARCELADO: ${remainingCrediarioBalance.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-2.5 text-xs font-mono font-bold text-white/50">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={totalAfterDiscount}
+                      step="1"
+                      value={crediarioDownPayment || ''}
+                      onChange={(e) => setCrediarioDownPayment(Math.max(0, parseFloat(e.target.value) || 0))}
+                      placeholder="0.00"
+                      className="w-full pl-7 pr-3 py-2 text-sm font-black font-mono bg-white/10 border border-white/20 text-white focus:outline-none focus:border-gold"
+                    />
+                  </div>
+                  {crediarioDownPayment > 0 && (
+                    <select
+                      value={crediarioDownPaymentMethod}
+                      onChange={(e) => setCrediarioDownPaymentMethod(e.target.value as any)}
+                      className="p-2 text-xs font-bold uppercase bg-white/10 border border-white/20 text-gold focus:outline-none focus:border-gold"
+                      title="Forma como a entrada foi paga"
+                    >
+                      <option value="CASH">ENTRADA EM DINHEIRO</option>
+                      <option value="ZELLE">ENTRADA NO ZELLE</option>
+                      <option value="CARD">ENTRADA NO CARTÃO</option>
+                    </select>
+                  )}
+                </div>
+
+                {/* Atalhos Rápidos de Entrada */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[
+                    { label: 'Sem entrada ($0)', val: 0 },
+                    { label: '$10', val: 10 },
+                    { label: '$20', val: 20 },
+                    { label: '$30', val: 30 },
+                    { label: `50% ($${(totalAfterDiscount / 2).toFixed(2)})`, val: Number((totalAfterDiscount / 2).toFixed(2)) },
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCrediarioDownPayment(preset.val)}
+                      className={`px-2 py-0.5 text-[9px] font-black uppercase font-mono border transition ${
+                        crediarioDownPayment === preset.val
+                          ? 'bg-gold text-deep-black border-gold'
+                          : 'bg-white/5 text-white/70 border-white/20 hover:border-gold hover:text-white'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2. Número de Parcelas & Frequência */}
+              <div className="space-y-2 pt-2 border-t border-white/10">
+                <label className="text-[10px] font-black uppercase tracking-wider text-white/80 block">
+                  QUANTIDADE DE PARCELAS:
+                </label>
+                <div className="grid grid-cols-6 gap-1.5">
+                  {[1, 2, 3, 4, 5, 6].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setCrediarioInstallmentsCount(num)}
+                      className={`py-2 text-xs font-black font-mono uppercase border transition ${
+                        crediarioInstallmentsCount === num
+                          ? 'bg-gold text-deep-black border-gold shadow'
+                          : 'bg-white/5 text-white/70 border-white/20 hover:border-gold hover:text-white'
+                      }`}
+                    >
+                      {num}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. Data do 1º Vencimento & Intervalo */}
+              <div className="space-y-2 pt-2 border-t border-white/10">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-white/80">
+                    DATA DO 1º VENCIMENTO:
+                  </label>
+                  <div className="flex items-center gap-1 border border-white/20 bg-deep-black p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setCrediarioInterval('MONTHLY')}
+                      className={`px-2 py-0.5 text-[9px] font-black uppercase ${
+                        crediarioInterval === 'MONTHLY' ? 'bg-gold text-deep-black' : 'text-white/60'
+                      }`}
+                    >
+                      MENSAL (30 DIAS)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCrediarioInterval('BIWEEKLY')}
+                      className={`px-2 py-0.5 text-[9px] font-black uppercase ${
+                        crediarioInterval === 'BIWEEKLY' ? 'bg-gold text-deep-black' : 'text-white/60'
+                      }`}
+                    >
+                      QUINZENAL (15 DIAS)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={crediarioFirstDueDate}
+                    onChange={(e) => setCrediarioFirstDueDate(e.target.value)}
+                    className="flex-1 px-3 py-2 text-xs font-mono font-bold bg-white/10 border border-white/20 text-white focus:outline-none focus:border-gold"
+                  />
+                </div>
+
+                {/* Atalhos Rápidos de Datas de Vencimento */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[
+                    { label: '+15 Dias', val: getFutureDateStr(15) },
+                    { label: '+30 Dias', val: getFutureDateStr(30) },
+                    {
+                      label: 'Próx. Dia 5',
+                      val: (() => {
+                        const d = new Date();
+                        if (d.getDate() >= 5) d.setMonth(d.getMonth() + 1);
+                        d.setDate(5);
+                        return d.toISOString().split('T')[0];
+                      })(),
+                    },
+                    {
+                      label: 'Próx. Dia 10',
+                      val: (() => {
+                        const d = new Date();
+                        if (d.getDate() >= 10) d.setMonth(d.getMonth() + 1);
+                        d.setDate(10);
+                        return d.toISOString().split('T')[0];
+                      })(),
+                    },
+                    {
+                      label: 'Próx. Dia 20',
+                      val: (() => {
+                        const d = new Date();
+                        if (d.getDate() >= 20) d.setMonth(d.getMonth() + 1);
+                        d.setDate(20);
+                        return d.toISOString().split('T')[0];
+                      })(),
+                    },
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCrediarioFirstDueDate(preset.val)}
+                      className={`px-2 py-0.5 text-[9px] font-black uppercase font-mono border transition ${
+                        crediarioFirstDueDate === preset.val
+                          ? 'bg-gold text-deep-black border-gold'
+                          : 'bg-white/5 text-white/70 border-white/20 hover:border-gold hover:text-white'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. Demonstrativo Interativo das Parcelas */}
+              <div className="space-y-2 pt-2 border-t border-white/10">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center justify-between">
+                  <span>CRONOGRAMA DO CARNÊ ({generatedInstallments.length} PARCELAS):</span>
+                  <span className="text-[9px] font-mono text-white/60">EDITÁVEL</span>
+                </span>
+
+                <div className="space-y-1.5 bg-black/40 p-2.5 border border-white/10 max-h-52 overflow-y-auto">
+                  {generatedInstallments.map((inst) => {
+                    const [y, m, d] = (inst.due_date || '').split('-');
+                    const dateFormatted = d && m && y ? `${d}/${m}/${y}` : inst.due_date;
+                    return (
+                      <div
+                        key={inst.number}
+                        className="p-2 bg-white/5 border border-white/10 flex items-center justify-between gap-2 text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-gold text-deep-black text-[10px] font-black flex items-center justify-center font-mono">
+                            {inst.number}
+                          </span>
+                          <div>
+                            <span className="font-black text-white block">
+                              PARCELA {inst.number}/{generatedInstallments.length}
+                            </span>
+                            <span className="text-[9px] text-gold font-mono font-bold">
+                              Vence em: {dateFormatted}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {/* Campo para editar valor da parcela se desejar */}
+                          <div className="flex items-center gap-1 bg-white/10 px-2 py-1 border border-white/20">
+                            <span className="text-[10px] font-mono text-white/50">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={
+                                customInstallmentAmounts[inst.number] !== undefined
+                                  ? customInstallmentAmounts[inst.number]
+                                  : inst.amount
+                              }
+                              onChange={(e) => {
+                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                setCustomInstallmentAmounts((prev) => ({ ...prev, [inst.number]: val }));
+                              }}
+                              className="w-16 bg-transparent text-right font-mono font-black text-xs text-gold focus:outline-none"
+                            />
+                          </div>
+
+                          {/* Seletor de data de vencimento da parcela */}
+                          <input
+                            type="date"
+                            value={customInstallmentDates[inst.number] || inst.due_date}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setCustomInstallmentDates((prev) => ({ ...prev, [inst.number]: val }));
+                            }}
+                            className="px-2 py-1 bg-white/10 border border-white/20 text-white font-mono text-[11px] focus:outline-none focus:border-gold"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={handleFinalizeSale}
             disabled={cart.length === 0 || isSubmitting}
-            className="w-full py-4 bg-gold hover:bg-white text-deep-black disabled:opacity-50 font-black text-xs sm:text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition shadow-lg"
+            className="w-full py-4 bg-gold hover:bg-white text-deep-black disabled:opacity-50 font-black text-xs sm:text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition shadow-lg border-2 border-gold"
           >
             {isSubmitting ? (
               <span>REGISTRANDO NO ERP...</span>
+            ) : paymentMethod === 'CREDIARIO' ? (
+              <span className="flex items-center gap-1.5">
+                <CalendarDays className="w-4 h-4 text-deep-black" />
+                <span>
+                  GERAR CREDIÁRIO ({crediarioInstallmentsCount}x DE ${(remainingCrediarioBalance / crediarioInstallmentsCount).toFixed(2)})
+                </span>
+              </span>
             ) : (
               <span>CONCLUIR VENDA NO BALCÃO (${totalAfterDiscount.toFixed(2)})</span>
             )}

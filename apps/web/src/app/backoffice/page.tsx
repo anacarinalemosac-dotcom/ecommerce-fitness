@@ -61,6 +61,9 @@ import {
   Heart,
   Settings,
   Layers,
+  CalendarDays,
+  Send,
+  Printer,
 } from 'lucide-react';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
@@ -198,6 +201,85 @@ const INITIAL_CATALOG: CatalogProduct[] = [
   },
 ];
 
+// Abre janela de impressão com carnê e nota promissória oficial
+function printCrediarioCarnet(sale: any) {
+  if (typeof window === 'undefined') return;
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
+
+  const cred = sale.crediario;
+  const customer = sale.customer_name || 'Cliente';
+  const phone = sale.customer_phone || '';
+  const doc = cred?.customer_doc || 'Não informado';
+  const total = Number(sale.subtotal_products - (sale.discount_amount || 0)).toFixed(2);
+  const downPayment = Number(cred?.down_payment || 0).toFixed(2);
+  const remaining = Number(cred?.remaining_balance || total).toFixed(2);
+
+  const installmentsHtml = (cred?.installments || []).map((inst: any) => {
+    const [y, m, d] = (inst.due_date || '').split('-');
+    const dateFormatted = d && m && y ? `${d}/${m}/${y}` : inst.due_date;
+    const isPaid = inst.status === 'PAID';
+    return `
+      <div style="border: 2px dashed #000; padding: 12px; margin-bottom: 12px; font-family: monospace; page-break-inside: avoid; background: ${isPaid ? '#f0fdf4' : '#fff'};">
+        <div style="display: flex; justify-content: space-between; font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 4px;">
+          <span>CARNÊ / PROMISSÓRIA - PARCELA ${inst.number}/${cred?.installments_count || cred?.installments?.length}</span>
+          <span style="font-size: 15px;">VALOR: $${Number(inst.amount).toFixed(2)} USD ${isPaid ? '✓ PAGO' : ''}</span>
+        </div>
+        <div style="margin-top: 8px; font-size: 11px; line-height: 1.5;">
+          <div><strong>PEDIDO:</strong> #${sale.order_id} | <strong>DATA COMPRA:</strong> ${new Date(sale.created_at || Date.now()).toLocaleDateString('pt-BR')}</div>
+          <div><strong>CLIENTE:</strong> ${customer} | <strong>DOC:</strong> ${doc}</div>
+          <div><strong>TELEFONE:</strong> ${phone}</div>
+          <div style="margin-top: 4px; font-size: 13px;"><strong>DATA DE VENCIMENTO:</strong> <span style="font-size: 15px; font-weight: bold; background-color: #fef08a; padding: 2px 6px;">${dateFormatted}</span></div>
+        </div>
+        <div style="margin-top: 14px; border-top: 1px solid #999; padding-top: 6px; font-size: 9px; display: flex; justify-content: space-between; color: #555;">
+          <span>Data Pgto: ${isPaid && inst.paid_at ? new Date(inst.paid_at).toLocaleDateString('pt-BR') : '___/___/______'}</span>
+          <span>Meio: ${isPaid && inst.paid_method ? `[X] ${inst.paid_method}` : '[ ] Dinheiro  [ ] Zelle'}</span>
+          <span>Visto do Recebedor: ____________________</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Carnê de Crediário - ${sale.order_id}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #000; }
+          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; }
+          .title { font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+          .info { margin-bottom: 16px; font-size: 12px; line-height: 1.6; background: #f9f9f9; padding: 12px; border: 1px solid #ddd; }
+          .terms { font-size: 10px; border: 1px solid #000; padding: 10px; margin-top: 20px; line-height: 1.4; background: #fdfdfd; }
+          .sig { margin-top: 36px; text-align: center; border-top: 1px solid #000; width: 60%; margin-left: auto; margin-right: auto; padding-top: 8px; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="title">ANA FITNESS WEAR</div>
+          <div style="font-size: 11px; letter-spacing: 2px;">CARNÊ DE CREDIÁRIO & NOTA PROMISSÓRIA</div>
+          <div style="font-size: 10px; color: #555; margin-top: 4px;">SHOWROOM LEOMINSTER, MASSACHUSETTS • (978) 555-0199</div>
+        </div>
+        <div class="info">
+          <div><strong>CLIENTE:</strong> ${customer}</div>
+          <div><strong>DOC (CPF / ID):</strong> ${doc}</div>
+          <div><strong>WHATSAPP:</strong> ${phone}</div>
+          <div><strong>TOTAL COMPRA:</strong> $${total} USD | <strong>ENTRADA:</strong> $${downPayment} USD | <strong>SALDO:</strong> $${remaining} USD</div>
+        </div>
+        ${installmentsHtml}
+        <div class="terms">
+          Reconheço a dívida referente às mercadorias adquiridas sob o Pedido #${sale.order_id} e comprometo-me a efetuar o pagamento das parcelas discriminadas acima nas respectivas datas de vencimento.
+        </div>
+        <div class="sig">
+          Assinatura da Cliente: __________________________________________________
+        </div>
+        <script>window.onload = function() { window.print(); };</script>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
 export default function BackofficeDashboard() {
   const { adminUser, loginAdmin, logoutAdmin, refreshProducts } = useStoreSettings();
   const [authEmail, setAuthEmail] = useState('anafitweareua@gmail.com');
@@ -228,7 +310,7 @@ export default function BackofficeDashboard() {
   const [salesData, setSalesData] = useState<any | null>(null);
   const [loadingSales, setLoadingSales] = useState(false);
   const [salesChannelFilter, setSalesChannelFilter] = useState<'ALL' | 'ONLINE' | 'POS_COUNTER'>('ALL');
-  const [salesPaymentFilter, setSalesPaymentFilter] = useState<'ALL' | 'CARD' | 'ZELLE' | 'VENMO' | 'CASH'>('ALL');
+  const [salesPaymentFilter, setSalesPaymentFilter] = useState<'ALL' | 'CARD' | 'ZELLE' | 'VENMO' | 'CASH' | 'CREDIARIO'>('ALL');
   const [salesPreorderOnly, setSalesPreorderOnly] = useState(false);
   const [salesSearch, setSalesSearch] = useState('');
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<any | null>(null);
@@ -255,6 +337,46 @@ export default function BackofficeDashboard() {
       }
     } catch (err: any) {
       alert(`Falha ao atualizar status: ${err.message}`);
+    }
+  };
+
+  // Dar baixa em parcela de Crediário
+  const handlePayInstallment = async (orderId: string, installmentNumber: number, method: string = 'CASH') => {
+    try {
+      const res = await fetch('/api/backoffice/sales', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'pay_installment',
+          order_id: orderId,
+          installment_number: installmentNumber,
+          payment_method: method,
+        }),
+      });
+      if (res.ok) {
+        if (selectedSaleDetail && selectedSaleDetail.order_id === orderId) {
+          const updatedCred = { ...(selectedSaleDetail.crediario || {}) };
+          if (updatedCred.installments) {
+            updatedCred.installments = updatedCred.installments.map((inst: any) =>
+              inst.number === installmentNumber
+                ? { ...inst, status: 'PAID', paid_at: new Date().toISOString(), paid_method: method }
+                : inst
+            );
+          }
+          setSelectedSaleDetail({
+            ...selectedSaleDetail,
+            crediario: updatedCred,
+          });
+        }
+        fetchSalesData();
+        setSaveSuccessMessage(true);
+        setTimeout(() => setSaveSuccessMessage(false), 3000);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Erro ao registrar baixa da parcela.');
+      }
+    } catch (err: any) {
+      alert(`Falha ao dar baixa na parcela: ${err.message}`);
     }
   };
 
@@ -829,8 +951,10 @@ export default function BackofficeDashboard() {
       const q = salesSearch.toLowerCase();
       const matchOrder = s.order_id?.toLowerCase().includes(q);
       const matchCustomer = s.customer_name?.toLowerCase().includes(q);
+      const matchPhone = s.customer_phone?.toLowerCase().includes(q);
+      const matchDoc = s.crediario?.customer_doc?.toLowerCase().includes(q);
       const matchItem = s.items?.some((i: any) => i.title?.toLowerCase().includes(q) || i.sku?.toLowerCase().includes(q));
-      if (!matchOrder && !matchCustomer && !matchItem) return false;
+      if (!matchOrder && !matchCustomer && !matchPhone && !matchDoc && !matchItem) return false;
     }
     return true;
   });
@@ -2026,7 +2150,7 @@ export default function BackofficeDashboard() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {/* ZELLE */}
                 <div className="p-3 bg-deep-black/5 border border-deep-black/20 space-y-1">
                   <div className="flex items-center justify-between">
@@ -2100,6 +2224,25 @@ export default function BackofficeDashboard() {
                   </p>
                   <span className="text-[8px] text-deep-black/40 block font-mono">
                     {salesData?.paymentBreakdown?.CASH?.count || 0} pedidos
+                  </span>
+                </div>
+
+                {/* CREDIÁRIO */}
+                <div className="p-3 bg-deep-black/5 border border-deep-black/20 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-deep-black">CREDIÁRIO</span>
+                    <span className="text-[8px] bg-amber-100 text-amber-900 font-black px-1 border border-amber-300">
+                      0% TAXA
+                    </span>
+                  </div>
+                  <p className="text-base font-black text-deep-black font-mono">
+                    ${(salesData?.paymentBreakdown?.CREDIARIO?.total || 0).toFixed(2)}
+                  </p>
+                  <p className="text-[9px] text-deep-black/60 uppercase font-bold">
+                    Líquido: ${(salesData?.paymentBreakdown?.CREDIARIO?.net || 0).toFixed(2)}
+                  </p>
+                  <span className="text-[8px] text-deep-black/40 block font-mono">
+                    {salesData?.paymentBreakdown?.CREDIARIO?.count || 0} compras
                   </span>
                 </div>
               </div>
@@ -2193,6 +2336,7 @@ export default function BackofficeDashboard() {
                   <option value="VENMO">VENMO</option>
                   <option value="CARD">CARTÃO</option>
                   <option value="CASH">CASH</option>
+                  <option value="CREDIARIO">CREDIÁRIO (CARNÊ)</option>
                 </select>
               </div>
 
@@ -2316,17 +2460,26 @@ export default function BackofficeDashboard() {
 
                       {/* Forma de Pagamento */}
                       <td className="p-3">
-                        <span className={`px-2 py-0.5 text-[8px] font-black font-mono border inline-block ${
-                          sale.payment_method === 'ZELLE'
-                            ? 'bg-green-100 text-green-800 border-green-300'
-                            : sale.payment_method === 'VENMO'
-                            ? 'bg-blue-100 text-blue-800 border-blue-300'
-                            : sale.payment_method === 'CARD'
-                            ? 'bg-amber-100 text-amber-900 border-amber-300'
-                            : 'bg-gray-100 text-gray-800 border-gray-300'
-                        }`}>
-                          {sale.payment_method}
-                        </span>
+                        <div className="space-y-1">
+                          <span className={`px-2 py-0.5 text-[8px] font-black font-mono border inline-block ${
+                            sale.payment_method === 'ZELLE'
+                              ? 'bg-green-100 text-green-800 border-green-300'
+                              : sale.payment_method === 'VENMO'
+                              ? 'bg-blue-100 text-blue-800 border-blue-300'
+                              : sale.payment_method === 'CARD'
+                              ? 'bg-amber-100 text-amber-900 border-amber-300'
+                              : sale.payment_method === 'CREDIARIO'
+                              ? 'bg-amber-500 text-deep-black border-amber-600 font-black shadow-xs'
+                              : 'bg-gray-100 text-gray-800 border-gray-300'
+                          }`}>
+                            {sale.payment_method}
+                          </span>
+                          {sale.crediario?.installments && (
+                            <span className="block text-[8px] font-mono font-bold text-amber-950 bg-amber-100 px-1 py-0.5 border border-amber-300">
+                              {sale.crediario.installments.filter((i: any) => i.status === 'PAID').length}/{sale.crediario.installments.length} PG
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Total Pago */}
@@ -2467,6 +2620,154 @@ export default function BackofficeDashboard() {
                     )}
                   </div>
                 </div>
+
+                {/* SEÇÃO ESPECIAL DE GESTÃO DO CREDIÁRIO / CARNÊ */}
+                {(selectedSaleDetail.payment_method === 'CREDIARIO' || selectedSaleDetail.crediario) && (
+                  <div className="bg-amber-50/90 border-2 border-amber-300 p-4 space-y-3">
+                    <div className="flex items-center justify-between border-b border-amber-200 pb-2">
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="w-4 h-4 text-amber-800" />
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-900">
+                          CARNÊ DE CREDIÁRIO • {selectedSaleDetail.crediario?.installments_count || selectedSaleDetail.crediario?.installments?.length || 1}X
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => printCrediarioCarnet(selectedSaleDetail)}
+                          className="px-2.5 py-1 bg-amber-700 hover:bg-amber-800 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1 transition"
+                        >
+                          <Printer className="w-3 h-3" />
+                          <span>IMPRIMIR CARNÊ</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[10px] bg-white p-2.5 border border-amber-200">
+                      <div>
+                        <span className="text-deep-black/60 block font-bold">DOC / IDENTIFICAÇÃO:</span>
+                        <strong className="text-deep-black font-mono">
+                          {selectedSaleDetail.crediario?.customer_doc || 'Não informado'}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-deep-black/60 block font-bold">ENTRADA PAGA:</span>
+                        <strong className="text-green-700 font-mono">
+                          ${Number(selectedSaleDetail.crediario?.down_payment || 0).toFixed(2)} ({selectedSaleDetail.crediario?.down_payment_method || 'CASH'})
+                        </strong>
+                      </div>
+                      {selectedSaleDetail.crediario?.customer_address && (
+                        <div className="col-span-2">
+                          <span className="text-deep-black/60 block font-bold">ENDEREÇO DA CLIENTE:</span>
+                          <span className="text-deep-black">{selectedSaleDetail.crediario.customer_address}</span>
+                        </div>
+                      )}
+                      {selectedSaleDetail.crediario?.notes && (
+                        <div className="col-span-2">
+                          <span className="text-deep-black/60 block font-bold">OBSERVAÇÕES:</span>
+                          <span className="text-deep-black italic">{selectedSaleDetail.crediario.notes}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* PARCELAS INDIVIDUAIS */}
+                    <div className="space-y-2">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-amber-950 block">
+                        STATUS DAS PARCELAS E CONTROLE DE COBRANÇA:
+                      </span>
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                        {(selectedSaleDetail.crediario?.installments || []).map((inst: any) => {
+                          const [y, m, d] = (inst.due_date || '').split('-');
+                          const dateFormatted = d && m && y ? `${d}/${m}/${y}` : inst.due_date;
+                          const isPaid = inst.status === 'PAID';
+
+                          return (
+                            <div
+                              key={inst.number}
+                              className={`p-2.5 border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs ${
+                                isPaid ? 'bg-green-50 border-green-300' : 'bg-white border-amber-200'
+                              }`}
+                            >
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <strong className="text-deep-black">
+                                    Parcela {inst.number}/{selectedSaleDetail.crediario?.installments_count || selectedSaleDetail.crediario?.installments?.length}:
+                                  </strong>
+                                  <span className="font-mono font-black text-deep-black">
+                                    ${Number(inst.amount).toFixed(2)} USD
+                                  </span>
+                                  {isPaid ? (
+                                    <span className="text-[9px] bg-green-200 text-green-900 font-black px-1.5 py-0.5 rounded">
+                                      ✓ PAGA ({inst.paid_method || 'CASH'})
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.5 rounded border border-amber-300">
+                                      VENCE EM {dateFormatted}
+                                    </span>
+                                  )}
+                                </div>
+                                {isPaid && inst.paid_at && (
+                                  <span className="text-[9px] text-green-800 font-mono block">
+                                    Baixa registrada em: {new Date(inst.paid_at).toLocaleDateString('pt-BR')}
+                                  </span>
+                                )}
+                              </div>
+
+                              {!isPaid && (
+                                <div className="flex items-center gap-1.5">
+                                  {/* Botão Baixa Dinheiro */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePayInstallment(selectedSaleDetail.order_id, inst.number, 'CASH')}
+                                    className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-[9px] font-black uppercase transition"
+                                    title="Receber parcela em Dinheiro (Cash)"
+                                  >
+                                    + CASH
+                                  </button>
+                                  {/* Botão Baixa Zelle */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePayInstallment(selectedSaleDetail.order_id, inst.number, 'ZELLE')}
+                                    className="px-2 py-1 bg-purple-700 hover:bg-purple-800 text-white text-[9px] font-black uppercase transition"
+                                    title="Receber parcela via Zelle"
+                                  >
+                                    + ZELLE
+                                  </button>
+                                  {/* Botão Baixa Cartão */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePayInstallment(selectedSaleDetail.order_id, inst.number, 'CARD')}
+                                    className="px-2 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black uppercase transition"
+                                    title="Receber parcela no Cartão"
+                                  >
+                                    + CARD
+                                  </button>
+                                  {/* Lembrete WhatsApp */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const cleanPhone = (selectedSaleDetail.customer_phone || '').replace(/\D/g, '');
+                                      const reminderMsg = `Olá *${selectedSaleDetail.customer_name}*! Lembrete amigável da Ana Fitness Wear 💕\nA sua Parcela *${inst.number}/${selectedSaleDetail.crediario?.installments_count || selectedSaleDetail.crediario?.installments?.length}* no valor de *$${Number(inst.amount).toFixed(2)} USD* vence no dia *${dateFormatted}*.\n\nPara pagar via Zelle: *anafitweareua@gmail.com*\nQualquer dúvida estamos à disposição! ✨`;
+                                      const url = cleanPhone
+                                        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(reminderMsg)}`
+                                        : `https://wa.me/?text=${encodeURIComponent(reminderMsg)}`;
+                                      window.open(url, '_blank');
+                                    }}
+                                    className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-[9px] font-black uppercase flex items-center gap-1 transition"
+                                    title="Enviar lembrete amigável no WhatsApp"
+                                  >
+                                    <Send className="w-2.5 h-2.5" />
+                                    <span>LEMBRETE</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Memória de Cálculo Passo a Passo */}
                 <div className="space-y-2 text-xs uppercase tracking-wider">

@@ -13,6 +13,26 @@ function getBackupSalesFilePath(): string {
   return primary;
 }
 
+export interface CrediarioInstallment {
+  number: number;
+  amount: number;
+  due_date: string;
+  status: 'PENDING' | 'PAID';
+  paid_at?: string;
+  payment_method?: string;
+}
+
+export interface CrediarioInfo {
+  customer_doc?: string;
+  customer_address?: string;
+  notes?: string;
+  down_payment?: number;
+  down_payment_method?: string;
+  remaining_balance?: number;
+  installments_count: number;
+  installments: CrediarioInstallment[];
+}
+
 export interface SaleItemPayload {
   title: string;
   size: string;
@@ -40,7 +60,7 @@ export interface SaleRecord {
   channel: 'ONLINE' | 'POS_COUNTER';
   seller_name: string;
   coupon_code?: string;
-  payment_method: 'CARD' | 'ZELLE' | 'VENMO' | 'CASH' | 'APPLE_PAY';
+  payment_method: 'CARD' | 'ZELLE' | 'VENMO' | 'CASH' | 'APPLE_PAY' | 'CREDIARIO';
   subtotal_products: number;
   shipping_fee: number; // Valor cobrado do cliente ($9.99 fixo online ou $0 balcão)
   shipping_cost: number; // Custo real da etiqueta USPS
@@ -52,6 +72,7 @@ export interface SaleRecord {
   profit_margin_pct: number; // Margem líquida percentual
   items: SaleItemPayload[];
   status: 'COMPLETED' | 'PENDING' | 'IN_PRODUCTION' | 'WAITING_PAYMENT' | 'PAID' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  crediario?: CrediarioInfo;
 }
 
 function readSavedSales(): SaleRecord[] {
@@ -86,7 +107,7 @@ function calculatePaymentFee(method: string, totalGross: number): number {
   if (m === 'VENMO') {
     return Number((totalGross * 0.019).toFixed(2));
   }
-  // ZELLE e CASH (dinheiro) têm taxa 0%
+  // ZELLE, CASH e CREDIARIO têm taxa 0%
   return 0.00;
 }
 
@@ -182,6 +203,7 @@ export async function GET(req: NextRequest) {
             items,
             status: ord.status || 'COMPLETED',
             shipping_address: meta.address && typeof meta.address === 'object' ? meta.address : undefined,
+            crediario: meta.crediario || undefined,
           };
         });
 
@@ -279,6 +301,7 @@ export async function POST(req: NextRequest) {
       shipping_fee = channel === 'ONLINE' ? 9.99 : 0.00,
       shipping_cost = channel === 'ONLINE' ? 7.50 : 0.00,
       items = [],
+      crediario,
     } = body;
 
     const isPOS = channel === 'POS_COUNTER' || channel === 'POS';
@@ -377,7 +400,8 @@ export async function POST(req: NextRequest) {
       net_profit: netProfit,
       profit_margin_pct: marginPct,
       items: formattedItems,
-      status: 'COMPLETED',
+      status: (payment_method || '').toUpperCase() === 'CREDIARIO' ? 'PENDING' : 'COMPLETED',
+      crediario: crediario || undefined,
     };
 
     // 1. Grava no Supabase 'orders' com dados completos e metadados no shipping_address JSONB
@@ -395,6 +419,7 @@ export async function POST(req: NextRequest) {
         items: formattedItems,
         address: newSale.shipping_address || undefined,
         discount_reason: coupon_code || undefined,
+        crediario: crediario || undefined,
       };
 
       const { data: insertedOrder, error: orderInsertError } = await supabaseServer
@@ -500,30 +525,68 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { order_id, status, tracking_code } = body;
+    const {
+      order_id,
+      status,
+      tracking_code,
+      action,
+      installment_number,
+      installment_payment_method = 'CASH',
+    } = body;
 
     if (!order_id) {
       return NextResponse.json({ error: 'order_id é obrigatório' }, { status: 400 });
     }
 
+    let updatedCrediario: any = null;
+
     // 1. Atualiza no Supabase 'orders'
     try {
-      // Tenta atualizar por order_number no JSONB ou id direto
-      const { data: dbOrders } = await supabaseServer.from('orders').select('id, shipping_address');
+      const { data: dbOrders } = await supabaseServer.from('orders').select('id, shipping_address, status');
       if (dbOrders) {
         const target = dbOrders.find((o: any) => {
           const meta = typeof o.shipping_address === 'object' && o.shipping_address ? o.shipping_address : {};
           return meta.order_number === order_id || o.id === order_id;
         });
+
         if (target) {
+          const currentMeta = typeof target.shipping_address === 'object' ? target.shipping_address : {};
+          let newStatus = status || target.status;
+
+          if (action === 'pay_installment' && currentMeta.crediario && Array.isArray(currentMeta.crediario.installments)) {
+            const insts = currentMeta.crediario.installments.map((inst: any) => {
+              if (inst.number === Number(installment_number)) {
+                return {
+                  ...inst,
+                  status: 'PAID',
+                  paid_at: new Date().toISOString(),
+                  payment_method: installment_payment_method,
+                };
+              }
+              return inst;
+            });
+
+            const allPaid = insts.every((i: any) => i.status === 'PAID');
+            if (allPaid) {
+              newStatus = 'COMPLETED';
+            }
+
+            updatedCrediario = {
+              ...currentMeta.crediario,
+              installments: insts,
+            };
+          }
+
           const updatedMeta = {
-            ...(typeof target.shipping_address === 'object' ? target.shipping_address : {}),
+            ...currentMeta,
             ...(tracking_code !== undefined ? { tracking_code } : {}),
+            ...(updatedCrediario ? { crediario: updatedCrediario } : {}),
           };
+
           await supabaseServer
             .from('orders')
             .update({
-              status: status || undefined,
+              status: newStatus,
               shipping_address: updatedMeta,
             })
             .eq('id', target.id);
@@ -537,10 +600,31 @@ export async function PATCH(req: NextRequest) {
     const sales = readSavedSales();
     const updated = sales.map((s: any) => {
       if (s.order_id === order_id || s.id === order_id) {
+        let cred = s.crediario;
+        let newStatus = status || s.status;
+
+        if (action === 'pay_installment' && cred && Array.isArray(cred.installments)) {
+          const insts = cred.installments.map((inst: any) => {
+            if (inst.number === Number(installment_number)) {
+              return {
+                ...inst,
+                status: 'PAID',
+                paid_at: new Date().toISOString(),
+                payment_method: installment_payment_method,
+              };
+            }
+            return inst;
+          });
+          const allPaid = insts.every((i: any) => i.status === 'PAID');
+          if (allPaid) newStatus = 'COMPLETED';
+          cred = { ...cred, installments: insts };
+        }
+
         return {
           ...s,
-          status: status || s.status,
+          status: newStatus,
           tracking_code: tracking_code !== undefined ? tracking_code : s.tracking_code,
+          crediario: cred,
         };
       }
       return s;
