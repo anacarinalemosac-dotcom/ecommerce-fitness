@@ -23,6 +23,9 @@ import {
   Lock,
   Store,
   PackageMinus,
+  Percent,
+  Tag,
+  X,
 } from 'lucide-react';
 import { StockWriteOffModal } from '../../components/StockWriteOffModal';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
@@ -37,6 +40,7 @@ interface CartItem {
   quantity: number;
   stock: number;
   image?: string;
+  itemDiscount?: number; // Desconto em dólar ($) específico por peça
 }
 
 export default function PosTerminalPage() {
@@ -55,7 +59,11 @@ export default function PosTerminalPage() {
   const [customerName, setCustomerName] = useState('Cliente Balcão');
   const [customerPhone, setCustomerPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'ZELLE' | 'VENMO' | 'CARD' | 'CASH'>('ZELLE');
-  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  
+  // Sistema de Desconto Flexível do PDV (% ou $ e Motivo/Cupom)
+  const [discountType, setDiscountType] = useState<'PERCENT' | 'FIXED'>('PERCENT');
+  const [discountValue, setDiscountValue] = useState<number>(0);
+  const [discountReason, setDiscountReason] = useState<string>('');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedSale, setCompletedSale] = useState<any | null>(null);
@@ -206,10 +214,20 @@ export default function PosTerminalPage() {
     setCart(cart.filter((item) => item.sku !== sku));
   };
 
-  const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  // Subtotal considerando possíveis descontos unitários por peça
+  const subtotal = cart.reduce((acc, item) => {
+    const effectiveUnitPrice = Math.max(0, item.price - (item.itemDiscount || 0));
+    return acc + effectiveUnitPrice * item.quantity;
+  }, 0);
   const totalCost = cart.reduce((acc, item) => acc + item.costPrice * item.quantity, 0);
-  const totalAfterDiscount = Math.max(0, subtotal - discountAmount);
-  const commission = totalAfterDiscount * 0.1; // 10% comissão vendedora balcão
+
+  // Desconto global do PDV (calculado em % ou valor fixo em $)
+  const calculatedDiscountAmount = discountType === 'PERCENT'
+    ? Number(((subtotal * Math.min(100, Math.max(0, discountValue))) / 100).toFixed(2))
+    : Number(Math.min(subtotal, Math.max(0, discountValue)).toFixed(2));
+
+  const totalAfterDiscount = Math.max(0, subtotal - calculatedDiscountAmount);
+  const commission = totalAfterDiscount * 0.1; // 10% comissão vendedora balcão calculada sobre o líquido
 
   // Finalização da venda com registro direto no ERP / API
   const handleFinalizeSale = async () => {
@@ -224,9 +242,10 @@ export default function PosTerminalPage() {
         customer_name: customerName.trim() || 'Cliente Balcão Leominster',
         customer_phone: customerPhone.trim() || undefined,
         seller_name: seller,
+        coupon_code: discountReason.trim() ? discountReason.trim().toUpperCase() : undefined,
         payment_method: paymentMethod,
         subtotal_products: subtotal,
-        discount_amount: discountAmount,
+        discount_amount: calculatedDiscountAmount,
         shipping_fee: 0.00,
         shipping_cost: 0.00,
         items: cart.map((item) => ({
@@ -235,7 +254,7 @@ export default function PosTerminalPage() {
           color: item.color,
           sku: item.sku,
           quantity: item.quantity,
-          unit_price: item.price,
+          unit_price: Math.max(0, item.price - (item.itemDiscount || 0)),
           cost_price: item.costPrice,
         })),
       };
@@ -252,8 +271,15 @@ export default function PosTerminalPage() {
       }
 
       const data = await res.json();
-      setCompletedSale(data.sale || payload);
+      setCompletedSale(data.sale || {
+        ...payload,
+        total_paid: totalAfterDiscount,
+        discount_amount: calculatedDiscountAmount,
+        discount_reason: discountReason.trim() || undefined,
+      });
       setCart([]);
+      setDiscountValue(0);
+      setDiscountReason('');
       if (refreshProducts) {
         refreshProducts();
       }
@@ -464,14 +490,29 @@ export default function PosTerminalPage() {
                 <span className="text-deep-black/60">FORMA DE PAGAMENTO:</span>
                 <span className="font-black text-gold">{completedSale.payment_method}</span>
               </div>
+              <div className="flex justify-between border-t border-deep-black/10 pt-2 text-xs">
+                <span className="text-deep-black/60">SUBTOTAL BRUTO:</span>
+                <span className="font-mono text-deep-black font-bold">${Number(completedSale.subtotal_products).toFixed(2)}</span>
+              </div>
+              {Number(completedSale.discount_amount) > 0 && (
+                <div className="flex justify-between text-green-700 font-black text-xs bg-green-50 p-1.5 border border-green-200">
+                  <span className="flex items-center gap-1">
+                    <Tag className="w-3 h-3 text-green-600" />
+                    <span>DESCONTO APLICADO {completedSale.coupon_code ? `(${completedSale.coupon_code})` : ''}:</span>
+                  </span>
+                  <span className="font-mono">-${Number(completedSale.discount_amount).toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between border-t border-deep-black/10 pt-2 text-sm font-black">
                 <span>VALOR TOTAL RECEBIDO:</span>
-                <span className="font-mono text-deep-black">${Number(completedSale.subtotal_products).toFixed(2)}</span>
+                <span className="font-mono text-deep-black">
+                  ${(Number(completedSale.total_paid ?? (completedSale.subtotal_products - (completedSale.discount_amount || 0)))).toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between text-gold font-bold text-[11px]">
-                <span>COMISSÃO DA VENDEDORA (10%):</span>
+                <span>COMISSÃO DA VENDEDORA (10% SOBRE LÍQUIDO):</span>
                 <span className="font-mono">
-                  ${(Number(completedSale.subtotal_products) * 0.1).toFixed(2)}
+                  ${((Number(completedSale.total_paid ?? (completedSale.subtotal_products - (completedSale.discount_amount || 0)))) * 0.1).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -479,7 +520,14 @@ export default function PosTerminalPage() {
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
-                onClick={() => setCompletedSale(null)}
+                onClick={() => {
+                  setCompletedSale(null);
+                  setCart([]);
+                  setDiscountValue(0);
+                  setDiscountReason('');
+                  setCustomerName('Cliente Balcão');
+                  setCustomerPhone('');
+                }}
                 className="flex-1 py-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -710,7 +758,7 @@ export default function PosTerminalPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       {/* Controles de Quantidade */}
                       <div className="flex items-center border border-deep-black/20">
                         <button
@@ -730,9 +778,41 @@ export default function PosTerminalPage() {
                         </button>
                       </div>
 
-                      <span className="text-sm font-black text-deep-black uppercase font-mono min-w-[60px] text-right">
-                        ${(item.price * item.quantity).toFixed(2)}
-                      </span>
+                      {/* Desconto unitário específico nesta peça */}
+                      <div className="flex items-center gap-1 bg-warm-light/20 border border-deep-black/20 px-1.5 py-0.5" title="Desconto especial nesta peça ($)">
+                        <Tag className="w-3 h-3 text-gold" />
+                        <span className="text-[9px] font-bold text-deep-black/60">Desc:</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max={item.price}
+                          step="1"
+                          placeholder="$0"
+                          value={item.itemDiscount || ''}
+                          onChange={(e) => {
+                            const val = Math.max(0, parseFloat(e.target.value) || 0);
+                            setCart(cart.map((c) => c.sku === item.sku ? { ...c, itemDiscount: Math.min(item.price, val) } : c));
+                          }}
+                          className="w-14 px-1 py-0.5 text-[10px] font-mono border-0 bg-transparent text-right font-black focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="min-w-[65px] text-right">
+                        {(item.itemDiscount || 0) > 0 ? (
+                          <>
+                            <span className="text-[10px] line-through text-deep-black/40 block font-mono">
+                              ${(item.price * item.quantity).toFixed(2)}
+                            </span>
+                            <span className="text-sm font-black text-green-700 uppercase font-mono">
+                              ${((item.price - (item.itemDiscount || 0)) * item.quantity).toFixed(2)}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-sm font-black text-deep-black uppercase font-mono">
+                            ${(item.price * item.quantity).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
 
                       <button
                         onClick={() => handleRemove(item.sku)}
@@ -774,6 +854,154 @@ export default function PosTerminalPage() {
             </div>
           </div>
 
+          {/* Seção Completa de Desconto do PDV */}
+          <div className="space-y-3 bg-white/5 p-4 border border-white/10">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-gold" />
+                <span>OPÇÃO DE DESCONTO BALCÃO:</span>
+              </label>
+
+              {/* Seletor de Tipo (% ou $) */}
+              <div className="flex items-center border border-white/20 bg-deep-black">
+                <button
+                  type="button"
+                  onClick={() => setDiscountType('PERCENT')}
+                  className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition ${
+                    discountType === 'PERCENT'
+                      ? 'bg-gold text-deep-black font-black'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                  title="Aplicar desconto em percentual (%)"
+                >
+                  <Percent className="w-3 h-3" />
+                  <span>%</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDiscountType('FIXED')}
+                  className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition ${
+                    discountType === 'FIXED'
+                      ? 'bg-gold text-deep-black font-black'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                  title="Aplicar desconto em valor fixo ($ USD)"
+                >
+                  <DollarSign className="w-3 h-3" />
+                  <span>$ USD</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Campo de Entrada de Desconto */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="number"
+                  min="0"
+                  max={discountType === 'PERCENT' ? 100 : subtotal}
+                  step={discountType === 'PERCENT' ? '1' : '0.50'}
+                  value={discountValue || ''}
+                  onChange={(e) => setDiscountValue(Math.max(0, parseFloat(e.target.value) || 0))}
+                  placeholder={discountType === 'PERCENT' ? 'Digite a % (ex: 10, 15, 20)' : 'Digite o valor em $ (ex: 5.00)'}
+                  className="w-full pl-3 pr-16 py-2.5 text-sm font-black font-mono bg-white/10 border border-white/20 text-white placeholder-white/30 focus:outline-none focus:border-gold"
+                />
+                <span className="absolute right-3 top-3 text-xs font-black text-gold font-mono">
+                  {discountType === 'PERCENT' ? '% OFF' : '$ USD'}
+                </span>
+              </div>
+
+              {discountValue > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDiscountValue(0);
+                    setDiscountReason('');
+                  }}
+                  className="px-3 py-2.5 bg-red-600/30 hover:bg-red-600 text-white text-xs font-black uppercase border border-red-500/40 transition flex items-center gap-1 shrink-0"
+                  title="Remover desconto"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>LIMPAR</span>
+                </button>
+              )}
+            </div>
+
+            {/* Atalhos Rápidos de 1 Toque */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[9px] font-black uppercase tracking-wider text-white/50 block">
+                ATALHOS RÁPIDOS DE DESCONTO:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {discountType === 'PERCENT' ? (
+                  [5, 10, 15, 20, 25, 30, 50].map((pct) => (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => setDiscountValue(pct)}
+                      className={`px-2.5 py-1 text-[10px] font-black uppercase font-mono border transition ${
+                        discountValue === pct
+                          ? 'bg-gold text-deep-black border-gold shadow-sm'
+                          : 'bg-white/5 text-white/80 border-white/20 hover:border-gold hover:text-gold'
+                      }`}
+                    >
+                      {pct}%
+                    </button>
+                  ))
+                ) : (
+                  [5, 10, 15, 20, 25, 50].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setDiscountValue(val)}
+                      className={`px-2.5 py-1 text-[10px] font-black uppercase font-mono border transition ${
+                        discountValue === val
+                          ? 'bg-gold text-deep-black border-gold shadow-sm'
+                          : 'bg-white/5 text-white/80 border-white/20 hover:border-gold hover:text-gold'
+                      }`}
+                    >
+                      ${val}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Motivo do Desconto ou Cupom */}
+            <div className="space-y-1.5 pt-2 border-t border-white/10">
+              <label className="text-[9px] font-black uppercase tracking-wider text-white/60 flex items-center justify-between">
+                <span>CUPOM OU MOTIVO DO DESCONTO (OPCIONAL):</span>
+                {discountReason && <span className="text-gold font-mono font-bold">{discountReason}</span>}
+              </label>
+              <input
+                type="text"
+                value={discountReason}
+                onChange={(e) => setDiscountReason(e.target.value.toUpperCase())}
+                placeholder="EX: VIP, AMIGA DA DONA, MOSTRUARIO, ANA10"
+                className="w-full px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider bg-white/10 border border-white/20 text-white placeholder-white/30 focus:outline-none focus:border-gold font-mono"
+              />
+
+              <div className="flex flex-wrap gap-1 pt-1">
+                {['VIP 10%', 'AMIGA', 'MOSTRUÁRIO', 'DEF-LEVE', 'PROMO'].map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      setDiscountReason(tag);
+                      if (tag.includes('10%') && discountValue === 0) {
+                        setDiscountType('PERCENT');
+                        setDiscountValue(10);
+                      }
+                    }}
+                    className="px-2 py-0.5 text-[8px] font-black uppercase bg-white/5 text-white/70 hover:text-gold hover:bg-white/10 border border-white/10 transition"
+                  >
+                    +{tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* Resumo da Venda */}
           <div className="space-y-3">
             <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
@@ -785,30 +1013,37 @@ export default function PosTerminalPage() {
                 <span className="font-mono">${subtotal.toFixed(2)}</span>
               </div>
 
-              {/* Desconto Opcional */}
-              <div className="flex justify-between items-center text-white/70">
-                <span>DESCONTO BALCÃO ($):</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={discountAmount || ''}
-                  onChange={(e) => setDiscountAmount(Math.max(0, parseFloat(e.target.value) || 0))}
-                  placeholder="0.00"
-                  className="w-20 px-2 py-1 text-right text-xs bg-white/10 border border-white/20 text-white font-mono focus:outline-none focus:border-gold"
-                />
-              </div>
+              {/* Linha Destacada de Desconto Concedido */}
+              {calculatedDiscountAmount > 0 && (
+                <div className="flex justify-between items-center text-green-400 font-bold bg-green-950/40 border border-green-500/30 p-2.5">
+                  <span className="flex items-center gap-1">
+                    <Tag className="w-3.5 h-3.5 text-green-400" />
+                    <span>
+                      DESCONTO APLICADO ({discountType === 'PERCENT' ? `${discountValue}%` : `$${discountValue.toFixed(2)}`}
+                      {discountReason ? ` • ${discountReason}` : ''}):
+                    </span>
+                  </span>
+                  <span className="font-mono font-black text-sm">-${calculatedDiscountAmount.toFixed(2)}</span>
+                </div>
+              )}
 
               <div className="flex justify-between text-gold font-bold bg-white/5 p-2.5 border border-gold/20">
                 <span className="flex items-center gap-1.5">
-                  <DollarSign className="w-3.5 h-3.5" /> COMISSÃO VENDEDORA (10%):
+                  <DollarSign className="w-3.5 h-3.5" /> COMISSÃO VENDEDORA (10% SOBRE LÍQUIDO):
                 </span>
                 <span className="font-mono">${commission.toFixed(2)}</span>
               </div>
 
               <div className="flex justify-between text-xl font-black text-white pt-3 border-t border-white/20">
                 <span>TOTAL A COBRAR:</span>
-                <span className="text-gold font-mono">${totalAfterDiscount.toFixed(2)}</span>
+                <div className="text-right">
+                  {calculatedDiscountAmount > 0 && (
+                    <span className="text-xs line-through text-white/40 block font-mono">
+                      ${subtotal.toFixed(2)}
+                    </span>
+                  )}
+                  <span className="text-gold font-mono">${totalAfterDiscount.toFixed(2)}</span>
+                </div>
               </div>
             </div>
           </div>

@@ -373,7 +373,7 @@ export async function POST(req: NextRequest) {
           seller_name: newSale.seller_name,
           subtotal_amount: newSale.subtotal_products,
           discount_amount: newSale.discount_amount,
-          total_amount: newSale.subtotal_products + newSale.shipping_fee,
+          total_amount: Math.max(0, newSale.subtotal_products + newSale.shipping_fee - newSale.discount_amount),
           commission_amount: newSale.commission_amount,
           payment_method: newSale.payment_method,
           status: 'COMPLETED',
