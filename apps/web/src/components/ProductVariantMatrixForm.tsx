@@ -336,6 +336,13 @@ export function ProductVariantMatrixForm({
 
       setMediaList(existingMedia);
     } else {
+      setTitle('');
+      setSlug('');
+      setDescription('');
+      setComposition('');
+      setMediaList([]);
+      setColors([{ name: 'Preto Ônix', hex: '#0A0A0A' }]);
+      setSelectedSizes(['P', 'M', 'G']);
       setVisibleOnline(false); // Novos produtos iniciam como rascunho por segurança
       setVisiblePos(true);
       setRibbon('');

@@ -219,6 +219,11 @@ export default function BackofficeDashboard() {
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
   const [showWriteOffModal, setShowWriteOffModal] = useState(false);
 
+  // Filtros e Busca Rápida no Catálogo de Produtos
+  const [productSearch, setProductSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('ALL');
+  const [productStatusFilter, setProductStatusFilter] = useState<'ALL' | 'ACTIVE' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK'>('ALL');
+
   // Relatório de Vendas e Lucro Real
   const [salesData, setSalesData] = useState<any | null>(null);
   const [loadingSales, setLoadingSales] = useState(false);
@@ -827,6 +832,72 @@ export default function BackofficeDashboard() {
     return true;
   });
 
+  // Catálogo Base e Filtragem Avançada com Busca
+  const baseCatalogList = supabaseProducts.length > 0 ? supabaseProducts : products;
+
+  const availableCatalogCategories = Array.from(
+    new Set(
+      baseCatalogList
+        .map((p: any) => (p.categories?.name || p.category || '').toString().trim().toUpperCase())
+        .filter(Boolean)
+    )
+  ).sort();
+
+  const totalCatalogCount = baseCatalogList.length;
+  const activeCatalogCount = baseCatalogList.filter((p: any) => p.visible_online !== false).length;
+  const hiddenCatalogCount = baseCatalogList.filter((p: any) => p.visible_online === false).length;
+  const inStockCatalogCount = baseCatalogList.filter((p: any) => {
+    const totalStock = p.total_stock ?? p.stock ?? (p.variants || []).reduce((s: number, v: any) => s + (v.stock_quantity || 0), 0);
+    return totalStock > 0;
+  }).length;
+  const outOfStockCatalogCount = baseCatalogList.filter((p: any) => {
+    const totalStock = p.total_stock ?? p.stock ?? (p.variants || []).reduce((s: number, v: any) => s + (v.stock_quantity || 0), 0);
+    return totalStock <= 0;
+  }).length;
+
+  const filteredCatalogProducts = baseCatalogList.filter((item: any) => {
+    const itemVariants = item.variants || (item.sizes ? item.sizes.map((sz: string) => ({
+      size: sz,
+      color: item.colorName || 'Preto Ônix',
+      sku: `${item.sku || 'PROD'}-${sz}`,
+      stock_quantity: Math.round((item.stock || 0) / item.sizes.length),
+    })) : []);
+    const totalStock = item.total_stock ?? item.stock ?? itemVariants.reduce((s: number, v: any) => s + (v.stock_quantity || 0), 0);
+
+    // Filtro por Status
+    if (productStatusFilter === 'ACTIVE' && item.visible_online === false) return false;
+    if (productStatusFilter === 'HIDDEN' && item.visible_online !== false) return false;
+    if (productStatusFilter === 'IN_STOCK' && totalStock <= 0) return false;
+    if (productStatusFilter === 'OUT_OF_STOCK' && totalStock > 0) return false;
+
+    // Filtro por Categoria
+    const cat = (item.categories?.name || item.category || '').toString().trim().toUpperCase();
+    if (productCategoryFilter !== 'ALL' && cat !== productCategoryFilter) return false;
+
+    // Busca Textual (Nome, SKU, Fornecedor, Slug, Variações)
+    if (productSearch.trim()) {
+      const q = productSearch.toLowerCase().trim();
+      const titleMatch = (item.title || '').toLowerCase().includes(q);
+      const skuMatch = (item.sku || '').toLowerCase().includes(q);
+      const slugMatch = (item.slug || '').toLowerCase().includes(q);
+      const supplierMatch = (item.suppliers?.company_name || '').toLowerCase().includes(q);
+      const catMatch = cat.toLowerCase().includes(q);
+      const ribbonMatch = (item.meta?.ribbon || '').toLowerCase().includes(q);
+      const variantMatch = itemVariants.some((v: any) =>
+        (v.sku || '').toLowerCase().includes(q) ||
+        (v.color || '').toLowerCase().includes(q) ||
+        (v.size || '').toLowerCase().includes(q) ||
+        (v.barcode || '').toLowerCase().includes(q)
+      );
+
+      if (!titleMatch && !skuMatch && !slugMatch && !supplierMatch && !catMatch && !ribbonMatch && !variantMatch) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
   // =========================================================================
   // TELA DE PROTEÇÃO / LOGIN OBRIGATÓRIO DO BACKOFFICE
   // =========================================================================
@@ -1342,7 +1413,7 @@ export default function BackofficeDashboard() {
           {/* FORMULÁRIO DE CADASTRO E EDIÇÃO COM GRADE DE VARIAÇÕES (MATRIZ COR X TAMANHO) */}
           {showAddForm && (
             <div className="bg-white border-2 border-deep-black p-6 sm:p-8 shadow-luxury space-y-6 animate-fadeIn">
-              <div className="flex items-center justify-between border-b border-deep-black/10 pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-deep-black/10 pb-4 gap-4">
                 <div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
                     {editingProduct ? 'EDITANDO PRODUTO E MATRIZ SKU NO SUPABASE' : 'NOVO CADASTRO DE PRODUTO & GRADE DE VARIAÇÕES'}
@@ -1354,20 +1425,64 @@ export default function BackofficeDashboard() {
                     Gravação direta no banco de dados Supabase (tabelas <strong>'products'</strong> e <strong>'product_variants'</strong>).
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddForm(false);
-                    setEditingProduct(null);
-                  }}
-                  className="text-xs font-black uppercase px-3.5 py-1.5 border border-deep-black hover:bg-deep-black hover:text-white transition"
-                >
-                  ✕ FECHAR
-                </button>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Seletor Rápido de Produtos para Editar ou Alternar */}
+                  <div className="flex items-center gap-1.5 bg-warm-light/40 px-2.5 py-1.5 border-2 border-deep-black shadow-xs">
+                    <Search className="w-3.5 h-3.5 text-gold shrink-0" />
+                    <span className="text-[9px] font-black uppercase text-deep-black/70 shrink-0">LOCALIZAR:</span>
+                    <select
+                      value={editingProduct?.id || ''}
+                      onChange={(e) => {
+                        const selId = e.target.value;
+                        if (!selId) {
+                          setEditingProduct(null);
+                        } else {
+                          const found = baseCatalogList.find((p: any) => p.id === selId);
+                          if (found) {
+                            const itemVariants = found.variants || (found.sizes ? found.sizes.map((sz: string) => ({
+                              size: sz,
+                              color: found.colorName || 'Preto Ônix',
+                              sku: `${found.sku || 'PROD'}-${sz}`,
+                              stock_quantity: Math.round((found.stock || 0) / found.sizes.length),
+                            })) : []);
+                            const firstImage = itemVariants[0]?.images?.[0] || found.primaryImage || found.primary_image || found.meta?.primary_image || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
+                            setEditingProduct({
+                              ...found,
+                              variants: itemVariants,
+                              primaryImage: firstImage,
+                              primary_image: firstImage,
+                            });
+                          }
+                        }
+                      }}
+                      className="bg-transparent text-xs font-bold text-deep-black uppercase focus:outline-none cursor-pointer max-w-[200px] sm:max-w-[280px] truncate"
+                    >
+                      <option value="">-- NOVO CADASTRO EM BRANCO --</option>
+                      {baseCatalogList.map((p: any) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title} ({p.sku || p.category || 'SEM SKU'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setEditingProduct(null);
+                    }}
+                    className="text-xs font-black uppercase px-3.5 py-2 border-2 border-deep-black hover:bg-deep-black hover:text-white transition shadow-xs"
+                  >
+                    ✕ FECHAR
+                  </button>
+                </div>
               </div>
 
               {/* Componente Modular de Grade de Variações */}
               <ProductVariantMatrixForm
+                key={editingProduct?.id || 'new-product'}
                 initialProduct={editingProduct}
                 onSaveSuccess={(saved) => {
                   setShowAddForm(false);
@@ -1384,6 +1499,131 @@ export default function BackofficeDashboard() {
             </div>
           )}
 
+          {/* BARRA DE PESQUISA E FILTROS DO CATÁLOGO DE PRODUTOS */}
+          <div className="bg-white border-2 border-deep-black p-4 space-y-3 shadow-sm">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              {/* Campo de Busca Rápida com Ícone e Botão Limpar */}
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="DIGITE O NOME DO PRODUTO, SKU, CATEGORIA, FORNECEDOR OU COR/TAMANHO..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  className="w-full pl-9 pr-9 py-2.5 text-xs uppercase tracking-wider border-2 border-deep-black/30 focus:border-deep-black focus:outline-none font-bold placeholder:text-deep-black/40 bg-warm-light/20"
+                />
+                <Search className="w-4 h-4 text-deep-black/50 absolute left-3 top-3" />
+                {productSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setProductSearch('')}
+                    className="absolute right-2.5 top-2.5 p-1 hover:bg-deep-black/10 text-deep-black/60 hover:text-deep-black"
+                    title="Limpar busca"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filtro de Categoria */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 border border-deep-black/30 px-3 py-2 bg-warm-light/20 shrink-0">
+                  <Filter className="w-3.5 h-3.5 text-gold" />
+                  <span className="text-[10px] font-black uppercase text-deep-black/60">CATEGORIA:</span>
+                  <select
+                    value={productCategoryFilter}
+                    onChange={(e) => setProductCategoryFilter(e.target.value)}
+                    className="text-xs font-black uppercase bg-transparent border-0 focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL">TODAS AS CATEGORIAS ({totalCatalogCount})</option>
+                    {availableCatalogCategories.map((cat) => {
+                      const count = baseCatalogList.filter((p: any) => (p.categories?.name || p.category || '').toString().trim().toUpperCase() === cat).length;
+                      return (
+                        <option key={cat} value={cat}>
+                          {cat} ({count})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Pílulas de Filtro Rápido de Status */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-deep-black/10">
+              <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/50 mr-1">STATUS:</span>
+              <button
+                type="button"
+                onClick={() => setProductStatusFilter('ALL')}
+                className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border transition ${
+                  productStatusFilter === 'ALL'
+                    ? 'bg-deep-black text-white border-deep-black'
+                    : 'bg-white text-deep-black/70 border-deep-black/20 hover:border-deep-black'
+                }`}
+              >
+                TODOS ({totalCatalogCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductStatusFilter('ACTIVE')}
+                className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1 ${
+                  productStatusFilter === 'ACTIVE'
+                    ? 'bg-green-700 text-white border-green-800'
+                    : 'bg-white text-green-700 border-green-300 hover:border-green-700'
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                <span>NO AR NA LOJA ({activeCatalogCount})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductStatusFilter('HIDDEN')}
+                className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1 ${
+                  productStatusFilter === 'HIDDEN'
+                    ? 'bg-gray-800 text-white border-gray-900'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-gray-700'
+                }`}
+              >
+                <span>OCULTOS ({hiddenCatalogCount})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductStatusFilter('IN_STOCK')}
+                className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border transition ${
+                  productStatusFilter === 'IN_STOCK'
+                    ? 'bg-deep-black text-white border-deep-black'
+                    : 'bg-white text-deep-black/70 border-deep-black/20 hover:border-deep-black'
+                }`}
+              >
+                EM ESTOQUE ({inStockCatalogCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductStatusFilter('OUT_OF_STOCK')}
+                className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border transition ${
+                  productStatusFilter === 'OUT_OF_STOCK'
+                    ? 'bg-gold text-deep-black border-deep-black font-black'
+                    : 'bg-white text-gold border-gold/40 hover:border-gold'
+                }`}
+              >
+                PRÉ-VENDA / ZERADOS ({outOfStockCatalogCount})
+              </button>
+
+              {(productSearch || productCategoryFilter !== 'ALL' || productStatusFilter !== 'ALL') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProductSearch('');
+                    setProductCategoryFilter('ALL');
+                    setProductStatusFilter('ALL');
+                  }}
+                  className="ml-auto px-2 py-1 text-[9px] font-black uppercase text-red-600 hover:bg-red-50 border border-red-200 transition"
+                >
+                  ✕ LIMPAR FILTROS
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Tabela de Produtos Cadastrados no Catálogo */}
           <div className="bg-white border-2 border-deep-black overflow-x-auto shadow-sm">
             <div className="p-4 bg-deep-black/5 border-b border-deep-black/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1394,9 +1634,9 @@ export default function BackofficeDashboard() {
                 </span>
               </div>
               <span className="text-[10px] font-mono text-deep-black/60 uppercase font-bold">
-                {supabaseProducts.length > 0
-                  ? `${supabaseProducts.length} PRODUTOS REGISTRADOS NO SUPABASE`
-                  : `${products.length} PRODUTOS NO CATÁLOGO LOCAL`}
+                {productSearch || productCategoryFilter !== 'ALL' || productStatusFilter !== 'ALL'
+                  ? `EXIBINDO ${filteredCatalogProducts.length} DE ${totalCatalogCount} PRODUTOS`
+                  : `${totalCatalogCount} PRODUTOS NO ERP`}
               </span>
             </div>
 
@@ -1415,7 +1655,33 @@ export default function BackofficeDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-deep-black/10">
-                {(supabaseProducts.length > 0 ? supabaseProducts : products).map((item: any) => {
+                {filteredCatalogProducts.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="p-10 text-center bg-warm-light/10">
+                      <div className="max-w-md mx-auto space-y-2">
+                        <Search className="w-8 h-8 text-deep-black/30 mx-auto" />
+                        <p className="text-sm font-black uppercase text-deep-black">
+                          NENHUM PRODUTO ENCONTRADO COM ESSES TERMOS
+                        </p>
+                        <p className="text-xs text-deep-black/60 uppercase">
+                          {productSearch ? `Nenhum resultado para "${productSearch}".` : 'Nenhum produto atende aos filtros de categoria/status selecionados.'}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProductSearch('');
+                            setProductCategoryFilter('ALL');
+                            setProductStatusFilter('ALL');
+                          }}
+                          className="mt-3 px-4 py-2 bg-deep-black text-white hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-wider transition border border-deep-black shadow-sm"
+                        >
+                          LIMPAR BUSCA E RESTAURAR LISTA
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredCatalogProducts.map((item: any) => {
                   const itemVariants = item.variants || (item.sizes ? item.sizes.map((sz: string) => ({
                     size: sz,
                     color: item.colorName || 'Preto Ônix',
@@ -1603,7 +1869,7 @@ export default function BackofficeDashboard() {
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>
