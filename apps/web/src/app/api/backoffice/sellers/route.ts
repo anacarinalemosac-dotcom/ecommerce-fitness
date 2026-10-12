@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { recordLiveEvent } from '@/lib/liveStore';
+import { supabaseServer } from '@/lib/supabaseServer';
 
+const SELLERS_ROW_ID = '00000000-0000-0000-0000-000000000092';
+const SELLERS_SLUG = '__sellers_db_state__';
 const SELLERS_FILE = path.join(process.cwd(), 'sellers_db.json');
 
 export interface SellerRecord {
@@ -29,30 +32,82 @@ export interface SellerRecord {
   created_at: string;
 }
 
-// Vendedoras cadastradas: começa vazio para conter apenas vendedoras reais cadastradas
-const INITIAL_SELLERS: SellerRecord[] = [];
+// Cache em memória para rápida resposta entre requisições
+let memorySellers: SellerRecord[] | null = null;
+let lastSellersFetch = 0;
 
-function readSellers(): SellerRecord[] {
+async function readSellers(): Promise<SellerRecord[]> {
+  const now = Date.now();
+  if (memorySellers && now - lastSellersFetch < 3000) {
+    return memorySellers;
+  }
+
+  // 1. Tenta carregar do Supabase (Nuvem em produção / Vercel)
+  try {
+    const { data: row, error } = await supabaseServer
+      .from('products')
+      .select('description')
+      .eq('id', SELLERS_ROW_ID)
+      .maybeSingle();
+
+    if (!error && row?.description) {
+      try {
+        const parsed = JSON.parse(row.description);
+        if (Array.isArray(parsed)) {
+          memorySellers = parsed.map((s: any) => ({
+            ...s,
+            approval_status: s.approval_status || (s.active ? 'APPROVED' : 'PENDING'),
+          }));
+          lastSellersFetch = now;
+          return memorySellers;
+        }
+      } catch (_) {}
+    }
+  } catch (err) {
+    console.warn('Erro ao ler vendedoras do Supabase:', err);
+  }
+
+  // 2. Fallback para arquivo local se existir
   try {
     if (fs.existsSync(SELLERS_FILE)) {
       const raw = fs.readFileSync(SELLERS_FILE, 'utf8');
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return parsed.map((s: any) => ({
+        memorySellers = parsed.map((s: any) => ({
           ...s,
           approval_status: s.approval_status || (s.active ? 'APPROVED' : 'PENDING'),
         }));
+        lastSellersFetch = now;
+        return memorySellers;
       }
     }
   } catch (e) {
     console.warn('Erro ao ler sellers_db.json:', e);
   }
-  return [];
+
+  return memorySellers || [];
 }
 
-function writeSellers(sellers: SellerRecord[]) {
+async function writeSellers(sellers: SellerRecord[]): Promise<void> {
+  memorySellers = sellers;
+  lastSellersFetch = Date.now();
+  const serialized = JSON.stringify(sellers, null, 2);
+
+  // 1. Salva no Supabase (Nuvem permanente para produção)
   try {
-    fs.writeFileSync(SELLERS_FILE, JSON.stringify(sellers, null, 2), 'utf8');
+    await supabaseServer.from('products').upsert({
+      id: SELLERS_ROW_ID,
+      title: '__SELLERS_DB_STATE__',
+      slug: SELLERS_SLUG,
+      description: serialized,
+    });
+  } catch (err) {
+    console.warn('Erro ao salvar vendedoras no Supabase:', err);
+  }
+
+  // 2. Salva no arquivo local (quando permitido pelo ambiente)
+  try {
+    fs.writeFileSync(SELLERS_FILE, serialized, 'utf8');
   } catch (e) {
     console.warn('Erro ao salvar sellers_db.json:', e);
   }
@@ -62,7 +117,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const couponQuery = searchParams.get('coupon');
-    const sellers = readSellers();
+    const sellers = await readSellers();
 
     // Se a busca for por um cupom específico (ex: pelo checkout)
     if (couponQuery) {
@@ -90,7 +145,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const sellers = readSellers();
+    const sellers = await readSellers();
 
     // 1. Ação de Criar / Atualizar Vendedora
     if (body.action === 'save') {
@@ -138,7 +193,7 @@ export async function POST(req: NextRequest) {
           }
           return s;
         });
-        writeSellers(updatedList);
+        await writeSellers(updatedList);
         return NextResponse.json({ sellers: updatedList });
       } else {
         // Nova Vendedora
@@ -164,7 +219,7 @@ export async function POST(req: NextRequest) {
           created_at: new Date().toISOString(),
         };
         const newList = [newSeller, ...sellers];
-        writeSellers(newList);
+        await writeSellers(newList);
         return NextResponse.json({ sellers: newList });
       }
     }
@@ -212,7 +267,7 @@ export async function POST(req: NextRequest) {
       };
 
       const newList = [newSeller, ...sellers];
-      writeSellers(newList);
+      await writeSellers(newList);
 
       // Dispara notificação em tempo real no Backoffice para alertar Ana Carina
       await recordLiveEvent({
@@ -244,7 +299,7 @@ export async function POST(req: NextRequest) {
         }
         return s;
       });
-      writeSellers(updatedList);
+      await writeSellers(updatedList);
       const updated = updatedList.find((s) => s.id === seller_id);
       return NextResponse.json({ success: true, seller: updated });
     }
@@ -315,7 +370,7 @@ export async function POST(req: NextRequest) {
         }
         return s;
       });
-      writeSellers(updatedList);
+      await writeSellers(updatedList);
       return NextResponse.json({ sellers: updatedList });
     }
 
@@ -323,7 +378,7 @@ export async function POST(req: NextRequest) {
     if (body.action === 'delete' || body.action === 'reject') {
       const { seller_id } = body;
       const updatedList = sellers.filter((s) => s.id !== seller_id);
-      writeSellers(updatedList);
+      await writeSellers(updatedList);
       return NextResponse.json({ sellers: updatedList });
     }
 
@@ -339,7 +394,7 @@ export async function POST(req: NextRequest) {
         }
         return s;
       });
-      writeSellers(updatedList);
+      await writeSellers(updatedList);
       return NextResponse.json({ sellers: updatedList });
     }
 
@@ -357,7 +412,7 @@ export async function POST(req: NextRequest) {
         }
         return s;
       });
-      writeSellers(updatedList);
+      await writeSellers(updatedList);
       return NextResponse.json({ sellers: updatedList });
     }
 

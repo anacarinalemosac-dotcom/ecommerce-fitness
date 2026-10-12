@@ -322,13 +322,24 @@ export async function POST(req: NextRequest) {
     try {
       if (fs.existsSync(SELLERS_FILE)) {
         sellersList = JSON.parse(fs.readFileSync(SELLERS_FILE, 'utf8'));
-        if (Array.isArray(sellersList)) {
-          if (coupon_code) {
-            matchedSeller = sellersList.find((s: any) => s.coupon_code && s.coupon_code.toUpperCase() === coupon_code.toUpperCase());
-          }
-          if (!matchedSeller && seller_name && seller_name !== 'Loja Oficial Online') {
-            matchedSeller = sellersList.find((s: any) => s.name && s.name.toLowerCase().includes(seller_name.toLowerCase().split(' ')[0]));
-          }
+      }
+      if (!Array.isArray(sellersList) || sellersList.length === 0) {
+        const { data: sRow } = await supabaseServer
+          .from('products')
+          .select('description')
+          .eq('id', '00000000-0000-0000-0000-000000000092')
+          .maybeSingle();
+        if (sRow?.description) {
+          const parsed = JSON.parse(sRow.description);
+          if (Array.isArray(parsed)) sellersList = parsed;
+        }
+      }
+      if (Array.isArray(sellersList)) {
+        if (coupon_code) {
+          matchedSeller = sellersList.find((s: any) => s.coupon_code && s.coupon_code.toUpperCase() === coupon_code.toUpperCase());
+        }
+        if (!matchedSeller && seller_name && seller_name !== 'Loja Oficial Online') {
+          matchedSeller = sellersList.find((s: any) => s.name && s.name.toLowerCase().includes(seller_name.toLowerCase().split(' ')[0]));
         }
       }
     } catch (e) {
@@ -487,7 +498,17 @@ export async function POST(req: NextRequest) {
           }
           return s;
         });
-        fs.writeFileSync(SELLERS_FILE, JSON.stringify(updatedSellers, null, 2), 'utf8');
+        try {
+          fs.writeFileSync(SELLERS_FILE, JSON.stringify(updatedSellers, null, 2), 'utf8');
+        } catch (_) {}
+        try {
+          await supabaseServer.from('products').upsert({
+            id: '00000000-0000-0000-0000-000000000092',
+            title: '__SELLERS_DB_STATE__',
+            slug: '__sellers_db_state__',
+            description: JSON.stringify(updatedSellers, null, 2),
+          });
+        } catch (_) {}
       } catch (e) {
         console.warn('Erro ao atualizar stats da vendedora:', e);
       }
