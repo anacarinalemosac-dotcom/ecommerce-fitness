@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
+import ProductShareModal from '../components/ProductShareModal';
 import {
   Sparkles,
   ArrowRight,
@@ -305,6 +306,7 @@ export default function HomePage() {
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
   const [quickAddedItem, setQuickAddedItem] = useState<{ id: string; size: string } | null>(null);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [shareModalProduct, setShareModalProduct] = useState<any | null>(null);
 
   const toggleWishlist = (id: string) => {
     setWishlist((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -582,19 +584,21 @@ export default function HomePage() {
                     </div>
                   )}
 
-                  {/* Botões do Topo Direito (Favoritos e Compartilhar WhatsApp) */}
+                  {/* Botões do Topo Direito (Favoritos e Compartilhar Peça) */}
                   <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
-                    <a
-                      href={`https://wa.me/?text=${encodeURIComponent(`Olha essa peça linda da Ana Fitness Wear: ${product.title} ($${product.price.toFixed(2)}) - https://anafitnesswear.com/produto/${product.slug}`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="p-2 bg-white/90 hover:bg-[#25D366] text-deep-black hover:text-white backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
-                      title="Compartilhar no WhatsApp"
-                      aria-label="Compartilhar no WhatsApp"
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShareModalProduct(product);
+                      }}
+                      className="p-2 bg-white/90 hover:bg-gold hover:text-deep-black text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
+                      title={lang === 'pt' ? 'Compartilhar produto' : 'Share product'}
+                      aria-label={lang === 'pt' ? 'Compartilhar produto' : 'Share product'}
                     >
                       <Share2 className="w-4 h-4" />
-                    </a>
+                    </button>
 
                     <button
                       onClick={(e) => {
@@ -1024,6 +1028,14 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Modal de Compartilhamento de Produto Universal */}
+      <ProductShareModal
+        isOpen={Boolean(shareModalProduct)}
+        onClose={() => setShareModalProduct(null)}
+        product={shareModalProduct}
+        lang={lang}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLanguage } from '../../../context/LanguageContext';
 import { useStoreSettings } from '../../../context/StoreSettingsContext';
 import { trackEvent } from '../../../lib/tracking';
+import ProductShareModal from '../../../components/ProductShareModal';
 import {
   Star,
   ShieldCheck,
@@ -306,6 +307,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [activeTab, setActiveTab] = useState<'desc' | 'sizing' | 'care' | 'preorder'>('desc');
   const [copySuccess, setCopySuccess] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -799,13 +801,24 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {/* Copiar Link */}
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="py-2.5 px-3 bg-white hover:bg-deep-black hover:text-white text-deep-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition border border-deep-black/30 shadow-xs"
+                title="Copiar link da peça"
+              >
+                <Copy className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'pt' ? 'COPIAR LINK' : 'COPY LINK'}</span>
+              </button>
+
               {/* Compartilhar WhatsApp */}
               <a
                 href={whatsappShareUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="py-2.5 px-3 bg-[#25D366] hover:bg-[#20ba59] text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 transition shadow-sm"
+                className="py-2.5 px-3 bg-[#25D366] hover:bg-[#20ba59] text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm"
                 title="Compartilhar no WhatsApp"
               >
                 <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
@@ -817,22 +830,22 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               {/* Compartilhar SMS */}
               <a
                 href={smsShareUrl}
-                className="py-2.5 px-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 transition border border-deep-black shadow-sm"
+                className="py-2.5 px-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition border border-deep-black shadow-sm"
                 title="Compartilhar por SMS / Mensagem de Texto"
               >
                 <MessageSquare className="w-4 h-4 shrink-0" />
                 <span>SMS</span>
               </a>
 
-              {/* Copiar Link */}
+              {/* Outros Apps / Escolher Aplicativo */}
               <button
                 type="button"
-                onClick={handleCopyLink}
-                className="col-span-2 sm:col-span-1 py-2.5 px-3 bg-white hover:bg-deep-black hover:text-white text-deep-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 transition border border-deep-black/30 shadow-xs"
-                title="Copiar link da peça"
+                onClick={() => setIsShareModalOpen(true)}
+                className="py-2.5 px-3 bg-gold hover:bg-gold/90 text-deep-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-xs"
+                title="Escolher outro aplicativo para compartilhar"
               >
-                <Copy className="w-3.5 h-3.5 shrink-0" />
-                <span>COPIAR LINK</span>
+                <Share2 className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'pt' ? 'OUTROS APPS' : 'MORE APPS'}</span>
               </button>
             </div>
           </div>
@@ -1098,6 +1111,21 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           )}
         </div>
       </section>
+
+      {/* Modal Universal de Compartilhamento */}
+      <ProductShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        product={{
+          title: productData.title,
+          slug: slug,
+          price: currentVariant?.price || productData.price,
+          image: productData.media?.[0]?.url,
+          categoryPt: productData.categoryPt,
+          categoryEn: productData.categoryEn,
+        }}
+        lang={lang}
+      />
     </div>
   );
 }
