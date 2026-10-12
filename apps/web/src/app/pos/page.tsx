@@ -216,8 +216,9 @@ export default function PosTerminalPage() {
   const [customInstallmentDates, setCustomInstallmentDates] = useState<Record<number, string>>({});
   const [customInstallmentAmounts, setCustomInstallmentAmounts] = useState<Record<number, number>>({});
   
-  // Sistema de Desconto Flexível do PDV (% ou $ e Motivo/Cupom)
-  const [discountType, setDiscountType] = useState<'PERCENT' | 'FIXED'>('PERCENT');
+  // Sistema de Desconto Flexível do PDV (% ou $ e Preço Final Fechado)
+  const [discountType, setDiscountType] = useState<'PERCENT' | 'FIXED' | 'TARGET_TOTAL'>('PERCENT');
+  const [discountInput, setDiscountInput] = useState<string>('');
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [discountReason, setDiscountReason] = useState<string>('');
   
@@ -377,10 +378,24 @@ export default function PosTerminalPage() {
   }, 0);
   const totalCost = cart.reduce((acc, item) => acc + item.costPrice * item.quantity, 0);
 
-  // Desconto global do PDV (calculado em % ou valor fixo em $)
-  const calculatedDiscountAmount = discountType === 'PERCENT'
-    ? Number(((subtotal * Math.min(100, Math.max(0, discountValue))) / 100).toFixed(2))
-    : Number(Math.min(subtotal, Math.max(0, discountValue)).toFixed(2));
+  // Desconto global do PDV (calculado em % livre, valor fixo em $ livre, ou preço final desejado)
+  const calculatedDiscountAmount = useMemo(() => {
+    const rawVal = discountInput !== '' ? (parseFloat(discountInput) || 0) : discountValue;
+    if (rawVal <= 0) return 0;
+
+    if (discountType === 'PERCENT') {
+      const pct = Math.min(100, Math.max(0, rawVal));
+      return Number(((subtotal * pct) / 100).toFixed(2));
+    }
+    if (discountType === 'FIXED') {
+      return Number(Math.min(subtotal, Math.max(0, rawVal)).toFixed(2));
+    }
+    if (discountType === 'TARGET_TOTAL') {
+      const target = Math.max(0, rawVal);
+      return Number(Math.max(0, subtotal - target).toFixed(2));
+    }
+    return 0;
+  }, [discountType, discountInput, discountValue, subtotal]);
 
   const totalAfterDiscount = Math.max(0, subtotal - calculatedDiscountAmount);
   const commission = totalAfterDiscount * 0.1; // 10% comissão vendedora balcão calculada sobre o líquido
@@ -446,15 +461,10 @@ export default function PosTerminalPage() {
     setIsSubmitting(true);
     setErrorMessage('');
 
-    // Validação específica de dados para Crediário
+    // Validação específica de dados para Crediário (Documento e Telefone são 100% opcionais)
     if (paymentMethod === 'CREDIARIO') {
       if (!customerName.trim() || customerName.trim() === 'Cliente Balcão') {
-        setErrorMessage('⚠️ Para venda em Crediário, digite o Nome Completo da cliente.');
-        setIsSubmitting(false);
-        return;
-      }
-      if (!customerPhone.trim()) {
-        setErrorMessage('⚠️ Para venda em Crediário, informe o Telefone / WhatsApp da cliente para envio dos carnês e lembretes.');
+        setErrorMessage('⚠️ Para venda em Crediário, digite o Nome da cliente.');
         setIsSubmitting(false);
         return;
       }
@@ -516,6 +526,7 @@ export default function PosTerminalPage() {
         discount_reason: discountReason.trim() || undefined,
       });
       setCart([]);
+      setDiscountInput('');
       setDiscountValue(0);
       setDiscountReason('');
       if (refreshProducts) {
@@ -839,6 +850,7 @@ export default function PosTerminalPage() {
                 onClick={() => {
                   setCompletedSale(null);
                   setCart([]);
+                  setDiscountInput('');
                   setDiscountValue(0);
                   setDiscountReason('');
                   setCustomerName('Cliente Balcão');
@@ -1163,15 +1175,15 @@ export default function PosTerminalPage() {
                 <span>IDENTIFICAÇÃO DO CLIENTE (BALCÃO / SHOWROOM):</span>
               </label>
               {paymentMethod === 'CREDIARIO' && (
-                <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-gold text-deep-black animate-pulse">
-                  DADOS OBRIGATÓRIOS P/ CREDIÁRIO
+                <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-gold text-deep-black">
+                  CREDIÁRIO (CARNÊ)
                 </span>
               )}
             </div>
             <div className="space-y-2">
               <input
                 type="text"
-                placeholder={paymentMethod === 'CREDIARIO' ? "NOME COMPLETO DA CLIENTE *" : "NOME DA CLIENTE"}
+                placeholder={paymentMethod === 'CREDIARIO' ? "NOME DA CLIENTE *" : "NOME DA CLIENTE"}
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 className="w-full px-3 py-2 text-xs uppercase tracking-wider font-bold bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold"
@@ -1179,28 +1191,30 @@ export default function PosTerminalPage() {
               />
               <input
                 type="text"
-                placeholder={paymentMethod === 'CREDIARIO' ? "WHATSAPP / TELEFONE (+1 978...)* P/ LEMBRETES" : "TELEFONE / WHATSAPP (+1 978...)"}
+                placeholder={paymentMethod === 'CREDIARIO' ? "TELEFONE / WHATSAPP (OPCIONAL)" : "TELEFONE / WHATSAPP (+1 978...)"}
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 className="w-full px-3 py-2 text-xs uppercase tracking-wider font-mono bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold"
-                required={paymentMethod === 'CREDIARIO'}
               />
 
-              {/* Dados Adicionais Obrigatórios para Crediário */}
+              {/* Dados Adicionais Opcionais para Crediário */}
               {paymentMethod === 'CREDIARIO' && (
                 <div className="space-y-2 pt-1 animate-fadeIn bg-gold/10 p-3 border border-gold/30">
-                  <span className="text-[9px] font-black uppercase tracking-wider text-gold block flex items-center gap-1">
-                    <FileText className="w-3 h-3 text-gold" />
-                    <span>DADOS DE CADASTRO DO CREDIÁRIO / CARNÊ:</span>
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-gold flex items-center gap-1">
+                      <FileText className="w-3 h-3 text-gold" />
+                      <span>DADOS ADICIONAIS DO CREDIÁRIO / CARNÊ:</span>
+                    </span>
+                    <span className="text-[8px] text-white/70 font-bold uppercase">NÃO EXIGIDOS / OPCIONAIS</span>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       type="text"
-                      placeholder="CPF / SOCIAL SECURITY / ID / PASSAPORTE"
+                      placeholder="CPF / ID / PASSAPORTE (OPCIONAL)"
                       value={customerDoc}
                       onChange={(e) => setCustomerDoc(e.target.value)}
                       className="w-full px-2.5 py-1.5 text-xs font-mono uppercase bg-deep-black/60 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold"
-                      title="Documento da cliente para identificação no carnê e promissória"
+                      title="Documento da cliente (opcional - não obrigatório)"
                     />
                     <input
                       type="email"
@@ -1212,15 +1226,15 @@ export default function PosTerminalPage() {
                   </div>
                   <input
                     type="text"
-                    placeholder="ENDEREÇO RESIDENCIAL (RUA, NÚMERO, CIDADE, ZIP)"
+                    placeholder="ENDEREÇO DA CLIENTE (OPCIONAL)"
                     value={customerAddress}
                     onChange={(e) => setCustomerAddress(e.target.value)}
                     className="w-full px-2.5 py-1.5 text-xs uppercase bg-deep-black/60 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold"
-                    title="Endereço da cliente para o carnê"
+                    title="Endereço da cliente para o carnê (opcional)"
                   />
                   <input
                     type="text"
-                    placeholder="OBSERVAÇÕES DO CREDIÁRIO (EX: PAGA AOS SÁBADOS, TRABALHA NO RESTAURANTE)"
+                    placeholder="OBSERVAÇÕES DO CREDIÁRIO (OPCIONAL)"
                     value={customerNotes}
                     onChange={(e) => setCustomerNotes(e.target.value)}
                     className="w-full px-2.5 py-1.5 text-[11px] uppercase bg-deep-black/60 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold"
@@ -1230,109 +1244,159 @@ export default function PosTerminalPage() {
             </div>
           </div>
 
-          {/* Seção Completa de Desconto do PDV */}
+          {/* Seção Completa de Desconto 100% Livre do PDV */}
           <div className="space-y-3 bg-white/5 p-4 border border-white/10">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-gold" />
-                <span>OPÇÃO DE DESCONTO BALCÃO:</span>
+                <span>DESCONTO LIVRE NA VENDA:</span>
               </label>
 
-              {/* Seletor de Tipo (% ou $) */}
+              {/* 3 Opções Livres de Desconto */}
               <div className="flex items-center border border-white/20 bg-deep-black">
                 <button
                   type="button"
-                  onClick={() => setDiscountType('PERCENT')}
+                  onClick={() => {
+                    setDiscountType('PERCENT');
+                    setDiscountInput('');
+                    setDiscountValue(0);
+                  }}
                   className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition ${
                     discountType === 'PERCENT'
                       ? 'bg-gold text-deep-black font-black'
                       : 'text-white/60 hover:text-white'
                   }`}
-                  title="Aplicar desconto em percentual (%)"
+                  title="Dar desconto em Porcentagem livre (%)"
                 >
                   <Percent className="w-3 h-3" />
-                  <span>%</span>
+                  <span>% LIVRE</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDiscountType('FIXED')}
+                  onClick={() => {
+                    setDiscountType('FIXED');
+                    setDiscountInput('');
+                    setDiscountValue(0);
+                  }}
                   className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition ${
                     discountType === 'FIXED'
                       ? 'bg-gold text-deep-black font-black'
                       : 'text-white/60 hover:text-white'
                   }`}
-                  title="Aplicar desconto em valor fixo ($ USD)"
+                  title="Dar desconto em Valor em Dólar livre ($)"
                 >
                   <DollarSign className="w-3 h-3" />
-                  <span>$ USD</span>
+                  <span>$ DÓLAR</span>
                 </button>
-              </div>
-            </div>
-
-            {/* Campo de Entrada de Desconto */}
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <input
-                  type="number"
-                  min="0"
-                  max={discountType === 'PERCENT' ? 100 : subtotal}
-                  step={discountType === 'PERCENT' ? '1' : '0.50'}
-                  value={discountValue || ''}
-                  onChange={(e) => setDiscountValue(Math.max(0, parseFloat(e.target.value) || 0))}
-                  placeholder={discountType === 'PERCENT' ? 'Digite a % (ex: 10, 15, 20)' : 'Digite o valor em $ (ex: 5.00)'}
-                  className="w-full pl-3 pr-16 py-2.5 text-sm font-black font-mono bg-white/10 border border-white/20 text-white placeholder-white/30 focus:outline-none focus:border-gold"
-                />
-                <span className="absolute right-3 top-3 text-xs font-black text-gold font-mono">
-                  {discountType === 'PERCENT' ? '% OFF' : '$ USD'}
-                </span>
-              </div>
-
-              {discountValue > 0 && (
                 <button
                   type="button"
                   onClick={() => {
+                    setDiscountType('TARGET_TOTAL');
+                    setDiscountInput('');
                     setDiscountValue(0);
-                    setDiscountReason('');
                   }}
-                  className="px-3 py-2.5 bg-red-600/30 hover:bg-red-600 text-white text-xs font-black uppercase border border-red-500/40 transition flex items-center gap-1 shrink-0"
-                  title="Remover desconto"
+                  className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition ${
+                    discountType === 'TARGET_TOTAL'
+                      ? 'bg-gold text-deep-black font-black'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                  title="Definir diretamente o Preço Final que a cliente vai pagar"
                 >
-                  <X className="w-3.5 h-3.5" />
-                  <span>LIMPAR</span>
+                  <Sparkles className="w-3 h-3" />
+                  <span>PREÇO FINAL</span>
                 </button>
-              )}
+              </div>
             </div>
 
-            {/* Atalhos Rápidos de 1 Toque */}
+            {/* Campo Livre de Entrada de Desconto */}
+            <div className="space-y-1">
+              <span className="text-[9px] text-white/60 font-bold uppercase block">
+                {discountType === 'PERCENT' && 'DIGITE QUALQUER % DE DESCONTO (EX: 5, 10, 15, 20...):'}
+                {discountType === 'FIXED' && 'DIGITE QUALQUER VALOR DE DESCONTO EM $ (EX: 5.00, 10.00, 25.50...):'}
+                {discountType === 'TARGET_TOTAL' && `SUBTOTAL É $${subtotal.toFixed(2)}. DIGITE POR QUANTO QUER FECHAR O VALOR FINAL:`}
+              </span>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={discountInput}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setDiscountInput(v);
+                      setDiscountValue(parseFloat(v) || 0);
+                    }}
+                    placeholder={
+                      discountType === 'PERCENT'
+                        ? 'Digite a % desejada (ex: 15)'
+                        : discountType === 'FIXED'
+                        ? 'Digite o valor em $ (ex: 20.00)'
+                        : `Digite o valor final da compra (ex: ${(subtotal * 0.9).toFixed(2)})`
+                    }
+                    className="w-full pl-3 pr-24 py-2.5 text-base font-black font-mono bg-white/10 border border-white/20 text-white placeholder-white/30 focus:outline-none focus:border-gold"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs font-black text-gold font-mono uppercase">
+                    {discountType === 'PERCENT' ? '% OFF' : discountType === 'FIXED' ? '$ OFF' : 'TOTAL $'}
+                  </span>
+                </div>
+
+                {calculatedDiscountAmount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDiscountInput('');
+                      setDiscountValue(0);
+                      setDiscountReason('');
+                    }}
+                    className="px-3 py-2.5 bg-red-600/30 hover:bg-red-600 text-white text-xs font-black uppercase border border-red-500/40 transition flex items-center gap-1 shrink-0"
+                    title="Remover desconto"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>LIMPAR</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Atalhos Rápidos Opcionais de 1 Toque */}
             <div className="space-y-1.5 pt-1">
               <span className="text-[9px] font-black uppercase tracking-wider text-white/50 block">
-                ATALHOS RÁPIDOS DE DESCONTO:
+                OU ESCOLHA RAPIDAMENTE UM DOS ATALHOS:
               </span>
               <div className="flex flex-wrap gap-1.5">
-                {discountType === 'PERCENT' ? (
-                  [5, 10, 15, 20, 25, 30, 50].map((pct) => (
+                {discountType === 'PERCENT' && (
+                  [5, 10, 15, 20, 25, 30, 40, 50].map((pct) => (
                     <button
                       key={pct}
                       type="button"
-                      onClick={() => setDiscountValue(pct)}
+                      onClick={() => {
+                        setDiscountInput(String(pct));
+                        setDiscountValue(pct);
+                      }}
                       className={`px-2.5 py-1 text-[10px] font-black uppercase font-mono border transition ${
-                        discountValue === pct
-                          ? 'bg-gold text-deep-black border-gold shadow-sm'
+                        parseFloat(discountInput) === pct
+                          ? 'bg-gold text-deep-black border-gold shadow-sm font-black'
                           : 'bg-white/5 text-white/80 border-white/20 hover:border-gold hover:text-gold'
                       }`}
                     >
                       {pct}%
                     </button>
                   ))
-                ) : (
-                  [5, 10, 15, 20, 25, 50].map((val) => (
+                )}
+
+                {discountType === 'FIXED' && (
+                  [5, 10, 15, 20, 25, 30, 40, 50].map((val) => (
                     <button
                       key={val}
                       type="button"
-                      onClick={() => setDiscountValue(val)}
+                      onClick={() => {
+                        setDiscountInput(String(val));
+                        setDiscountValue(val);
+                      }}
                       className={`px-2.5 py-1 text-[10px] font-black uppercase font-mono border transition ${
-                        discountValue === val
-                          ? 'bg-gold text-deep-black border-gold shadow-sm'
+                        parseFloat(discountInput) === val
+                          ? 'bg-gold text-deep-black border-gold shadow-sm font-black'
                           : 'bg-white/5 text-white/80 border-white/20 hover:border-gold hover:text-gold'
                       }`}
                     >
@@ -1340,35 +1404,56 @@ export default function PosTerminalPage() {
                     </button>
                   ))
                 )}
+
+                {discountType === 'TARGET_TOTAL' && (
+                  [
+                    Math.round(subtotal * 0.95),
+                    Math.round(subtotal * 0.90),
+                    Math.round(subtotal * 0.85),
+                    Math.round(subtotal * 0.80),
+                  ]
+                    .filter((val, idx, arr) => val > 0 && val < subtotal && arr.indexOf(val) === idx)
+                    .map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => {
+                          setDiscountInput(String(val));
+                          setDiscountValue(val);
+                        }}
+                        className={`px-2.5 py-1 text-[10px] font-black uppercase font-mono border transition ${
+                          parseFloat(discountInput) === val
+                            ? 'bg-gold text-deep-black border-gold shadow-sm font-black'
+                            : 'bg-white/5 text-white/80 border-white/20 hover:border-gold hover:text-gold'
+                        }`}
+                      >
+                        Fechar por ${val}
+                      </button>
+                    ))
+                )}
               </div>
             </div>
 
             {/* Motivo do Desconto ou Cupom */}
             <div className="space-y-1.5 pt-2 border-t border-white/10">
               <label className="text-[9px] font-black uppercase tracking-wider text-white/60 flex items-center justify-between">
-                <span>CUPOM OU MOTIVO DO DESCONTO (OPCIONAL):</span>
+                <span>MOTIVO DO DESCONTO OU CUPOM (OPCIONAL):</span>
                 {discountReason && <span className="text-gold font-mono font-bold">{discountReason}</span>}
               </label>
               <input
                 type="text"
                 value={discountReason}
                 onChange={(e) => setDiscountReason(e.target.value.toUpperCase())}
-                placeholder="EX: VIP, AMIGA DA DONA, MOSTRUARIO, ANA10"
+                placeholder="DIGITE O MOTIVO (EX: AMIGA, VIP, CLIENTE ANTIGA, MOSTRUÁRIO, CUPOM)"
                 className="w-full px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider bg-white/10 border border-white/20 text-white placeholder-white/30 focus:outline-none focus:border-gold font-mono"
               />
 
               <div className="flex flex-wrap gap-1 pt-1">
-                {['VIP 10%', 'AMIGA', 'MOSTRUÁRIO', 'DEF-LEVE', 'PROMO'].map((tag) => (
+                {['VIP', 'AMIGA', 'CLIENTE FIEL', 'MOSTRUÁRIO', 'DEF-LEVE', 'PROMO BALCÃO'].map((tag) => (
                   <button
                     key={tag}
                     type="button"
-                    onClick={() => {
-                      setDiscountReason(tag);
-                      if (tag.includes('10%') && discountValue === 0) {
-                        setDiscountType('PERCENT');
-                        setDiscountValue(10);
-                      }
-                    }}
+                    onClick={() => setDiscountReason(tag)}
                     className="px-2 py-0.5 text-[8px] font-black uppercase bg-white/5 text-white/70 hover:text-gold hover:bg-white/10 border border-white/10 transition"
                   >
                     +{tag}
@@ -1395,7 +1480,12 @@ export default function PosTerminalPage() {
                   <span className="flex items-center gap-1">
                     <Tag className="w-3.5 h-3.5 text-green-400" />
                     <span>
-                      DESCONTO APLICADO ({discountType === 'PERCENT' ? `${discountValue}%` : `$${discountValue.toFixed(2)}`}
+                      DESCONTO APLICADO (
+                      {discountType === 'PERCENT'
+                        ? `${discountValue}% OFF`
+                        : discountType === 'TARGET_TOTAL'
+                        ? `TOTAL FECHADO EM $${(subtotal - calculatedDiscountAmount).toFixed(2)}`
+                        : `-$${calculatedDiscountAmount.toFixed(2)}`}
                       {discountReason ? ` • ${discountReason}` : ''}):
                     </span>
                   </span>
