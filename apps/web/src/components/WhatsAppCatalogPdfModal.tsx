@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   Printer,
@@ -15,29 +15,71 @@ import {
   Tag,
   Share2,
 } from 'lucide-react';
+import { useStoreSettings } from '@/context/StoreSettingsContext';
+
+// Helper para verificar se a peça está no ar (ativa na vitrine do site)
+export const isProductOnline = (p: any): boolean => {
+  if (!p) return false;
+  // Se explicitamente marcado como não visível online
+  if (p.visible_online === false || p.visibleOnline === false) return false;
+  if (p.meta && (p.meta.visible_online === false || p.meta.visibleOnline === false)) return false;
+  // Se o status indicar oculto, arquivado ou rascunho
+  if (p.status === 'HIDDEN' || p.status === 'ARCHIVED' || p.status === 'DRAFT' || p.status === 'INACTIVE') return false;
+  // Visibilidade positiva
+  const isOnline = p.visible_online === true || p.visibleOnline === true || p.meta?.visible_online === true;
+  if (p.visible_online === undefined && p.visibleOnline === undefined && p.meta?.visible_online === undefined) {
+    return p.status !== 'HIDDEN' && p.status !== 'ARCHIVED';
+  }
+  return isOnline;
+};
 
 interface WhatsAppCatalogPdfModalProps {
   isOpen: boolean;
   onClose: () => void;
-  catalogProducts: any[];
+  catalogProducts?: any[];
   siteInfo?: any;
 }
 
 export function WhatsAppCatalogPdfModal({
   isOpen,
   onClose,
-  catalogProducts,
-  siteInfo,
+  catalogProducts: propProducts,
+  siteInfo: propSiteInfo,
 }: WhatsAppCatalogPdfModalProps) {
+  const { siteInfo: contextSiteInfo, products: contextProducts } = useStoreSettings();
+  const siteInfo = propSiteInfo || contextSiteInfo;
+  const [internalProducts, setInternalProducts] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen && (!propProducts || propProducts.length === 0)) {
+      fetch('/api/backoffice/products')
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.products && Array.isArray(d.products)) {
+            setInternalProducts(d.products);
+          }
+        })
+        .catch((e) => console.warn('Erro ao carregar produtos para catálogo:', e));
+    }
+  }, [isOpen, propProducts]);
+
+  const catalogProducts = useMemo(() => {
+    if (propProducts && propProducts.length > 0) return propProducts;
+    if (internalProducts.length > 0) return internalProducts;
+    return contextProducts || [];
+  }, [propProducts, internalProducts, contextProducts]);
+
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [columnsCount, setColumnsCount] = useState<3 | 2 | 4>(3);
   const [onlyInStock, setOnlyInStock] = useState<boolean>(true);
+  const [onlyOnline, setOnlyOnline] = useState<boolean>(true); // REGRA: Apenas peças que estão no ar
   const [hideOutOfStockSizes, setHideOutOfStockSizes] = useState<boolean>(false);
 
-  // Extrai todas as categorias disponíveis
+  // Extrai todas as categorias disponíveis (apenas de produtos no ar)
   const availableCategories = useMemo(() => {
     const cats = new Set<string>();
     (catalogProducts || []).forEach((p) => {
+      if (onlyOnline && !isProductOnline(p)) return;
       const cat = (p.categories?.name || p.category || p.subcategory || 'OUTROS')
         .toString()
         .trim()
@@ -45,7 +87,7 @@ export function WhatsAppCatalogPdfModal({
       if (cat) cats.add(cat);
     });
     return Array.from(cats).sort();
-  }, [catalogProducts]);
+  }, [catalogProducts, onlyOnline]);
 
   // Função auxiliar para dados de preços (original e promocional)
   const getProductPricing = (product: any) => {
@@ -155,6 +197,11 @@ export function WhatsAppCatalogPdfModal({
     const groups: Record<string, any[]> = {};
 
     (catalogProducts || []).forEach((product) => {
+      // REGRA: Produtos que não estão no ar não devem aparecer no catálogo enviado ao WhatsApp
+      if (onlyOnline && !isProductOnline(product)) {
+        return;
+      }
+
       const cat = (product.categories?.name || product.category || product.subcategory || 'OUTROS')
         .toString()
         .trim()
@@ -176,7 +223,7 @@ export function WhatsAppCatalogPdfModal({
     });
 
     return groups;
-  }, [catalogProducts, selectedCategory, onlyInStock]);
+  }, [catalogProducts, selectedCategory, onlyInStock, onlyOnline]);
 
   const totalFilteredCount = useMemo(() => {
     return Object.values(groupedProducts).reduce((acc, list) => acc + list.length, 0);
@@ -668,6 +715,17 @@ export function WhatsAppCatalogPdfModal({
                 </button>
               </div>
             </div>
+
+            {/* Checkbox Apenas Peças no Ar (Vitrine Ativa) */}
+            <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] font-black uppercase text-emerald-800 bg-emerald-50 px-2.5 py-1 border border-emerald-300">
+              <input
+                type="checkbox"
+                checked={onlyOnline}
+                onChange={(e) => setOnlyOnline(e.target.checked)}
+                className="w-3.5 h-3.5 accent-emerald-600"
+              />
+              <span>Apenas peças no ar (Ativas no site)</span>
+            </label>
 
             {/* Checkbox Apenas com Estoque */}
             <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] font-black uppercase">

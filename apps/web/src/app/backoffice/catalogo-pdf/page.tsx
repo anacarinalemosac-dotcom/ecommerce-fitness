@@ -11,6 +11,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useStoreSettings } from '@/context/StoreSettingsContext';
+import { isProductOnline } from '@/components/WhatsAppCatalogPdfModal';
 
 export default function WhatsAppCatalogPdfPage() {
   const { siteInfo } = useStoreSettings();
@@ -19,6 +20,7 @@ export default function WhatsAppCatalogPdfPage() {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [columnsCount, setColumnsCount] = useState<3 | 2 | 4>(3);
   const [onlyInStock, setOnlyInStock] = useState(true);
+  const [onlyOnline, setOnlyOnline] = useState(true); // REGRA: Apenas peças no ar
 
   useEffect(() => {
     async function fetchProducts() {
@@ -41,6 +43,7 @@ export default function WhatsAppCatalogPdfPage() {
   const availableCategories = useMemo(() => {
     const cats = new Set<string>();
     (products || []).forEach((p) => {
+      if (onlyOnline && !isProductOnline(p)) return;
       const cat = (p.categories?.name || p.category || p.subcategory || 'OUTROS')
         .toString()
         .trim()
@@ -48,7 +51,7 @@ export default function WhatsAppCatalogPdfPage() {
       if (cat) cats.add(cat);
     });
     return Array.from(cats).sort();
-  }, [products]);
+  }, [products, onlyOnline]);
 
   const getProductPricing = (product: any) => {
     const itemVariants = product.variants || [];
@@ -149,6 +152,9 @@ export default function WhatsAppCatalogPdfPage() {
   const groupedProducts = useMemo(() => {
     const groups: Record<string, any[]> = {};
     (products || []).forEach((product) => {
+      // REGRA: Produtos que não estão no ar não devem aparecer no catálogo enviado ao WhatsApp
+      if (onlyOnline && !isProductOnline(product)) return;
+
       const cat = (product.categories?.name || product.category || product.subcategory || 'OUTROS')
         .toString()
         .trim()
@@ -162,7 +168,7 @@ export default function WhatsAppCatalogPdfPage() {
       groups[cat].push(product);
     });
     return groups;
-  }, [products, selectedCategory, onlyInStock]);
+  }, [products, selectedCategory, onlyInStock, onlyOnline]);
 
   return (
     <div className="min-h-screen bg-gray-50 text-deep-black print:bg-white print:p-0">
@@ -233,6 +239,17 @@ export default function WhatsAppCatalogPdfPage() {
                 4 Col
               </button>
             </div>
+
+            {/* Checkbox Apenas Peças no Ar */}
+            <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] font-black uppercase text-emerald-300 bg-emerald-950/80 px-2.5 py-1 border border-emerald-500/60">
+              <input
+                type="checkbox"
+                checked={onlyOnline}
+                onChange={(e) => setOnlyOnline(e.target.checked)}
+                className="w-3.5 h-3.5 accent-emerald-500"
+              />
+              <span>Apenas peças no ar</span>
+            </label>
 
             {/* Botão de Impressão Direta em PDF */}
             <button

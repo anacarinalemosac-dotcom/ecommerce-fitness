@@ -15,11 +15,14 @@ import {
   X,
   MessageSquare,
   Zap,
+  FileText,
+  Smartphone,
 } from 'lucide-react';
 import {
   InstagramDirectConversation,
   InstagramMetaConfig,
 } from '@/lib/instagramDirectStore';
+import { WhatsAppCatalogPdfModal } from '@/components/WhatsAppCatalogPdfModal';
 
 interface PosInstagramChatProps {
   onNotifySale?: (message: string) => void;
@@ -41,6 +44,7 @@ export function PosInstagramChat({ className = '' }: PosInstagramChatProps) {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [notificationBanner, setNotificationBanner] = useState<string | null>(null);
   const [showSimulateModal, setShowSimulateModal] = useState(false);
+  const [showWhatsAppCatalogModal, setShowWhatsAppCatalogModal] = useState(false);
   const [simulateUser, setSimulateUser] = useState('@cliente_showroom');
   const [simulateMessage, setSimulateMessage] = useState('Olá! Qual o horário de funcionamento do showroom hoje?');
 
@@ -253,6 +257,17 @@ export function PosInstagramChat({ className = '' }: PosInstagramChatProps) {
             <span>ROBÔ: {config.autoResponderActive ? 'ON' : 'OFF'}</span>
           </button>
 
+          {/* Botão Catálogo WhatsApp (PDF) */}
+          <button
+            type="button"
+            onClick={() => setShowWhatsAppCatalogModal(true)}
+            className="px-2 py-1 bg-emerald-950/90 text-emerald-300 border border-emerald-500 hover:bg-emerald-900 text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shadow-xs"
+            title="Gerar catálogo WhatsApp em PDF (Apenas peças no ar)"
+          >
+            <FileText className="w-2.5 h-2.5 text-emerald-400" />
+            <span>CATÁLOGO WHATSAPP</span>
+          </button>
+
           {/* Botão de Teste Rápido */}
           <button
             type="button"
@@ -440,6 +455,15 @@ export function PosInstagramChat({ className = '' }: PosInstagramChatProps) {
               </span>
               <button
                 type="button"
+                onClick={() => setShowWhatsAppCatalogModal(true)}
+                className="px-2 py-0.5 bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/70 text-emerald-300 whitespace-nowrap transition text-[9px] font-bold flex items-center gap-1"
+                title="Abrir Catálogo WhatsApp PDF (Apenas peças no ar)"
+              >
+                <Smartphone className="w-2.5 h-2.5 text-emerald-400" />
+                <span>📲 Catálogo WhatsApp (PDF)</span>
+              </button>
+              <button
+                type="button"
                 onClick={() =>
                   setInputText('📍 Nosso Showroom fica em Leominster, MA! Venha nos visitar hoje para provar as peças 💕')
                 }
@@ -592,6 +616,12 @@ export function PosInstagramChat({ className = '' }: PosInstagramChatProps) {
           </div>
         </div>
       )}
+
+      {/* MODAL DE CATÁLOGO WHATSAPP EM PDF (Apenas peças no ar) */}
+      <WhatsAppCatalogPdfModal
+        isOpen={showWhatsAppCatalogModal}
+        onClose={() => setShowWhatsAppCatalogModal(false)}
+      />
     </div>
   );
 }
