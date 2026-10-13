@@ -19,6 +19,7 @@ import {
   Sparkles,
   Receipt,
   FileText,
+  Ban,
 } from 'lucide-react';
 
 interface SaleItem {
@@ -228,6 +229,40 @@ export function EditSaleModal({
       }, 1200);
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || 'Falha ao atualizar venda.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelSale = async () => {
+    if (!confirm(`Deseja realmente cancelar a venda #${sale.order_id}? Os itens serão devolvidos ao estoque e a comissão será anulada.`)) {
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/backoffice/sales', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'cancel_sale',
+          order_id: sale.order_id || sale.id,
+          id: sale.id,
+          restore_stock: true,
+          cancel_commission: true,
+          cancellation_reason: 'Cancelado pelo lojista na tela de edição',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Erro ao cancelar venda.');
+      }
+      setFeedback({ type: 'success', message: '✓ Venda cancelada com sucesso! Peças devolvidas ao estoque.' });
+      setTimeout(() => {
+        onSaveSuccess();
+        onClose();
+      }, 1000);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || 'Falha ao cancelar venda.' });
     } finally {
       setIsSaving(false);
     }
@@ -563,19 +598,29 @@ export function EditSaleModal({
           </div>
 
           {/* BOTÕES DE AÇÃO */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+            <button
+              type="button"
+              onClick={handleCancelSale}
+              disabled={isSaving || status === 'CANCELLED'}
+              className="py-3 px-4 bg-red-100 hover:bg-red-700 hover:text-white text-red-900 border-2 border-red-500 font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 disabled:opacity-40"
+              title="Cancelar esta venda e estornar as peças para o estoque"
+            >
+              <Ban className="w-4 h-4 text-red-700 group-hover:text-white" />
+              <span>CANCELAR VENDA</span>
+            </button>
             <button
               type="button"
               onClick={onClose}
               disabled={isSaving}
-              className="flex-1 py-3 bg-white hover:bg-gray-100 text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-wider transition"
+              className="py-3 px-4 bg-white hover:bg-gray-100 text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-wider transition"
             >
-              Cancelar
+              Fechar
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-[2] py-3 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-md"
+              className="flex-1 py-3 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-md"
             >
               {isSaving ? (
                 <>

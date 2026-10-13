@@ -215,20 +215,23 @@ export async function GET(req: NextRequest) {
       console.warn('Erro ao consultar Supabase orders:', e);
     }
 
+    // Vendas ativas (exclui pedidos cancelados dos totais financeiros)
+    const activeSales = sales.filter((s) => s.status !== 'CANCELLED');
+
     // Calcula consolidação e totais matemáticos
-    const totalGrossRevenue = sales.reduce((acc, s) => acc + s.subtotal_products + s.shipping_fee, 0);
-    const totalProductsRevenue = sales.reduce((acc, s) => acc + s.subtotal_products, 0);
-    const totalShippingCollected = sales.reduce((acc, s) => acc + s.shipping_fee, 0);
-    const totalPaymentFees = sales.reduce((acc, s) => acc + s.payment_fee, 0);
-    const totalCommissions = sales.reduce((acc, s) => acc + s.commission_amount, 0);
-    const totalCostOfGoods = sales.reduce((acc, s) => acc + s.cost_of_goods, 0);
-    const totalShippingCost = sales.reduce((acc, s) => acc + s.shipping_cost, 0);
-    const totalNetProfit = sales.reduce((acc, s) => acc + s.net_profit, 0);
+    const totalGrossRevenue = activeSales.reduce((acc, s) => acc + s.subtotal_products + s.shipping_fee, 0);
+    const totalProductsRevenue = activeSales.reduce((acc, s) => acc + s.subtotal_products, 0);
+    const totalShippingCollected = activeSales.reduce((acc, s) => acc + s.shipping_fee, 0);
+    const totalPaymentFees = activeSales.reduce((acc, s) => acc + s.payment_fee, 0);
+    const totalCommissions = activeSales.reduce((acc, s) => acc + s.commission_amount, 0);
+    const totalCostOfGoods = activeSales.reduce((acc, s) => acc + s.cost_of_goods, 0);
+    const totalShippingCost = activeSales.reduce((acc, s) => acc + s.shipping_cost, 0);
+    const totalNetProfit = activeSales.reduce((acc, s) => acc + s.net_profit, 0);
     const averageMarginPct = totalGrossRevenue > 0 ? (totalNetProfit / totalGrossRevenue) * 100 : 0;
 
-    // Breakdown por Meio de Pagamento
+    // Breakdown por Meio de Pagamento (somente vendas ativas)
     const paymentBreakdown: Record<string, { total: number; fees: number; net: number; count: number }> = {};
-    sales.forEach((s) => {
+    activeSales.forEach((s) => {
       const m = s.payment_method || 'OUTRO';
       if (!paymentBreakdown[m]) {
         paymentBreakdown[m] = { total: 0, fees: 0, net: 0, count: 0 };
@@ -239,12 +242,12 @@ export async function GET(req: NextRequest) {
       paymentBreakdown[m].count += 1;
     });
 
-    // Breakdown por Canal
+    // Breakdown por Canal (somente vendas ativas)
     const channelBreakdown = {
       ONLINE: { count: 0, revenue: 0, profit: 0 },
       POS_COUNTER: { count: 0, revenue: 0, profit: 0 },
     };
-    sales.forEach((s) => {
+    activeSales.forEach((s) => {
       const ch = s.channel === 'ONLINE' ? 'ONLINE' : 'POS_COUNTER';
       channelBreakdown[ch].count += 1;
       channelBreakdown[ch].revenue += (s.subtotal_products + s.shipping_fee);
@@ -684,6 +687,131 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: true, message: 'Venda atualizada com sucesso!', sales: updated });
     }
 
+    // =========================================================================
+    // AÇÃO 2: CANCELAR VENDA (ESTORNAR ESTOQUE, ANULAR COMISSÃO E STATUS)
+    // =========================================================================
+    if (action === 'cancel_sale' || status === 'CANCELLED') {
+      const {
+        restore_stock = true,
+        cancel_commission = true,
+        cancellation_reason = 'Cancelado pelo lojista no Backoffice',
+      } = body;
+
+      const sales = readSavedSales();
+      const targetSale = sales.find((s: any) => s.order_id === order_id || s.id === order_id || (body.id && s.id === body.id));
+
+      // 1. Estorna estoque de cada item vendido se restore_stock for true e a venda não estava cancelada antes
+      if (restore_stock && targetSale && targetSale.status !== 'CANCELLED' && Array.isArray(targetSale.items)) {
+        for (const it of targetSale.items) {
+          if (it.sku) {
+            try {
+              const { data: v } = await supabaseServer
+                .from('product_variants')
+                .select('id, stock_quantity')
+                .eq('sku', it.sku)
+                .maybeSingle();
+
+              if (v) {
+                await supabaseServer
+                  .from('product_variants')
+                  .update({ stock_quantity: (v.stock_quantity || 0) + (Number(it.quantity) || 1) })
+                  .eq('id', v.id);
+              }
+            } catch (stockErr) {
+              console.warn('Erro ao estornar estoque no cancelamento:', stockErr);
+            }
+          }
+        }
+      }
+
+      // 2. Estorna comissão da vendedora se aplicável
+      if (cancel_commission && targetSale && (targetSale.commission_amount || 0) > 0 && targetSale.seller_name) {
+        try {
+          const SELLERS_FILE = path.join(process.cwd(), 'sellers_db.json');
+          let sellersList: any[] = [];
+          if (fs.existsSync(SELLERS_FILE)) {
+            sellersList = JSON.parse(fs.readFileSync(SELLERS_FILE, 'utf8'));
+          }
+          if (sellersList.length > 0) {
+            const updatedSellers = sellersList.map((s: any) => {
+              if (s.name && (s.name === targetSale.seller_name || targetSale.seller_name.includes(s.name))) {
+                const sub = (targetSale.subtotal_products || 0) - (targetSale.discount_amount || 0);
+                return {
+                  ...s,
+                  total_sales_count: Math.max(0, (s.total_sales_count || 1) - 1),
+                  total_revenue_generated: Number(Math.max(0, (s.total_revenue_generated || 0) - sub).toFixed(2)),
+                  total_commission_earned: Number(Math.max(0, (s.total_commission_earned || 0) - (targetSale.commission_amount || 0)).toFixed(2)),
+                };
+              }
+              return s;
+            });
+            fs.writeFileSync(SELLERS_FILE, JSON.stringify(updatedSellers, null, 2), 'utf8');
+            await supabaseServer.from('products').upsert({
+              id: '00000000-0000-0000-0000-000000000092',
+              title: '__SELLERS_DB_STATE__',
+              slug: '__sellers_db_state__',
+              description: JSON.stringify(updatedSellers, null, 2),
+            });
+          }
+        } catch (e) {
+          console.warn('Erro ao estornar comissão da vendedora no cancelamento:', e);
+        }
+      }
+
+      // 3. Atualiza no Supabase orders
+      try {
+        const { data: dbOrders } = await supabaseServer.from('orders').select('*');
+        if (dbOrders) {
+          const target = dbOrders.find((o: any) => {
+            const meta = typeof o.shipping_address === 'object' && o.shipping_address ? o.shipping_address : {};
+            return meta.order_number === order_id || o.id === order_id || (body.id && o.id === body.id);
+          });
+
+          if (target) {
+            const currentMeta = typeof target.shipping_address === 'object' ? target.shipping_address : {};
+            const updatedMeta = {
+              ...currentMeta,
+              cancellation_reason,
+              cancelled_at: new Date().toISOString(),
+              stock_restored: restore_stock,
+            };
+
+            await supabaseServer
+              .from('orders')
+              .update({
+                status: 'CANCELLED',
+                shipping_address: updatedMeta,
+              })
+              .eq('id', target.id);
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao atualizar cancelamento no Supabase:', e);
+      }
+
+      // 4. Atualiza no backup local
+      const updated = sales.map((s: any) => {
+        if (s.order_id === order_id || s.id === order_id || (body.id && s.id === body.id)) {
+          return {
+            ...s,
+            status: 'CANCELLED',
+            cancellation_reason,
+            cancelled_at: new Date().toISOString(),
+            stock_restored: restore_stock,
+          };
+        }
+        return s;
+      });
+
+      writeSavedSales(updated);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Venda cancelada com sucesso!' + (restore_stock ? ' Itens devolvidos ao estoque.' : ''),
+        sales: updated,
+      });
+    }
+
     let updatedCrediario: any = null;
 
     // 1. Atualiza no Supabase 'orders'
@@ -779,6 +907,73 @@ export async function PATCH(req: NextRequest) {
     writeSavedSales(updated);
 
     return NextResponse.json({ success: true, sales: updated });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const order_id = searchParams.get('order_id');
+    const restore_stock = searchParams.get('restore_stock') !== 'false';
+
+    if (!order_id) {
+      return NextResponse.json({ error: 'order_id é obrigatório' }, { status: 400 });
+    }
+
+    const sales = readSavedSales();
+    const targetSale = sales.find((s) => s.order_id === order_id || s.id === order_id);
+
+    // Se solicitado estorno e a venda não estava cancelada antes
+    if (restore_stock && targetSale && targetSale.status !== 'CANCELLED' && Array.isArray(targetSale.items)) {
+      for (const it of targetSale.items) {
+        if (it.sku) {
+          try {
+            const { data: v } = await supabaseServer
+              .from('product_variants')
+              .select('id, stock_quantity')
+              .eq('sku', it.sku)
+              .maybeSingle();
+
+            if (v) {
+              await supabaseServer
+                .from('product_variants')
+                .update({ stock_quantity: (v.stock_quantity || 0) + (Number(it.quantity) || 1) })
+                .eq('id', v.id);
+            }
+          } catch (e) {
+            console.warn('Erro ao estornar estoque no DELETE:', e);
+          }
+        }
+      }
+    }
+
+    // Remove do Supabase
+    try {
+      const { data: dbOrders } = await supabaseServer.from('orders').select('id, shipping_address');
+      if (dbOrders) {
+        const target = dbOrders.find((o: any) => {
+          const meta = typeof o.shipping_address === 'object' && o.shipping_address ? o.shipping_address : {};
+          return meta.order_number === order_id || o.id === order_id;
+        });
+        if (target) {
+          await supabaseServer.from('orders').delete().eq('id', target.id);
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao remover pedido do Supabase:', e);
+    }
+
+    // Remove do arquivo local
+    const updated = sales.filter((s) => s.order_id !== order_id && s.id !== order_id);
+    writeSavedSales(updated);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Registro de venda excluído permanentemente!',
+      sales: updated,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

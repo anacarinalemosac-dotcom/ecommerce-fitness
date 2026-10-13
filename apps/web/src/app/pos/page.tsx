@@ -39,6 +39,7 @@ import {
   Check,
   Instagram,
   MessageCircle,
+  Ban,
 } from 'lucide-react';
 import { StockWriteOffModal } from '../../components/StockWriteOffModal';
 import { PosInstagramChat } from '../../components/pos/PosInstagramChat';
@@ -887,6 +888,40 @@ export default function PosTerminalPage() {
                 <span>VER NO ERP</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </Link>
+            </div>
+
+            {/* Botão de Cancelamento Imediato no PDV caso o operador tenha errado */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!confirm(`Deseja cancelar esta venda (#${completedSale.order_id}) e estornar as peças de volta para o estoque?`)) return;
+                  try {
+                    const res = await fetch('/api/backoffice/sales', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        action: 'cancel_sale',
+                        order_id: completedSale.order_id,
+                        restore_stock: true,
+                        cancel_commission: true,
+                        cancellation_reason: 'Cancelado imediatamente no caixa do PDV',
+                      }),
+                    });
+                    const d = await res.json();
+                    if (!res.ok || d.error) throw new Error(d.error || 'Erro ao cancelar');
+                    alert(`Venda #${completedSale.order_id} cancelada com sucesso! Peças devolvidas ao estoque.`);
+                    setCompletedSale(null);
+                  } catch (e: any) {
+                    alert(`Erro ao cancelar venda: ${e.message}`);
+                  }
+                }}
+                className="w-full py-2.5 px-3 bg-red-100 hover:bg-red-700 hover:text-white text-red-900 border border-red-400 font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition"
+                title="Cancelar esta venda e devolver peças para o estoque"
+              >
+                <Ban className="w-3.5 h-3.5" />
+                <span>CANCELAR / ESTORNAR ESTA VENDA</span>
+              </button>
             </div>
           </div>
         </div>

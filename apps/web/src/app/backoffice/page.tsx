@@ -66,6 +66,7 @@ import {
   Printer,
   Instagram,
   Wallet,
+  Ban,
 } from 'lucide-react';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
@@ -74,6 +75,7 @@ import { StockWriteOffModal } from '../../components/StockWriteOffModal';
 import { WhatsAppCatalogPdfModal } from '../../components/WhatsAppCatalogPdfModal';
 import { CategoryManagementModal } from '../../components/CategoryManagementModal';
 import { EditSaleModal } from '../../components/EditSaleModal';
+import { CancelSaleModal } from '../../components/CancelSaleModal';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 import { DashboardMetricsView } from '../../components/backoffice/DashboardMetricsView';
 import { AppearanceCmsView } from '../../components/backoffice/AppearanceCmsView';
@@ -324,9 +326,19 @@ export default function BackofficeDashboard() {
   const [salesSearch, setSalesSearch] = useState('');
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<any | null>(null);
   const [editingSale, setEditingSale] = useState<any | null>(null);
+  const [cancellingSale, setCancellingSale] = useState<any | null>(null);
 
   // Atualização interativa de status do pedido
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string, trackingCode?: string) => {
+    // Se o lojista selecionou CANCELADO, abre o modal de confirmação com opções de estorno
+    if (newStatus === 'CANCELLED') {
+      const target = (salesData?.sales || []).find((s: any) => s.order_id === orderId || s.id === orderId);
+      if (target) {
+        setCancellingSale(target);
+        return;
+      }
+    }
+
     try {
       const res = await fetch('/api/backoffice/sales', {
         method: 'PATCH',
@@ -2756,17 +2768,30 @@ export default function BackofficeDashboard() {
                         </select>
                       </td>
 
-                      {/* Botões Ação: Editar Venda & Raio-X */}
+                      {/* Botões Ação: Editar Venda, Cancelar & Raio-X */}
                       <td className="p-3 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
                           <button
                             type="button"
                             onClick={() => setEditingSale(sale)}
-                            className="px-2.5 py-1 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border border-deep-black shadow-2xs"
+                            className="px-2 py-1 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border border-deep-black shadow-2xs"
                             title="Editar esta venda (data, cliente, itens, pagamento)"
                           >
                             <Edit3 className="w-3 h-3" />
                             <span>EDITAR</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCancellingSale(sale)}
+                            className={`px-2 py-1 text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border ${
+                              sale.status === 'CANCELLED'
+                                ? 'bg-red-50 text-red-600 border-red-300 hover:bg-red-600 hover:text-white'
+                                : 'bg-red-100 hover:bg-red-600 hover:text-white text-red-900 border-red-400'
+                            }`}
+                            title={sale.status === 'CANCELLED' ? 'Ver detalhes do cancelamento ou excluir' : 'Cancelar esta venda e estornar itens ao estoque'}
+                          >
+                            <Ban className="w-3 h-3" />
+                            <span>{sale.status === 'CANCELLED' ? 'CANCELADA' : 'CANCELAR'}</span>
                           </button>
                           <button
                             type="button"
@@ -3062,6 +3087,17 @@ export default function BackofficeDashboard() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => {
+                      setCancellingSale(selectedSaleDetail);
+                      setSelectedSaleDetail(null);
+                    }}
+                    className="w-full py-2.5 bg-red-100 hover:bg-red-700 hover:text-white text-red-900 border-2 border-red-500 font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                  >
+                    <Ban className="w-4 h-4" />
+                    <span>CANCELAR ESTA VENDA (ESTORNAR ESTOQUE)</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setSelectedSaleDetail(null)}
                     className="w-full py-2.5 bg-gray-100 hover:bg-deep-black hover:text-white text-deep-black text-xs font-black uppercase tracking-widest transition"
                   >
@@ -3078,6 +3114,18 @@ export default function BackofficeDashboard() {
             onClose={() => setEditingSale(null)}
             sale={editingSale}
             onSaveSuccess={() => {
+              fetchSalesData();
+              setSaveSuccessMessage(true);
+              setTimeout(() => setSaveSuccessMessage(false), 5000);
+            }}
+          />
+
+          {/* Modal de Cancelamento & Estorno de Venda */}
+          <CancelSaleModal
+            isOpen={Boolean(cancellingSale)}
+            onClose={() => setCancellingSale(null)}
+            sale={cancellingSale}
+            onSuccess={() => {
               fetchSalesData();
               setSaveSuccessMessage(true);
               setTimeout(() => setSaveSuccessMessage(false), 5000);
