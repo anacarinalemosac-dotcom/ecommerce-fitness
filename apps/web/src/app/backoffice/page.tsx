@@ -85,6 +85,7 @@ import { TechnicalSettingsView } from '../../components/backoffice/TechnicalSett
 import { InstagramDirectView } from '../../components/backoffice/InstagramDirectView';
 import { SimpleFinancesView } from '../../components/backoffice/SimpleFinancesView';
 import { SuppliersManagementView } from '../../components/backoffice/SuppliersManagementView';
+import { AccessReportsView } from '../../components/backoffice/AccessReportsView';
 
 interface ProductProfit {
   sku: string;
@@ -297,7 +298,7 @@ export default function BackofficeDashboard() {
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'finances' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
+    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'finances' | 'reports' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
   >('dashboard');
   const [cmsSubTab, setCmsSubTab] = useState<'media' | 'categories' | 'colors' | 'typography' | 'pages'>('categories');
   const [onlineCount, setOnlineCount] = useState(0);
@@ -1452,6 +1453,22 @@ export default function BackofficeDashboard() {
           <span>FORNECEDORES</span>
           <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
             CONFECÇÕES
+          </span>
+        </button>
+
+        {/* Relatórios de Acessos & Tráfego */}
+        <button
+          onClick={() => setActiveTab('reports')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'reports'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 text-gold" />
+          <span>RELATÓRIOS</span>
+          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
+            ACESSOS
           </span>
         </button>
 
@@ -4591,6 +4608,11 @@ export default function BackofficeDashboard() {
           }}
         />
       )}
+
+      {/* =========================================================================
+          TAB: RELATÓRIOS DE ACESSOS E TRÁFEGO (CIDADE, DISPOSITIVO, PÁGINAS, TEMPO)
+         ========================================================================= */}
+      {activeTab === 'reports' && <AccessReportsView />}
 
       {/* =========================================================================
           TAB 6: APARÊNCIA DA LOJA (CMS VISUAL)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { recordHeartbeat } from '@/lib/liveStore';
+import { recordVisitorAccess } from '@/lib/accessReportsStore';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -7,7 +8,7 @@ export const revalidate = 0;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, page, pageTitle, device, userCity, userRegion } = body;
+    const { id, page, pageTitle, device, deviceType, durationSeconds, referrer, userCity, userRegion } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'ID do visitante é obrigatório.' }, { status: 400 });
@@ -39,6 +40,20 @@ export async function POST(req: NextRequest) {
       pageTitle: pageTitle || 'Vitrine Ana Fitness',
       device: device || 'Dispositivo Móvel',
     });
+
+    // Registra sessão no repositório permanente de relatórios diários
+    recordVisitorAccess({
+      visitorId: id,
+      page: page || '/',
+      pageTitle: pageTitle || 'Vitrine Ana Fitness',
+      device: device || 'Dispositivo Móvel',
+      deviceType: deviceType,
+      clientDurationSeconds: durationSeconds,
+      city: detectedCity,
+      region: detectedRegion || 'MA',
+      country: 'US',
+      referrer: referrer,
+    }).catch((err) => console.warn('Erro ao registrar histórico de relatório:', err));
 
     return NextResponse.json({
       success: true,

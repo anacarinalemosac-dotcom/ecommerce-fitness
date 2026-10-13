@@ -242,6 +242,40 @@ export function DashboardMetricsView({
         </div>
       </div>
 
+      {/* Atalho Rápido para o Relatório de Acessos */}
+      <div
+        onClick={() => onNavigateTab('reports')}
+        className="bg-white border-2 border-deep-black p-5 shadow-sm hover:border-gold hover:shadow-luxury transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 group"
+      >
+        <div className="flex items-center gap-3.5">
+          <div className="p-3 bg-deep-black text-gold border border-gold group-hover:scale-105 transition-transform">
+            <BarChart3 className="w-5 h-5 text-gold" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gold bg-deep-black px-2 py-0.2">
+                RELATÓRIOS DO DIA
+              </span>
+              <span className="text-xs font-black uppercase text-deep-black">
+                ACESSOS & TRÁFEGO EM TEMPO REAL
+              </span>
+            </div>
+            <p className="text-xs text-deep-black/70 uppercase mt-0.5 font-medium">
+              Consulte de qual cidade vieram as visitas, celular vs computador, páginas navegadas e tempo no site.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onNavigateTab('reports')}
+          className="px-4 py-2 bg-deep-black text-white group-hover:bg-gold group-hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shrink-0 shadow-xs"
+        >
+          <span>ABRIR RELATÓRIO DE ACESSOS</span>
+          <ChevronRight className="w-3.5 h-3.5 text-gold group-hover:text-deep-black" />
+        </button>
+      </div>
+
       {/* 2. VOLUME DE PEDIDOS & INDICADORES DE DESEMPENHO */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Volume de Pedidos por Status */}
