@@ -2492,9 +2492,39 @@ export function ProductVariantMatrixForm({
 
             {/* Fornecedor Vinculado */}
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
-                Fornecedor / Confecção Vinculada *
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                  Fornecedor / Confecção Vinculada *
+                </label>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const name = window.prompt('Nome da nova confecção / empresa fornecedora:');
+                    if (name && name.trim()) {
+                      try {
+                        const res = await fetch('/api/backoffice/suppliers', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ company_name: name.trim() }),
+                        });
+                        const data = await res.json();
+                        if (data.suppliers) {
+                          setSuppliersList(data.suppliers);
+                        }
+                        if (data.supplier) {
+                          setSupplierId(data.supplier.id);
+                        }
+                      } catch (err: any) {
+                        alert('Erro ao criar fornecedor: ' + err.message);
+                      }
+                    }
+                  }}
+                  className="text-[9px] font-black uppercase text-gold hover:text-deep-black underline transition cursor-pointer"
+                  title="Cadastrar nova confecção agora"
+                >
+                  + Cadastrar Novo
+                </button>
+              </div>
               <select
                 required
                 value={supplierId}

@@ -67,6 +67,7 @@ import {
   Instagram,
   Wallet,
   Ban,
+  Building2,
 } from 'lucide-react';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
@@ -83,6 +84,7 @@ import { CustomersReviewsView } from '../../components/backoffice/CustomersRevie
 import { TechnicalSettingsView } from '../../components/backoffice/TechnicalSettingsView';
 import { InstagramDirectView } from '../../components/backoffice/InstagramDirectView';
 import { SimpleFinancesView } from '../../components/backoffice/SimpleFinancesView';
+import { SuppliersManagementView } from '../../components/backoffice/SuppliersManagementView';
 
 interface ProductProfit {
   sku: string;
@@ -295,7 +297,7 @@ export default function BackofficeDashboard() {
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'finances' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct'
+    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'finances' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
   >('dashboard');
   const [cmsSubTab, setCmsSubTab] = useState<'media' | 'categories' | 'colors' | 'typography' | 'pages'>('categories');
   const [onlineCount, setOnlineCount] = useState(0);
@@ -1434,6 +1436,22 @@ export default function BackofficeDashboard() {
           <span>5. FINANCEIRO DA LOJA</span>
           <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
             COMPRAS & PREÇO
+          </span>
+        </button>
+
+        {/* Fornecedores & Confecções */}
+        <button
+          onClick={() => setActiveTab('suppliers')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'suppliers'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Building2 className="w-4 h-4 text-gold" />
+          <span>FORNECEDORES</span>
+          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
+            CONFECÇÕES
           </span>
         </button>
 
@@ -4506,6 +4524,19 @@ export default function BackofficeDashboard() {
           TAB 5: FINANCEIRO DA LOJA (DRE, FLUXO DE CAIXA, DESPESAS, CONTAS A PAGAR)
          ========================================================================= */}
       {activeTab === 'finances' && <SimpleFinancesView salesData={salesData} sellers={sellers} />}
+
+      {/* =========================================================================
+          TAB: FORNECEDORES & CONFECÇÕES PARCEIRAS
+         ========================================================================= */}
+      {activeTab === 'suppliers' && (
+        <SuppliersManagementView
+          products={baseCatalogList}
+          onShowFeedback={(msg) => {
+            setSaveSuccessMessage(true);
+            setTimeout(() => setSaveSuccessMessage(false), 5000);
+          }}
+        />
+      )}
 
       {/* =========================================================================
           TAB 6: APARÊNCIA DA LOJA (CMS VISUAL)

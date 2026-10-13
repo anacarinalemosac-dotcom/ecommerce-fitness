@@ -48,6 +48,22 @@ export function ClothingPricingCalculator({
   const [selectedMultiplier, setSelectedMultiplier] = useState<number>(2.0); // 2.0x (dobrar o custo)
   const [selectedMarginPct, setSelectedMarginPct] = useState<number>(50); // 50% margem
   const [customSalePrice, setCustomSalePrice] = useState<string>('49.90');
+  const [suppliersList, setSuppliersList] = useState<any[]>([]);
+
+  // Carrega lista de fornecedores cadastrados
+  React.useEffect(() => {
+    fetch('/api/backoffice/suppliers')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.suppliers && Array.isArray(d.suppliers)) {
+          setSuppliersList(d.suppliers);
+          if (d.suppliers.length > 0 && supplier === 'Confecção / Fábrica') {
+            setSupplier(d.suppliers[0].company_name);
+          }
+        }
+      })
+      .catch((err) => console.warn('Erro ao buscar fornecedores:', err));
+  }, []);
 
   // Detalhamento de Modelos (opcional)
   const [showDetailedItems, setShowDetailedItems] = useState(false);
@@ -380,17 +396,26 @@ export function ClothingPricingCalculator({
 
             {/* Fornecedor (Opcional) */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
-                FORNECEDOR / CONFECÇÃO (OPCIONAL):
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
+                <span>FORNECEDOR / CONFECÇÃO (OPCIONAL):</span>
+                {suppliersList.length > 0 && (
+                  <span className="text-[9px] text-gold font-bold">{suppliersList.length} cadastrado(s)</span>
+                )}
               </label>
               <div className="relative">
                 <input
                   type="text"
+                  list="pricing-suppliers-list"
                   value={supplier}
                   onChange={(e) => setSupplier(e.target.value)}
-                  placeholder="Ex: Fábrica Brasil, Ateliê SP"
+                  placeholder="Selecione ou digite a confecção..."
                   className="w-full px-3 py-2 text-xs font-bold border border-deep-black/30 focus:outline-none focus:border-deep-black bg-white"
                 />
+                <datalist id="pricing-suppliers-list">
+                  {suppliersList.map((sup: any) => (
+                    <option key={sup.id} value={sup.company_name} />
+                  ))}
+                </datalist>
               </div>
             </div>
 
