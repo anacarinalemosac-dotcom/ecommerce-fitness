@@ -17,6 +17,7 @@ import {
   BarChart3,
   Factory,
   ChevronRight,
+  Wallet,
 } from 'lucide-react';
 
 interface DashboardMetricsViewProps {
@@ -118,7 +119,15 @@ export function DashboardMetricsView({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={() => onNavigateTab('finances')}
+            className="px-4 py-2.5 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-wider shadow transition flex items-center gap-2"
+          >
+            <Wallet className="w-4 h-4 text-deep-black" />
+            <span>Financeiro & DRE</span>
+          </button>
           <button
             type="button"
             onClick={() => onNavigateTab('catalog')}
@@ -129,10 +138,10 @@ export function DashboardMetricsView({
           </button>
           <button
             type="button"
-            onClick={() => onNavigateTab('orders')}
-            className="px-4 py-2.5 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-wider shadow transition flex items-center gap-2"
+            onClick={() => onNavigateTab('sales')}
+            className="px-4 py-2.5 bg-white/10 hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider border border-white/20 transition flex items-center gap-2"
           >
-            <ShoppingBag className="w-4 h-4 text-deep-black" />
+            <ShoppingBag className="w-4 h-4 text-gold" />
             <span>Ver Pedidos</span>
           </button>
         </div>
@@ -206,19 +215,29 @@ export function DashboardMetricsView({
           </div>
 
           {/* Lucro Líquido Real */}
-          <div className="bg-deep-black text-white border-2 border-gold p-5 space-y-2 shadow-luxury">
+          <div
+            onClick={() => onNavigateTab('finances')}
+            className="bg-deep-black text-white border-2 border-gold p-5 space-y-2 shadow-luxury cursor-pointer hover:border-white transition group"
+            title="Clique para abrir o módulo Financeiro completo com DRE e Fluxo de Caixa"
+          >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-gold">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gold group-hover:underline flex items-center gap-1">
                 LUCRO LÍQUIDO REAL NO BOLSO
+                <ArrowUpRight className="w-3.5 h-3.5 text-gold group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </span>
               <Sparkles className="w-3.5 h-3.5 text-gold" />
             </div>
             <div className="text-2xl sm:text-3xl font-black text-gold font-mono">
               ${totalNetProfit.toFixed(2)}
             </div>
-            <p className="text-[10px] text-white/70 uppercase font-bold">
-              Após dedução de confecção, taxas e comissões
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-white/70 uppercase font-bold">
+                Após custos, taxas e comissões
+              </p>
+              <span className="text-[9px] bg-gold/20 text-gold px-1.5 py-0.5 font-black uppercase border border-gold/40 group-hover:bg-gold group-hover:text-deep-black transition">
+                VER DRE & CAIXA →
+              </span>
+            </div>
           </div>
         </div>
       </div>

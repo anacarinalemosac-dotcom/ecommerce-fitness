@@ -65,6 +65,7 @@ import {
   Send,
   Printer,
   Instagram,
+  Wallet,
 } from 'lucide-react';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
@@ -79,6 +80,7 @@ import { AppearanceCmsView } from '../../components/backoffice/AppearanceCmsView
 import { CustomersReviewsView } from '../../components/backoffice/CustomersReviewsView';
 import { TechnicalSettingsView } from '../../components/backoffice/TechnicalSettingsView';
 import { InstagramDirectView } from '../../components/backoffice/InstagramDirectView';
+import { SimpleFinancesView } from '../../components/backoffice/SimpleFinancesView';
 
 interface ProductProfit {
   sku: string;
@@ -291,7 +293,7 @@ export default function BackofficeDashboard() {
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct'
+    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'finances' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct'
   >('dashboard');
   const [cmsSubTab, setCmsSubTab] = useState<'media' | 'categories' | 'colors' | 'typography' | 'pages'>('categories');
   const [onlineCount, setOnlineCount] = useState(0);
@@ -1407,7 +1409,23 @@ export default function BackofficeDashboard() {
           )}
         </button>
 
-        {/* 5. Aparência da Loja (CMS Visual) */}
+        {/* 5. Financeiro da Loja */}
+        <button
+          onClick={() => setActiveTab('finances')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'finances'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Wallet className="w-4 h-4 text-gold" />
+          <span>5. FINANCEIRO DA LOJA</span>
+          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
+            DRE & CAIXA
+          </span>
+        </button>
+
+        {/* 6. Aparência da Loja (CMS Visual) */}
         <button
           onClick={() => setActiveTab('cms')}
           className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
@@ -1417,10 +1435,10 @@ export default function BackofficeDashboard() {
           }`}
         >
           <Palette className="w-4 h-4 text-gold" />
-          <span>5. APARÊNCIA DA LOJA (CMS)</span>
+          <span>6. APARÊNCIA DA LOJA (CMS)</span>
         </button>
 
-        {/* 6. Clientes e Prova Social (Reviews) */}
+        {/* 7. Clientes e Prova Social (Reviews) */}
         <button
           onClick={() => setActiveTab('customers')}
           className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
@@ -1430,10 +1448,10 @@ export default function BackofficeDashboard() {
           }`}
         >
           <Star className="w-4 h-4 text-gold" />
-          <span>6. CLIENTES & REVIEWS</span>
+          <span>7. CLIENTES & REVIEWS</span>
         </button>
 
-        {/* 7. Configurações Técnicas e Acessos */}
+        {/* 8. Configurações Técnicas e Acessos */}
         <button
           onClick={() => setActiveTab('settings')}
           className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
@@ -1443,7 +1461,7 @@ export default function BackofficeDashboard() {
           }`}
         >
           <Settings className="w-4 h-4 text-gold" />
-          <span>7. CONFIGURAÇÕES & ACESSOS</span>
+          <span>8. CONFIGURAÇÕES & ACESSOS</span>
         </button>
 
         {/* Atalhos Rápidos */}
@@ -4437,7 +4455,12 @@ export default function BackofficeDashboard() {
       })()}
 
       {/* =========================================================================
-          TAB 5: APARÊNCIA DA LOJA (CMS VISUAL)
+          TAB 5: FINANCEIRO DA LOJA (DRE, FLUXO DE CAIXA, DESPESAS, CONTAS A PAGAR)
+         ========================================================================= */}
+      {activeTab === 'finances' && <SimpleFinancesView salesData={salesData} sellers={sellers} />}
+
+      {/* =========================================================================
+          TAB 6: APARÊNCIA DA LOJA (CMS VISUAL)
          ========================================================================= */}
       {(activeTab === 'cms' || activeTab === 'theme') && <AppearanceCmsView initialSubTab={cmsSubTab} />}
 
