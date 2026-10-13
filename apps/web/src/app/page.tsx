@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
@@ -302,11 +302,34 @@ export default function HomePage() {
   const { lang, t } = useLanguage();
   const { products: storeProducts, siteInfo, siteImages } = useStoreSettings();
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops'>('all');
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'preorder'>('all');
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
   const [quickAddedItem, setQuickAddedItem] = useState<{ id: string; size: string } | null>(null);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [shareModalProduct, setShareModalProduct] = useState<any | null>(null);
+
+  // Escuta filtros disparados pelo menu sem forçar salto brusco para o rodapé
+  useEffect(() => {
+    const handleCategoryEvent = (e: any) => {
+      if (e.detail) {
+        const cat = e.detail === 'new' ? 'all' : e.detail;
+        setActiveCategoryFilter(cat);
+      }
+    };
+    window.addEventListener('ana_filter_category', handleCategoryEvent);
+
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const cat = params.get('cat');
+      if (cat) {
+        setActiveCategoryFilter(cat === 'new' ? 'all' : (cat as any));
+      }
+    } catch (_) {}
+
+    return () => {
+      window.removeEventListener('ana_filter_category', handleCategoryEvent);
+    };
+  }, []);
 
   const toggleWishlist = (id: string) => {
     setWishlist((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -388,13 +411,16 @@ export default function HomePage() {
 
           {/* Botões Duplos Gymshark Action */}
           <div className="pt-4 flex flex-col sm:flex-row gap-4 max-w-lg">
-            <Link
-              href="#vitrine"
+            <button
+              onClick={() => {
+                const el = document.getElementById('vitrine');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
               className="px-8 py-4 bg-white hover:bg-gold text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-3 shadow-xl group border border-white"
             >
               <span>{t('hero.cta')}</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition" />
-            </Link>
+            </button>
 
             <Link
               href="/produto/samanta-romper"
@@ -430,7 +456,7 @@ export default function HomePage() {
 
       {/* =========================================================================
           2. GYMSHARK CATEGORY VISUAL RAIL (TALL CARDS WITH GRADIENT & ATHLETIC POSE)
-         ========================================================================= */}
+          ========================================================================= */}
       <section className="max-w-7xl mx-auto px-4 sm:px-8 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b-2 border-deep-black pb-3">
           <div>
@@ -441,13 +467,17 @@ export default function HomePage() {
               SHOP BY SILHOUETTE
             </h2>
           </div>
-          <Link
-            href="#vitrine"
+          <button
+            onClick={() => {
+              setActiveCategoryFilter('all');
+              const el = document.getElementById('vitrine');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
             className="text-[11px] font-black uppercase tracking-widest text-deep-black hover:text-gold flex items-center gap-2 transition group"
           >
             <span>{lang === 'pt' ? 'VER TODA A COLEÇÃO' : 'VIEW ALL SILHOUETTES'}</span>
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
-          </Link>
+          </button>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">

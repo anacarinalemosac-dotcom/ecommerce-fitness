@@ -70,7 +70,7 @@ export function InstagramDirectView() {
   const [newRuleReply, setNewRuleReply] = useState('');
 
   const [notificationBanner, setNotificationBanner] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Carrega estado inicial
   const fetchState = async () => {
@@ -98,9 +98,11 @@ export function InstagramDirectView() {
     fetchState();
   }, []);
 
-  // Rola mensagens para o fim quando seleciona ou atualiza
+  // Rola mensagens para o fim apenas dentro do chatbox sem mover a página
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [conversations, selectedConvId]);
 
   const activeConv = conversations.find((c) => c.id === selectedConvId);
@@ -659,7 +661,7 @@ export function InstagramDirectView() {
               </div>
 
               {/* Área de Mensagens com Rolagem */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-3.5 max-h-[440px] bg-gradient-to-b from-black via-zinc-950 to-zinc-950">
+              <div ref={messagesContainerRef} className="flex-1 p-4 overflow-y-auto space-y-3.5 max-h-[440px] bg-gradient-to-b from-black via-zinc-950 to-zinc-950">
                 {activeConv.messages.map((msg) => {
                   const isCustomer = msg.sender === 'customer';
                   const isBot = msg.sender === 'bot';
@@ -711,7 +713,6 @@ export function InstagramDirectView() {
                     </div>
                   );
                 })}
-                <div ref={messagesEndRef} />
               </div>
 
               {/* Barra de Respostas Rápidas (1 clique para acelerar o atendimento da Ana) */}

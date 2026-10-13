@@ -136,37 +136,67 @@ export function SiteHeader() {
           {/* Menu de Categorias Desktop em Caixa Alta */}
           <nav className="hidden lg:flex items-center gap-7 text-xs font-black tracking-widest uppercase">
             <Link
-              href="/#vitrine"
+              href="/?cat=all"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'all' }));
+                }
+              }}
               className="text-deep-black hover:text-gold transition py-1 border-b-2 border-transparent hover:border-deep-black"
             >
               {t('nav.new')}
             </Link>
             <Link
-              href="/#vitrine"
+              href="/?cat=sets"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'sets' }));
+                }
+              }}
               className="text-deep-black hover:text-gold transition py-1 border-b-2 border-transparent hover:border-deep-black"
             >
               {t('nav.sets')}
             </Link>
             <Link
-              href="/#vitrine"
+              href="/?cat=jumpsuits"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'jumpsuits' }));
+                }
+              }}
               className="text-deep-black hover:text-gold transition py-1 border-b-2 border-transparent hover:border-deep-black"
             >
               {t('nav.jumpsuits')}
             </Link>
             <Link
-              href="/#vitrine"
+              href="/?cat=rompers"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'rompers' }));
+                }
+              }}
               className="text-deep-black hover:text-gold transition py-1 border-b-2 border-transparent hover:border-deep-black"
             >
               {t('nav.rompers')}
             </Link>
             <Link
-              href="/#vitrine"
+              href="/?cat=tops"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'tops' }));
+                }
+              }}
               className="text-deep-black hover:text-gold transition py-1 border-b-2 border-transparent hover:border-deep-black"
             >
               {t('nav.tops')}
             </Link>
             <Link
-              href="/#vitrine"
+              href="/?cat=preorder"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'preorder' }));
+                }
+              }}
               className="text-gold font-black hover:text-deep-black transition py-1 border-b-2 border-transparent hover:border-gold flex items-center gap-1.5"
             >
               <span>{t('nav.preorder')}</span>
@@ -176,13 +206,16 @@ export function SiteHeader() {
 
           {/* Ações do Cliente: Meus Pedidos, Pesquisa e Sacola */}
           <div className="flex items-center gap-2 sm:gap-4">
-            <Link
-              href="/#vitrine"
+            <button
+              onClick={() => {
+                const el = document.getElementById('vitrine');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
               className="p-2 text-deep-black hover:text-gold transition hidden sm:flex items-center"
               title="Search Catalog"
             >
               <Search className="w-4 h-4" />
-            </Link>
+            </button>
 
             {/* Minha Conta / Login do Cliente */}
             <Link
@@ -230,48 +263,78 @@ export function SiteHeader() {
           <div className="lg:hidden border-t border-deep-black/10 bg-white/98 backdrop-blur-md px-6 py-6 space-y-4 shadow-luxury animate-fadeIn">
             <nav className="flex flex-col space-y-3 text-xs font-black tracking-widest uppercase">
               <Link
-                href="/#vitrine"
-                onClick={closeMobileMenu}
+                href="/?cat=all"
+                onClick={() => {
+                  closeMobileMenu();
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'all' }));
+                  }
+                }}
                 className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black"
               >
                 <span>{t('nav.new')}</span>
                 <ChevronRight className="w-4 h-4 text-gold" />
               </Link>
               <Link
-                href="/#vitrine"
-                onClick={closeMobileMenu}
+                href="/?cat=sets"
+                onClick={() => {
+                  closeMobileMenu();
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'sets' }));
+                  }
+                }}
                 className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black"
               >
                 <span>{t('nav.sets')}</span>
                 <ChevronRight className="w-4 h-4 text-gold" />
               </Link>
               <Link
-                href="/#vitrine"
-                onClick={closeMobileMenu}
+                href="/?cat=jumpsuits"
+                onClick={() => {
+                  closeMobileMenu();
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'jumpsuits' }));
+                  }
+                }}
                 className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black"
               >
                 <span>{t('nav.jumpsuits')}</span>
                 <ChevronRight className="w-4 h-4 text-gold" />
               </Link>
               <Link
-                href="/#vitrine"
-                onClick={closeMobileMenu}
+                href="/?cat=rompers"
+                onClick={() => {
+                  closeMobileMenu();
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'rompers' }));
+                  }
+                }}
                 className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black"
               >
                 <span>{t('nav.rompers')}</span>
                 <ChevronRight className="w-4 h-4 text-gold" />
               </Link>
               <Link
-                href="/#vitrine"
-                onClick={closeMobileMenu}
+                href="/?cat=tops"
+                onClick={() => {
+                  closeMobileMenu();
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'tops' }));
+                  }
+                }}
                 className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black"
               >
                 <span>{t('nav.tops')}</span>
                 <ChevronRight className="w-4 h-4 text-gold" />
               </Link>
               <Link
-                href="/#vitrine"
-                onClick={closeMobileMenu}
+                href="/?cat=preorder"
+                onClick={() => {
+                  closeMobileMenu();
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'preorder' }));
+                  }
+                }}
                 className="flex items-center justify-between py-2 border-b border-deep-black/5 text-gold font-black transition"
               >
                 <span className="flex items-center gap-2">

@@ -44,7 +44,7 @@ export function PosInstagramChat({ className = '' }: PosInstagramChatProps) {
   const [simulateUser, setSimulateUser] = useState('@cliente_showroom');
   const [simulateMessage, setSimulateMessage] = useState('Olá! Qual o horário de funcionamento do showroom hoje?');
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevMsgCountRef = useRef<number>(0);
 
   // Busca estado das conversas no backend
@@ -92,9 +92,11 @@ export function PosInstagramChat({ className = '' }: PosInstagramChatProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Rola mensagens para o fim sempre que atualiza
+  // Rola mensagens para o fim DENTRO da caixinha (sem mexer na rolagem da página inteira)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [conversations, selectedConvId]);
 
   const activeConv = conversations.find((c) => c.id === selectedConvId) || conversations[0];
@@ -371,7 +373,7 @@ export function PosInstagramChat({ className = '' }: PosInstagramChatProps) {
             </div>
 
             {/* Balões de Mensagem */}
-            <div className="flex-1 p-3 overflow-y-auto space-y-2.5 text-xs">
+            <div ref={messagesContainerRef} className="flex-1 p-3 overflow-y-auto space-y-2.5 text-xs">
               {activeConv.messages.length === 0 ? (
                 <div className="p-8 text-center text-gray-500 text-[11px]">
                   Nenhuma mensagem nesta conversa ainda.
@@ -429,7 +431,6 @@ export function PosInstagramChat({ className = '' }: PosInstagramChatProps) {
                   );
                 })
               )}
-              <div ref={messagesEndRef} />
             </div>
 
             {/* 4. Respostas Rápidas do Balcão (1 Clique) */}

@@ -436,7 +436,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       <nav className="text-[10px] font-black uppercase tracking-widest text-deep-black/50 flex items-center gap-2">
         <Link href="/" className="hover:text-deep-black transition">HOME</Link>
         <span>/</span>
-        <Link href="/#vitrine" className="hover:text-deep-black transition">
+        <Link href={`/?cat=${productData.category || 'all'}`} className="hover:text-deep-black transition">
           {lang === 'pt' ? productData.categoryPt : productData.categoryEn}
         </Link>
         <span>/</span>

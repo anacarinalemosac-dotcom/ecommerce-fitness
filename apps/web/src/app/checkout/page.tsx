@@ -511,7 +511,7 @@ export default function CheckoutPage() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
           <Link
-            href="/#vitrine"
+            href="/"
             className="px-8 py-4 bg-deep-black text-gold hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-widest transition shadow-luxury flex items-center justify-center gap-2"
           >
             <Sparkles className="w-4 h-4 text-gold" />

@@ -1554,7 +1554,7 @@ export default function BackofficeDashboard() {
             <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
             <span className="text-white">✓ Produto gravado com sucesso no Supabase! Grade de variantes persistida e catálogo atualizado.</span>
           </div>
-          <Link href="/#vitrine" className="text-emerald-400 hover:text-white underline flex items-center gap-1 font-bold">
+          <Link href="/" target="_blank" className="text-emerald-400 hover:text-white underline flex items-center gap-1 font-bold">
             <span>Ver na Loja</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>

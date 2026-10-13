@@ -88,11 +88,11 @@ export function SiteFooter() {
               {lang === 'pt' ? 'COLEÇÕES' : 'COLLECTIONS'}
             </h4>
             <ul className="space-y-2.5 uppercase tracking-wider text-white/70 font-medium text-[11px]">
-              <li><Link href="/#vitrine" className="hover:text-gold transition">{t('nav.rompers')}</Link></li>
-              <li><Link href="/#vitrine" className="hover:text-gold transition">{t('nav.sets')}</Link></li>
-              <li><Link href="/#vitrine" className="hover:text-gold transition">{t('nav.jumpsuits')}</Link></li>
-              <li><Link href="/#vitrine" className="hover:text-gold transition">{t('nav.tops')}</Link></li>
-              <li><Link href="/#vitrine" className="hover:text-gold transition text-gold font-bold">{t('nav.preorder')}</Link></li>
+              <li><Link href="/?cat=rompers" className="hover:text-gold transition">{t('nav.rompers')}</Link></li>
+              <li><Link href="/?cat=sets" className="hover:text-gold transition">{t('nav.sets')}</Link></li>
+              <li><Link href="/?cat=jumpsuits" className="hover:text-gold transition">{t('nav.jumpsuits')}</Link></li>
+              <li><Link href="/?cat=tops" className="hover:text-gold transition">{t('nav.tops')}</Link></li>
+              <li><Link href="/?cat=preorder" className="hover:text-gold transition text-gold font-bold">{t('nav.preorder')}</Link></li>
             </ul>
           </div>
 

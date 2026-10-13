@@ -701,7 +701,7 @@ export default function CustomerAccountPage() {
 
         <div className="flex items-center gap-3">
           <Link
-            href="/#vitrine"
+            href="/"
             className="px-4 py-2.5 bg-gold text-deep-black hover:bg-white text-xs font-black uppercase tracking-widest transition flex items-center gap-2"
           >
             <ShoppingBag className="w-4 h-4 text-deep-black" />
@@ -782,7 +782,7 @@ export default function CustomerAccountPage() {
               </p>
               <div className="flex justify-center gap-3 pt-2">
                 <Link
-                  href="/#vitrine"
+                  href="/"
                   className="px-6 py-3 bg-deep-black text-gold hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-widest transition shadow"
                 >
                   {lang === 'pt' ? 'CONHECER A COLEÇÃO' : 'EXPLORE COLLECTION'}
