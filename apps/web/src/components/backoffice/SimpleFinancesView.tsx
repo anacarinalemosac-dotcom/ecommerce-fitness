@@ -34,8 +34,10 @@ import {
   ArrowDownRight,
   ChevronRight,
   Tag,
+  Calculator,
 } from 'lucide-react';
 import { ExpenseRecord, ExpenseCategory, FinancesState } from '@/app/api/backoffice/finances/route';
+import { ClothingPricingCalculator } from './ClothingPricingCalculator';
 
 interface SimpleFinancesViewProps {
   salesData: any;
@@ -118,6 +120,9 @@ export function SimpleFinancesView({ salesData, sellers = [] }: SimpleFinancesVi
     initialCashBalance: 0,
     updatedAt: new Date().toISOString(),
   });
+
+  // Sub-abas do Financeiro (Default: Compras & Precificação das Roupas)
+  const [financeSubTab, setFinanceSubTab] = useState<'pricing' | 'cashflow'>('pricing');
 
   // Filtros
   const [selectedMonth, setSelectedMonth] = useState<string>('CURRENT'); // 'CURRENT', 'PREVIOUS', 'ALL'
@@ -494,8 +499,50 @@ export function SimpleFinancesView({ salesData, sellers = [] }: SimpleFinancesVi
         </div>
       )}
 
-      {/* 2. Barra de Filtro de Período (Mês Atual / Mês Anterior / Todos) */}
-      <div className="bg-white border-2 border-deep-black p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+      {/* SELETOR DE SUB-ABAS DO FINANCEIRO */}
+      <div className="flex border-b-2 border-deep-black text-xs font-black uppercase tracking-widest gap-2 bg-white p-1 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setFinanceSubTab('pricing')}
+          className={`py-3.5 px-6 border-b-2 transition flex items-center gap-2.5 ${
+            financeSubTab === 'pricing'
+              ? 'border-gold text-deep-black bg-gold/15 font-black shadow-sm'
+              : 'border-transparent text-deep-black/60 hover:text-deep-black'
+          }`}
+        >
+          <Calculator className="w-4 h-4 text-gold" />
+          <span>COMPRAS DE ROUPAS & FRETE (CALCULAR PREÇO POR PEÇA)</span>
+          <span className="px-1.5 py-0.5 bg-gold text-deep-black text-[9px] font-black">SIMPLES</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFinanceSubTab('cashflow')}
+          className={`py-3.5 px-6 border-b-2 transition flex items-center gap-2.5 ${
+            financeSubTab === 'cashflow'
+              ? 'border-gold text-deep-black bg-gold/15 font-black shadow-sm'
+              : 'border-transparent text-deep-black/60 hover:text-deep-black'
+          }`}
+        >
+          <Wallet className="w-4 h-4 text-gold" />
+          <span>FLUXO DE CAIXA, CONTAS & DRE (DESPESAS GERAIS)</span>
+        </button>
+      </div>
+
+      {/* SUB-ABA 1: COMPRAS DE ROUPAS & PRECIFICAÇÃO COM FRETE */}
+      {financeSubTab === 'pricing' && (
+        <ClothingPricingCalculator
+          finances={finances}
+          onRefresh={fetchFinances}
+          onShowFeedback={(msg) => setFeedbackBanner(msg)}
+        />
+      )}
+
+      {/* SUB-ABA 2: FLUXO DE CAIXA COMPLETO & DESPESAS */}
+      {financeSubTab === 'cashflow' && (
+        <div className="space-y-8 animate-fadeIn">
+          {/* 2. Barra de Filtro de Período (Mês Atual / Mês Anterior / Todos) */}
+          <div className="bg-white border-2 border-deep-black p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-gold" />
           <span className="text-xs font-black uppercase tracking-wider text-deep-black">
@@ -926,6 +973,8 @@ export function SimpleFinancesView({ salesData, sellers = [] }: SimpleFinancesVi
           </table>
         </div>
       </div>
+        </div>
+      )}
 
       {/* =========================================================================
           MODAL 1: LANÇAR / EDITAR DESPESA

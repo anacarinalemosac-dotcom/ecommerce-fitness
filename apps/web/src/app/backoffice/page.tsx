@@ -1433,7 +1433,7 @@ export default function BackofficeDashboard() {
           <Wallet className="w-4 h-4 text-gold" />
           <span>5. FINANCEIRO DA LOJA</span>
           <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
-            DRE & CAIXA
+            COMPRAS & PREÇO
           </span>
         </button>
 

@@ -35,9 +35,41 @@ export interface ExpenseRecord {
   created_at: string;
 }
 
+export interface ClothingItemDetail {
+  id: string;
+  name: string;
+  quantity: number;
+  unitCost: number;
+  freightPerUnit: number;
+  totalCostPerUnit: number;
+  suggestedPrice: number;
+  profitPerUnit: number;
+}
+
+export interface ClothingPurchaseRecord {
+  id: string;
+  date: string;
+  supplier?: string;
+  totalPieces: number;
+  clothesAmount: number;
+  freightAmount: number;
+  totalPaid: number;
+  freightPerPiece: number;
+  unitCostAverage: number;
+  totalCostPerPiece: number;
+  markupMultiplier: number;
+  suggestedSalePrice: number;
+  profitPerPiece: number;
+  totalProjectedProfit: number;
+  items?: ClothingItemDetail[];
+  notes?: string;
+  created_at: string;
+}
+
 export interface FinancesState {
   expenses: ExpenseRecord[];
   initialCashBalance: number; // Saldo de abertura em caixa
+  clothingPurchases?: ClothingPurchaseRecord[];
   updatedAt: string;
 }
 
@@ -62,6 +94,9 @@ async function readFinances(): Promise<FinancesState> {
       try {
         const parsed = JSON.parse(row.description);
         if (parsed && Array.isArray(parsed.expenses)) {
+          if (!Array.isArray(parsed.clothingPurchases)) {
+            parsed.clothingPurchases = [];
+          }
           memoryFinances = parsed;
           lastFinancesFetch = now;
           return memoryFinances as FinancesState;
@@ -78,6 +113,9 @@ async function readFinances(): Promise<FinancesState> {
       const raw = fs.readFileSync(FINANCES_FILE, 'utf8');
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.expenses)) {
+        if (!Array.isArray(parsed.clothingPurchases)) {
+          parsed.clothingPurchases = [];
+        }
         memoryFinances = parsed;
         lastFinancesFetch = now;
         return memoryFinances as FinancesState;
@@ -90,6 +128,7 @@ async function readFinances(): Promise<FinancesState> {
   const defaultState: FinancesState = {
     expenses: [],
     initialCashBalance: 0,
+    clothingPurchases: [],
     updatedAt: new Date().toISOString(),
   };
 
@@ -237,6 +276,139 @@ export async function POST(req: NextRequest) {
     if (action === 'update_initial_balance') {
       const { balance } = body;
       finances.initialCashBalance = Number(balance) || 0;
+      await writeFinances(finances);
+      return NextResponse.json({ success: true, finances });
+    }
+
+    // 5. Salvar Compra de Roupas & Frete (Precificação)
+    if (action === 'save_clothing_purchase') {
+      const {
+        id,
+        date,
+        supplier,
+        totalPieces,
+        clothesAmount,
+        freightAmount,
+        markupMultiplier = 2.0,
+        suggestedSalePriceCustom,
+        items = [],
+        notes = '',
+        register_as_expense = false,
+      } = body.purchase || {};
+
+      const pieces = Math.max(1, Number(totalPieces) || 1);
+      const clothes = Math.max(0, Number(clothesAmount) || 0);
+      const freight = Math.max(0, Number(freightAmount) || 0);
+      const totalPaid = clothes + freight;
+      const freightPerPiece = freight / pieces;
+      const unitCostAverage = clothes / pieces;
+      const totalCostPerPiece = unitCostAverage + freightPerPiece;
+      const multiplier = Number(markupMultiplier) > 0 ? Number(markupMultiplier) : 2.0;
+      const suggestedSalePrice = suggestedSalePriceCustom !== undefined && Number(suggestedSalePriceCustom) > 0
+        ? Number(suggestedSalePriceCustom)
+        : totalCostPerPiece * multiplier;
+      const profitPerPiece = suggestedSalePrice - totalCostPerPiece;
+      const totalProjectedProfit = profitPerPiece * pieces;
+
+      if (!finances.clothingPurchases) {
+        finances.clothingPurchases = [];
+      }
+
+      const purchaseDate = date || new Date().toISOString().split('T')[0];
+
+      if (id) {
+        finances.clothingPurchases = finances.clothingPurchases.map((p) => {
+          if (p.id === id) {
+            return {
+              ...p,
+              date: purchaseDate,
+              supplier: supplier?.trim() || 'Confecção / Fornecedor',
+              totalPieces: pieces,
+              clothesAmount: clothes,
+              freightAmount: freight,
+              totalPaid,
+              freightPerPiece,
+              unitCostAverage,
+              totalCostPerPiece,
+              markupMultiplier: multiplier,
+              suggestedSalePrice,
+              profitPerPiece,
+              totalProjectedProfit,
+              items,
+              notes: notes?.trim() || '',
+            };
+          }
+          return p;
+        });
+      } else {
+        const newPurchaseId = `purch-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+        const newPurchase: ClothingPurchaseRecord = {
+          id: newPurchaseId,
+          date: purchaseDate,
+          supplier: supplier?.trim() || 'Confecção / Fornecedor',
+          totalPieces: pieces,
+          clothesAmount: clothes,
+          freightAmount: freight,
+          totalPaid,
+          freightPerPiece,
+          unitCostAverage,
+          totalCostPerPiece,
+          markupMultiplier: multiplier,
+          suggestedSalePrice,
+          profitPerPiece,
+          totalProjectedProfit,
+          items,
+          notes: notes?.trim() || '',
+          created_at: new Date().toISOString(),
+        };
+        finances.clothingPurchases.unshift(newPurchase);
+
+        // Se marcou para registrar no fluxo de caixa / despesas
+        if (register_as_expense) {
+          if (clothes > 0) {
+            finances.expenses.unshift({
+              id: `exp-${Date.now()}-c`,
+              date: purchaseDate,
+              description: `Compra de Roupas: ${supplier || 'Confecção'} (${pieces} peças)`,
+              category: 'SUPPLIERS',
+              amount: clothes,
+              payment_method: 'BANK',
+              status: 'PAID',
+              paid_at: new Date().toISOString(),
+              notes: `Gerado pela compra de lote ${newPurchaseId}`,
+              created_at: new Date().toISOString(),
+            });
+          }
+          if (freight > 0) {
+            finances.expenses.unshift({
+              id: `exp-${Date.now()}-f`,
+              date: purchaseDate,
+              description: `Frete da Remessa de Roupas (${pieces} peças)`,
+              category: 'SHIPPING',
+              amount: freight,
+              payment_method: 'CARD',
+              status: 'PAID',
+              paid_at: new Date().toISOString(),
+              notes: `Frete rateado para lote ${newPurchaseId}`,
+              created_at: new Date().toISOString(),
+            });
+          }
+        }
+      }
+
+      await writeFinances(finances);
+      return NextResponse.json({ success: true, finances });
+    }
+
+    // 6. Excluir Compra de Roupas
+    if (action === 'delete_clothing_purchase') {
+      const { purchase_id } = body;
+      if (!purchase_id) {
+        return NextResponse.json({ success: false, error: 'ID da compra obrigatório.' }, { status: 400 });
+      }
+      if (finances.clothingPurchases) {
+        finances.clothingPurchases = finances.clothingPurchases.filter((p) => p.id !== purchase_id);
+      }
       await writeFinances(finances);
       return NextResponse.json({ success: true, finances });
     }
