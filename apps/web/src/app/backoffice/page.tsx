@@ -3031,6 +3031,60 @@ export default function BackofficeDashboard() {
                   </div>
                 )}
 
+                {/* Peças da Venda com Preço de Venda e Preço de Custo */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-deep-black block">
+                      PEÇAS VENDIDAS & PREÇO DE CUSTO (CMV):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingSale(selectedSaleDetail);
+                        setSelectedSaleDetail(null);
+                      }}
+                      className="text-[9px] font-black uppercase text-gold hover:text-white bg-deep-black px-2.5 py-1 border border-gold flex items-center gap-1 transition shadow-xs"
+                      title="Editar preço de custo ou valor das peças"
+                    >
+                      <Edit3 className="w-3 h-3 text-gold" />
+                      <span>ATUALIZAR PREÇO DE CUSTO</span>
+                    </button>
+                  </div>
+
+                  <div className="border-2 border-deep-black/20 divide-y divide-deep-black/10 bg-white">
+                    {(selectedSaleDetail.items || []).map((it: any, idx: number) => {
+                      const cost = it.cost_price !== undefined && it.cost_price !== null ? Number(it.cost_price) : 0;
+                      const price = Number(it.unit_price) || 0;
+                      const qty = Number(it.quantity) || 1;
+                      const itemSubtotal = price * qty;
+                      const itemCostTotal = cost * qty;
+                      const itemProfit = itemSubtotal - itemCostTotal;
+
+                      return (
+                        <div key={idx} className="p-2.5 flex items-center justify-between text-xs">
+                          <div>
+                            <strong className="text-deep-black block uppercase text-[11px]">{it.title}</strong>
+                            <span className="text-[9px] text-deep-black/60 font-mono">
+                              Tam: {it.size || 'One Size'} • Cor: {it.color || 'Padrão'} • Qtd: {qty}x
+                            </span>
+                          </div>
+                          <div className="text-right font-mono space-y-0.5">
+                            <div className="text-deep-black font-bold">
+                              Venda: ${price.toFixed(2)} (${itemSubtotal.toFixed(2)})
+                            </div>
+                            <div className="text-[10px] text-amber-900 bg-amber-100 font-black px-1.5 py-0.5 rounded inline-block">
+                              ★ Custo Unit: ${cost.toFixed(2)}
+                            </div>
+                            <div className="text-[9px] text-green-700 font-black block">
+                              Lucro: +${itemProfit.toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Memória de Cálculo Passo a Passo */}
                 <div className="space-y-2 text-xs uppercase tracking-wider">
                   <span className="text-[10px] font-black uppercase tracking-widest text-deep-black block">
@@ -3101,7 +3155,7 @@ export default function BackofficeDashboard() {
                     className="w-full py-3 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                   >
                     <Edit3 className="w-4 h-4" />
-                    <span>EDITAR ESTA VENDA (DATA, CLIENTE, PEÇAS, PGTO)</span>
+                    <span>EDITAR ESTA VENDA / ATUALIZAR PREÇO DE CUSTO</span>
                   </button>
                   <button
                     type="button"

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ScanBarcode,
@@ -190,13 +190,34 @@ export default function PosTerminalPage() {
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedSize, setSelectedSize] = useState<string>('');
   
-  const [seller, setSeller] = useState('Juliana Silva (PDV Balcão Leominster)');
+  const [seller, setSeller] = useState('Ana Karina');
+  const [registeredSellers, setRegisteredSellers] = useState<any[]>([]);
   const [customerName, setCustomerName] = useState('Cliente Balcão');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerDoc, setCustomerDoc] = useState(''); // CPF, ID ou Passaporte
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
+
+  // Busca vendedoras reais cadastradas e aprovadas
+  useEffect(() => {
+    fetch('/api/backoffice/sellers')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && Array.isArray(d.data)) {
+          const approved = d.data.filter(
+            (s: any) =>
+              s.active &&
+              s.approval_status === 'APPROVED' &&
+              s.name &&
+              !s.name.includes('Juliana Silva') &&
+              !s.name.includes('Camila')
+          );
+          setRegisteredSellers(approved);
+        }
+      })
+      .catch((e) => console.warn('Erro ao buscar vendedoras no PDV:', e));
+  }, []);
 
   // Meios de Pagamento (incluindo CREDIÁRIO / Carnê Próprio da Loja)
   const [paymentMethod, setPaymentMethod] = useState<'ZELLE' | 'VENMO' | 'CARD' | 'CASH' | 'CREDIARIO'>('ZELLE');
@@ -700,9 +721,12 @@ export default function PosTerminalPage() {
                 onChange={(e) => setSeller(e.target.value)}
                 className="text-xs font-black uppercase tracking-wider text-deep-black bg-transparent border-0 focus:outline-none cursor-pointer"
               >
-                <option value="Juliana Silva (PDV Balcão Leominster)">Juliana Silva (PDV Balcão Leominster)</option>
-                <option value="Ana Carina (Proprietária / Showroom)">Ana Carina (Proprietária / Showroom)</option>
-                <option value="Camila (Vendedora Showroom)">Camila (Vendedora Showroom)</option>
+                <option value="Ana Karina">Ana Karina (Showroom Leominster)</option>
+                {registeredSellers.map((s) => (
+                  <option key={s.id} value={s.name}>
+                    {s.name} {s.coupon_code ? `(${s.coupon_code})` : ''}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

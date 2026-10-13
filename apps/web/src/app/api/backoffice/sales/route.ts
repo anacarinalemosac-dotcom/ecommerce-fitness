@@ -178,7 +178,10 @@ export async function GET(req: NextRequest) {
             : (grossTotal > 0 ? Number(((net / grossTotal) * 100).toFixed(1)) : 0);
 
           const orderNumber = meta.order_number || ord.order_number || `ANA-${ord.id.slice(0, 8).toUpperCase()}`;
-          const sellerName = meta.seller_name || ord.seller_name || (isOnline ? 'Loja Oficial Online' : 'Juliana Silva (PDV Balcão Leominster)');
+          const rawSeller = meta.seller_name || ord.seller_name || '';
+          const sellerName = rawSeller.includes('Juliana Silva')
+            ? 'Ana Karina'
+            : (rawSeller || (isOnline ? 'Loja Oficial Online' : 'Ana Karina'));
 
           return {
             id: ord.id,
@@ -372,7 +375,7 @@ export async function POST(req: NextRequest) {
 
     const finalSellerName = matchedSeller
       ? matchedSeller.name
-      : (seller_name || (isPOS ? 'Juliana Silva (PDV Balcão Leominster)' : 'Loja Oficial Online'));
+      : (seller_name || (isPOS ? 'Ana Karina' : 'Loja Oficial Online'));
 
     const finalOrderId = order_id || (isPOS ? `POS-LEO-${Math.floor(1000 + Math.random() * 9000)}` : `ANA-${Math.floor(100000 + Math.random() * 900000)}`);
 
@@ -594,8 +597,10 @@ export async function PATCH(req: NextRequest) {
             color: it.color || 'Preto Ônix',
             sku: it.sku || 'ANA-ITEM',
             quantity: Number(it.quantity) || 1,
-            unit_price: Number(it.unit_price) || 44.9,
-            cost_price: Number(it.cost_price) || 16.0,
+            unit_price: it.unit_price !== undefined && it.unit_price !== null ? Number(it.unit_price) : 44.9,
+            cost_price: (it.cost_price !== undefined && it.cost_price !== null && !isNaN(Number(it.cost_price)))
+              ? Number(it.cost_price)
+              : 0,
           }))
         : [];
 
@@ -616,9 +621,13 @@ export async function PATCH(req: NextRequest) {
 
           if (target) {
             const currentMeta = typeof target.shipping_address === 'object' ? target.shipping_address : {};
+            const cleanSeller = seller_name && !seller_name.includes('Juliana Silva')
+              ? seller_name
+              : (currentMeta.seller_name && !currentMeta.seller_name.includes('Juliana Silva') ? currentMeta.seller_name : 'Ana Karina');
+
             const updatedMeta = {
               ...currentMeta,
-              seller_name: seller_name || currentMeta.seller_name || 'Juliana Silva (PDV Balcão Leominster)',
+              seller_name: cleanSeller,
               payment_fee: pFee,
               cost_of_goods: totalCostOfGoods,
               net_profit: netProfit,
