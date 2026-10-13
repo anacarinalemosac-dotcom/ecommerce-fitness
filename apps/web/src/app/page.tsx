@@ -36,7 +36,7 @@ interface ProductItem {
   slug: string;
   categoryPt: string;
   categoryEn: string;
-  categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'preorder';
+  categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder';
   fitPt: string;
   fitEn: string;
   price: number;
@@ -302,7 +302,7 @@ export default function HomePage() {
   const { lang, t } = useLanguage();
   const { products: storeProducts, siteInfo, siteImages } = useStoreSettings();
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'preorder'>('all');
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder'>('all');
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
   const [quickAddedItem, setQuickAddedItem] = useState<{ id: string; size: string } | null>(null);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -541,6 +541,7 @@ export default function HomePage() {
               { id: 'rompers', labelPt: 'MACAQUINHOS', labelEn: 'ROMPERS' },
               { id: 'jumpsuits', labelPt: 'MACACÕES', labelEn: 'JUMPSUITS' },
               { id: 'tops', labelPt: 'TOPS', labelEn: 'TOPS' },
+              { id: 'jackets', labelPt: 'CASACOS & JAQUETAS', labelEn: 'JACKETS' },
             ].map((filter) => {
               const isActive = activeCategoryFilter === filter.id;
               return (

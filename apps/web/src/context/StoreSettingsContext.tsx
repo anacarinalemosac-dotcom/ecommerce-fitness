@@ -93,7 +93,7 @@ export interface ProductItem {
   slug: string;
   categoryPt: string;
   categoryEn: string;
-  categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'preorder';
+  categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder';
   fitPt: string;
   fitEn: string;
   price: number;
@@ -549,49 +549,106 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
           const categoryName = (p.categories?.name || '').toLowerCase();
           const productTitle = (p.title || '').toLowerCase();
 
-          let categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'preorder' = 'sets';
-          if (
+          // 1. MACAQUINHOS / ROMPERS
+          const isRomper =
             categorySlug.includes('romper') ||
             categorySlug.includes('macaquinh') ||
             categoryName.includes('romper') ||
             categoryName.includes('macaquinh') ||
             productTitle.includes('romper') ||
-            productTitle.includes('macaquinho')
-          ) {
-            categoryKey = 'rompers';
-          } else if (
-            categorySlug.includes('top') ||
-            categorySlug.includes('sutia') ||
-            categoryName.includes('top') ||
-            productTitle.includes('top') ||
-            productTitle.includes('blusa')
-          ) {
-            categoryKey = 'tops';
-          } else if (
-            categorySlug.includes('macacao') ||
+            productTitle.includes('macaquinho');
+
+          // 2. MACACÕES / JUMPSUITS
+          const isJumpsuit =
             categorySlug.includes('jumpsuit') ||
-            categoryName.includes('macac') ||
+            categorySlug.includes('macacao') ||
+            categorySlug.includes('macacões') ||
             categoryName.includes('jumpsuit') ||
-            productTitle.includes('macac') ||
-            productTitle.includes('jumpsuit')
-          ) {
-            categoryKey = 'jumpsuits';
-          } else if (
+            categoryName.includes('macac') ||
+            productTitle.includes('jumpsuit') ||
+            productTitle.includes('macacão') ||
+            productTitle.includes('macacao') ||
+            productTitle.includes('bodysuit');
+
+          // 3. CONJUNTOS / MATCHING SETS (Prioridade máxima antes de Tops avulsos!)
+          const isSet =
+            categorySlug.includes('matching') ||
+            categorySlug.includes('conjunt') ||
+            categorySlug.includes('set') ||
+            categoryName.includes('matching') ||
+            categoryName.includes('conjunt') ||
+            categoryName.includes('set') ||
+            productTitle.includes('+') ||
+            productTitle.includes('conjunto') ||
+            productTitle.startsWith('set ') ||
+            productTitle.startsWith('sets ') ||
+            productTitle.includes(' set ') ||
+            productTitle.includes('set de') ||
+            productTitle.includes('set shorts') ||
+            productTitle.includes('set pants') ||
+            ((productTitle.includes('legging') || productTitle.includes('pants') || productTitle.includes('shorts') || productTitle.includes('skirt') || productTitle.includes('saia')) &&
+              (productTitle.includes('top') || productTitle.includes('cropped')));
+
+          // 4. CASACOS & JAQUETAS
+          const isJacket =
+            categorySlug.includes('jacket') ||
+            categorySlug.includes('casaco') ||
+            categorySlug.includes('jaqueta') ||
+            categoryName.includes('jacket') ||
+            categoryName.includes('casaco') ||
+            categoryName.includes('jaqueta') ||
+            productTitle.includes('jacket') ||
+            productTitle.includes('jaqueta') ||
+            productTitle.includes('casaco') ||
+            productTitle.includes('windbreaker') ||
+            productTitle.includes('vest');
+
+          // 5. PRÉ-VENDA
+          const isPreorder =
             categorySlug.includes('preorder') ||
             categorySlug.includes('encomenda') ||
             categoryName.includes('pré-venda') ||
-            categoryName.includes('pre-order')
-          ) {
-            categoryKey = 'preorder';
-          } else if (
-            categorySlug.includes('set') ||
-            categorySlug.includes('conjunt') ||
-            categoryName.includes('conjunt') ||
-            categoryName.includes('set') ||
-            productTitle.includes('conjunto') ||
-            productTitle.includes('set')
-          ) {
+            categoryName.includes('pre-order') ||
+            productTitle.includes('pré-venda') ||
+            productTitle.includes('pre-order');
+
+          // 6. TOPS & REGATAS (APENAS PEÇAS AVULSAS DE CIMA! Jamais conjunto ou macacão!)
+          const isTop =
+            !isSet &&
+            !isJumpsuit &&
+            !isRomper &&
+            !isJacket &&
+            (
+              categorySlug.includes('tops') ||
+              categorySlug.includes('sutia') ||
+              categorySlug.includes('shirt') ||
+              categoryName.includes('tops') ||
+              categoryName.includes('sutiã') ||
+              categoryName.includes('shirt') ||
+              productTitle.startsWith('top ') ||
+              productTitle.includes(' top') ||
+              productTitle.includes('tank top') ||
+              productTitle.includes('cropped') ||
+              productTitle.includes('regatão') ||
+              productTitle.includes('regata') ||
+              productTitle.includes('sutiã') ||
+              productTitle.includes('sutia') ||
+              productTitle.includes('blusa')
+            );
+
+          let categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' = 'sets';
+          if (isRomper) {
+            categoryKey = 'rompers';
+          } else if (isJumpsuit) {
+            categoryKey = 'jumpsuits';
+          } else if (isSet) {
             categoryKey = 'sets';
+          } else if (isJacket) {
+            categoryKey = 'jackets';
+          } else if (isTop) {
+            categoryKey = 'tops';
+          } else if (isPreorder) {
+            categoryKey = 'preorder';
           }
 
           const colors = Array.from(colorsMap.entries()).map(([name, hex]) => ({ name, hex }));
@@ -636,8 +693,16 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             description: productBio,
             descriptionPt: productBio,
             descriptionEn: productBio,
-            categoryPt: p.categories?.name || 'CONJUNTOS',
-            categoryEn: p.categories?.name || 'SETS',
+            categoryPt: categoryKey === 'tops' ? 'TOPS' :
+                        categoryKey === 'jumpsuits' ? 'MACACÕES' :
+                        categoryKey === 'rompers' ? 'MACAQUINHOS' :
+                        categoryKey === 'jackets' ? 'CASACOS & JAQUETAS' :
+                        categoryKey === 'preorder' ? 'PRÉ-VENDA' : 'CONJUNTOS',
+            categoryEn: categoryKey === 'tops' ? 'TOPS' :
+                        categoryKey === 'jumpsuits' ? 'JUMPSUITS' :
+                        categoryKey === 'rompers' ? 'ROMPERS' :
+                        categoryKey === 'jackets' ? 'JACKETS' :
+                        categoryKey === 'preorder' ? 'PRE-ORDER' : 'SETS',
             categoryKey,
             fitPt: 'ALTA SUSTENTAÇÃO • SEAMLESS SCULPT',
             fitEn: 'HIGH SUPPORT • SEAMLESS SCULPT',
