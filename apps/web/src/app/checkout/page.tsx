@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
+import { useStoreSettings } from '../../context/StoreSettingsContext';
 import { trackEvent } from '../../lib/tracking';
 import {
   ShieldCheck,
@@ -22,6 +23,7 @@ import {
   Trash2,
   ArrowRight,
   AlertCircle,
+  MessageCircle,
 } from 'lucide-react';
 
 const US_STATES = [
@@ -45,14 +47,34 @@ interface CartItem {
   productionDays?: number;
 }
 
+const WhatsAppIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+  </svg>
+);
+
 export default function CheckoutPage() {
   const { lang, t } = useLanguage();
+  const { siteInfo } = useStoreSettings();
 
   // Dados do Item no Carrinho (Inicia como null para não forçar item estático)
   const [cartItem, setCartItem] = useState<CartItem | null>(null);
   const [isCartLoaded, setIsCartLoaded] = useState(false);
   const [customerUser, setCustomerUser] = useState<any | null>(null);
   const [orderWasBackorder, setOrderWasBackorder] = useState(false);
+
+  // Link contextualizado para o cliente tirar dúvidas com a Ana Carina no WhatsApp
+  const storePhoneFormatted = siteInfo?.phone || '+1 (978) 313-9452';
+  const rawWhatsApp = (siteInfo?.whatsapp || '19783139452').replace(/\D/g, '');
+  const itemDetailStr = cartItem
+    ? `${cartItem.title} (${lang === 'pt' ? 'Tamanho' : 'Size'}: ${cartItem.size}, ${lang === 'pt' ? 'Cor' : 'Color'}: ${cartItem.color})`
+    : (lang === 'pt' ? 'minha compra' : 'my purchase');
+
+  const whatsappDoubtMsg = lang === 'pt'
+    ? `Olá, Ana Carina! Estou na página de checkout da Ana Fitness Wear com o item "${itemDetailStr}" e tenho uma dúvida com relação ao meu pedido.`
+    : `Hello Ana Carina! I am on the checkout page of Ana Fitness Wear with "${itemDetailStr}" and would like to ask a question regarding my order.`;
+
+  const whatsappCheckoutUrl = `https://wa.me/${rawWhatsApp || '19783139452'}?text=${encodeURIComponent(whatsappDoubtMsg)}`;
 
   // Endereço de Envio nos EUA
   const [shippingForm, setShippingForm] = useState({
@@ -477,6 +499,19 @@ export default function CheckoutPage() {
             <User className="w-4 h-4 text-gold" />
             <span>{lang === 'pt' ? 'VER NA MINHA CONTA / HISTÓRICO' : 'VIEW IN MY ACCOUNT / ORDERS'}</span>
           </Link>
+          <a
+            href={`https://wa.me/${rawWhatsApp || '19783139452'}?text=${encodeURIComponent(
+              lang === 'pt'
+                ? `Olá, Ana Carina! Acabei de realizar o pedido #${orderComplete} na loja online da Ana Fitness Wear e gostaria de falar com você sobre o pedido.`
+                : `Hello Ana Carina! I just placed order #${orderComplete} on the Ana Fitness Wear website and would like to chat regarding my order.`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-6 py-3.5 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow border border-[#1b9a4a]"
+          >
+            <WhatsAppIcon className="w-4 h-4 text-deep-black" />
+            <span>{lang === 'pt' ? 'DÚVIDAS? FALE NO WHATSAPP' : 'NEED HELP? CHAT ON WHATSAPP'}</span>
+          </a>
           <Link
             href="/pedidos"
             className="px-6 py-3.5 bg-gold text-deep-black hover:bg-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
@@ -525,6 +560,15 @@ export default function CheckoutPage() {
             <Sparkles className="w-4 h-4 text-gold" />
             <span>{lang === 'pt' ? 'EXPLORAR A VITRINE DE PRODUTOS' : 'EXPLORE COLLECTION'}</span>
           </Link>
+          <a
+            href={whatsappCheckoutUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-8 py-4 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black text-xs font-black uppercase tracking-widest transition shadow flex items-center justify-center gap-2 border border-[#1b9a4a]"
+          >
+            <WhatsAppIcon className="w-4 h-4 text-deep-black" />
+            <span>{lang === 'pt' ? 'TIRAR DÚVIDAS NO WHATSAPP' : 'CHAT ON WHATSAPP'}</span>
+          </a>
           <Link
             href="/conta"
             className="px-8 py-4 bg-white border-2 border-deep-black text-deep-black hover:bg-deep-black hover:text-white text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2"
@@ -601,6 +645,41 @@ export default function CheckoutPage() {
           </Link>
         </div>
       )}
+
+      {/* Banner de Atendimento & Dúvidas no WhatsApp com a Ana Carina */}
+      <div className="bg-gradient-to-r from-emerald-50 via-white to-gold/10 border-2 border-[#25D366]/40 p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-[#25D366] text-deep-black flex items-center justify-center shrink-0 shadow-xs">
+            <WhatsAppIcon className="w-5 h-5 text-deep-black" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-deep-black">
+                {lang === 'pt' ? 'Tem alguma dúvida com relação ao seu pedido?' : 'Have questions regarding your order?'}
+              </span>
+              <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[9px] font-black uppercase">
+                {lang === 'pt' ? 'SUPORTE DIRETO' : 'DIRECT SUPPORT'}
+              </span>
+            </div>
+            <span className="text-[11px] text-deep-black/70 block mt-0.5">
+              {lang === 'pt'
+                ? `Fale direto com a Ana Carina no WhatsApp (${storePhoneFormatted}) para esclarecer medidas, tamanho, prazo de entrega ou formas de pagamento.`
+                : `Chat directly with Ana Carina on WhatsApp (${storePhoneFormatted}) for sizing, delivery timeframe or payment questions.`}
+            </span>
+          </div>
+        </div>
+
+        <a
+          href={whatsappCheckoutUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-2.5 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm whitespace-nowrap border border-[#1b9a4a]"
+        >
+          <WhatsAppIcon className="w-4 h-4 text-deep-black" />
+          <span>{lang === 'pt' ? 'Tirar Dúvida no WhatsApp' : 'Chat on WhatsApp'}</span>
+          <ArrowRight className="w-3.5 h-3.5 text-deep-black" />
+        </a>
+      </div>
 
       <form onSubmit={handlePlaceOrder} className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
         {/* =========================================================================
@@ -960,6 +1039,21 @@ export default function CheckoutPage() {
                     ? 'Seu pedido será confirmado automaticamente assim que a transferência for identificada.'
                     : 'Your order will be confirmed immediately once the transfer is verified.'}
                 </p>
+                <div className="pt-1">
+                  <a
+                    href={`https://wa.me/${rawWhatsApp || '19783139452'}?text=${encodeURIComponent(
+                      lang === 'pt'
+                        ? `Olá, Ana Carina! Estou finalizando meu pedido via Zelle no valor de $${total.toFixed(2)} e gostaria de tirar uma dúvida ou enviar o comprovante.`
+                        : `Hello Ana Carina! I am paying via Zelle for $${total.toFixed(2)} and would like to confirm details or send my receipt.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-[10px] uppercase tracking-wider transition shadow-xs border border-[#1b9a4a]"
+                  >
+                    <WhatsAppIcon className="w-3.5 h-3.5 text-deep-black" />
+                    <span>{lang === 'pt' ? 'Tirar Dúvida do Zelle no WhatsApp' : 'Zelle Question on WhatsApp'}</span>
+                  </a>
+                </div>
               </div>
             )}
 
@@ -975,6 +1069,21 @@ export default function CheckoutPage() {
                     : 'Send payment to our Venmo account: '}
                   <strong className="text-deep-black font-mono font-bold">@anafitnessweareua</strong>.
                 </p>
+                <div className="pt-1">
+                  <a
+                    href={`https://wa.me/${rawWhatsApp || '19783139452'}?text=${encodeURIComponent(
+                      lang === 'pt'
+                        ? `Olá, Ana Carina! Estou finalizando meu pedido via Venmo no valor de $${total.toFixed(2)} e gostaria de confirmar meu pagamento.`
+                        : `Hello Ana Carina! I am paying via Venmo for $${total.toFixed(2)} and would like to confirm my payment.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-[10px] uppercase tracking-wider transition shadow-xs border border-[#1b9a4a]"
+                  >
+                    <WhatsAppIcon className="w-3.5 h-3.5 text-deep-black" />
+                    <span>{lang === 'pt' ? 'Tirar Dúvida do Venmo no WhatsApp' : 'Venmo Question on WhatsApp'}</span>
+                  </a>
+                </div>
               </div>
             )}
           </div>
@@ -1122,9 +1231,66 @@ export default function CheckoutPage() {
               <ShieldCheck className="w-4 h-4 text-gold" />
               <span>30-DAY HASSLE-FREE RETURNS • ENCRYPTED SSL</span>
             </div>
+
+            {/* CARD EXCLUSIVO DE SUPORTE WHATSAPP COM A ANA CARINA */}
+            <div className="pt-3 border-t border-deep-black/10">
+              <div className="bg-[#25D366]/10 border-2 border-[#25D366] p-4 sm:p-5 space-y-3 shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-[#25D366] text-deep-black flex items-center justify-center shrink-0 shadow-xs">
+                    <WhatsAppIcon className="w-4.5 h-4.5 text-deep-black" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-deep-black">
+                      {lang === 'pt' ? 'DÚVIDAS SOBRE O SEU PEDIDO?' : 'QUESTIONS ABOUT YOUR ORDER?'}
+                    </h4>
+                    <span className="text-[10px] text-emerald-800 font-bold uppercase block">
+                      {lang === 'pt' ? 'FALE DIRETO COM A ANA CARINA NO WHATSAPP' : 'CHAT DIRECTLY WITH ANA CARINA'}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-deep-black/80 font-medium leading-relaxed">
+                  {lang === 'pt'
+                    ? 'Ficou com alguma dúvida sobre tamanho, caimento das peças, prazo de entrega USPS ou formas de pagamento? Tire suas dúvidas comigo antes de finalizar sua compra!'
+                    : 'Have questions about sizing, fabric fit, USPS delivery timeline or payment methods? Reach out to me directly on WhatsApp before completing your order!'}
+                </p>
+
+                <a
+                  href={whatsappCheckoutUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3.5 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-md border border-[#1b9a4a]"
+                >
+                  <WhatsAppIcon className="w-4.5 h-4.5 text-deep-black" />
+                  <span>{lang === 'pt' ? 'TIRAR DÚVIDA NO WHATSAPP COMIGO' : 'CHAT WITH ME ON WHATSAPP'}</span>
+                </a>
+
+                <div className="flex items-center justify-between text-[10px] text-deep-black/60 pt-1 border-t border-[#25D366]/20">
+                  <span className="font-mono font-bold">{storePhoneFormatted}</span>
+                  <span className="uppercase font-bold">{lang === 'pt' ? 'Showroom Leominster, MA' : 'Showroom Leominster, MA'}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </form>
+
+      {/* Botão Flutuante de Ajuda no WhatsApp no Canto Inferior da Tela */}
+      <a
+        href={whatsappCheckoutUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-5 right-5 z-40 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-xs uppercase tracking-wider px-4 py-3 rounded-full shadow-2xl flex items-center gap-2.5 transition transform hover:scale-105 border-2 border-deep-black"
+        title={lang === 'pt' ? 'Tirar dúvida no WhatsApp com a Ana Carina' : 'Ask questions on WhatsApp with Ana Carina'}
+      >
+        <div className="w-6 h-6 rounded-full bg-deep-black flex items-center justify-center shrink-0">
+          <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
+        </div>
+        <span className="hidden sm:inline font-black text-[11px]">
+          {lang === 'pt' ? 'Dúvidas no Pedido? Fale Comigo' : 'Order Questions? Chat With Me'}
+        </span>
+        <span className="sm:hidden font-black text-[11px]">WhatsApp</span>
+      </a>
     </div>
   );
 }
