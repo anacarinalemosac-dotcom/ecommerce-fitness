@@ -43,6 +43,7 @@ import {
   Percent,
   Store,
   Lock,
+  Clock,
   Copy,
   Key,
   Share2,
@@ -325,6 +326,7 @@ export default function BackofficeDashboard() {
   const [loadingSales, setLoadingSales] = useState(false);
   const [salesChannelFilter, setSalesChannelFilter] = useState<'ALL' | 'ONLINE' | 'POS_COUNTER'>('ALL');
   const [salesPaymentFilter, setSalesPaymentFilter] = useState<'ALL' | 'CARD' | 'ZELLE' | 'VENMO' | 'CASH' | 'CREDIARIO'>('ALL');
+  const [salesPeriodFilter, setSalesPeriodFilter] = useState<'ALL' | 'TODAY'>('ALL');
   const [salesPreorderOnly, setSalesPreorderOnly] = useState(false);
   const [salesSearch, setSalesSearch] = useState('');
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<any | null>(null);
@@ -1028,6 +1030,15 @@ export default function BackofficeDashboard() {
     if (salesPaymentFilter !== 'ALL' && s.payment_method !== salesPaymentFilter) {
       return false;
     }
+    // Filtro por Período (Hoje vs Todos)
+    if (salesPeriodFilter === 'TODAY') {
+      if (!s.created_at) return false;
+      const orderDateStr = new Date(s.created_at).toLocaleDateString('en-CA');
+      const todayStr = new Date().toLocaleDateString('en-CA');
+      const diffMs = Date.now() - new Date(s.created_at).getTime();
+      const isToday = orderDateStr === todayStr || diffMs <= 24 * 60 * 60 * 1000;
+      if (!isToday) return false;
+    }
     // Filtro Exclusivo de Pré-Vendas
     if (salesPreorderOnly) {
       const isPre = s.status === 'IN_PRODUCTION' || (s.items && s.items.some((i: any) => (i.title || '').toLowerCase().includes('pré-venda') || (i.title || '').toLowerCase().includes('pre-order')));
@@ -1605,7 +1616,9 @@ export default function BackofficeDashboard() {
           products={supabaseProducts.length > 0 ? supabaseProducts : products}
           sellers={sellers}
           liveVisitors={liveFeed?.activeCount || onlineCount}
+          liveFeed={liveFeed}
           onNavigateTab={setActiveTab}
+          onUpdateOrderStatus={handleUpdateOrderStatus}
         />
       )}
 
@@ -2565,6 +2578,33 @@ export default function BackofficeDashboard() {
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto">
+              {/* Alternador Período: Hoje vs Todas */}
+              <div className="inline-flex rounded-none border border-deep-black/30 bg-deep-black/5 p-0.5 text-xs font-black uppercase shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSalesPeriodFilter('TODAY')}
+                  className={`px-3 py-1 transition flex items-center gap-1 ${
+                    salesPeriodFilter === 'TODAY'
+                      ? 'bg-deep-black text-gold shadow-xs'
+                      : 'text-deep-black hover:text-gold'
+                  }`}
+                >
+                  <Clock className="w-3 h-3 text-gold" />
+                  <span>HOJE</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSalesPeriodFilter('ALL')}
+                  className={`px-3 py-1 transition flex items-center gap-1 ${
+                    salesPeriodFilter === 'ALL'
+                      ? 'bg-deep-black text-white shadow-xs'
+                      : 'text-deep-black hover:text-gold'
+                  }`}
+                >
+                  <span>TODAS AS VENDAS</span>
+                </button>
+              </div>
+
               <div className="flex items-center gap-1 border border-deep-black/20 px-2 py-1 text-xs">
                 <Filter className="w-3.5 h-3.5 text-gold" />
                 <span className="text-[10px] font-black uppercase text-deep-black/60">CANAL:</span>
