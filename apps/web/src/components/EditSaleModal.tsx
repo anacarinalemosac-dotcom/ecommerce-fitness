@@ -53,6 +53,7 @@ export function EditSaleModal({
   const [sellerName, setSellerName] = useState('Ana Karina');
   const [status, setStatus] = useState('COMPLETED');
   const [discountAmount, setDiscountAmount] = useState('0');
+  const [commissionAmount, setCommissionAmount] = useState('0');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<SaleItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -69,6 +70,7 @@ export function EditSaleModal({
       setSellerName(rawSeller.includes('Juliana Silva') ? 'Ana Karina' : (rawSeller || 'Ana Karina'));
       setStatus(sale.status || 'COMPLETED');
       setDiscountAmount(String(sale.discount_amount || 0));
+      setCommissionAmount(String(sale.commission_amount !== undefined && sale.commission_amount !== null ? sale.commission_amount : 0));
       setNotes(sale.notes || sale.shipping_address?.notes || '');
 
       // Formata created_at para input datetime-local (YYYY-MM-DDTHH:mm)
@@ -175,6 +177,7 @@ export function EditSaleModal({
     0
   );
   const discountVal = Math.max(0, Number(discountAmount) || 0);
+  const commissionVal = Math.max(0, Number(commissionAmount) || 0);
   const totalAmount = Math.max(0, subtotalProducts - discountVal);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -207,6 +210,7 @@ export function EditSaleModal({
         seller_name: sellerName.trim(),
         status,
         discount_amount: discountVal,
+        commission_amount: commissionVal,
         subtotal_products: Number(subtotalProducts.toFixed(2)),
         total_amount: Number(totalAmount.toFixed(2)),
         items,
@@ -613,12 +617,13 @@ export function EditSaleModal({
             </div>
           </div>
 
-          {/* SEÇÃO 5: DESCONTO & OBSERVAÇÕES */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-4 bg-white border-2 border-deep-black space-y-2">
-              <label className="text-[10px] font-black text-deep-black flex items-center gap-1.5">
+          {/* SEÇÃO 5: DESCONTO, COMISSÃO & OBSERVAÇÕES */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Desconto */}
+            <div className="p-3 bg-white border-2 border-deep-black space-y-1.5">
+              <label className="text-[10px] font-black text-deep-black flex items-center gap-1.5 uppercase">
                 <DollarSign className="w-3.5 h-3.5 text-gold" />
-                <span>Desconto Concedido ($)</span>
+                <span>Desconto ($)</span>
               </label>
               <input
                 type="number"
@@ -627,21 +632,52 @@ export function EditSaleModal({
                 value={discountAmount}
                 onChange={(e) => setDiscountAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-full p-2.5 border-2 border-deep-black font-mono font-bold text-xs text-right bg-white focus:outline-none focus:border-gold"
+                className="w-full p-2 border-2 border-deep-black font-mono font-bold text-xs text-right bg-white focus:outline-none focus:border-gold"
               />
             </div>
 
-            <div className="p-4 bg-white border-2 border-deep-black space-y-2">
-              <label className="text-[10px] font-black text-deep-black flex items-center gap-1.5">
+            {/* Comissão da Vendedora */}
+            <div className="p-3 bg-white border-2 border-deep-black space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black text-deep-black flex items-center gap-1 uppercase">
+                  <DollarSign className="w-3.5 h-3.5 text-gold" />
+                  <span>Comissão ($)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setCommissionAmount('0')}
+                  className="text-[9px] font-black uppercase text-gold hover:text-deep-black underline"
+                  title="Zerar comissão para venda própria da Ana Karina"
+                >
+                  Zerar ($0)
+                </button>
+              </div>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={commissionAmount}
+                onChange={(e) => setCommissionAmount(e.target.value)}
+                placeholder="0.00"
+                className="w-full p-2 border-2 border-deep-black font-mono font-bold text-xs text-right bg-white focus:outline-none focus:border-gold"
+              />
+              <span className="text-[8px] text-deep-black/60 block font-medium">
+                0.00 se venda da Ana Karina
+              </span>
+            </div>
+
+            {/* Observações */}
+            <div className="p-3 bg-white border-2 border-deep-black space-y-1.5">
+              <label className="text-[10px] font-black text-deep-black flex items-center gap-1.5 uppercase">
                 <FileText className="w-3.5 h-3.5 text-gold" />
-                <span>Observações / Notas Internas</span>
+                <span>Observações</span>
               </label>
               <input
                 type="text"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ex: Pagou entrada de $20, restante amanhã"
-                className="w-full p-2.5 border-2 border-deep-black font-medium text-xs bg-white focus:outline-none focus:border-gold"
+                placeholder="Ex: Venda balcão Leominster"
+                className="w-full p-2 border-2 border-deep-black font-medium text-xs bg-white focus:outline-none focus:border-gold"
               />
             </div>
           </div>
@@ -664,9 +700,22 @@ export function EditSaleModal({
                 <span className="font-mono font-bold">-${discountVal.toFixed(2)}</span>
               </div>
             )}
+            {commissionVal > 0 ? (
+              <div className="flex items-center justify-between text-xs text-purple-300">
+                <span>(-) Comissão da Vendedora:</span>
+                <span className="font-mono font-bold">-${commissionVal.toFixed(2)}</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between text-[11px] text-white/50">
+                <span>Comissão da Vendedora:</span>
+                <span className="font-mono text-emerald-400 font-bold">$0.00 (Sem comissão)</span>
+              </div>
+            )}
             <div className="flex items-center justify-between text-xs text-green-400 pt-1 border-t border-white/10">
-              <span>(=) Lucro Bruto Estimado:</span>
-              <span className="font-mono font-bold">+${Math.max(0, subtotalProducts - totalCostOfGoods - discountVal).toFixed(2)}</span>
+              <span>(=) Lucro Líquido Real Estimado:</span>
+              <span className="font-mono font-bold text-sm">
+                +${Math.max(0, subtotalProducts - totalCostOfGoods - discountVal - commissionVal).toFixed(2)}
+              </span>
             </div>
             <div className="flex items-center justify-between text-base font-black text-gold pt-2 border-t border-white/20">
               <span>TOTAL RECALCULADO A PAGAR:</span>

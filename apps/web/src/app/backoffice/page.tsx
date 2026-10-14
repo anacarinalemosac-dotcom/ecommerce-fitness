@@ -2809,7 +2809,11 @@ export default function BackofficeDashboard() {
 
                       {/* Comissão Vendedora */}
                       <td className="p-3 text-right font-mono text-deep-black/70">
-                        -${Number(sale.commission_amount).toFixed(2)}
+                        {Number(sale.commission_amount || 0) > 0 ? (
+                          <span className="text-red-700 font-bold">-${Number(sale.commission_amount).toFixed(2)}</span>
+                        ) : (
+                          <span className="text-deep-black/40">$0.00</span>
+                        )}
                       </td>
 
                       {/* Custo Peças */}
@@ -3205,7 +3209,11 @@ export default function BackofficeDashboard() {
                       )}
                       <div className="flex justify-between">
                         <span>(-) COMISSÃO VENDEDORA ({selectedSaleDetail.seller_name}):</span>
-                        <span className="font-mono">-${Number(selectedSaleDetail.commission_amount).toFixed(2)}</span>
+                        <span className="font-mono">
+                          {Number(selectedSaleDetail.commission_amount || 0) > 0
+                            ? `-$${Number(selectedSaleDetail.commission_amount).toFixed(2)}`
+                            : '$0.00 (Sem comissão)'}
+                        </span>
                       </div>
                     </div>
 

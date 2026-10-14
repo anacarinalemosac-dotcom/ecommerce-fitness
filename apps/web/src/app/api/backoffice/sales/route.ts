@@ -153,7 +153,10 @@ export async function GET(req: NextRequest) {
             ? Number(meta.payment_fee)
             : calculatePaymentFee(pMethod, grossTotal);
 
-          const comm = Number(ord.commission_amount) || Number(meta.commission_amount) || (isOnline ? 0 : Number(((gross - disc) * 0.1).toFixed(2)));
+          const rawComm = ord.commission_amount !== undefined && ord.commission_amount !== null
+            ? Number(ord.commission_amount)
+            : (meta.commission_amount !== undefined && meta.commission_amount !== null ? Number(meta.commission_amount) : null);
+          const comm = rawComm !== null ? rawComm : 0;
 
           // Itens desempacotados do JSONB ou fallback
           const rawItems = Array.isArray(meta.items) && meta.items.length > 0
@@ -361,15 +364,20 @@ export async function POST(req: NextRequest) {
       console.warn('Erro ao ler sellers_db:', e);
     }
 
-    // Comissão: se houver vendedora cadastrada, usa commission_pct dela. Caso contrário balcão 10%
+    // Comissão: se houver vendedora externa cadastrada com cupom, usa commission_pct dela.
+    // Vendas feitas pela Ana Karina no Showroom/PDV ou loja própria têm comissão 0
     const hasCoupon = Boolean(coupon_code);
     let commRate = 0.00;
-    if (matchedSeller) {
+    if (body.commission_amount !== undefined && body.commission_amount !== null) {
+      // Comissão explícita enviada no corpo
+    } else if (matchedSeller && !matchedSeller.name.toLowerCase().includes('ana karina')) {
       commRate = (Number(matchedSeller.commission_pct) || 10) / 100;
-    } else if (isPOS || hasCoupon) {
+    } else if (hasCoupon && coupon_code?.toUpperCase() !== 'VIP' && coupon_code?.toUpperCase() !== 'OFF') {
       commRate = 0.10;
     }
-    const commissionAmount = Number(((gross - disc) * commRate).toFixed(2));
+    const commissionAmount = (body.commission_amount !== undefined && body.commission_amount !== null)
+      ? Math.max(0, Number(body.commission_amount) || 0)
+      : Number(((gross - disc) * commRate).toFixed(2));
 
     // Soma do custo de confecção / aquisição
     const totalCostOfGoods = (items || []).reduce((acc: number, it: any) => {
@@ -624,8 +632,10 @@ export async function PATCH(req: NextRequest) {
         : [];
 
       const totalCostOfGoods = formattedItems.reduce((acc, it) => acc + (it.cost_price * it.quantity), 0);
-      const commRate = 0.10;
-      const commissionAmount = Number(((subtotal - disc) * commRate).toFixed(2));
+      const isAnaKarina = !seller_name || seller_name.toLowerCase().includes('ana karina') || seller_name.toLowerCase().includes('loja oficial');
+      const commissionAmount = body.commission_amount !== undefined && body.commission_amount !== null
+        ? Math.max(0, Number(body.commission_amount) || 0)
+        : (isAnaKarina ? 0.00 : Number(((subtotal - disc) * 0.10).toFixed(2)));
       const netProfit = Number((grossTotal - totalCostOfGoods - pFee - commissionAmount).toFixed(2));
       const marginPct = grossTotal > 0 ? Number(((netProfit / grossTotal) * 100).toFixed(1)) : 0;
 
