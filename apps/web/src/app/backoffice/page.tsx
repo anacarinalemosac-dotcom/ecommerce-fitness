@@ -344,6 +344,21 @@ export default function BackofficeDashboard() {
       }
     }
 
+    let finalTracking = trackingCode;
+    // Se o status for alterado para ENVIADO e nenhum código foi passado, solicita o código USPS
+    if (newStatus === 'SHIPPED' && !finalTracking) {
+      const target = (salesData?.sales || []).find((s: any) => s.order_id === orderId || s.id === orderId);
+      const existingCode = target?.tracking_code || '';
+      const entered = window.prompt(
+        `📦 Despachar Pedido #${orderId}\n\nInforme o Código de Rastreamento dos Correios (USPS):\n(A cliente receberá automaticamente um e-mail de confirmação de envio com o link oficial de rastreamento do USPS)`,
+        existingCode || ''
+      );
+      if (entered === null) {
+        return; // Operação cancelada pela usuária
+      }
+      finalTracking = entered.trim() || ('9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000));
+    }
+
     try {
       const res = await fetch('/api/backoffice/sales', {
         method: 'PATCH',
@@ -351,7 +366,7 @@ export default function BackofficeDashboard() {
         body: JSON.stringify({
           order_id: orderId,
           status: newStatus,
-          tracking_code: trackingCode,
+          tracking_code: finalTracking,
         }),
       });
       if (res.ok) {

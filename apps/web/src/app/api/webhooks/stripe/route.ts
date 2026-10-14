@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { recordOrderEvent } from '@/lib/liveStore';
 import { supabaseServer } from '@/lib/supabaseServer';
+import { sendOrderConfirmationEmail } from '@/lib/emailService';
 import fs from 'fs';
 import path from 'path';
 
@@ -141,6 +142,15 @@ export async function POST(req: NextRequest) {
         });
       } catch (e) {
         console.warn('Erro ao disparar evento de live order do Stripe:', e);
+      }
+
+      // Envia e-mail de confirmação da compra para o cliente
+      if (newSaleRecord.customer_email) {
+        try {
+          await sendOrderConfirmationEmail(newSaleRecord);
+        } catch (emailErr) {
+          console.warn('Erro ao enviar e-mail de confirmação Stripe:', emailErr);
+        }
       }
     }
 

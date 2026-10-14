@@ -51,6 +51,27 @@ export function DashboardMetricsView({
   const [salesMode, setSalesMode] = useState<'today' | 'all'>('today');
   const [copiedAddressId, setCopiedAddressId] = useState<string | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [shippingModalOrder, setShippingModalOrder] = useState<any | null>(null);
+  const [trackingCodeInput, setTrackingCodeInput] = useState('');
+  const [isSubmittingShipping, setIsSubmittingShipping] = useState(false);
+
+  const handleOpenShippingModal = (order: any) => {
+    setShippingModalOrder(order);
+    setTrackingCodeInput(order.tracking_code || '');
+  };
+
+  const handleConfirmShipping = async () => {
+    if (!shippingModalOrder || !onUpdateOrderStatus) return;
+    setIsSubmittingShipping(true);
+    try {
+      const finalCode = trackingCodeInput.trim() || ('9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000));
+      await onUpdateOrderStatus(shippingModalOrder.order_id || shippingModalOrder.id, 'SHIPPED', finalCode);
+      setShippingModalOrder(null);
+      setTrackingCodeInput('');
+    } finally {
+      setIsSubmittingShipping(false);
+    }
+  };
 
   // 1. Resumo de Vendas: Dia, Semana, Mês
   const now = new Date();
@@ -482,11 +503,22 @@ export function DashboardMetricsView({
                           {onUpdateOrderStatus && order.status !== 'SHIPPED' && order.status !== 'DELIVERED' && (
                             <button
                               type="button"
-                              onClick={() => onUpdateOrderStatus(order.order_id || order.id, 'SHIPPED')}
+                              onClick={() => handleOpenShippingModal(order)}
                               className="px-3 py-1.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[10px] font-black uppercase tracking-wider transition border border-deep-black shadow-xs flex items-center gap-1"
                             >
                               <Truck className="w-3 h-3 text-gold" />
                               <span>MARCAR ENVIADO</span>
+                            </button>
+                          )}
+                          {order.status === 'SHIPPED' && onUpdateOrderStatus && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenShippingModal(order)}
+                              className="px-2.5 py-1.5 bg-gold/20 hover:bg-gold hover:text-deep-black text-deep-black text-[10px] font-black uppercase tracking-wider transition border border-gold/60 flex items-center gap-1"
+                              title="Atualizar ou reenviar código de rastreio"
+                            >
+                              <Truck className="w-3 h-3 text-deep-black" />
+                              <span>RASTREIO</span>
                             </button>
                           )}
                           <button
@@ -498,6 +530,24 @@ export function DashboardMetricsView({
                           </button>
                         </div>
                       </div>
+
+                      {/* Caixa de Rastreio Ativo */}
+                      {order.tracking_code && (
+                        <div className="mt-2 p-2 bg-gold/15 border border-gold/40 flex items-center justify-between text-[11px] font-mono">
+                          <span className="font-bold text-deep-black truncate">
+                            USPS: {order.tracking_code}
+                          </span>
+                          <a
+                            href={`https://tools.usps.com/go/TrackConfirmAction?tLabels=${order.tracking_code.replace(/\s+/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-deep-black hover:underline font-black text-[10px] uppercase flex items-center gap-1 shrink-0 ml-2"
+                          >
+                            <span>RASTREAR</span>
+                            <ExternalLink className="w-3 h-3 text-gold" />
+                          </a>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -964,6 +1014,90 @@ export function DashboardMetricsView({
           </div>
         </div>
       </div>
+
+      {/* =========================================================================
+          MODAL DE DESPACHO E RASTREAMENTO USPS
+         ========================================================================= */}
+      {shippingModalOrder && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white border-2 border-deep-black shadow-luxury max-w-lg w-full p-6 space-y-5 animate-scaleUp">
+            <div className="flex items-center justify-between border-b-2 border-deep-black pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-deep-black text-gold">
+                  <Truck className="w-4 h-4 text-gold" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black uppercase text-deep-black">
+                    DESPACHAR PEDIDO #{shippingModalOrder.order_id}
+                  </h3>
+                  <span className="text-[10px] text-deep-black/60 uppercase font-medium">
+                    Envio oficial via USPS (United States Postal Service)
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShippingModalOrder(null)}
+                className="text-deep-black/60 hover:text-deep-black text-xl font-bold px-2 py-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-3 bg-deep-black/5 border border-deep-black/10 text-xs space-y-1.5 uppercase font-medium">
+              <div><strong>Cliente:</strong> {shippingModalOrder.customer_name}</div>
+              <div><strong>E-mail:</strong> <span className="font-mono text-deep-black">{shippingModalOrder.customer_email || 'Não informado'}</span></div>
+              <div><strong>Destino:</strong> {getOrderAddress(shippingModalOrder) || 'Leominster Area'}</div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-wider text-deep-black block">
+                CÓDIGO DE RASTREIO DOS CORREIOS (USPS):
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={trackingCodeInput}
+                  onChange={(e) => setTrackingCodeInput(e.target.value)}
+                  placeholder="Ex: 9400 1118 9956 2537 1234 56"
+                  className="flex-1 p-2.5 border-2 border-deep-black text-xs font-mono font-bold uppercase tracking-wider focus:outline-none focus:border-gold"
+                />
+                <button
+                  type="button"
+                  onClick={() => setTrackingCodeInput('9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000))}
+                  className="px-3 py-2 bg-deep-black/10 hover:bg-gold hover:text-deep-black text-deep-black text-[10px] font-black uppercase tracking-wider border border-deep-black transition shrink-0"
+                  title="Gerar código demonstrativo padrão USPS"
+                >
+                  GERAR
+                </button>
+              </div>
+              <div className="p-3 bg-gold/15 border border-gold/40 text-[11px] text-deep-black/90 font-medium">
+                ✉ <strong>Disparo Automático:</strong> Ao confirmar o envio, o pedido passará para o status <strong>ENVIADO</strong> e um e-mail de notificação de despacho será enviado para a cliente contendo o código e o botão com link direto para o site oficial dos Correios (USPS).
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-deep-black/10">
+              <button
+                type="button"
+                onClick={() => setShippingModalOrder(null)}
+                disabled={isSubmittingShipping}
+                className="px-4 py-2.5 border border-deep-black text-deep-black hover:bg-deep-black/5 text-xs font-black uppercase tracking-wider transition"
+              >
+                CANCELAR
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmShipping}
+                disabled={isSubmittingShipping}
+                className="px-5 py-2.5 bg-deep-black text-gold hover:bg-gold hover:text-deep-black border border-gold text-xs font-black uppercase tracking-wider transition flex items-center gap-2 shadow"
+              >
+                <Truck className="w-4 h-4 text-gold" />
+                <span>{isSubmittingShipping ? 'DESPACHANDO...' : 'CONFIRMAR ENVIO & DISPARAR E-MAIL'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { recordOrderEvent } from '@/lib/liveStore';
+import { sendOrderConfirmationEmail, sendShippingNotificationEmail } from '@/lib/emailService';
 import fs from 'fs';
 import path from 'path';
 
@@ -73,6 +74,10 @@ export interface SaleRecord {
   items: SaleItemPayload[];
   status: 'COMPLETED' | 'PENDING' | 'IN_PRODUCTION' | 'WAITING_PAYMENT' | 'PAID' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
   crediario?: CrediarioInfo;
+  tracking_code?: string;
+  shipped_at?: string;
+  confirmation_email_sent?: boolean;
+  shipping_email_sent?: boolean;
 }
 
 function readSavedSales(): SaleRecord[] {
@@ -207,6 +212,10 @@ export async function GET(req: NextRequest) {
             status: ord.status || 'COMPLETED',
             shipping_address: meta.address && typeof meta.address === 'object' ? meta.address : undefined,
             crediario: meta.crediario || undefined,
+            tracking_code: meta.tracking_code || ord.tracking_code || undefined,
+            shipped_at: meta.shipped_at || undefined,
+            confirmation_email_sent: meta.confirmation_email_sent || undefined,
+            shipping_email_sent: meta.shipping_email_sent || undefined,
           };
         });
 
@@ -542,6 +551,16 @@ export async function POST(req: NextRequest) {
       console.warn('Erro ao disparar evento de live order:', e);
     }
 
+    // 6. Dispara e-mail automático de Confirmação do Pedido para o cliente
+    if (newSale.customer_email) {
+      try {
+        await sendOrderConfirmationEmail(newSale);
+        newSale.confirmation_email_sent = true;
+      } catch (emailErr) {
+        console.warn('Erro ao disparar e-mail de confirmação de pedido:', emailErr);
+      }
+    }
+
     return NextResponse.json({ success: true, sale: newSale });
   } catch (err: any) {
     console.error('Erro no POST de vendas:', err);
@@ -860,9 +879,11 @@ export async function PATCH(req: NextRequest) {
             };
           }
 
+          const isShipped = newStatus === 'SHIPPED';
           const updatedMeta = {
             ...currentMeta,
             ...(tracking_code !== undefined ? { tracking_code } : {}),
+            ...(isShipped ? { shipped_at: currentMeta.shipped_at || new Date().toISOString(), shipping_email_sent: true } : {}),
             ...(updatedCrediario ? { crediario: updatedCrediario } : {}),
           };
 
@@ -881,6 +902,7 @@ export async function PATCH(req: NextRequest) {
 
     // 2. Atualiza no backup local
     const sales = readSavedSales();
+    let shippedSaleToEmail: any = null;
     const updated = sales.map((s: any) => {
       if (s.order_id === order_id || s.id === order_id) {
         let cred = s.crediario;
@@ -903,15 +925,36 @@ export async function PATCH(req: NextRequest) {
           cred = { ...cred, installments: insts };
         }
 
-        return {
+        const isShipped = newStatus === 'SHIPPED';
+        const finalTracking = tracking_code !== undefined ? tracking_code : s.tracking_code;
+
+        const updatedOrder = {
           ...s,
           status: newStatus,
-          tracking_code: tracking_code !== undefined ? tracking_code : s.tracking_code,
+          tracking_code: finalTracking,
+          shipped_at: isShipped ? (s.shipped_at || new Date().toISOString()) : s.shipped_at,
+          shipping_email_sent: isShipped ? true : s.shipping_email_sent,
           crediario: cred,
         };
+
+        if (isShipped || tracking_code) {
+          shippedSaleToEmail = updatedOrder;
+        }
+
+        return updatedOrder;
       }
       return s;
     });
+
+    // 3. Dispara e-mail de envio com código de rastreio para a cliente
+    if (shippedSaleToEmail && (shippedSaleToEmail.customer_email || shippedSaleToEmail.shipping_address?.customer_email)) {
+      try {
+        const codeToSend = shippedSaleToEmail.tracking_code || '9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000);
+        await sendShippingNotificationEmail(shippedSaleToEmail, codeToSend);
+      } catch (emailErr) {
+        console.warn('Erro ao disparar e-mail com código de rastreamento:', emailErr);
+      }
+    }
 
     writeSavedSales(updated);
 

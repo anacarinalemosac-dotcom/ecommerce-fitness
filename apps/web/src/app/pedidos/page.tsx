@@ -319,9 +319,9 @@ export default function OrderLookupPage() {
                 </p>
               </div>
 
-              {orderData.tracking_code.startsWith('9400') && (
+              {orderData.tracking_code && orderData.tracking_code !== 'BALCAO-SHOWROOM' && (
                 <a
-                  href={`https://tools.usps.com/go/TrackConfirmAction?tLabels=${orderData.tracking_code}`}
+                  href={`https://tools.usps.com/go/TrackConfirmAction?tLabels=${orderData.tracking_code.replace(/\s+/g, '')}`}
                   target="_blank"
                   rel="noreferrer"
                   className="px-5 py-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shrink-0 shadow"

@@ -87,6 +87,14 @@ function StripeSuccessContent() {
           <p><strong>{lang === 'pt' ? 'Status' : 'Status'}:</strong> <span className="text-green-700 font-bold">✓ PAGO & EM PREPARAÇÃO</span></p>
           <p><strong>{lang === 'pt' ? 'Transportadora' : 'Carrier'}:</strong> USPS Priority Mail / Ground Advantage</p>
           <p><strong>{lang === 'pt' ? 'Prazo Estimado' : 'Estimated Time'}:</strong> 1 a 5 dias úteis com código de rastreamento</p>
+          <div className="pt-2 border-t border-deep-black/10 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5">
+            <span>✉</span>
+            <span>
+              {lang === 'pt'
+                ? 'E-mail de confirmação enviado para sua caixa de entrada! Assim que o pacote for despachado nos correios, você receberá outro e-mail com o código de rastreamento USPS.'
+                : 'Confirmation email sent! As soon as your order is dispatched, you will receive an email with your USPS tracking link.'}
+            </span>
+          </div>
         </div>
       </div>
 

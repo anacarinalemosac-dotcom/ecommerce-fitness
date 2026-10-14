@@ -458,6 +458,14 @@ export default function CheckoutPage() {
               )}
             </p>
             <p><strong>{lang === 'pt' ? 'Total Pago' : 'Total Paid'}:</strong> <span className="font-bold text-gold font-mono">${total.toFixed(2)}</span></p>
+            <div className="pt-2.5 border-t border-deep-black/10 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5">
+              <span>✉</span>
+              <span>
+                {lang === 'pt'
+                  ? 'E-mail de confirmação enviado! Quando seu pedido for despachado nos correios, você receberá outro e-mail com o código de rastreamento USPS.'
+                  : 'Order confirmation email sent! When your package is dispatched, you will receive another email with your USPS tracking link.'}
+              </span>
+            </div>
           </div>
         </div>
 

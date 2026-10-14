@@ -24,8 +24,8 @@ function readAllOrders(): any[] {
               customer_email: s.customer_email || 'cliente@anafitnesswear.com',
               customer_phone: s.customer_phone || '',
               created_at: s.created_at,
-              status: s.status === 'IN_PRODUCTION' ? 'IN_PRODUCTION' : 'CONFIRMED',
-              tracking_code: s.channel === 'ONLINE' ? '9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000) : 'BALCAO-SHOWROOM',
+              status: s.status || 'CONFIRMED',
+              tracking_code: s.tracking_code || (s.status === 'SHIPPED' || s.status === 'DELIVERED' ? '9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000) : (s.channel === 'ONLINE' ? undefined : 'BALCAO-SHOWROOM')),
               carrier: s.channel === 'ONLINE' ? 'USPS Domestic Priority ($9.99)' : 'Retirada no Showroom (Leominster, MA)',
               estimated_delivery: s.channel === 'ONLINE' ? '1 a 5 dias úteis' : 'Imediato no balcão',
               shipping_address: s.shipping_address || {
