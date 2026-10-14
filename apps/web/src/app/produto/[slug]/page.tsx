@@ -32,6 +32,7 @@ import {
   Share2,
   MessageSquare,
   Copy,
+  Lock,
 } from 'lucide-react';
 
 interface Variant {
@@ -445,71 +446,91 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
       {/* Grid Principal: Galeria Lateral + Painel de Compra */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
-        {/* GALERIA LATERAL */}
-        <div className="lg:col-span-7 flex flex-col-reverse sm:flex-row gap-4">
-          <div className="flex sm:flex-col gap-3 overflow-x-auto sm:overflow-visible shrink-0 pb-2 sm:pb-0">
-            {productData.media.map((item: any, idx: number) => (
+        {/* COLUNA ESQUERDA: A PEÇA (GALERIA + DESCRIÇÃO EMBAIXO DA PEÇA) */}
+        <div className="lg:col-span-7 space-y-6">
+          <div className="flex flex-col-reverse sm:flex-row gap-4">
+            <div className="flex sm:flex-col gap-3 overflow-x-auto sm:overflow-visible shrink-0 pb-2 sm:pb-0">
+              {productData.media.map((item: any, idx: number) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setSelectedMediaIdx(idx);
+                    setIsZoomed(false);
+                  }}
+                  className={`w-16 h-20 sm:w-20 sm:h-24 overflow-hidden border-2 transition-all relative shrink-0 ${
+                    selectedMediaIdx === idx
+                      ? 'border-deep-black ring-2 ring-gold'
+                      : 'border-deep-black/10 opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  {item.type === 'video' ? (
+                    <div className="w-full h-full bg-deep-black flex items-center justify-center text-gold text-[9px] font-bold">
+                      VIDEO
+                    </div>
+                  ) : (
+                    <img src={item.url} alt={item.label} className="w-full h-full object-cover" />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex-1 relative aspect-[3/4] bg-deep-black/5 overflow-hidden border border-deep-black/10 group">
+              {productData.media[selectedMediaIdx]?.type === 'video' ? (
+                <video
+                  src={productData.media[selectedMediaIdx].url}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img
+                  src={productData.media[selectedMediaIdx]?.url}
+                  alt={productData.title}
+                  className={`w-full h-full object-cover transition-transform duration-500 cursor-zoom-in ${
+                    isZoomed ? 'scale-150' : 'group-hover:scale-105'
+                  }`}
+                  onClick={() => setIsZoomed(!isZoomed)}
+                />
+              )}
+
+              {/* Selos de Destaque (Apenas promocionais para itens em estoque; nunca pré-venda em cima da foto) */}
+              {!isBackorder && productData.badgeEn !== 'PRE-ORDER' && productData.badgePt !== 'PRÉ-VENDA' && (productData.ribbon || productData.badgePt) && (
+                <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm ${productData.badgeStyle || 'bg-gold text-deep-black'}`}>
+                    {productData.ribbon || (lang === 'pt' ? productData.badgePt : productData.badgeEn)}
+                  </span>
+                </div>
+              )}
+
               <button
-                key={idx}
-                onClick={() => {
-                  setSelectedMediaIdx(idx);
-                  setIsZoomed(false);
-                }}
-                className={`w-16 h-20 sm:w-20 sm:h-24 overflow-hidden border-2 transition-all relative shrink-0 ${
-                  selectedMediaIdx === idx
-                    ? 'border-deep-black ring-2 ring-gold'
-                    : 'border-deep-black/10 opacity-70 hover:opacity-100'
-                }`}
+                onClick={() => setIsZoomed(!isZoomed)}
+                className="absolute bottom-4 right-4 p-2.5 bg-deep-black/80 hover:bg-gold hover:text-deep-black text-white backdrop-blur-md transition"
+                title="Zoom"
               >
-                {item.type === 'video' ? (
-                  <div className="w-full h-full bg-deep-black flex items-center justify-center text-gold text-[9px] font-bold">
-                    VIDEO
-                  </div>
-                ) : (
-                  <img src={item.url} alt={item.label} className="w-full h-full object-cover" />
-                )}
+                <ZoomIn className="w-4 h-4" />
               </button>
-            ))}
+            </div>
           </div>
 
-          <div className="flex-1 relative aspect-[3/4] bg-deep-black/5 overflow-hidden border border-deep-black/10 group">
-            {productData.media[selectedMediaIdx]?.type === 'video' ? (
-              <video
-                src={productData.media[selectedMediaIdx].url}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <img
-                src={productData.media[selectedMediaIdx]?.url}
-                alt={productData.title}
-                className={`w-full h-full object-cover transition-transform duration-500 cursor-zoom-in ${
-                  isZoomed ? 'scale-150' : 'group-hover:scale-105'
-                }`}
-                onClick={() => setIsZoomed(!isZoomed)}
-              />
-            )}
-
-            {/* Selos de Destaque (Apenas promocionais para itens em estoque; nunca pré-venda em cima da foto) */}
-            {!isBackorder && productData.badgeEn !== 'PRE-ORDER' && productData.badgePt !== 'PRÉ-VENDA' && (productData.ribbon || productData.badgePt) && (
-              <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
-                <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm ${productData.badgeStyle || 'bg-gold text-deep-black'}`}>
-                  {productData.ribbon || (lang === 'pt' ? productData.badgePt : productData.badgeEn)}
+          {/* DESCRIÇÃO EMBAIXO DA PEÇA (ABOUT THIS PIECE) */}
+          {(productData.descriptionPt || productData.descriptionEn) && (
+            <div className="p-5 sm:p-6 bg-warm-light/20 border-2 border-deep-black space-y-2.5 shadow-sm animate-fadeIn">
+              <div className="flex items-center justify-between border-b border-deep-black/10 pb-2">
+                <span className="text-[11px] font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-gold" />
+                  <span>{lang === 'pt' ? 'SOBRE A PEÇA' : 'ABOUT THIS PIECE'}</span>
+                </span>
+                <span className="text-[9px] font-black uppercase text-gold bg-deep-black px-2 py-0.5">
+                  100% ZERO TRANSPARÊNCIA
                 </span>
               </div>
-            )}
-
-            <button
-              onClick={() => setIsZoomed(!isZoomed)}
-              className="absolute bottom-4 right-4 p-2.5 bg-deep-black/80 hover:bg-gold hover:text-deep-black text-white backdrop-blur-md transition"
-              title="Zoom"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </button>
-          </div>
+              <p className="text-xs sm:text-sm text-deep-black/85 font-medium leading-relaxed uppercase tracking-wide">
+                {lang === 'pt' ? productData.descriptionPt : productData.descriptionEn}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* DETALHES DA PEÇA & COMPRA (DÓLAR $) */}
@@ -561,18 +582,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               {lang === 'pt' ? 'VER REGRAS' : 'DETAILS'}
             </Link>
           </div>
-
-          {/* Descrição do Produto / Bio da Peça (Lugar Oficial & Certo) */}
-          {(productData.descriptionPt || productData.descriptionEn) && (
-            <div className="p-4 bg-warm-light/20 border-l-2 border-gold space-y-1.5 animate-fadeIn">
-              <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
-                {lang === 'pt' ? 'SOBRE A PEÇA:' : 'ABOUT THIS PIECE:'}
-              </span>
-              <p className="text-xs text-deep-black/80 font-medium leading-relaxed uppercase tracking-wide">
-                {lang === 'pt' ? productData.descriptionPt : productData.descriptionEn}
-              </p>
-            </div>
-          )}
 
           {/* Seletor de Cores com Swatches Hexadecimais e Nome da Cor */}
           <div className="space-y-3">
@@ -750,10 +759,14 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             </div>
           </div>
 
-          {/* BOTÃO INTELIGENTE DE COMPRA OU PRÉ-VENDA */}
+          {/* OPÇÃO DE CHECKOUT OU OPÇÃO DE PRÉ-RESERVA */}
           <div className="space-y-3">
             <button
-              onClick={handleActionClick}
+              type="button"
+              onClick={() => {
+                handleActionClick();
+                window.location.href = '/checkout';
+              }}
               className={`w-full py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-luxury cursor-pointer ${
                 isBackorder
                   ? 'bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black'
@@ -763,25 +776,41 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               {isBackorder ? (
                 <>
                   <Sparkles className="w-4 h-4 text-deep-black" />
-                  <span>{t('prod.orderPreorder')}</span>
+                  <span>{lang === 'pt' ? 'RESERVAR NA PRÉ-VENDA (PRAZO 30 DIAS)' : 'RESERVE PRE-ORDER (30 DAYS)'}</span>
                 </>
               ) : (
                 <>
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>{t('prod.addToBag')}</span>
+                  <Lock className="w-4 h-4 text-gold" />
+                  <span>
+                    {lang === 'pt'
+                      ? `FINALIZAR NO CHECKOUT AGORA • $${(currentVariant?.price || productData.price).toFixed(2)}`
+                      : `PROCEED TO CHECKOUT NOW • $${(currentVariant?.price || productData.price).toFixed(2)}`}
+                  </span>
                 </>
               )}
             </button>
 
+            {!isBackorder && (
+              <button
+                type="button"
+                onClick={handleActionClick}
+                className="w-full py-3.5 bg-white hover:bg-deep-black hover:text-white text-deep-black border-2 border-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+              >
+                <ShoppingBag className="w-4 h-4 text-gold" />
+                <span>{lang === 'pt' ? 'ADICIONAR À SACOLA E CONTINUAR' : 'ADD TO BAG & CONTINUE'}</span>
+              </button>
+            )}
+
             {cartFeedback && (
-              <div className="p-3 bg-deep-black text-white border border-gold text-xs font-bold uppercase tracking-wider flex items-center justify-between animate-fadeIn">
+              <div className="p-3.5 bg-deep-black text-white border-2 border-gold text-xs font-bold uppercase tracking-wider flex items-center justify-between animate-fadeIn">
                 <span>
                   {cartFeedback === 'backorder'
-                    ? (lang === 'pt' ? '✓ Peça adicionada como Pré-Venda (Prazo de 30 dias)!' : '✓ Added as Made-to-Order Pre-Order (~30 Days)!')
-                    : (lang === 'pt' ? '✓ Peça adicionada à sacola!' : '✓ Added to your bag!')}
+                    ? (lang === 'pt' ? '✓ Peça reservada como Pré-Venda (Prazo de 30 dias)!' : '✓ Added as Made-to-Order Pre-Order (~30 Days)!')
+                    : (lang === 'pt' ? '✓ Peça adicionada com sucesso!' : '✓ Item added to bag!')}
                 </span>
-                <Link href="/checkout" className="text-gold underline hover:text-white font-bold">
-                  CHECKOUT
+                <Link href="/checkout" className="text-gold underline hover:text-white font-black flex items-center gap-1">
+                  <span>IR P/ CHECKOUT</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
             )}
