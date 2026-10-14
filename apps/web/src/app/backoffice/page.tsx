@@ -1422,7 +1422,7 @@ export default function BackofficeDashboard() {
           }`}
         >
           <Receipt className="w-4 h-4 text-gold" />
-          <span>3. PEDIDOS & OMNICHANNEL</span>
+          <span>3. PAINEL DE VENDAS & RESULTADOS</span>
           <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
             {salesData?.sales?.length || 0}
           </span>
@@ -2287,135 +2287,278 @@ export default function BackofficeDashboard() {
       )}
 
       {/* =========================================================================
-          TAB 1: RELATÓRIO DE VENDAS & LUCRO REAL (RESPOSTA DIRETA AO ITEM 4 DA ANA CARINA)
+          TAB 3: PAINEL DE VENDAS & RESULTADOS (4 MÉTRICAS PRIORITÁRIAS DA ANA CARINA)
          ========================================================================= */}
-      {activeTab === 'sales' && (
-        <div className="space-y-8 animate-fadeIn">
-          {/* Banner Conceitual de Transparência Financeira */}
-          <div className="bg-deep-black text-white border-2 border-gold p-6 sm:p-8 space-y-3 shadow-luxury">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
-                  DEMONSTRATIVO FINANCEIRO CONSOLIDADO (DRE SIMPLIFICADO • USD)
+      {activeTab === 'sales' && (() => {
+        const allSales = (salesData?.sales || []) as any[];
+        const activeSales = allSales.filter((s: any) => s.status !== 'CANCELLED');
+
+        // Fuso de Massachusetts (EDT / EST)
+        const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+        const currentMonthStr = todayStr.substring(0, 7);
+
+        // 1. Venda do Dia (Hoje)
+        const todayOrders = activeSales.filter((s: any) => {
+          if (!s.created_at) return false;
+          const dStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(s.created_at));
+          return dStr === todayStr;
+        });
+        const todayRevenue = todayOrders.reduce((acc: number, s: any) => acc + (Number(s.subtotal_products) || 0) + (Number(s.shipping_fee) || 0), 0);
+        const todayProfit = todayOrders.reduce((acc: number, s: any) => acc + (Number(s.net_profit) || 0), 0);
+
+        // 2. Acumulado do Mês
+        const monthOrders = activeSales.filter((s: any) => {
+          if (!s.created_at) return false;
+          const dStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(s.created_at));
+          return dStr.startsWith(currentMonthStr);
+        });
+        const monthRevenue = monthOrders.reduce((acc: number, s: any) => acc + (Number(s.subtotal_products) || 0) + (Number(s.shipping_fee) || 0), 0);
+        const monthProfit = monthOrders.reduce((acc: number, s: any) => acc + (Number(s.net_profit) || 0), 0);
+
+        // 3. O Meu Lucro
+        const totalNetProfit = salesData?.summary?.totalNetProfit ?? activeSales.reduce((acc: number, s: any) => acc + (Number(s.net_profit) || 0), 0);
+        const totalGrossRevenue = salesData?.summary?.totalGrossRevenue ?? activeSales.reduce((acc: number, s: any) => acc + (Number(s.subtotal_products) || 0) + (Number(s.shipping_fee) || 0), 0);
+        const avgMarginPct = totalGrossRevenue > 0 ? ((totalNetProfit / totalGrossRevenue) * 100).toFixed(1) : '0.0';
+
+        // 4. Os Itens Entregues
+        const deliveredOrders = activeSales.filter((s: any) => s.status === 'DELIVERED' || s.status === 'COMPLETED');
+        const totalDeliveredPieces = deliveredOrders.reduce((sum: number, s: any) => {
+          const pieces = (s.items || []).reduce((pSum: number, item: any) => pSum + (Number(item.quantity) || 1), 0);
+          return sum + pieces;
+        }, 0);
+        const totalDeliveredOrdersCount = deliveredOrders.length;
+
+        return (
+          <div className="space-y-8 animate-fadeIn">
+            {/* Banner Conceitual de Transparência Financeira */}
+            <div className="bg-deep-black text-white border-2 border-gold p-6 sm:p-8 space-y-3 shadow-luxury">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                    PAINEL EXECUTIVO DE VENDAS & RESULTADOS • MOEDA USD ($)
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-white flex items-center gap-2">
+                    <BarChart3 className="w-6 h-6 text-gold" />
+                    <span>MEUS RESULTADOS CONSOLIDADOS</span>
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={fetchSalesData}
+                    className="px-3 py-2 border border-gold hover:bg-gold hover:text-deep-black text-gold text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loadingSales ? 'animate-spin' : ''}`} />
+                    <span>ATUALIZAR DADOS</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="px-3 py-2 bg-white/10 hover:bg-white hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>IMPRIMIR RELATÓRIO</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2 text-xs text-white/80 uppercase font-mono tracking-wide leading-relaxed bg-white/5 p-4 border border-white/10">
+                <span className="text-gold font-black">FÓRMULA EXATA DE LUCRO LÍQUIDO NO SEU BOLSO: </span>
+                <span>
+                  (Receita de Peças + Fretes Cobrados $9.99) - Custo das Peças (COGS) - Taxas Gateway (Stripe/Venmo) - Custo Envio USPS ($7.50) - Comissões Vendedoras (10%) ={' '}
                 </span>
-                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-white flex items-center gap-2">
-                  <BarChart3 className="w-6 h-6 text-gold" />
-                  <span>RELATÓRIO DE VENDAS & LUCRO LÍQUIDO REAL</span>
-                </h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={fetchSalesData}
-                  className="px-3 py-2 border border-gold hover:bg-gold hover:text-deep-black text-gold text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loadingSales ? 'animate-spin' : ''}`} />
-                  <span>ATUALIZAR DADOS</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-3 py-2 bg-white/10 hover:bg-white hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                  <span>IMPRIMIR RELATÓRIO</span>
-                </button>
+                <strong className="text-gold font-black underline">LUCRO LÍQUIDO REAL ($ USD)</strong>
               </div>
             </div>
 
-            <div className="pt-2 text-xs text-white/80 uppercase font-mono tracking-wide leading-relaxed bg-white/5 p-4 border border-white/10">
-              <span className="text-gold font-black">FÓRMULA EXATA DE LUCRO LÍQUIDO NO SEU BOLSO: </span>
-              <span>
-                (Receita de Peças + Fretes Cobrados $9.99) - Custo das Peças (COGS) - Taxas Gateway (Stripe/Venmo) - Custo Envio USPS ($7.50) - Comissões Vendedoras (10%) ={' '}
-              </span>
-              <strong className="text-gold font-black underline">LUCRO LÍQUIDO REAL ($ USD)</strong>
-            </div>
-          </div>
-
-          {/* 6 KPIS FINANCEIROS PRINCIPAIS */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-            {/* 1. Faturamento Bruto */}
-            <div className="bg-white border-2 border-deep-black p-4 space-y-1 shadow-sm">
-              <span className="text-[9px] font-black uppercase tracking-widest text-deep-black/60 block">
-                FATURAMENTO BRUTO
-              </span>
-              <p className="text-xl sm:text-2xl font-black text-deep-black font-mono">
-                ${(salesData?.summary?.totalGrossRevenue || 0).toFixed(2)}
-              </p>
-              <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
-                {salesData?.summary?.ordersCount || 0} pedidos faturados
-              </span>
-            </div>
-
-            {/* 2. Lucro Líquido Real (Destaque Principal) */}
-            <div className="bg-deep-black border-2 border-gold p-4 space-y-1 text-white shadow-luxury">
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-black uppercase tracking-widest text-gold block">
-                  LUCRO LÍQUIDO REAL
+            {/* =========================================================================
+                AS 4 MÉTRICAS PRIORITÁRIAS DA ANA CARINA (ORDEM EXATA SOLICITADA)
+                1. Venda do Dia | 2. Acumulado do Mês | 3. O Meu Lucro | 4. Itens Entregues
+               ========================================================================= */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 bg-gold inline-block" />
+                  <span>SEUS 4 RESULTADOS PRINCIPAIS</span>
                 </span>
-                <span className="w-2 h-2 rounded-full bg-gold animate-pulse" />
+                <span className="text-[10px] text-deep-black/60 font-mono font-bold uppercase">
+                  Fuso Leominster/MA (EDT)
+                </span>
               </div>
-              <p className="text-xl sm:text-2xl font-black text-gold font-mono">
-                ${(salesData?.summary?.totalNetProfit || 0).toFixed(2)}
-              </p>
-              <div className="inline-flex items-center gap-1 bg-gold/20 px-1.5 py-0.5 text-[8px] font-black text-gold uppercase border border-gold/40">
-                <Percent className="w-2.5 h-2.5" />
-                <span>{salesData?.summary?.averageMarginPct || 0}% MARGEM LÍQUIDA</span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. VENDA DO DIA */}
+                <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-gold transition flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 flex items-center gap-1.5">
+                        <CalendarDays className="w-4 h-4 text-gold" />
+                        <span>1. VENDA DO DIA</span>
+                      </span>
+                      <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase font-mono border border-emerald-300">
+                        HOJE
+                      </span>
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-deep-black font-mono mt-2">
+                      ${todayRevenue.toFixed(2)}
+                    </div>
+                    <p className="text-[11px] text-deep-black/60 uppercase font-bold mt-1">
+                      {todayOrders.length === 1 ? '1 pedido registrado hoje' : `${todayOrders.length} pedidos registrados hoje`}
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px]">
+                    <span className="text-deep-black/60 font-bold uppercase">Lucro Hoje:</span>
+                    <span className="font-mono font-black text-emerald-700">
+                      ${todayProfit.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 2. ACUMULADO DO MÊS */}
+                <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-gold transition flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 flex items-center gap-1.5">
+                        <TrendingUp className="w-4 h-4 text-gold" />
+                        <span>2. ACUMULADO DO MÊS</span>
+                      </span>
+                      <span className="px-1.5 py-0.5 bg-gold/20 text-deep-black border border-gold/40 text-[9px] font-black uppercase font-mono">
+                        MÊS CORRENTE
+                      </span>
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-deep-black font-mono mt-2">
+                      ${monthRevenue.toFixed(2)}
+                    </div>
+                    <p className="text-[11px] text-deep-black/60 uppercase font-bold mt-1">
+                      {monthOrders.length === 1 ? '1 pedido acumulado no mês' : `${monthOrders.length} pedidos acumulados no mês`}
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px]">
+                    <span className="text-deep-black/60 font-bold uppercase">Lucro no Mês:</span>
+                    <span className="font-mono font-black text-deep-black">
+                      ${monthProfit.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. O MEU LUCRO (DESTAQUE OURO E PRETO) */}
+                <div className="bg-deep-black text-white border-2 border-gold p-5 space-y-2 shadow-luxury flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center gap-1.5">
+                        <DollarSign className="w-4 h-4 text-gold" />
+                        <span>3. O MEU LUCRO</span>
+                      </span>
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 bg-gold text-deep-black text-[9px] font-black uppercase">
+                        <Sparkles className="w-2.5 h-2.5 text-deep-black" />
+                        <span>LÍQUIDO REAL</span>
+                      </span>
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-gold font-mono mt-2">
+                      ${totalNetProfit.toFixed(2)}
+                    </div>
+                    <p className="text-[11px] text-white/70 uppercase font-bold mt-1">
+                      Livre no bolso após custos e taxas
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-gold/30 flex items-center justify-between text-[10px]">
+                    <span className="text-white/60 font-bold uppercase">Margem Líquida:</span>
+                    <span className="font-mono font-black text-gold">
+                      {avgMarginPct}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. ITENS ENTREGUES */}
+                <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-gold transition flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>4. ITENS ENTREGUES</span>
+                      </span>
+                      <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[9px] font-black uppercase font-mono">
+                        CONCLUÍDOS
+                      </span>
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-deep-black font-mono mt-2">
+                      {totalDeliveredPieces} <span className="text-sm font-black text-deep-black/60 uppercase">peças</span>
+                    </div>
+                    <p className="text-[11px] text-deep-black/60 uppercase font-bold mt-1">
+                      {totalDeliveredOrdersCount === 1 ? '1 pedido entregue com sucesso' : `${totalDeliveredOrdersCount} pedidos entregues com sucesso`}
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px]">
+                    <span className="text-deep-black/60 font-bold uppercase">Taxa de Conclusão:</span>
+                    <span className="font-mono font-black text-emerald-700">
+                      {activeSales.length > 0 ? `${Math.round((totalDeliveredOrdersCount / activeSales.length) * 100)}% dos pedidos` : '100%'}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* 3. Custo de Confecção / Mercadorias (COGS) */}
-            <div className="bg-white border-2 border-deep-black p-4 space-y-1 shadow-sm">
-              <span className="text-[9px] font-black uppercase tracking-widest text-deep-black/60 block">
-                CUSTO DAS PEÇAS (COGS)
-              </span>
-              <p className="text-xl sm:text-2xl font-black text-deep-black font-mono">
-                ${(salesData?.summary?.totalCostOfGoods || 0).toFixed(2)}
-              </p>
-              <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
-                Investimento confecção
-              </span>
-            </div>
+            {/* DRE SIMPLIFICADO: DEDUÇÕES OPERACIONAIS & DETALHE DE CUSTOS */}
+            <div className="bg-white border-2 border-deep-black p-4 space-y-3">
+              <div className="flex items-center justify-between border-b border-deep-black/10 pb-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/70 flex items-center gap-1.5">
+                  <Percent className="w-3.5 h-3.5 text-gold" />
+                  <span>DRE OPERACIONAL • ONDE CADA DÓLAR FOI ALOCADO</span>
+                </span>
+                <span className="text-[9px] font-mono text-deep-black/50 uppercase">
+                  Total Faturado Bruto: ${totalGrossRevenue.toFixed(2)}
+                </span>
+              </div>
 
-            {/* 4. Fretes Recolhidos vs Custo USPS */}
-            <div className="bg-white border-2 border-deep-black p-4 space-y-1 shadow-sm">
-              <span className="text-[9px] font-black uppercase tracking-widest text-deep-black/60 block">
-                FRETES COBRADOS (USPS)
-              </span>
-              <p className="text-xl sm:text-2xl font-black text-deep-black font-mono">
-                ${(salesData?.summary?.totalShippingCollected || 0).toFixed(2)}
-              </p>
-              <span className="text-[9px] text-deep-black/60 uppercase font-mono block">
-                Custo USPS: ${(salesData?.summary?.totalShippingCost || 0).toFixed(2)}
-              </span>
-            </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                {/* COGS */}
+                <div className="p-3 bg-deep-black/5 border border-deep-black/10 space-y-1">
+                  <span className="text-[9px] font-black uppercase text-deep-black/60 block">CUSTO PEÇAS (COGS)</span>
+                  <p className="text-lg font-black text-deep-black font-mono">
+                    -${(salesData?.summary?.totalCostOfGoods || 0).toFixed(2)}
+                  </p>
+                  <span className="text-[8px] text-deep-black/50 uppercase font-bold block">Confecção & Tecido</span>
+                </div>
 
-            {/* 5. Taxas de Meios de Pagamento */}
-            <div className="bg-white border-2 border-deep-black p-4 space-y-1 shadow-sm">
-              <span className="text-[9px] font-black uppercase tracking-widest text-deep-black/60 block">
-                TAXAS MEIOS DE PGTO
-              </span>
-              <p className="text-xl sm:text-2xl font-black text-red-600 font-mono">
-                -${(salesData?.summary?.totalPaymentFees || 0).toFixed(2)}
-              </p>
-              <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
-                Gateways & operadoras
-              </span>
-            </div>
+                {/* Fretes Cobrados */}
+                <div className="p-3 bg-deep-black/5 border border-deep-black/10 space-y-1">
+                  <span className="text-[9px] font-black uppercase text-deep-black/60 block">FRETES RECOLHIDOS</span>
+                  <p className="text-lg font-black text-emerald-700 font-mono">
+                    +${(salesData?.summary?.totalShippingCollected || 0).toFixed(2)}
+                  </p>
+                  <span className="text-[8px] text-deep-black/50 uppercase font-bold block">
+                    Custo USPS: -${(salesData?.summary?.totalShippingCost || 0).toFixed(2)}
+                  </span>
+                </div>
 
-            {/* 6. Comissões Pagas à Equipe */}
-            <div className="bg-white border-2 border-deep-black p-4 space-y-1 shadow-sm">
-              <span className="text-[9px] font-black uppercase tracking-widest text-deep-black/60 block">
-                COMISSÕES VENDEDORAS
-              </span>
-              <p className="text-xl sm:text-2xl font-black text-deep-black font-mono">
-                -${(salesData?.summary?.totalCommissions || 0).toFixed(2)}
-              </p>
-              <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
-                10% balcão & afiliados
-              </span>
+                {/* Taxas Gateway */}
+                <div className="p-3 bg-deep-black/5 border border-deep-black/10 space-y-1">
+                  <span className="text-[9px] font-black uppercase text-deep-black/60 block">TAXAS GATEWAYS</span>
+                  <p className="text-lg font-black text-red-600 font-mono">
+                    -${(salesData?.summary?.totalPaymentFees || 0).toFixed(2)}
+                  </p>
+                  <span className="text-[8px] text-deep-black/50 uppercase font-bold block">Stripe, Venmo, Cartão</span>
+                </div>
+
+                {/* Comissões */}
+                <div className="p-3 bg-deep-black/5 border border-deep-black/10 space-y-1">
+                  <span className="text-[9px] font-black uppercase text-deep-black/60 block">COMISSÕES VENDEDORAS</span>
+                  <p className="text-lg font-black text-deep-black font-mono">
+                    -${(salesData?.summary?.totalCommissions || 0).toFixed(2)}
+                  </p>
+                  <span className="text-[8px] text-deep-black/50 uppercase font-bold block">Equipe balcão / afiliadas</span>
+                </div>
+
+                {/* Lucro Retido */}
+                <div className="p-3 bg-gold/10 border border-gold/40 space-y-1">
+                  <span className="text-[9px] font-black uppercase text-deep-black/60 block">MARGEM LÍQUIDA</span>
+                  <p className="text-lg font-black text-deep-black font-mono">
+                    {avgMarginPct}%
+                  </p>
+                  <span className="text-[8px] text-deep-black/60 uppercase font-bold block">Retenção líquida real</span>
+                </div>
+              </div>
             </div>
-          </div>
 
           {/* PAINÉIS DE BREAKDOWN ANALÍTICO: FORMAS DE PAGAMENTO & CANAIS */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -3284,7 +3427,8 @@ export default function BackofficeDashboard() {
             }}
           />
         </div>
-      )}
+        );
+      })()}
 
       {/* =========================================================================
           TAB 2: CUSTOS & MARGEM UNITÁRIA

@@ -26,6 +26,7 @@ import {
   Phone,
   Radio,
   ExternalLink,
+  Calendar,
 } from 'lucide-react';
 
 interface DashboardMetricsViewProps {
@@ -168,6 +169,18 @@ export function DashboardMetricsView({
     if (Array.isArray(order.shipping_address?.items)) return order.shipping_address.items;
     return [];
   };
+
+  // Itens e Pedidos Entregues / Concluídos
+  const deliveredSales = sales.filter((s: any) => {
+    const st = (s.status || '').toUpperCase();
+    return st === 'DELIVERED' || st === 'COMPLETED';
+  });
+  const totalDeliveredPieces = deliveredSales.reduce((acc: number, s: any) => {
+    const items = getOrderItems(s);
+    const count = items.reduce((pAcc: number, it: any) => pAcc + (Number(it.quantity) || 1), 0);
+    return acc + (count > 0 ? count : 1);
+  }, 0);
+  const totalDeliveredOrders = deliveredSales.length;
 
   const getOrderAddress = (order: any) => {
     const addr = order.shipping_address;
@@ -655,82 +668,111 @@ export function DashboardMetricsView({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Vendas Hoje */}
-          <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-gold transition">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">
-                FATURAMENTO HOJE
-              </span>
-              <span className="px-1.5 py-0.5 bg-green-100 text-green-800 text-[9px] font-black uppercase">
-                DIA ATUAL
-              </span>
-            </div>
-            <div className="text-2xl sm:text-3xl font-black text-deep-black font-mono">
-              ${salesToday.toFixed(2)}
-            </div>
-            <p className="text-[10px] text-deep-black/60 uppercase font-bold">
-              Total bruto faturado nas últimas 24h
-            </p>
-          </div>
-
-          {/* Vendas Semana */}
-          <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-gold transition">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">
-                FATURAMENTO SEMANAL
-              </span>
-              <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-[9px] font-black uppercase">
-                ÚLTIMOS 7 DIAS
-              </span>
-            </div>
-            <div className="text-2xl sm:text-3xl font-black text-deep-black font-mono">
-              ${salesWeek.toFixed(2)}
-            </div>
-            <p className="text-[10px] text-deep-black/60 uppercase font-bold">
-              Receita consolidada da semana
-            </p>
-          </div>
-
-          {/* Vendas Mês */}
-          <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-gold transition">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60">
-                FATURAMENTO DO MÊS
-              </span>
-              <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 text-[9px] font-black uppercase">
-                MÊS CORRENTE
-              </span>
-            </div>
-            <div className="text-2xl sm:text-3xl font-black text-deep-black font-mono">
-              ${salesMonth.toFixed(2)}
-            </div>
-            <p className="text-[10px] text-deep-black/60 uppercase font-bold">
-              Receita acumulada do mês em curso
-            </p>
-          </div>
-
-          {/* Lucro Líquido Real */}
-          <div
-            onClick={() => onNavigateTab('finances')}
-            className="bg-deep-black text-white border-2 border-gold p-5 space-y-2 shadow-luxury cursor-pointer hover:border-white transition group"
-            title="Clique para abrir o módulo Financeiro completo com DRE e Fluxo de Caixa"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-gold group-hover:underline flex items-center gap-1">
-                LUCRO LÍQUIDO REAL NO BOLSO
-                <ArrowUpRight className="w-3.5 h-3.5 text-gold group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-              </span>
-              <Sparkles className="w-3.5 h-3.5 text-gold" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-black text-gold font-mono">
-              ${totalNetProfit.toFixed(2)}
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] text-white/70 uppercase font-bold">
-                Após custos, taxas e comissões
+          {/* 1. VENDA DO DIA */}
+          <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-gold transition flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-gold" />
+                  <span>1. VENDA DO DIA</span>
+                </span>
+                <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[9px] font-black uppercase">
+                  HOJE
+                </span>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-deep-black font-mono mt-1">
+                ${salesToday.toFixed(2)}
+              </div>
+              <p className="text-[10px] text-deep-black/60 uppercase font-bold mt-1">
+                {todayOrders.length === 1 ? '1 pedido registrado hoje' : `${todayOrders.length} pedidos registrados hoje`}
               </p>
-              <span className="text-[9px] bg-gold/20 text-gold px-1.5 py-0.5 font-black uppercase border border-gold/40 group-hover:bg-gold group-hover:text-deep-black transition">
-                VER DRE & CAIXA →
+            </div>
+            <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px]">
+              <span className="text-deep-black/60 font-bold uppercase">Status:</span>
+              <span className="font-mono font-black text-emerald-700">Faturado Hoje</span>
+            </div>
+          </div>
+
+          {/* 2. ACUMULADO DO MÊS */}
+          <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-gold transition flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-gold" />
+                  <span>2. ACUMULADO DO MÊS</span>
+                </span>
+                <span className="px-1.5 py-0.5 bg-gold/20 text-deep-black border border-gold/40 text-[9px] font-black uppercase font-mono">
+                  MÊS ATUAL
+                </span>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-deep-black font-mono mt-1">
+                ${salesMonth.toFixed(2)}
+              </div>
+              <p className="text-[10px] text-deep-black/60 uppercase font-bold mt-1">
+                Receita acumulada do mês corrente
+              </p>
+            </div>
+            <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px]">
+              <span className="text-deep-black/60 font-bold uppercase">Período:</span>
+              <span className="font-mono font-black text-deep-black">Outubro / 2026</span>
+            </div>
+          </div>
+
+          {/* 3. O MEU LUCRO (DESTAQUE OURO E PRETO) */}
+          <div
+            onClick={() => onNavigateTab('sales')}
+            className="bg-deep-black text-white border-2 border-gold p-5 space-y-2 shadow-luxury cursor-pointer hover:border-white transition flex flex-col justify-between"
+            title="Ver detalhamento de lucro no Painel de Vendas"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center gap-1.5">
+                  <DollarSign className="w-3.5 h-3.5 text-gold" />
+                  <span>3. O MEU LUCRO</span>
+                </span>
+                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-gold text-deep-black text-[9px] font-black uppercase">
+                  <Sparkles className="w-2.5 h-2.5 text-deep-black" />
+                  <span>LÍQUIDO REAL</span>
+                </span>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-gold font-mono mt-1">
+                ${totalNetProfit.toFixed(2)}
+              </div>
+              <p className="text-[10px] text-white/70 uppercase font-bold mt-1">
+                Livre no bolso após custos e taxas
+              </p>
+            </div>
+            <div className="pt-2 border-t border-gold/30 flex items-center justify-between text-[10px]">
+              <span className="text-white/60 font-bold uppercase">Margem Líquida:</span>
+              <span className="font-mono font-black text-gold">
+                {totalGross > 0 ? ((totalNetProfit / totalGross) * 100).toFixed(1) : '0.0'}%
+              </span>
+            </div>
+          </div>
+
+          {/* 4. ITENS ENTREGUES */}
+          <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-gold transition flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>4. ITENS ENTREGUES</span>
+                </span>
+                <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[9px] font-black uppercase">
+                  CONCLUÍDOS
+                </span>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-deep-black font-mono mt-1">
+                {totalDeliveredPieces} <span className="text-sm font-black text-deep-black/60 uppercase">peças</span>
+              </div>
+              <p className="text-[10px] text-deep-black/60 uppercase font-bold mt-1">
+                {totalDeliveredOrders === 1 ? '1 pedido entregue com sucesso' : `${totalDeliveredOrders} pedidos entregues com sucesso`}
+              </p>
+            </div>
+            <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px]">
+              <span className="text-deep-black/60 font-bold uppercase">Conclusão:</span>
+              <span className="font-mono font-black text-emerald-700">
+                {sales.length > 0 ? `${Math.round((totalDeliveredOrders / sales.length) * 100)}% dos pedidos` : '100%'}
               </span>
             </div>
           </div>
