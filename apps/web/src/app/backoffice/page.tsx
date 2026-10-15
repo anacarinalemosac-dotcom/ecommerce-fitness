@@ -69,6 +69,7 @@ import {
   Wallet,
   Ban,
   Building2,
+  MessageCircle,
 } from 'lucide-react';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
@@ -782,8 +783,15 @@ export default function BackofficeDashboard() {
     }
   };
 
+  const getAffiliateLink = (coupon: string) => {
+    if (typeof window !== 'undefined' && window.location.origin) {
+      return `${window.location.origin}/?ref=${coupon}`;
+    }
+    return `https://anafitnesswear.com/?ref=${coupon}`;
+  };
+
   const copySellerLink = (coupon: string) => {
-    const link = `https://anafitwear.com/?ref=${coupon}`;
+    const link = getAffiliateLink(coupon);
     navigator.clipboard.writeText(link);
     setCopiedCouponLink(coupon);
     setTimeout(() => setCopiedCouponLink(null), 3000);
@@ -4239,6 +4247,18 @@ export default function BackofficeDashboard() {
                                 <Copy className="w-3.5 h-3.5 text-deep-black" />
                               )}
                             </button>
+
+                            <a
+                              href={`https://wa.me/${(seller.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(
+                                `Olá ${seller.name}! ✨ Aqui está seu link exclusivo de divulgação da ANA FITNESS WEAR com o seu cupom ${seller.coupon_code}:\n\n🔗 ${getAffiliateLink(seller.coupon_code)}\n\nTodas as compras feitas por esse link já ativam o seu cupom automaticamente para suas clientes e registram seus ${seller.commission_pct}% de comissão no seu painel!`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 border border-[#25D366]/40 hover:border-[#25D366] bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366] hover:text-white transition"
+                              title="Enviar link e cupom para WhatsApp da Vendedora"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </a>
 
                             <button
                               type="button"

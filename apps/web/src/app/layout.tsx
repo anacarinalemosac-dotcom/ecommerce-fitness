@@ -5,6 +5,7 @@ import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
 import { FloatingLanguageSwitcher } from '../components/FloatingLanguageSwitcher';
 import { LiveVisitorTracker } from '../components/LiveVisitorTracker';
+import { AffiliateLinkTracker } from '../components/AffiliateLinkTracker';
 import { TrackingScripts } from '../components/TrackingScripts';
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ export default function RootLayout({
         <Providers>
           <TrackingScripts />
           <LiveVisitorTracker />
+          <AffiliateLinkTracker />
           <SiteHeader />
           <main className="flex-1 w-full">
             {children}

@@ -23,6 +23,7 @@ import {
   X,
   CreditCard,
   Edit3,
+  MessageCircle,
 } from 'lucide-react';
 
 export default function SellerPortalPage() {
@@ -270,8 +271,15 @@ export default function SellerPortalPage() {
     setPassword('');
   };
 
+  const getAffiliateLink = (coupon: string) => {
+    if (typeof window !== 'undefined' && window.location.origin) {
+      return `${window.location.origin}/?ref=${coupon}`;
+    }
+    return `https://anafitnesswear.com/?ref=${coupon}`;
+  };
+
   const copyShareLink = (coupon: string) => {
-    const link = `https://anafitwear.com/?ref=${coupon}`;
+    const link = getAffiliateLink(coupon);
     navigator.clipboard.writeText(link);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 3000);
@@ -788,19 +796,33 @@ export default function SellerPortalPage() {
                 </div>
               </div>
 
-              {/* Botão Copiar Link */}
-              <button
-                type="button"
-                onClick={() => copyShareLink(loggedSeller.coupon_code)}
-                className="px-6 py-3.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shadow"
-              >
-                {copiedLink ? <Check className="w-4 h-4 text-gold" /> : <Copy className="w-4 h-4 text-gold" />}
-                <span>{copiedLink ? 'LINK COPIADO!' : 'COPIAR LINK DE DIVULGAÇÃO'}</span>
-              </button>
+              {/* Botões Copiar Link e WhatsApp */}
+              <div className="flex flex-wrap gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => copyShareLink(loggedSeller.coupon_code)}
+                  className="px-5 py-3.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shadow"
+                >
+                  {copiedLink ? <Check className="w-4 h-4 text-gold" /> : <Copy className="w-4 h-4 text-gold" />}
+                  <span>{copiedLink ? 'LINK COPIADO!' : 'COPIAR LINK DE DIVULGAÇÃO'}</span>
+                </button>
+
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(
+                    `Oie! ✨ Conheça a coleção de luxo da ANA FITNESS WEAR com meu cupom exclusivo ${loggedSeller.coupon_code}! Acesse direto pelo meu link: ${getAffiliateLink(loggedSeller.coupon_code)}`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-5 py-3.5 bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shadow"
+                >
+                  <MessageCircle className="w-4 h-4 text-white" />
+                  <span>COMPARTILHAR NO WHATSAPP</span>
+                </a>
+              </div>
             </div>
 
             <p className="text-[11px] text-deep-black/60 uppercase font-mono">
-              Link de Afiliada: <span className="text-deep-black font-bold">https://anafitwear.com/?ref={loggedSeller.coupon_code}</span>
+              Link de Afiliada: <span className="text-deep-black font-bold">{getAffiliateLink(loggedSeller.coupon_code)}</span>
             </p>
           </div>
 
