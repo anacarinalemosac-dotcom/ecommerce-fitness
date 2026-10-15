@@ -172,8 +172,9 @@ export function DashboardMetricsView({
 
   // Itens e Pedidos Entregues / Concluídos
   const deliveredSales = sales.filter((s: any) => {
+    const fSt = (s.fulfillment_status || '').toUpperCase();
     const st = (s.status || '').toUpperCase();
-    return st === 'DELIVERED' || st === 'COMPLETED';
+    return fSt === 'DELIVERED' || st === 'DELIVERED' || (!fSt && (st === 'COMPLETED' || s.channel === 'POS_COUNTER'));
   });
   const totalDeliveredPieces = deliveredSales.reduce((acc: number, s: any) => {
     const items = getOrderItems(s);
@@ -500,29 +501,45 @@ export function DashboardMetricsView({
 
                       {/* Botões Rápidos de Ação de Logística */}
                       <div className="pt-2 border-t border-deep-black/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 border self-start ${
-                          order.status === 'DELIVERED'
-                            ? 'bg-deep-black text-gold border-gold'
-                            : order.status === 'COMPLETED' || order.status === 'PAID'
-                            ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                            : order.status === 'SHIPPED'
-                            ? 'bg-purple-100 text-purple-900 border-purple-300'
-                            : order.status === 'IN_PRODUCTION'
-                            ? 'bg-blue-100 text-blue-900 border-blue-300'
-                            : 'bg-amber-100 text-amber-900 border-amber-300'
-                        }`}>
-                          {order.status === 'DELIVERED'
-                            ? '✔ MERCADORIA ENTREGUE'
-                            : order.status === 'SHIPPED'
-                            ? '🚚 MERCADORIA DESPACHADA'
-                            : order.status === 'IN_PRODUCTION'
-                            ? '📦 SEPARANDO MERCADORIA'
-                            : order.status === 'WAITING_PAYMENT'
-                            ? '⏳ AGUARDANDO PAGAMENTO'
-                            : order.status === 'CANCELLED'
-                            ? '✖ CANCELADO'
-                            : '🟢 PAGAMENTO APROVADO'}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap self-start">
+                          {/* Badge de Entrega / Logística */}
+                          <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 border ${
+                            (order.fulfillment_status === 'DELIVERED' || order.status === 'DELIVERED')
+                              ? 'bg-deep-black text-gold border-gold'
+                              : (order.fulfillment_status === 'SHIPPED' || order.status === 'SHIPPED')
+                              ? 'bg-purple-100 text-purple-900 border-purple-300'
+                              : (order.fulfillment_status === 'IN_PRODUCTION' || order.status === 'IN_PRODUCTION')
+                              ? 'bg-blue-100 text-blue-900 border-blue-300'
+                              : 'bg-amber-100 text-amber-900 border-amber-300'
+                          }`}>
+                            {(order.fulfillment_status === 'DELIVERED' || order.status === 'DELIVERED')
+                              ? '✔ ENTREGA: ENTREGUE'
+                              : (order.fulfillment_status === 'SHIPPED' || order.status === 'SHIPPED')
+                              ? '🚚 ENTREGA: DESPACHADA'
+                              : (order.fulfillment_status === 'IN_PRODUCTION' || order.status === 'IN_PRODUCTION')
+                              ? '📦 ENTREGA: SEPARANDO'
+                              : '🕒 ENTREGA: AGUARDANDO'}
+                          </span>
+
+                          {/* Badge de Pagamento / Financeiro */}
+                          <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 border ${
+                            order.payment_status === 'CANCELLED' || order.status === 'CANCELLED'
+                              ? 'bg-red-100 text-red-900 border-red-300'
+                              : order.payment_status === 'PAID' || order.payment_status === 'COMPLETED' || order.status === 'PAID' || order.status === 'COMPLETED'
+                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                              : order.payment_status === 'PARTIAL'
+                              ? 'bg-amber-100 text-amber-950 border-amber-400'
+                              : 'bg-amber-50 text-amber-900 border-amber-300'
+                          }`}>
+                            {order.payment_status === 'CANCELLED' || order.status === 'CANCELLED'
+                              ? '✖ CANCELADO'
+                              : order.payment_status === 'PAID' || order.payment_status === 'COMPLETED' || order.status === 'PAID' || order.status === 'COMPLETED'
+                              ? '🟢 PGTO: QUITADO'
+                              : order.payment_status === 'PARTIAL'
+                              ? '🟡 PGTO: PARCIAL'
+                              : '⏳ PGTO: EM ABERTO'}
+                          </span>
+                        </div>
 
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {/* Passo 1 -> Passo 2: De Pago para Separando Mercadoria */}

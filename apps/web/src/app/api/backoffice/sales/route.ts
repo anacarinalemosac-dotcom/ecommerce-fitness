@@ -72,7 +72,10 @@ export interface SaleRecord {
   net_profit: number; // LUCRO LÍQUIDO REAL
   profit_margin_pct: number; // Margem líquida percentual
   items: SaleItemPayload[];
-  status: 'COMPLETED' | 'PENDING' | 'IN_PRODUCTION' | 'WAITING_PAYMENT' | 'PAID' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  status: 'COMPLETED' | 'PENDING' | 'IN_PRODUCTION' | 'WAITING_PAYMENT' | 'PAID' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'AWAITING_SEPARATION';
+  // Separação oficial: Status de Entrega (Logística) vs Status de Pagamento (Financeiro)
+  fulfillment_status?: 'AWAITING_SEPARATION' | 'IN_PRODUCTION' | 'SHIPPED' | 'DELIVERED';
+  payment_status?: 'WAITING_PAYMENT' | 'PARTIAL' | 'PAID' | 'COMPLETED' | 'CANCELLED';
   crediario?: CrediarioInfo;
   tracking_code?: string;
   shipped_at?: string;
@@ -213,6 +216,24 @@ export async function GET(req: NextRequest) {
             profit_margin_pct: margin,
             items,
             status: ord.status || 'COMPLETED',
+            fulfillment_status: meta.fulfillment_status || (
+              ord.status === 'DELIVERED' || ord.status === 'SHIPPED' || ord.status === 'IN_PRODUCTION' || ord.status === 'AWAITING_SEPARATION'
+                ? ord.status
+                : (isOnline ? 'AWAITING_SEPARATION' : 'DELIVERED')
+            ),
+            payment_status: meta.payment_status || (
+              ord.status === 'CANCELLED'
+                ? 'CANCELLED'
+                : (pMethod === 'CREDIARIO' || meta.crediario)
+                  ? (
+                      Array.isArray(meta.crediario?.installments) && meta.crediario.installments.every((i: any) => i.status === 'PAID')
+                        ? 'PAID'
+                        : (Array.isArray(meta.crediario?.installments) && meta.crediario.installments.some((i: any) => i.status === 'PAID')) || Number(meta.crediario?.down_payment || 0) > 0
+                          ? 'PARTIAL'
+                          : 'WAITING_PAYMENT'
+                    )
+                  : (ord.status === 'WAITING_PAYMENT' ? 'WAITING_PAYMENT' : 'PAID')
+            ),
             shipping_address: meta.address && typeof meta.address === 'object' ? meta.address : undefined,
             crediario: meta.crediario || undefined,
             tracking_code: meta.tracking_code || ord.tracking_code || undefined,
@@ -229,6 +250,34 @@ export async function GET(req: NextRequest) {
     } catch (e) {
       console.warn('Erro ao consultar Supabase orders:', e);
     }
+
+    // Normalização completa de status de entrega e financeiro para todas as vendas
+    sales = sales.map((s) => {
+      const isOnline = s.channel === 'ONLINE';
+      const fStatus = s.fulfillment_status || (
+        s.status === 'DELIVERED' || s.status === 'SHIPPED' || s.status === 'IN_PRODUCTION' || s.status === 'AWAITING_SEPARATION'
+          ? (s.status as any)
+          : (isOnline ? 'AWAITING_SEPARATION' : 'DELIVERED')
+      );
+      const pStatus = s.payment_status || (
+        s.status === 'CANCELLED'
+          ? 'CANCELLED'
+          : (s.payment_method === 'CREDIARIO' || s.crediario)
+            ? (
+                Array.isArray(s.crediario?.installments) && s.crediario.installments.every((i: any) => i.status === 'PAID')
+                  ? 'PAID'
+                  : (Array.isArray(s.crediario?.installments) && s.crediario.installments.some((i: any) => i.status === 'PAID')) || Number(s.crediario?.down_payment || 0) > 0
+                    ? 'PARTIAL'
+                    : 'WAITING_PAYMENT'
+              )
+            : (s.status === 'WAITING_PAYMENT' ? 'WAITING_PAYMENT' : 'PAID')
+      );
+      return {
+        ...s,
+        fulfillment_status: fStatus,
+        payment_status: pStatus,
+      };
+    });
 
     // Vendas ativas (exclui pedidos cancelados dos totais financeiros)
     const activeSales = sales.filter((s) => s.status !== 'CANCELLED');
@@ -406,6 +455,13 @@ export async function POST(req: NextRequest) {
       cost_price: Number(it.cost_price) || 15.0,
     }));
 
+    const fulfillmentStatus = body.fulfillment_status || (isPOS ? 'DELIVERED' : 'AWAITING_SEPARATION');
+    const paymentStatus = body.payment_status || (
+      (payment_method || '').toUpperCase() === 'CREDIARIO'
+        ? ((crediario?.down_payment || 0) > 0 ? 'PARTIAL' : 'WAITING_PAYMENT')
+        : 'PAID'
+    );
+
     const newSale: SaleRecord = {
       id: `sale-${Date.now()}`,
       order_id: finalOrderId,
@@ -434,7 +490,9 @@ export async function POST(req: NextRequest) {
       net_profit: netProfit,
       profit_margin_pct: marginPct,
       items: formattedItems,
-      status: (payment_method || '').toUpperCase() === 'CREDIARIO' ? 'PENDING' : 'COMPLETED',
+      status: paymentStatus === 'PAID' ? 'COMPLETED' : 'PENDING',
+      fulfillment_status: fulfillmentStatus,
+      payment_status: paymentStatus,
       crediario: crediario || undefined,
     };
 
@@ -454,6 +512,8 @@ export async function POST(req: NextRequest) {
         address: newSale.shipping_address || undefined,
         discount_reason: coupon_code || undefined,
         crediario: crediario || undefined,
+        fulfillment_status: fulfillmentStatus,
+        payment_status: paymentStatus,
       };
 
       const { data: insertedOrder, error: orderInsertError } = await supabaseServer
@@ -470,7 +530,7 @@ export async function POST(req: NextRequest) {
             total_amount: Math.max(0, newSale.subtotal_products + newSale.shipping_fee - newSale.discount_amount),
             commission_amount: newSale.commission_amount,
             payment_method: newSale.payment_method,
-            status: 'COMPLETED',
+            status: newSale.status,
             shipping_address: metadataPayload,
           },
         ])
@@ -582,11 +642,16 @@ export async function PATCH(req: NextRequest) {
     const {
       order_id,
       status,
+      fulfillment_status,
+      payment_status,
       tracking_code,
       action,
       installment_number,
-      installment_payment_method = 'CASH',
+      installment_payment_method,
+      payment_method,
     } = body;
+
+    const chosenPaymentMethod = (payment_method || installment_payment_method || 'CASH').toUpperCase();
 
     if (!order_id) {
       return NextResponse.json({ error: 'order_id é obrigatório' }, { status: 400 });
@@ -663,6 +728,8 @@ export async function PATCH(req: NextRequest) {
               profit_margin_pct: marginPct,
               items: formattedItems,
               notes: notes !== undefined ? notes : currentMeta.notes,
+              ...(fulfillment_status ? { fulfillment_status } : {}),
+              ...(payment_status ? { payment_status } : {}),
             };
 
             const updateFields: any = {
@@ -674,7 +741,7 @@ export async function PATCH(req: NextRequest) {
               discount_amount: disc,
               total_amount: grossTotal,
               commission_amount: commissionAmount,
-              status: status || target.status || 'COMPLETED',
+              status: payment_status === 'PAID' ? 'COMPLETED' : (payment_status || status || target.status || 'COMPLETED'),
               shipping_address: updatedMeta,
             };
 
@@ -713,7 +780,9 @@ export async function PATCH(req: NextRequest) {
             net_profit: netProfit,
             profit_margin_pct: marginPct,
             items: formattedItems,
-            status: status || s.status || 'COMPLETED',
+            status: payment_status === 'PAID' ? 'COMPLETED' : (payment_status || status || s.status || 'COMPLETED'),
+            fulfillment_status: fulfillment_status || s.fulfillment_status,
+            payment_status: payment_status || s.payment_status,
             notes: notes !== undefined ? notes : s.notes,
           };
         }
@@ -863,35 +932,49 @@ export async function PATCH(req: NextRequest) {
 
         if (target) {
           const currentMeta = typeof target.shipping_address === 'object' ? target.shipping_address : {};
-          let newStatus = status || target.status;
+          
+          let nextFulfillment = fulfillment_status || currentMeta.fulfillment_status;
+          let nextPayment = payment_status || currentMeta.payment_status;
 
-          if (action === 'pay_installment' && currentMeta.crediario && Array.isArray(currentMeta.crediario.installments)) {
+          // Compatibilidade com status legado único
+          if (status) {
+            if (['AWAITING_SEPARATION', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED'].includes(status)) {
+              nextFulfillment = status;
+            } else if (['WAITING_PAYMENT', 'PARTIAL', 'PAID', 'COMPLETED', 'CANCELLED'].includes(status)) {
+              nextPayment = status === 'COMPLETED' ? 'PAID' : status;
+            }
+          }
+
+          // Ações de Baixa Financeira no Crediário (Parcela individual ou Quitação total)
+          const isCrediarioPayAction = action === 'pay_installment' || action === 'pay_crediario_full' || action === 'pay_all_installments' || nextPayment === 'PAID';
+          if (isCrediarioPayAction && currentMeta.crediario && Array.isArray(currentMeta.crediario.installments)) {
             const insts = currentMeta.crediario.installments.map((inst: any) => {
-              if (inst.number === Number(installment_number)) {
+              const shouldPay = action === 'pay_crediario_full' || action === 'pay_all_installments' || nextPayment === 'PAID' || inst.number === Number(installment_number);
+              if (shouldPay && inst.status !== 'PAID') {
                 return {
                   ...inst,
                   status: 'PAID',
                   paid_at: new Date().toISOString(),
-                  payment_method: installment_payment_method,
+                  payment_method: chosenPaymentMethod,
+                  paid_method: chosenPaymentMethod,
                 };
               }
               return inst;
             });
 
             const allPaid = insts.every((i: any) => i.status === 'PAID');
-            if (allPaid) {
-              newStatus = 'COMPLETED';
-            }
-
+            nextPayment = allPaid ? 'PAID' : 'PARTIAL';
             updatedCrediario = {
               ...currentMeta.crediario,
               installments: insts,
             };
           }
 
-          const isShipped = newStatus === 'SHIPPED';
+          const isShipped = nextFulfillment === 'SHIPPED';
           const updatedMeta = {
             ...currentMeta,
+            ...(nextFulfillment ? { fulfillment_status: nextFulfillment } : {}),
+            ...(nextPayment ? { payment_status: nextPayment } : {}),
             ...(tracking_code !== undefined ? { tracking_code } : {}),
             ...(isShipped ? { shipped_at: currentMeta.shipped_at || new Date().toISOString(), shipping_email_sent: true } : {}),
             ...(updatedCrediario ? { crediario: updatedCrediario } : {}),
@@ -900,7 +983,7 @@ export async function PATCH(req: NextRequest) {
           await supabaseServer
             .from('orders')
             .update({
-              status: newStatus,
+              status: nextPayment === 'PAID' ? (nextFulfillment === 'DELIVERED' ? 'DELIVERED' : 'COMPLETED') : (nextFulfillment || nextPayment || 'PENDING'),
               shipping_address: updatedMeta,
             })
             .eq('id', target.id);
@@ -916,31 +999,47 @@ export async function PATCH(req: NextRequest) {
     const updated = sales.map((s: any) => {
       if (s.order_id === order_id || s.id === order_id) {
         let cred = s.crediario;
-        let newStatus = status || s.status;
+        let nextFulfillment = fulfillment_status || s.fulfillment_status;
+        let nextPayment = payment_status || s.payment_status;
 
-        if (action === 'pay_installment' && cred && Array.isArray(cred.installments)) {
+        // Compatibilidade com status legado único
+        if (status) {
+          if (['AWAITING_SEPARATION', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED'].includes(status)) {
+            nextFulfillment = status;
+          } else if (['WAITING_PAYMENT', 'PARTIAL', 'PAID', 'COMPLETED', 'CANCELLED'].includes(status)) {
+            nextPayment = status === 'COMPLETED' ? 'PAID' : status;
+          }
+        }
+
+        // Ações de Baixa Financeira no Crediário no backup local
+        const isCrediarioPayAction = action === 'pay_installment' || action === 'pay_crediario_full' || action === 'pay_all_installments' || nextPayment === 'PAID';
+        if (isCrediarioPayAction && cred && Array.isArray(cred.installments)) {
           const insts = cred.installments.map((inst: any) => {
-            if (inst.number === Number(installment_number)) {
+            const shouldPay = action === 'pay_crediario_full' || action === 'pay_all_installments' || nextPayment === 'PAID' || inst.number === Number(installment_number);
+            if (shouldPay && inst.status !== 'PAID') {
               return {
                 ...inst,
                 status: 'PAID',
                 paid_at: new Date().toISOString(),
-                payment_method: installment_payment_method,
+                payment_method: chosenPaymentMethod,
+                paid_method: chosenPaymentMethod,
               };
             }
             return inst;
           });
           const allPaid = insts.every((i: any) => i.status === 'PAID');
-          if (allPaid) newStatus = 'COMPLETED';
+          nextPayment = allPaid ? 'PAID' : 'PARTIAL';
           cred = { ...cred, installments: insts };
         }
 
-        const isShipped = newStatus === 'SHIPPED';
+        const isShipped = nextFulfillment === 'SHIPPED';
         const finalTracking = tracking_code !== undefined ? tracking_code : s.tracking_code;
 
         const updatedOrder = {
           ...s,
-          status: newStatus,
+          status: nextPayment === 'PAID' ? (nextFulfillment === 'DELIVERED' ? 'DELIVERED' : 'COMPLETED') : (nextFulfillment || nextPayment || s.status),
+          fulfillment_status: nextFulfillment || s.fulfillment_status,
+          payment_status: nextPayment || s.payment_status,
           tracking_code: finalTracking,
           shipped_at: isShipped ? (s.shipped_at || new Date().toISOString()) : s.shipped_at,
           shipping_email_sent: isShipped ? true : s.shipping_email_sent,

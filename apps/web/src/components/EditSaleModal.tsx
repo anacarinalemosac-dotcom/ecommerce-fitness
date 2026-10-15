@@ -51,7 +51,8 @@ export function EditSaleModal({
   const [createdAt, setCreatedAt] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [sellerName, setSellerName] = useState('Ana Karina');
-  const [status, setStatus] = useState('COMPLETED');
+  const [paymentStatus, setPaymentStatus] = useState('PAID');
+  const [fulfillmentStatus, setFulfillmentStatus] = useState('DELIVERED');
   const [discountAmount, setDiscountAmount] = useState('0');
   const [commissionAmount, setCommissionAmount] = useState('0');
   const [notes, setNotes] = useState('');
@@ -68,7 +69,8 @@ export function EditSaleModal({
       setPaymentMethod((sale.payment_method || 'CASH').toUpperCase());
       const rawSeller = sale.seller_name || '';
       setSellerName(rawSeller.includes('Juliana Silva') ? 'Ana Karina' : (rawSeller || 'Ana Karina'));
-      setStatus(sale.status || 'COMPLETED');
+      setPaymentStatus(sale.payment_status || (sale.status === 'CANCELLED' ? 'CANCELLED' : (sale.status === 'WAITING_PAYMENT' || sale.payment_method === 'CREDIARIO' ? 'WAITING_PAYMENT' : 'PAID')));
+      setFulfillmentStatus(sale.fulfillment_status || (sale.status === 'SHIPPED' ? 'SHIPPED' : (sale.status === 'IN_PRODUCTION' ? 'IN_PRODUCTION' : (sale.status === 'AWAITING_SEPARATION' ? 'AWAITING_SEPARATION' : 'DELIVERED'))));
       setDiscountAmount(String(sale.discount_amount || 0));
       setCommissionAmount(String(sale.commission_amount !== undefined && sale.commission_amount !== null ? sale.commission_amount : 0));
       setNotes(sale.notes || sale.shipping_address?.notes || '');
@@ -208,7 +210,9 @@ export function EditSaleModal({
         customer_email: customerEmail.trim() || undefined,
         payment_method: paymentMethod,
         seller_name: sellerName.trim(),
-        status,
+        status: paymentStatus === 'PAID' ? 'COMPLETED' : paymentStatus,
+        payment_status: paymentStatus,
+        fulfillment_status: fulfillmentStatus,
         discount_amount: discountVal,
         commission_amount: commissionVal,
         subtotal_products: Number(subtotalProducts.toFixed(2)),
@@ -415,7 +419,7 @@ export function EditSaleModal({
                 Pagamento & Responsável
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="space-y-1">
                 <label className="text-[9.5px] font-black text-deep-black">Meio de Pagamento *</label>
                 <select
@@ -443,15 +447,29 @@ export function EditSaleModal({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[9.5px] font-black text-deep-black">Status do Pedido</label>
+                <label className="text-[9.5px] font-black text-deep-black">Situação de Entrega (Logística)</label>
                 <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
+                  value={fulfillmentStatus}
+                  onChange={(e) => setFulfillmentStatus(e.target.value)}
                   className="w-full p-2.5 border-2 border-deep-black font-black text-xs uppercase bg-white focus:outline-none focus:border-gold"
                 >
-                  <option value="COMPLETED">✓ CONCLUÍDO / PAGO</option>
-                  <option value="PENDING">⏳ PENDENTE (CREDIÁRIO / AGUARDANDO)</option>
-                  <option value="IN_PRODUCTION">✂️ EM CONFECÇÃO</option>
+                  <option value="DELIVERED">🛍️ 4. MERCADORIA ENTREGUE</option>
+                  <option value="SHIPPED">📦 3. MERCADORIA DESPACHADA</option>
+                  <option value="IN_PRODUCTION">✂️ 2. SEPARANDO MERCADORIA</option>
+                  <option value="AWAITING_SEPARATION">🕒 1. AGUARDANDO SEPARAÇÃO</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9.5px] font-black text-deep-black">Situação de Pagamento (Financeiro)</label>
+                <select
+                  value={paymentStatus}
+                  onChange={(e) => setPaymentStatus(e.target.value)}
+                  className="w-full p-2.5 border-2 border-deep-black font-black text-xs uppercase bg-white focus:outline-none focus:border-gold"
+                >
+                  <option value="PAID">✓ PAGAMENTO EFETUADO / QUITADO</option>
+                  <option value="PARTIAL">🟡 PARCIALMENTE PAGO</option>
+                  <option value="WAITING_PAYMENT">⏳ EM ABERTO / AGUARDANDO</option>
                   <option value="CANCELLED">✕ CANCELADO</option>
                 </select>
               </div>

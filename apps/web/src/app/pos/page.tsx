@@ -191,6 +191,21 @@ export default function PosTerminalPage() {
   const [selectedSize, setSelectedSize] = useState<string>('');
   
   const [seller, setSeller] = useState('Ana Karina');
+  // Comissão Vendedora PDV (Opcional e 100% editável pelo operador: $0, %, ou valor em $)
+  const [commissionMode, setCommissionMode] = useState<'NONE' | 'PERCENT' | 'FIXED'>('NONE');
+  const [commissionInputValue, setCommissionInputValue] = useState<string>('0');
+
+  const handleSellerChange = (newSeller: string) => {
+    setSeller(newSeller);
+    if (newSeller.toLowerCase().includes('ana karina') || newSeller.toLowerCase().includes('loja oficial')) {
+      setCommissionMode('NONE');
+      setCommissionInputValue('0');
+    } else {
+      setCommissionMode('PERCENT');
+      setCommissionInputValue('10');
+    }
+  };
+
   const [registeredSellers, setRegisteredSellers] = useState<any[]>([]);
   const [customerName, setCustomerName] = useState('Cliente Balcão');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -423,7 +438,20 @@ export default function PosTerminalPage() {
   }, [discountType, discountInput, discountValue, subtotal]);
 
   const totalAfterDiscount = Math.max(0, subtotal - calculatedDiscountAmount);
-  const commission = totalAfterDiscount * 0.1; // 10% comissão vendedora balcão calculada sobre o líquido
+  
+  // Comissão Vendedora PDV (Totalmente editável: Sem comissão $0, % livre ou $ fixo livre)
+  const commission = useMemo(() => {
+    if (commissionMode === 'NONE') return 0;
+    const raw = parseFloat(commissionInputValue) || 0;
+    if (raw <= 0) return 0;
+    if (commissionMode === 'PERCENT') {
+      return Number(((totalAfterDiscount * raw) / 100).toFixed(2));
+    }
+    if (commissionMode === 'FIXED') {
+      return Number(raw.toFixed(2));
+    }
+    return 0;
+  }, [commissionMode, commissionInputValue, totalAfterDiscount]);
 
   // Saldo que fica no Crediário (após abater eventual entrada em dinheiro/Zelle)
   const effectiveDownPayment = Math.min(totalAfterDiscount, Math.max(0, crediarioDownPayment));
@@ -518,6 +546,7 @@ export default function PosTerminalPage() {
         payment_method: paymentMethod,
         subtotal_products: subtotal,
         discount_amount: calculatedDiscountAmount,
+        commission_amount: commission,
         shipping_fee: 0.00,
         shipping_cost: 0.00,
         items: cart.map((item) => ({
@@ -548,6 +577,7 @@ export default function PosTerminalPage() {
         ...payload,
         total_paid: totalAfterDiscount,
         discount_amount: calculatedDiscountAmount,
+        commission_amount: commission,
         discount_reason: discountReason.trim() || undefined,
       });
       setCart([]);
@@ -718,7 +748,7 @@ export default function PosTerminalPage() {
               </label>
               <select
                 value={seller}
-                onChange={(e) => setSeller(e.target.value)}
+                onChange={(e) => handleSellerChange(e.target.value)}
                 className="text-xs font-black uppercase tracking-wider text-deep-black bg-transparent border-0 focus:outline-none cursor-pointer"
               >
                 <option value="Ana Karina">Ana Karina (Showroom Leominster)</option>
@@ -807,9 +837,10 @@ export default function PosTerminalPage() {
                 </>
               )}
               <div className="flex justify-between text-gold font-bold text-[11px]">
-                <span>COMISSÃO DA VENDEDORA (10% SOBRE LÍQUIDO):</span>
+                <span>COMISSÃO DA VENDEDORA:</span>
                 <span className="font-mono">
-                  ${((Number(completedSale.total_paid ?? (completedSale.subtotal_products - (completedSale.discount_amount || 0)))) * 0.1).toFixed(2)}
+                  ${Number(completedSale.commission_amount !== undefined ? completedSale.commission_amount : 0).toFixed(2)}
+                  {Number(completedSale.commission_amount || 0) === 0 ? ' (SEM COMISSÃO)' : ''}
                 </span>
               </div>
             </div>
@@ -1563,11 +1594,112 @@ export default function PosTerminalPage() {
                 </div>
               )}
 
-              <div className="flex justify-between text-gold font-bold bg-white/5 p-2.5 border border-gold/20">
-                <span className="flex items-center gap-1.5">
-                  <DollarSign className="w-3.5 h-3.5" /> COMISSÃO VENDEDORA (10% SOBRE LÍQUIDO):
-                </span>
-                <span className="font-mono">${commission.toFixed(2)}</span>
+              {/* Seção de Comissão da Vendedora - 100% Editável e Opcional */}
+              <div className="bg-white/5 border border-gold/30 p-2.5 space-y-2">
+                <div className="flex justify-between items-center text-gold font-bold">
+                  <span className="flex items-center gap-1.5 text-[10px]">
+                    <DollarSign className="w-3.5 h-3.5" /> COMISSÃO DA VENDEDORA:
+                  </span>
+                  <span className="font-mono text-sm font-black">
+                    ${commission.toFixed(2)}
+                    {commissionMode === 'NONE' && (
+                      <span className="text-[9px] text-white/50 font-normal ml-1.5">(SEM COMISSÃO)</span>
+                    )}
+                    {commissionMode === 'PERCENT' && (
+                      <span className="text-[9px] text-gold/80 font-normal ml-1.5">({commissionInputValue}%)</span>
+                    )}
+                    {commissionMode === 'FIXED' && (
+                      <span className="text-[9px] text-gold/80 font-normal ml-1.5">($ FIXO)</span>
+                    )}
+                  </span>
+                </div>
+
+                {/* Seletores rápidos de comissão */}
+                <div className="space-y-1.5 pt-1.5 border-t border-white/10">
+                  <span className="text-[8px] font-black uppercase tracking-wider text-white/50 block">
+                    SELECIONE OU EDITE A COMISSÃO (NÃO OBRIGATÓRIA):
+                  </span>
+                  <div className="grid grid-cols-4 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCommissionMode('NONE');
+                        setCommissionInputValue('0');
+                      }}
+                      className={`py-1 px-1 text-[8px] font-black uppercase border transition text-center ${
+                        commissionMode === 'NONE'
+                          ? 'bg-red-600 text-white border-red-500 shadow-xs'
+                          : 'bg-white/5 text-white/70 border-white/20 hover:border-gold hover:text-white'
+                      }`}
+                      title="Venda sem repasse de comissão ($0.00)"
+                    >
+                      $0 SEM COMISSÃO
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCommissionMode('PERCENT');
+                        setCommissionInputValue('5');
+                      }}
+                      className={`py-1 px-1 text-[8px] font-black uppercase border transition text-center ${
+                        commissionMode === 'PERCENT' && commissionInputValue === '5'
+                          ? 'bg-gold text-deep-black border-gold shadow-xs'
+                          : 'bg-white/5 text-white/70 border-white/20 hover:border-gold hover:text-white'
+                      }`}
+                    >
+                      5%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCommissionMode('PERCENT');
+                        setCommissionInputValue('10');
+                      }}
+                      className={`py-1 px-1 text-[8px] font-black uppercase border transition text-center ${
+                        commissionMode === 'PERCENT' && commissionInputValue === '10'
+                          ? 'bg-gold text-deep-black border-gold shadow-xs'
+                          : 'bg-white/5 text-white/70 border-white/20 hover:border-gold hover:text-white'
+                      }`}
+                    >
+                      10% (PADRÃO)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCommissionMode('FIXED');
+                        if (commissionMode !== 'FIXED') setCommissionInputValue('10');
+                      }}
+                      className={`py-1 px-1 text-[8px] font-black uppercase border transition text-center ${
+                        commissionMode === 'FIXED'
+                          ? 'bg-gold text-deep-black border-gold shadow-xs'
+                          : 'bg-white/5 text-white/70 border-white/20 hover:border-gold hover:text-white'
+                      }`}
+                    >
+                      $ VALOR FIXO
+                    </button>
+                  </div>
+
+                  {/* Input direto quando não for 'NONE' */}
+                  {commissionMode !== 'NONE' && (
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <span className="text-[8px] font-bold text-white/60">VALOR LIVRE:</span>
+                      <div className="relative flex-1">
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={commissionInputValue}
+                          onChange={(e) => setCommissionInputValue(e.target.value)}
+                          placeholder={commissionMode === 'PERCENT' ? 'Digite a % (ex: 8.5)' : 'Digite em $ (ex: 15.00)'}
+                          className="w-full px-2 py-0.5 text-xs font-mono font-bold bg-white/10 border border-white/20 text-white placeholder-white/30 focus:outline-none focus:border-gold"
+                        />
+                        <span className="absolute right-2 top-0.5 text-[9px] font-mono font-bold text-gold">
+                          {commissionMode === 'PERCENT' ? '% SOBRE LÍQUIDO' : 'USD TOTAL'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex justify-between text-xl font-black text-white pt-3 border-t border-white/20">

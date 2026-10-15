@@ -334,9 +334,122 @@ export default function BackofficeDashboard() {
   const [editingSale, setEditingSale] = useState<any | null>(null);
   const [cancellingSale, setCancellingSale] = useState<any | null>(null);
 
-  // Atualização interativa de status do pedido
+  // Modal de Baixa de Pagamento no Crediário: "Pagou como? Zelle? Cash? Card? Venmo?"
+  const [crediarioPayModal, setCrediarioPayModal] = useState<{
+    isOpen: boolean;
+    order: any | null;
+    installmentNumber?: number;
+    amount?: number;
+  }>({
+    isOpen: false,
+    order: null,
+  });
+
+  const handleOpenCrediarioPayModal = (sale: any, installmentNumber?: number, amount?: number) => {
+    setCrediarioPayModal({
+      isOpen: true,
+      order: sale,
+      installmentNumber,
+      amount,
+    });
+  };
+
+  const handleExecuteCrediarioPayment = async (orderId: string, method: string = 'CASH', installmentNumber?: number) => {
+    try {
+      const payload: any = {
+        order_id: orderId,
+        payment_method: method,
+        action: installmentNumber !== undefined ? 'pay_installment' : 'pay_crediario_full',
+      };
+      if (installmentNumber !== undefined) {
+        payload.installment_number = installmentNumber;
+      }
+
+      const res = await fetch('/api/backoffice/sales', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        if (selectedSaleDetail && (selectedSaleDetail.order_id === orderId || selectedSaleDetail.id === orderId)) {
+          const updatedCred = { ...(selectedSaleDetail.crediario || {}) };
+          if (updatedCred.installments) {
+            updatedCred.installments = updatedCred.installments.map((inst: any) => {
+              if (installmentNumber === undefined || inst.number === installmentNumber) {
+                return {
+                  ...inst,
+                  status: 'PAID',
+                  paid_at: new Date().toISOString(),
+                  paid_method: method,
+                  payment_method: method,
+                };
+              }
+              return inst;
+            });
+          }
+          const allPaid = (updatedCred.installments || []).every((i: any) => i.status === 'PAID');
+          setSelectedSaleDetail({
+            ...selectedSaleDetail,
+            payment_status: allPaid ? 'PAID' : 'PARTIAL',
+            crediario: updatedCred,
+          });
+        }
+
+        setCrediarioPayModal({ isOpen: false, order: null });
+        fetchSalesData();
+        setSaveSuccessMessage(true);
+        setTimeout(() => setSaveSuccessMessage(false), 3000);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Erro ao registrar baixa no crediário.');
+      }
+    } catch (err: any) {
+      alert(`Falha ao registrar baixa: ${err.message}`);
+    }
+  };
+
+  // 1. Atualização Interativa da Situação de Entrega (Logística: Aguardando, Separando, Despachada, Entregue)
+  const handleUpdateFulfillmentStatus = async (orderId: string, newFulfillment: string, trackingCode?: string) => {
+    let finalTracking = trackingCode;
+    if (newFulfillment === 'SHIPPED' && !finalTracking) {
+      const target = (salesData?.sales || []).find((s: any) => s.order_id === orderId || s.id === orderId);
+      const existingCode = target?.tracking_code || '';
+      const entered = window.prompt(
+        `📦 Despachar Pedido #${orderId}\n\nInforme o Código de Rastreamento dos Correios (USPS):\n(A cliente receberá automaticamente um e-mail com link oficial de rastreamento do USPS)`,
+        existingCode || ''
+      );
+      if (entered === null) {
+        return; // Cancelado pela usuária
+      }
+      finalTracking = entered.trim() || ('9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000));
+    }
+
+    try {
+      const res = await fetch('/api/backoffice/sales', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: orderId,
+          fulfillment_status: newFulfillment,
+          tracking_code: finalTracking,
+        }),
+      });
+      if (res.ok) {
+        fetchSalesData();
+        setSaveSuccessMessage(true);
+        setTimeout(() => setSaveSuccessMessage(false), 3000);
+      } else {
+        const data = await res.json();
+        alert(`Erro ao atualizar entrega: ${data.error || 'Erro no servidor'}`);
+      }
+    } catch (err: any) {
+      alert(`Falha ao atualizar entrega: ${err.message}`);
+    }
+  };
+
+  // Atualização interativa de status geral legado do pedido
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string, trackingCode?: string) => {
-    // Se o lojista selecionou CANCELADO, abre o modal de confirmação com opções de estorno
     if (newStatus === 'CANCELLED') {
       const target = (salesData?.sales || []).find((s: any) => s.order_id === orderId || s.id === orderId);
       if (target) {
@@ -346,7 +459,6 @@ export default function BackofficeDashboard() {
     }
 
     let finalTracking = trackingCode;
-    // Se o status for alterado para ENVIADO e nenhum código foi passado, solicita o código USPS
     if (newStatus === 'SHIPPED' && !finalTracking) {
       const target = (salesData?.sales || []).find((s: any) => s.order_id === orderId || s.id === orderId);
       const existingCode = target?.tracking_code || '';
@@ -354,9 +466,7 @@ export default function BackofficeDashboard() {
         `📦 Despachar Pedido #${orderId}\n\nInforme o Código de Rastreamento dos Correios (USPS):\n(A cliente receberá automaticamente um e-mail de confirmação de envio com o link oficial de rastreamento do USPS)`,
         existingCode || ''
       );
-      if (entered === null) {
-        return; // Operação cancelada pela usuária
-      }
+      if (entered === null) return;
       finalTracking = entered.trim() || ('9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000));
     }
 
@@ -385,42 +495,7 @@ export default function BackofficeDashboard() {
 
   // Dar baixa em parcela de Crediário
   const handlePayInstallment = async (orderId: string, installmentNumber: number, method: string = 'CASH') => {
-    try {
-      const res = await fetch('/api/backoffice/sales', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'pay_installment',
-          order_id: orderId,
-          installment_number: installmentNumber,
-          payment_method: method,
-        }),
-      });
-      if (res.ok) {
-        if (selectedSaleDetail && selectedSaleDetail.order_id === orderId) {
-          const updatedCred = { ...(selectedSaleDetail.crediario || {}) };
-          if (updatedCred.installments) {
-            updatedCred.installments = updatedCred.installments.map((inst: any) =>
-              inst.number === installmentNumber
-                ? { ...inst, status: 'PAID', paid_at: new Date().toISOString(), paid_method: method }
-                : inst
-            );
-          }
-          setSelectedSaleDetail({
-            ...selectedSaleDetail,
-            crediario: updatedCred,
-          });
-        }
-        fetchSalesData();
-        setSaveSuccessMessage(true);
-        setTimeout(() => setSaveSuccessMessage(false), 3000);
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Erro ao registrar baixa da parcela.');
-      }
-    } catch (err: any) {
-      alert(`Falha ao dar baixa na parcela: ${err.message}`);
-    }
+    return handleExecuteCrediarioPayment(orderId, method, installmentNumber);
   };
 
   // Exportação completa do catálogo atual em CSV
@@ -2846,7 +2921,8 @@ export default function BackofficeDashboard() {
                   <th className="p-3 text-right">COMISSÃO</th>
                   <th className="p-3 text-right">CUSTO PEÇAS</th>
                   <th className="p-3 text-right">LUCRO REAL</th>
-                  <th className="p-3 text-center">ETAPA / STATUS</th>
+                  <th className="p-3 text-center">SITUAÇÃO ENTREGA (LOGÍSTICA)</th>
+                  <th className="p-3 text-center">SITUAÇÃO PAGAMENTO (FINANCEIRO)</th>
                   <th className="p-3 text-center">RAIO-X</th>
                 </tr>
               </thead>
@@ -2984,33 +3060,74 @@ export default function BackofficeDashboard() {
                         </span>
                       </td>
 
-                      {/* Etapa e Status Operacional do Pedido */}
+                      {/* 1. Situação de Entrega (Logística: Aguardando, Separando, Despachada, Entregue) */}
                       <td className="p-3 text-center">
                         <select
-                          value={sale.status || 'PAID'}
-                          onChange={(e) => handleUpdateOrderStatus(sale.order_id, e.target.value)}
-                          className={`text-[8px] font-black uppercase px-2 py-1 border cursor-pointer ${
-                            (sale.status || '') === 'COMPLETED' || (sale.status || '') === 'PAID'
-                              ? 'bg-green-100 text-green-900 border-green-400'
-                              : (sale.status || '') === 'IN_PRODUCTION'
-                              ? 'bg-blue-100 text-blue-900 border-blue-400'
-                              : (sale.status || '') === 'SHIPPED'
-                              ? 'bg-purple-100 text-purple-900 border-purple-400'
-                              : (sale.status || '') === 'DELIVERED'
+                          value={sale.fulfillment_status || 'DELIVERED'}
+                          onChange={(e) => handleUpdateFulfillmentStatus(sale.order_id, e.target.value)}
+                          className={`text-[8.5px] font-black uppercase px-2 py-1 border cursor-pointer ${
+                            (sale.fulfillment_status || '') === 'DELIVERED'
                               ? 'bg-deep-black text-gold border-gold'
-                              : (sale.status || '') === 'CANCELLED'
-                              ? 'bg-red-100 text-red-900 border-red-400'
+                              : (sale.fulfillment_status || '') === 'SHIPPED'
+                              ? 'bg-purple-100 text-purple-900 border-purple-400'
+                              : (sale.fulfillment_status || '') === 'IN_PRODUCTION'
+                              ? 'bg-blue-100 text-blue-900 border-blue-400'
                               : 'bg-amber-100 text-amber-900 border-amber-400'
                           }`}
-                          title="Clique para atualizar a etapa deste pedido"
+                          title="Clique para atualizar a situação de entrega (Logística)"
                         >
-                          <option value="WAITING_PAYMENT">AGUARDANDO PAGAMENTO</option>
-                          <option value="PAID">1. PAGAMENTO APROVADO</option>
-                          <option value="IN_PRODUCTION">2. SEPARANDO MERCADORIA</option>
-                          <option value="SHIPPED">3. MERCADORIA DESPACHADA (USPS)</option>
-                          <option value="DELIVERED">4. MERCADORIA ENTREGUE</option>
-                          <option value="CANCELLED">CANCELADO</option>
+                          <option value="AWAITING_SEPARATION">🕒 1. AGUARDANDO SEPARAÇÃO</option>
+                          <option value="IN_PRODUCTION">✂️ 2. SEPARANDO MERCADORIA</option>
+                          <option value="SHIPPED">📦 3. DESPACHADA (USPS)</option>
+                          <option value="DELIVERED">🛍️ 4. MERCADORIA ENTREGUE</option>
                         </select>
+                        {sale.tracking_code && (
+                          <span className="block text-[8px] font-mono text-purple-700 font-bold mt-0.5" title={`Rastreio USPS: ${sale.tracking_code}`}>
+                            USPS: {String(sale.tracking_code).slice(0, 10)}...
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 2. Situação de Pagamento (Financeiro: Quitado, Parcial, Em Aberto, Cancelado) */}
+                      <td className="p-3 text-center">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          {sale.payment_status === 'CANCELLED' ? (
+                            <span className="text-[8.5px] font-black uppercase px-2 py-0.5 bg-red-100 text-red-900 border border-red-300">
+                              ✕ CANCELADO
+                            </span>
+                          ) : (sale.payment_status === 'PAID' || sale.payment_status === 'COMPLETED') ? (
+                            <span className="text-[8.5px] font-black uppercase px-2 py-0.5 bg-green-100 text-green-900 border border-green-400 flex items-center gap-1 shadow-2xs">
+                              <CheckCircle2 className="w-3 h-3 text-green-700" />
+                              <span>PAGAMENTO EFETUADO</span>
+                            </span>
+                          ) : (
+                            <div className="space-y-1 w-full flex flex-col items-center">
+                              <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 border block ${
+                                sale.payment_status === 'PARTIAL'
+                                  ? 'bg-amber-100 text-amber-950 border-amber-400'
+                                  : 'bg-amber-50 text-amber-900 border-amber-300'
+                              }`}>
+                                {sale.payment_status === 'PARTIAL' ? '🟡 PARCIALMENTE PAGO' : '⏳ EM ABERTO (CREDIÁRIO)'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenCrediarioPayModal(sale)}
+                                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-[8.5px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1 border border-emerald-900 shadow-2xs cursor-pointer w-full max-w-[125px]"
+                                title="Dar baixa no pagamento e informar meio (Zelle ou Cash)"
+                              >
+                                <DollarSign className="w-2.5 h-2.5 text-gold" />
+                                <span>+ DAR BAIXA</span>
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Se for Crediário, exibe resumo de parcelas */}
+                          {sale.crediario?.installments && (
+                            <span className="text-[7.5px] font-mono text-deep-black/60 font-bold block">
+                              {sale.crediario.installments.filter((i: any) => i.status === 'PAID').length} de {sale.crediario.installments.length} parcelas pagas
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Botões Ação: Editar Venda, Cancelar & Raio-X */}
@@ -3121,10 +3238,21 @@ export default function BackofficeDashboard() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
+                        {selectedSaleDetail.crediario?.installments?.some((i: any) => i.status !== 'PAID') && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCrediarioPayModal(selectedSaleDetail)}
+                            className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1 transition shadow-xs cursor-pointer"
+                            title="Quitar todo o saldo pendente do crediário e selecionar meio (Zelle ou Cash)"
+                          >
+                            <DollarSign className="w-3 h-3 text-gold" />
+                            <span>QUITAR TUDO</span>
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => printCrediarioCarnet(selectedSaleDetail)}
-                          className="px-2.5 py-1 bg-amber-700 hover:bg-amber-800 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1 transition"
+                          className="px-2.5 py-1 bg-amber-700 hover:bg-amber-800 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1 transition cursor-pointer"
                         >
                           <Printer className="w-3 h-3" />
                           <span>IMPRIMIR CARNÊ</span>
@@ -3187,7 +3315,7 @@ export default function BackofficeDashboard() {
                                   </span>
                                   {isPaid ? (
                                     <span className="text-[9px] bg-green-200 text-green-900 font-black px-1.5 py-0.5 rounded">
-                                      ✓ PAGA ({inst.paid_method || 'CASH'})
+                                      ✓ PAGA ({inst.paid_method || inst.payment_method || 'CASH'})
                                     </span>
                                   ) : (
                                     <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.5 rounded border border-amber-300">
@@ -3208,7 +3336,7 @@ export default function BackofficeDashboard() {
                                   <button
                                     type="button"
                                     onClick={() => handlePayInstallment(selectedSaleDetail.order_id, inst.number, 'CASH')}
-                                    className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-[9px] font-black uppercase transition"
+                                    className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-[9px] font-black uppercase transition cursor-pointer"
                                     title="Receber parcela em Dinheiro (Cash)"
                                   >
                                     + CASH
@@ -3217,7 +3345,7 @@ export default function BackofficeDashboard() {
                                   <button
                                     type="button"
                                     onClick={() => handlePayInstallment(selectedSaleDetail.order_id, inst.number, 'ZELLE')}
-                                    className="px-2 py-1 bg-purple-700 hover:bg-purple-800 text-white text-[9px] font-black uppercase transition"
+                                    className="px-2 py-1 bg-purple-700 hover:bg-purple-800 text-white text-[9px] font-black uppercase transition cursor-pointer"
                                     title="Receber parcela via Zelle"
                                   >
                                     + ZELLE
@@ -3226,10 +3354,19 @@ export default function BackofficeDashboard() {
                                   <button
                                     type="button"
                                     onClick={() => handlePayInstallment(selectedSaleDetail.order_id, inst.number, 'CARD')}
-                                    className="px-2 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black uppercase transition"
+                                    className="px-2 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black uppercase transition cursor-pointer"
                                     title="Receber parcela no Cartão"
                                   >
                                     + CARD
+                                  </button>
+                                  {/* Botão Baixa Venmo */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePayInstallment(selectedSaleDetail.order_id, inst.number, 'VENMO')}
+                                    className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-black uppercase transition cursor-pointer"
+                                    title="Receber parcela via Venmo"
+                                  >
+                                    + VENMO
                                   </button>
                                   {/* Lembrete WhatsApp */}
                                   <button
@@ -3242,7 +3379,7 @@ export default function BackofficeDashboard() {
                                         : `https://wa.me/?text=${encodeURIComponent(reminderMsg)}`;
                                       window.open(url, '_blank');
                                     }}
-                                    className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-[9px] font-black uppercase flex items-center gap-1 transition"
+                                    className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-[9px] font-black uppercase flex items-center gap-1 transition cursor-pointer"
                                     title="Enviar lembrete amigável no WhatsApp"
                                   >
                                     <Send className="w-2.5 h-2.5" />
@@ -3434,6 +3571,150 @@ export default function BackofficeDashboard() {
               setTimeout(() => setSaveSuccessMessage(false), 5000);
             }}
           />
+
+          {/* Modal de Confirmação de Baixa no Pagamento / Crediário: "Pagou como? Zelle? Cash? Card? Venmo?" */}
+          {crediarioPayModal.isOpen && crediarioPayModal.order && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-deep-black/85 backdrop-blur-sm animate-fadeIn">
+              <div className="bg-white border-4 border-gold w-full max-w-md shadow-2xl overflow-hidden animate-scaleIn">
+                {/* Cabeçalho */}
+                <div className="bg-deep-black text-white p-5 flex items-center justify-between border-b-2 border-gold">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center border border-gold">
+                      <DollarSign className="w-5 h-5 text-gold" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                        BAIXA DE PAGAMENTO • CREDIÁRIO
+                      </span>
+                      <h3 className="text-base font-black uppercase tracking-wider text-white">
+                        PEDIDO #{crediarioPayModal.order.order_id}
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setCrediarioPayModal({ isOpen: false, order: null })}
+                    className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 transition font-black cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Conteúdo do Modal */}
+                <div className="p-6 space-y-5 text-deep-black">
+                  <div className="bg-neutral-50 border border-deep-black/15 p-3.5 space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-deep-black/60 font-bold uppercase">Cliente:</span>
+                      <span className="font-black uppercase">{crediarioPayModal.order.customer_name}</span>
+                    </div>
+                    {crediarioPayModal.installmentNumber !== undefined ? (
+                      <div className="flex justify-between text-xs pt-1 border-t border-deep-black/10">
+                        <span className="text-deep-black/60 font-bold uppercase">Recebendo Parcela:</span>
+                        <span className="font-black text-deep-black font-mono">
+                          Parcela {crediarioPayModal.installmentNumber} • ${Number(crediarioPayModal.amount || 0).toFixed(2)} USD
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between text-xs pt-1 border-t border-deep-black/10">
+                        <span className="text-deep-black/60 font-bold uppercase">Operação:</span>
+                        <span className="font-black text-emerald-800 uppercase">
+                          QUITAÇÃO TOTAL DO CREDIÁRIO
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pergunta Chave do Usuário: "Pagou como? Zelle? Cash?" */}
+                  <div className="space-y-1 text-center">
+                    <label className="text-sm font-black uppercase tracking-wider text-deep-black block">
+                      COMO O CLIENTE FEZ O PAGAMENTO?
+                    </label>
+                    <span className="text-[10px] text-deep-black/60 block font-bold">
+                      Selecione se foi no Zelle, no Cash, Cartão ou Venmo:
+                    </span>
+                  </div>
+
+                  {/* 4 Grandes Botões de Meio de Pagamento */}
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    {/* 1. ZELLE */}
+                    <button
+                      type="button"
+                      onClick={() => handleExecuteCrediarioPayment(
+                        crediarioPayModal.order.order_id,
+                        'ZELLE',
+                        crediarioPayModal.installmentNumber
+                      )}
+                      className="p-4 bg-purple-50 hover:bg-purple-700 text-purple-950 hover:text-white border-2 border-purple-400 hover:border-purple-800 transition flex flex-col items-center justify-center gap-1.5 shadow-sm group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-purple-700 text-white flex items-center justify-center font-black text-base group-hover:bg-white group-hover:text-purple-700 transition">
+                        Z
+                      </div>
+                      <strong className="text-xs font-black uppercase tracking-wider">ZELLE</strong>
+                      <span className="text-[9px] uppercase tracking-wider opacity-75 font-mono">Transferência Zelle</span>
+                    </button>
+
+                    {/* 2. CASH / DINHEIRO */}
+                    <button
+                      type="button"
+                      onClick={() => handleExecuteCrediarioPayment(
+                        crediarioPayModal.order.order_id,
+                        'CASH',
+                        crediarioPayModal.installmentNumber
+                      )}
+                      className="p-4 bg-green-50 hover:bg-green-700 text-green-950 hover:text-white border-2 border-green-500 hover:border-green-800 transition flex flex-col items-center justify-center gap-1.5 shadow-sm group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-green-700 text-white flex items-center justify-center font-black text-base group-hover:bg-white group-hover:text-green-700 transition">
+                        $
+                      </div>
+                      <strong className="text-xs font-black uppercase tracking-wider">CASH (DINHEIRO)</strong>
+                      <span className="text-[9px] uppercase tracking-wider opacity-75 font-mono">Em Espécie no Balcão</span>
+                    </button>
+
+                    {/* 3. CARD / CARTÃO */}
+                    <button
+                      type="button"
+                      onClick={() => handleExecuteCrediarioPayment(
+                        crediarioPayModal.order.order_id,
+                        'CARD',
+                        crediarioPayModal.installmentNumber
+                      )}
+                      className="p-4 bg-neutral-100 hover:bg-deep-black text-deep-black hover:text-gold border-2 border-deep-black transition flex flex-col items-center justify-center gap-1.5 shadow-sm group cursor-pointer"
+                    >
+                      <CreditCard className="w-8 h-8 text-deep-black group-hover:text-gold transition" />
+                      <strong className="text-xs font-black uppercase tracking-wider">CARTÃO (CARD)</strong>
+                      <span className="text-[9px] uppercase tracking-wider opacity-75 font-mono">Débito ou Crédito</span>
+                    </button>
+
+                    {/* 4. VENMO */}
+                    <button
+                      type="button"
+                      onClick={() => handleExecuteCrediarioPayment(
+                        crediarioPayModal.order.order_id,
+                        'VENMO',
+                        crediarioPayModal.installmentNumber
+                      )}
+                      className="p-4 bg-blue-50 hover:bg-blue-600 text-blue-950 hover:text-white border-2 border-blue-400 hover:border-blue-700 transition flex flex-col items-center justify-center gap-1.5 shadow-sm group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-base group-hover:bg-white group-hover:text-blue-600 transition">
+                        V
+                      </div>
+                      <strong className="text-xs font-black uppercase tracking-wider">VENMO</strong>
+                      <span className="text-[9px] uppercase tracking-wider opacity-75 font-mono">App Venmo</span>
+                    </button>
+                  </div>
+
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setCrediarioPayModal({ isOpen: false, order: null })}
+                      className="px-4 py-2 text-xs font-black uppercase text-deep-black/60 hover:text-deep-black transition cursor-pointer"
+                    >
+                      CANCELAR
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         );
       })()}
