@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import { supabase } from '../lib/supabase';
+import { translateEnToPt, translatePtToEn, isPortugueseText } from '../lib/translateFitness';
 
 export interface VariantRow {
   id?: string;
@@ -95,6 +96,10 @@ export function ProductVariantMatrixForm({
   const [defaultPrice, setDefaultPrice] = useState('44.90');
   const [defaultCostPrice, setDefaultCostPrice] = useState('16.00');
   const [description, setDescription] = useState('');
+  const [descriptionPt, setDescriptionPt] = useState('');
+  const [descriptionEn, setDescriptionEn] = useState('');
+  const [descTab, setDescTab] = useState<'en' | 'pt'>('en');
+  const [cupsType, setCupsType] = useState<'removable' | 'fixed' | 'none'>('removable');
   const [composition, setComposition] = useState('88% Poliamida Nobre, 12% Elastano 4-way stretch');
   const [sizeGuide, setSizeGuide] = useState(
     'P: Busto 84-88cm, Cintura 66-70cm (US 2-4)\nM: Busto 89-94cm, Cintura 71-76cm (US 6-8)\nG: Busto 95-100cm, Cintura 77-82cm (US 10-12)\nGG: Busto 101-106cm, Cintura 83-88cm (US 14)'
@@ -243,7 +248,6 @@ export function ProductVariantMatrixForm({
         try {
           if (initialProduct.description.startsWith('{')) {
             parsedMeta = JSON.parse(initialProduct.description);
-            setDescription(parsedMeta.bio || '');
             setComposition(parsedMeta.composition || '');
             if (parsedMeta.ribbon) setRibbon(parsedMeta.ribbon);
             if (parsedMeta.brand) setBrand(parsedMeta.brand);
@@ -265,18 +269,65 @@ export function ProductVariantMatrixForm({
             setVisibleOnline(parsedMeta.visible_online === true || initialProduct.visible_online === true);
             setVisiblePos(parsedMeta.visible_pos !== false && initialProduct.visible_pos !== false);
           } else {
-            setDescription(initialProduct.description);
             setVisibleOnline(initialProduct.visible_online === true);
             setVisiblePos(initialProduct.visible_pos !== false);
           }
         } catch {
-          setDescription(initialProduct.description);
           setVisibleOnline(initialProduct.visible_online === true);
           setVisiblePos(initialProduct.visible_pos !== false);
         }
       } else {
         setVisibleOnline(initialProduct.visible_online === true);
         setVisiblePos(initialProduct.visible_pos !== false);
+      }
+
+      // 1. Extração do Bojo
+      const loadedCupsType =
+        parsedMeta.cups_type ||
+        initialProduct.cups_type ||
+        initialProduct.cupsType ||
+        (parsedMeta.removable_cups !== undefined
+          ? (parsedMeta.removable_cups ? 'removable' : 'none')
+          : initialProduct.removableCups !== undefined
+          ? (initialProduct.removableCups ? 'removable' : 'none')
+          : 'removable');
+      setCupsType(loadedCupsType as 'removable' | 'fixed' | 'none');
+
+      // 2. Extração das Descrições Bilíngues com Auto-Tradução para produtos existentes
+      const rawBio =
+        parsedMeta.bio ||
+        (typeof initialProduct.description === 'string' && !initialProduct.description.startsWith('{')
+          ? initialProduct.description
+          : '') ||
+        '';
+      const enCandidate = parsedMeta.description_en || initialProduct.descriptionEn || '';
+      const ptCandidate = parsedMeta.description_pt || initialProduct.descriptionPt || '';
+
+      if (enCandidate && ptCandidate) {
+        setDescriptionEn(enCandidate);
+        setDescriptionPt(ptCandidate);
+        setDescription(enCandidate);
+      } else if (enCandidate) {
+        setDescriptionEn(enCandidate);
+        setDescriptionPt(translateEnToPt(enCandidate));
+        setDescription(enCandidate);
+      } else if (ptCandidate) {
+        setDescriptionPt(ptCandidate);
+        setDescriptionEn(translatePtToEn(ptCandidate));
+        setDescription(ptCandidate);
+      } else if (rawBio) {
+        if (isPortugueseText(rawBio)) {
+          setDescriptionPt(rawBio);
+          setDescriptionEn(translatePtToEn(rawBio));
+        } else {
+          setDescriptionEn(rawBio);
+          setDescriptionPt(translateEnToPt(rawBio));
+        }
+        setDescription(rawBio);
+      } else {
+        setDescription('');
+        setDescriptionPt('');
+        setDescriptionEn('');
       }
       if (initialProduct.sku) setGeneralSku(initialProduct.sku);
 
@@ -450,6 +501,9 @@ export function ProductVariantMatrixForm({
       setTitle('');
       setSlug('');
       setDescription('');
+      setDescriptionPt('');
+      setDescriptionEn('');
+      setCupsType('removable');
       setComposition('');
       setMediaList([]);
       setColors([{ name: 'Preto Ônix', hex: '#0A0A0A' }]);
@@ -895,6 +949,11 @@ export function ProductVariantMatrixForm({
       return;
     }
 
+    if (!cupsType) {
+      alert('Por favor, informe obrigatoriamente se a peça possui bojo (removível, fixo ou sem bojo).');
+      return;
+    }
+
     const activeColorNames = new Set(colors.map((c) => c.name.trim().toLowerCase()));
     const activeSizeNames = new Set(selectedSizes.map((s) => s.trim().toUpperCase()));
 
@@ -1015,6 +1074,23 @@ export function ProductVariantMatrixForm({
           : numCost,
       }));
 
+      let finalDescEn = descriptionEn.trim();
+      let finalDescPt = descriptionPt.trim();
+
+      if (!finalDescEn && !finalDescPt && description.trim()) {
+        if (isPortugueseText(description.trim())) {
+          finalDescPt = description.trim();
+          finalDescEn = translatePtToEn(description.trim());
+        } else {
+          finalDescEn = description.trim();
+          finalDescPt = translateEnToPt(description.trim());
+        }
+      } else if (finalDescEn && !finalDescPt) {
+        finalDescPt = translateEnToPt(finalDescEn);
+      } else if (finalDescPt && !finalDescEn) {
+        finalDescEn = translatePtToEn(finalDescPt);
+      }
+
       const payload = {
         id: initialProduct?.id,
         title,
@@ -1023,7 +1099,12 @@ export function ProductVariantMatrixForm({
         supplier_id: supplierId || null,
         subcategory,
         tags,
-        description,
+        cups_type: cupsType,
+        removable_cups: cupsType === 'removable',
+        has_cups: cupsType === 'removable' || cupsType === 'fixed',
+        description: finalDescEn || finalDescPt || description,
+        description_en: finalDescEn || description,
+        description_pt: finalDescPt || translateEnToPt(finalDescEn || description),
         composition,
         sizeGuide,
         cost_price: numCost,
@@ -1090,6 +1171,60 @@ export function ProductVariantMatrixForm({
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Tradução automática em 1 clique especializada em activewear (Inglês ⇄ Português)
+  const handleAutoTranslateDescription = () => {
+    if (descTab === 'en' && descriptionEn.trim()) {
+      const translated = translateEnToPt(descriptionEn);
+      setDescriptionPt(translated);
+      setFeedback({
+        type: 'success',
+        message: '✓ Descrição traduzida para Português com terminologia esportiva!',
+      });
+      setTimeout(() => setFeedback(null), 3500);
+    } else if (descTab === 'pt' && descriptionPt.trim()) {
+      const translated = translatePtToEn(descriptionPt);
+      setDescriptionEn(translated);
+      setDescription(translated);
+      setFeedback({
+        type: 'success',
+        message: '✓ Descrição traduzida para Inglês com terminologia esportiva!',
+      });
+      setTimeout(() => setFeedback(null), 3500);
+    } else if (descriptionEn.trim()) {
+      const translated = translateEnToPt(descriptionEn);
+      setDescriptionPt(translated);
+      setFeedback({
+        type: 'success',
+        message: '✓ Descrição traduzida para Português!',
+      });
+      setTimeout(() => setFeedback(null), 3500);
+    } else if (descriptionPt.trim()) {
+      const translated = translatePtToEn(descriptionPt);
+      setDescriptionEn(translated);
+      setDescription(translated);
+      setFeedback({
+        type: 'success',
+        message: '✓ Descrição traduzida para Inglês!',
+      });
+      setTimeout(() => setFeedback(null), 3500);
+    } else if (description.trim()) {
+      if (isPortugueseText(description)) {
+        setDescriptionPt(description);
+        setDescriptionEn(translatePtToEn(description));
+      } else {
+        setDescriptionEn(description);
+        setDescriptionPt(translateEnToPt(description));
+      }
+      setFeedback({
+        type: 'success',
+        message: '✓ Descrição traduzida para ambos os idiomas!',
+      });
+      setTimeout(() => setFeedback(null), 3500);
+    } else {
+      alert('Por favor, digite ao menos uma descrição em inglês ou português para traduzir.');
     }
   };
 
@@ -1631,18 +1766,191 @@ export function ProductVariantMatrixForm({
               </div>
             </div>
 
-            {/* Descrição Detalhada */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
-                Descrição Detalhada do Produto
-              </label>
-              <textarea
-                rows={4}
-                placeholder="Descreva o caimento, a compressão do tecido, a sustentação e os diferenciais esportivos da peça..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full p-3 border-2 border-deep-black font-medium text-xs focus:outline-none focus:border-gold"
-              />
+            {/* SELEÇÃO OBRIGATÓRIA DE BOJO (MANDATORY BRA CUPS FIELD) */}
+            <div className="p-4 bg-amber-50/60 border-2 border-deep-black space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-gold" />
+                  <span>Possui Bojo na Peça? * (Campo Obrigatório)</span>
+                </label>
+                <span className="text-[9px] font-black uppercase bg-deep-black text-gold px-2 py-0.5">
+                  OBRIGATÓRIO
+                </span>
+              </div>
+              <p className="text-[10px] text-deep-black/70">
+                Selecione obrigatoriamente uma opção para que o cliente veja com clareza na vitrine e na página do produto se a peça acompanha bojo, é fixa ou sem bojo.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* 1. Bojo Removível */}
+                <button
+                  type="button"
+                  onClick={() => setCupsType('removable')}
+                  className={`p-3 text-left border-2 transition flex flex-col justify-between gap-1.5 ${
+                    cupsType === 'removable'
+                      ? 'border-deep-black bg-deep-black text-white ring-2 ring-gold shadow-sm'
+                      : 'border-deep-black/30 hover:border-deep-black bg-white text-deep-black'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider">
+                      SIM • Removível
+                    </span>
+                    {cupsType === 'removable' ? (
+                      <CheckCircle2 className="w-4 h-4 text-gold shrink-0" />
+                    ) : (
+                      <span className="w-3 h-3 rounded-full border border-deep-black/30" />
+                    )}
+                  </div>
+                  <span className={`text-[9.5px] leading-snug ${cupsType === 'removable' ? 'text-white/80' : 'text-deep-black/60'}`}>
+                    Acompanha bojo removível (padrão para Tops, Rompers e Macacões).
+                  </span>
+                  <span className={`text-[8.5px] font-black uppercase tracking-wider ${cupsType === 'removable' ? 'text-gold' : 'text-deep-black/40'}`}>
+                    [Removable Cups]
+                  </span>
+                </button>
+
+                {/* 2. Bojo Fixo */}
+                <button
+                  type="button"
+                  onClick={() => setCupsType('fixed')}
+                  className={`p-3 text-left border-2 transition flex flex-col justify-between gap-1.5 ${
+                    cupsType === 'fixed'
+                      ? 'border-deep-black bg-deep-black text-white ring-2 ring-gold shadow-sm'
+                      : 'border-deep-black/30 hover:border-deep-black bg-white text-deep-black'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider">
+                      SIM • Fixo Anatômico
+                    </span>
+                    {cupsType === 'fixed' ? (
+                      <CheckCircle2 className="w-4 h-4 text-gold shrink-0" />
+                    ) : (
+                      <span className="w-3 h-3 rounded-full border border-deep-black/30" />
+                    )}
+                  </div>
+                  <span className={`text-[9.5px] leading-snug ${cupsType === 'fixed' ? 'text-white/80' : 'text-deep-black/60'}`}>
+                    Bojo costurado e embutido diretamente na estrutura da peça.
+                  </span>
+                  <span className={`text-[8.5px] font-black uppercase tracking-wider ${cupsType === 'fixed' ? 'text-gold' : 'text-deep-black/40'}`}>
+                    [Built-in Fixed Cups]
+                  </span>
+                </button>
+
+                {/* 3. Sem Bojo */}
+                <button
+                  type="button"
+                  onClick={() => setCupsType('none')}
+                  className={`p-3 text-left border-2 transition flex flex-col justify-between gap-1.5 ${
+                    cupsType === 'none'
+                      ? 'border-deep-black bg-deep-black text-white ring-2 ring-gold shadow-sm'
+                      : 'border-deep-black/30 hover:border-deep-black bg-white text-deep-black'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider">
+                      NÃO • Sem Bojo
+                    </span>
+                    {cupsType === 'none' ? (
+                      <CheckCircle2 className="w-4 h-4 text-gold shrink-0" />
+                    ) : (
+                      <span className="w-3 h-3 rounded-full border border-deep-black/30" />
+                    )}
+                  </div>
+                  <span className={`text-[9.5px] leading-snug ${cupsType === 'none' ? 'text-white/80' : 'text-deep-black/60'}`}>
+                    Peça com forro duplo anatômico de sustentação natural.
+                  </span>
+                  <span className={`text-[8.5px] font-black uppercase tracking-wider ${cupsType === 'none' ? 'text-gold' : 'text-deep-black/40'}`}>
+                    [Unpadded / Double Layer]
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* DESCRIÇÃO BILÍNGUE (100% INGLÊS + 100% PORTUGUÊS) */}
+            <div className="p-4 bg-gray-50 border-2 border-deep-black space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-deep-black/10 pb-2">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-gold" />
+                    <span>Descrição da Peça (Bilingual EN / PT)</span>
+                  </label>
+                  <span className="text-[9px] text-deep-black/60">
+                    O site oficial opera 100% em inglês por padrão e 100% em português ao clicar no botão PT.
+                  </span>
+                </div>
+
+                {/* Botão de Tradução Automática 1-Clique */}
+                <button
+                  type="button"
+                  onClick={handleAutoTranslateDescription}
+                  className="px-3 py-1.5 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-[10px] font-black uppercase tracking-wider transition border border-deep-black flex items-center gap-1.5 self-start sm:self-auto shadow-xs"
+                  title="Traduz automaticamente entre Inglês e Português usando termos técnicos de moda fitness"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-deep-black" />
+                  <span>🌐 Traduzir Automaticamente</span>
+                </button>
+              </div>
+
+              {/* Seletor de Aba de Idioma da Descrição */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDescTab('en')}
+                  className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider border-2 transition ${
+                    descTab === 'en'
+                      ? 'bg-deep-black text-white border-deep-black ring-1 ring-gold'
+                      : 'bg-white text-deep-black/70 border-deep-black/20 hover:border-deep-black'
+                  }`}
+                >
+                  🇺🇸 Descrição em Inglês (Storefront EN) {descriptionEn.trim() && '✓'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDescTab('pt')}
+                  className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider border-2 transition ${
+                    descTab === 'pt'
+                      ? 'bg-deep-black text-white border-deep-black ring-1 ring-gold'
+                      : 'bg-white text-deep-black/70 border-deep-black/20 hover:border-deep-black'
+                  }`}
+                >
+                  🇧🇷 Descrição em Português (Loja PT) {descriptionPt.trim() && '✓'}
+                </button>
+              </div>
+
+              {descTab === 'en' ? (
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center text-[9px] font-bold text-deep-black/60 uppercase">
+                    <span>English Description (Displayed on US storefront by default):</span>
+                    <span>{descriptionEn.length} caracteres</span>
+                  </div>
+                  <textarea
+                    rows={4}
+                    placeholder="Enter piece description in English (e.g., Crafted with buttery-soft high-compression fabric, 100% squat-proof, removable cups...)"
+                    value={descriptionEn}
+                    onChange={(e) => {
+                      setDescriptionEn(e.target.value);
+                      setDescription(e.target.value);
+                    }}
+                    className="w-full p-3 border-2 border-deep-black font-medium text-xs bg-white focus:outline-none focus:border-gold"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center text-[9px] font-bold text-deep-black/60 uppercase">
+                    <span>Descrição em Português (Exibida quando o cliente clica no botão PT):</span>
+                    <span>{descriptionPt.length} caracteres</span>
+                  </div>
+                  <textarea
+                    rows={4}
+                    placeholder="Descreva a peça em Português (ex: Confeccionado em malha nobre de poliamida com toque amanteigado, zero transparência, bojo removível...)"
+                    value={descriptionPt}
+                    onChange={(e) => setDescriptionPt(e.target.value)}
+                    className="w-full p-3 border-2 border-deep-black font-medium text-xs bg-white focus:outline-none focus:border-gold"
+                  />
+                </div>
+              )}
             </div>
           </div>
 

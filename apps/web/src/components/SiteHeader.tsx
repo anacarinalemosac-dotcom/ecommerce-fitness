@@ -67,11 +67,11 @@ export function SiteHeader() {
           {/* Slogan & Frete Fixo Dinâmico */}
           <div className="flex items-center gap-4 text-center sm:text-left flex-wrap justify-center">
             <span className="flex items-center gap-1.5 text-gold font-black">
-              <Sparkles className="w-3.5 h-3.5 text-gold" /> {siteInfo.tickerSlogan || t('ticker.slogan')}
+              <Sparkles className="w-3.5 h-3.5 text-gold" /> {lang === 'pt' ? t('ticker.slogan') : (siteInfo.tickerSlogan || t('ticker.slogan'))}
             </span>
             <span className="hidden md:inline text-white/30">•</span>
             <span className="text-white/90 font-medium">
-              {siteInfo.tickerShipping || t('ticker.shipping')}
+              {lang === 'pt' ? t('ticker.shipping') : (siteInfo.tickerShipping || t('ticker.shipping'))}
             </span>
             <span className="hidden lg:inline text-white/30">•</span>
             <span className="hidden lg:inline text-gold font-black">

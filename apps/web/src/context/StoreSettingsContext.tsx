@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { translateEnToPt, translatePtToEn, isPortugueseText } from '../lib/translateFitness';
 
 export interface AdminUser {
   isLoggedIn: boolean;
@@ -115,6 +116,8 @@ export interface ProductItem {
   productionDays: number;
   zeroTransparency: boolean;
   removableCups: boolean;
+  hasCups?: boolean;
+  cupsType?: 'removable' | 'fixed' | 'none';
   sku: string;
   barcode: string;
   variants?: any[];
@@ -684,15 +687,40 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             sellingPrice = pCompare;
           }
 
-          const productBio = meta.bio || (typeof p.description === 'string' && !p.description.startsWith('{') ? p.description : '') || '';
+          const rawBio = meta.bio || (typeof p.description === 'string' && !p.description.startsWith('{') ? p.description : '') || '';
+          let finalEn = meta.description_en || '';
+          let finalPt = meta.description_pt || '';
+
+          if (!finalEn && !finalPt && rawBio) {
+            if (isPortugueseText(rawBio)) {
+              finalPt = rawBio;
+              finalEn = translatePtToEn(rawBio);
+            } else {
+              finalEn = rawBio;
+              finalPt = translateEnToPt(rawBio);
+            }
+          } else if (finalEn && !finalPt) {
+            finalPt = translateEnToPt(finalEn);
+          } else if (finalPt && !finalEn) {
+            finalEn = translatePtToEn(finalPt);
+          }
+
+          // Determina tipo de bojo com precisão
+          const cupsType: 'removable' | 'fixed' | 'none' =
+            meta.cups_type ||
+            (meta.removable_cups !== undefined
+              ? (meta.removable_cups ? 'removable' : 'none')
+              : meta.has_cups !== undefined
+              ? (meta.has_cups ? 'fixed' : 'none')
+              : 'removable');
 
           return {
             id: p.id,
             title: p.title,
             slug: p.slug,
-            description: productBio,
-            descriptionPt: productBio,
-            descriptionEn: productBio,
+            description: finalEn || finalPt || rawBio,
+            descriptionPt: finalPt || translateEnToPt(finalEn || rawBio),
+            descriptionEn: finalEn || translatePtToEn(finalPt || rawBio),
             categoryPt: categoryKey === 'tops' ? 'TOPS' :
                         categoryKey === 'jumpsuits' ? 'MACACÕES' :
                         categoryKey === 'rompers' ? 'MACAQUINHOS' :
@@ -730,7 +758,9 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             allowBackorder: variants.some((v: any) => v.allow_backorder),
             productionDays: firstVar.estimated_production_days || 7,
             zeroTransparency: true,
-            removableCups: true,
+            removableCups: cupsType === 'removable',
+            hasCups: cupsType === 'removable' || cupsType === 'fixed',
+            cupsType: cupsType,
             sku: firstVar.sku || 'ANA-001',
             barcode: firstVar.barcode || '789100000001',
             variants,

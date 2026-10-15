@@ -6,6 +6,7 @@ import { useLanguage } from '../../../context/LanguageContext';
 import { useStoreSettings } from '../../../context/StoreSettingsContext';
 import { trackEvent } from '../../../lib/tracking';
 import ProductShareModal from '../../../components/ProductShareModal';
+import { translateEnToPt, translatePtToEn, isPortugueseText } from '../../../lib/translateFitness';
 import {
   Star,
   ShieldCheck,
@@ -58,6 +59,7 @@ const CATALOG_ITEMS: Record<string, any> = {
     categoryEn: 'ROMPERS • HIGH PERFORMANCE',
     price: 44.9,
     originalPrice: 49.9,
+    cupsType: 'removable',
     descriptionPt:
       'O Samanta Romper é a definição de liberdade e elegância nos treinos. Desenvolvido em malha nobre de poliamida com toque amanteigado e elasticidade 4-way stretch. Conta com suporte reforçado, zero transparência e opção para bojo removível para o ajuste perfeito.',
     descriptionEn:
@@ -95,6 +97,7 @@ const CATALOG_ITEMS: Record<string, any> = {
     categoryPt: 'TOPS • ALTA SUSTENTAÇÃO',
     categoryEn: 'TOPS • MAXIMUM SUPPORT',
     price: 34.9,
+    cupsType: 'removable',
     descriptionPt:
       'Top Bailarina Best Seller com decote delicado nas costas e sustentação perfeita para musculação, corrida e pilates. Confeccionado com bojo removível e tecnologia Dry-Fit respirável.',
     descriptionEn:
@@ -124,6 +127,7 @@ const CATALOG_ITEMS: Record<string, any> = {
     categoryEn: 'SETS • MADE-TO-ORDER EXCLUSIVE',
     price: 39.9,
     originalPrice: 49.9,
+    cupsType: 'removable',
     descriptionPt:
       'Conjunto completo de calça legging cós anatômico + top de sustentação. Atualmente esgotado para pronta entrega e disponível exclusivamente sob encomenda sob medida na nossa confecção (prazo de até 30 dias para receber sua mercadoria. Nossa equipe entrará em contato para esclarecer todas as informações com relação ao prazo).',
     descriptionEn:
@@ -246,6 +250,20 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       });
     }
 
+    const finalEn =
+      dynamicProduct.descriptionEn ||
+      (dynamicProduct.description && !isPortugueseText(dynamicProduct.description) ? dynamicProduct.description : '') ||
+      translatePtToEn(dynamicProduct.descriptionPt || dynamicProduct.description || '');
+
+    const finalPt =
+      dynamicProduct.descriptionPt ||
+      (dynamicProduct.description && isPortugueseText(dynamicProduct.description) ? dynamicProduct.description : '') ||
+      translateEnToPt(dynamicProduct.descriptionEn || dynamicProduct.description || '');
+
+    const resolvedCupsType =
+      dynamicProduct.cupsType ||
+      (dynamicProduct.removableCups ? 'removable' : dynamicProduct.hasCups ? 'fixed' : 'none');
+
     productData = {
       title: dynamicProduct.title,
       categoryPt: `${dynamicProduct.categoryPt} • ALTA PERFORMANCE`,
@@ -256,8 +274,9 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       badgePt: dynamicProduct.badgePt || 'BEST SELLER',
       badgeEn: dynamicProduct.badgeEn || 'BEST SELLER',
       badgeStyle: dynamicProduct.badgeStyle || 'bg-gold text-deep-black',
-      descriptionPt: dynamicProduct.description || dynamicProduct.descriptionPt || (dynamicProduct.fitPt && dynamicProduct.fitPt.length > 30 ? dynamicProduct.fitPt : `${dynamicProduct.title} com modelagem de alta compressão e corte anatômico da Ana Fitness Wear. Tecido testado e aprovado com 100% zero transparência e toque amanteigado.`),
-      descriptionEn: dynamicProduct.description || dynamicProduct.descriptionEn || (dynamicProduct.fitEn && dynamicProduct.fitEn.length > 30 ? dynamicProduct.fitEn : `${dynamicProduct.title} crafted with anatomical contour support and 4-way stretch fabric. Lab-verified zero see-through athletic luxury fit.`),
+      cupsType: resolvedCupsType,
+      descriptionPt: finalPt || `${dynamicProduct.title} com modelagem de alta compressão e corte anatômico da Ana Fitness Wear. Tecido testado e aprovado com 100% zero transparência e toque amanteigado.`,
+      descriptionEn: finalEn || `${dynamicProduct.title} crafted with anatomical contour support and 4-way stretch fabric. Lab-verified zero see-through athletic luxury fit.`,
       media: mediaList,
       variants: variantsList,
     };
@@ -523,7 +542,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   <span>{lang === 'pt' ? 'SOBRE A PEÇA' : 'ABOUT THIS PIECE'}</span>
                 </span>
                 <span className="text-[9px] font-black uppercase text-gold bg-deep-black px-2 py-0.5">
-                  100% ZERO TRANSPARÊNCIA
+                  {lang === 'pt' ? '100% ZERO TRANSPARÊNCIA' : '100% SQUAT-PROOF'}
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-deep-black/85 font-medium leading-relaxed uppercase tracking-wide">
@@ -550,7 +569,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 ))}
               </div>
               <span className="text-xs font-black uppercase tracking-wider text-deep-black">
-                5.0 (VERIFIED REVIEWS)
+                5.0 ({lang === 'pt' ? 'AVALIAÇÕES VERIFICADAS' : 'VERIFIED REVIEWS'})
               </span>
             </div>
 
@@ -576,11 +595,35 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           <div className="p-3.5 bg-deep-black text-white border border-gold flex items-center justify-between text-xs font-bold uppercase tracking-wider">
             <div className="flex items-center gap-2 text-gold">
               <Truck className="w-4 h-4 text-gold shrink-0" />
-              <span>FLAT RATE SHIPPING: $9.99 (ALL US)</span>
+              <span>{lang === 'pt' ? 'FRETE FIXO: $9.99 (TODOS OS EUA)' : 'FLAT RATE SHIPPING: $9.99 (ALL US)'}</span>
             </div>
             <Link href="/politica-de-envio" className="text-[10px] text-white/70 hover:text-gold underline">
               {lang === 'pt' ? 'VER REGRAS' : 'DETAILS'}
             </Link>
+          </div>
+
+          {/* Indicador Oficial de Bojo */}
+          <div className="p-3 bg-neutral-50 border-2 border-deep-black/15 flex items-center justify-between gap-3 text-xs uppercase tracking-wider shadow-2xs">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-gold shrink-0" />
+              <span className="font-bold text-deep-black/60">{lang === 'pt' ? 'BOJO:' : 'BRA CUPS:'}</span>
+              <span className="font-black text-deep-black">
+                {productData.cupsType === 'removable'
+                  ? (lang === 'pt' ? 'COM BOJO REMOVÍVEL' : 'INCLUDES REMOVABLE CUPS')
+                  : productData.cupsType === 'fixed'
+                  ? (lang === 'pt' ? 'BOJO FIXO ANATÔMICO' : 'BUILT-IN FIXED CUPS')
+                  : (lang === 'pt' ? 'SEM BOJO (FORRO DUPLO)' : 'UNPADDED (DOUBLE LINED)')}
+              </span>
+            </div>
+            <span className={`text-[9px] font-black px-2 py-0.5 ${
+              productData.cupsType === 'none'
+                ? 'bg-neutral-200 text-deep-black'
+                : 'bg-gold text-deep-black'
+            }`}>
+              {productData.cupsType === 'none'
+                ? (lang === 'pt' ? 'SEM BOJO' : 'NO CUPS')
+                : (lang === 'pt' ? 'INCLUSO' : 'INCLUDED')}
+            </span>
           </div>
 
           {/* Seletor de Cores com Swatches Hexadecimais e Nome da Cor */}
@@ -883,15 +926,15 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           <div className="grid grid-cols-3 gap-2 pt-4 border-t border-deep-black/10 text-center text-[10px] font-bold uppercase tracking-wider text-deep-black/70">
             <div className="space-y-1">
               <Truck className="w-4 h-4 mx-auto text-gold" />
-              <span>Flat $9.99</span>
+              <span>{lang === 'pt' ? 'Frete $9.99' : 'Flat $9.99'}</span>
             </div>
             <div className="space-y-1">
               <RotateCcw className="w-4 h-4 mx-auto text-gold" />
-              <span>30-Day Returns</span>
+              <span>{lang === 'pt' ? '30 Dias Troca' : '30-Day Returns'}</span>
             </div>
             <div className="space-y-1">
               <ShieldCheck className="w-4 h-4 mx-auto text-gold" />
-              <span>Zero See-Through</span>
+              <span>{lang === 'pt' ? 'Zero Transparência' : 'Zero See-Through'}</span>
             </div>
           </div>
         </div>
@@ -961,8 +1004,16 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
                 {[
                   {
-                    title: lang === 'pt' ? 'BOJO REMOVÍVEL' : 'REMOVABLE BRA CUPS',
-                    desc: lang === 'pt' ? 'Modelos com suporte versátil para personalizar o caimento do busto conforme sua preferência.' : 'Built-in slots allowing effortless insertion or removal of padding.',
+                    title: productData.cupsType === 'fixed'
+                      ? (lang === 'pt' ? 'BOJO FIXO ANATÔMICO' : 'BUILT-IN FIXED CUPS')
+                      : productData.cupsType === 'none'
+                      ? (lang === 'pt' ? 'SEM BOJO (FORRO DUPLO)' : 'UNPADDED (DOUBLE LINED)')
+                      : (lang === 'pt' ? 'BOJO REMOVÍVEL INCLUSO' : 'REMOVABLE BRA CUPS'),
+                    desc: productData.cupsType === 'fixed'
+                      ? (lang === 'pt' ? 'Bojo embutido de sustentação anatômica que não sai do lugar durante treinos intensos.' : 'Built-in contour cups engineered to stay perfectly positioned during movement.')
+                      : productData.cupsType === 'none'
+                      ? (lang === 'pt' ? 'Confeccionada sem bojo, com forro duplo de alta compressão para suporte natural e conforto.' : 'Crafted without padding, featuring double-layer compression for natural contour and support.')
+                      : (lang === 'pt' ? 'Acompanha bojo removível para usar com ou sem, personalizando o caimento e o suporte.' : 'Built-in slots allowing effortless insertion or removal of padding for customizable coverage.'),
                     icon: Sparkles,
                   },
                   {

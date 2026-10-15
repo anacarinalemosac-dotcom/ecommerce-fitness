@@ -393,7 +393,7 @@ export default function HomePage() {
         <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-12 w-full text-white py-20 space-y-6">
           <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 bg-white/10 backdrop-blur-md border border-gold/40 text-[10px] font-black uppercase tracking-widest text-gold shadow-sm">
             <span className="w-2 h-2 rounded-full bg-gold animate-pulse" />
-            <span>{t('hero.badge')} • FLAT ${siteInfo.flatShippingRate?.toFixed(2) || '9.99'} US SHIPPING</span>
+            <span>{t('hero.badge')} • {lang === 'pt' ? 'FRETE FIXO $' : 'FLAT $'}{siteInfo.flatShippingRate?.toFixed(2) || '9.99'}{lang === 'pt' ? ' P/ TODOS OS EUA' : ' US SHIPPING'}</span>
           </div>
 
           <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black uppercase tracking-tighter leading-[0.9] max-w-5xl text-white">
@@ -404,9 +404,9 @@ export default function HomePage() {
           </h1>
 
           <p className="text-xs sm:text-sm md:text-base text-white/85 uppercase tracking-widest max-w-2xl font-bold leading-relaxed">
-            {siteInfo.heroSubtitle || (lang === 'pt'
+            {lang === 'pt'
               ? 'Moda fitness de alta performance sediada em Massachusetts. Zero transparência testada em agachamentos, compressão anatômica 4-way e frete fixo de $9.99 para todos os 50 estados dos EUA.'
-              : 'High-performance athletic luxury based in Massachusetts. Lab-verified zero see-through, 4-way anatomical sculpt compression, and flat $9.99 shipping across all 50 US States.')}
+              : (siteInfo.heroSubtitle || 'High-performance athletic luxury based in Massachusetts. Lab-verified zero see-through, 4-way anatomical sculpt compression, and flat $9.99 shipping across all 50 US States.')}
           </p>
 
           {/* Botões Duplos Gymshark Action */}
@@ -436,19 +436,19 @@ export default function HomePage() {
         <div className="absolute bottom-0 left-0 right-0 z-10 bg-deep-black/90 backdrop-blur-md border-t border-white/10 py-3.5 px-6">
           <div className="max-w-7xl mx-auto flex items-center justify-between overflow-x-auto gap-6 text-[10px] font-black uppercase tracking-widest text-white/80 scrollbar-none">
             <span className="flex items-center gap-2 shrink-0 text-gold">
-              <ShieldCheck className="w-4 h-4 text-gold" /> 100% SQUAT-PROOF (ZERO SEE-THROUGH)
+              <ShieldCheck className="w-4 h-4 text-gold" /> {lang === 'pt' ? '100% ZERO TRANSPARÊNCIA (À PROVA DE AGACHAMENTO)' : '100% SQUAT-PROOF (ZERO SEE-THROUGH)'}
             </span>
             <span className="hidden sm:inline text-white/20">•</span>
             <span className="flex items-center gap-2 shrink-0 text-white">
-              <Truck className="w-4 h-4 text-gold" /> FLAT RATE $9.99 US SHIPPING (ALL 50 STATES)
+              <Truck className="w-4 h-4 text-gold" /> {lang === 'pt' ? 'FRETE FIXO $9.99 (TODOS OS 50 ESTADOS DOS EUA)' : 'FLAT RATE $9.99 US SHIPPING (ALL 50 STATES)'}
             </span>
             <span className="hidden sm:inline text-white/20">•</span>
             <span className="flex items-center gap-2 shrink-0 text-gold">
-              <RotateCcw className="w-4 h-4 text-gold" /> 30-DAY HASSLE-FREE RETURNS
+              <RotateCcw className="w-4 h-4 text-gold" /> {lang === 'pt' ? '30 DIAS PARA TROCA OU DEVOLUÇÃO' : '30-DAY HASSLE-FREE RETURNS'}
             </span>
             <span className="hidden md:inline text-white/20">•</span>
             <span className="hidden md:flex items-center gap-2 shrink-0 text-white">
-              <Sparkles className="w-4 h-4 text-gold" /> CRAFTED IN LEOMINSTER, MA
+              <Sparkles className="w-4 h-4 text-gold" /> {lang === 'pt' ? 'ATELIER EM LEOMINSTER, MA' : 'CRAFTED IN LEOMINSTER, MA'}
             </span>
           </div>
         </div>
@@ -464,7 +464,7 @@ export default function HomePage() {
               {t('cat.title')}
             </span>
             <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-deep-black mt-0.5">
-              SHOP BY SILHOUETTE
+              {lang === 'pt' ? 'ESCOLHA POR MODELAGEM' : 'SHOP BY SILHOUETTE'}
             </h2>
           </div>
           <button
@@ -523,13 +523,13 @@ export default function HomePage() {
                 {t('prod.featured')}
               </span>
               <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-deep-black">
-                CORE COLLECTION
+                {lang === 'pt' ? 'COLEÇÃO PRINCIPAL' : 'CORE COLLECTION'}
               </h2>
             </div>
             
             <div className="text-[11px] font-black uppercase tracking-wider text-gold bg-deep-black px-4 py-2 border border-gold inline-flex items-center gap-2 self-start md:self-auto shadow-sm">
               <Truck className="w-3.5 h-3.5 text-gold" />
-              <span>FLAT RATE: $9.99 SHIPPING (ALL US)</span>
+              <span>{lang === 'pt' ? 'FRETE FIXO: $9.99 (TODOS OS EUA)' : 'FLAT RATE: $9.99 SHIPPING (ALL US)'}</span>
             </div>
           </div>
 

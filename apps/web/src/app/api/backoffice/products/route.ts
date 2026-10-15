@@ -185,7 +185,12 @@ export async function POST(req: NextRequest) {
       title,
       slug,
       description,
+      description_pt,
+      description_en,
       composition,
+      cups_type,
+      removable_cups,
+      has_cups,
       sizeGuide,
       tags,
       subcategory,
@@ -262,9 +267,17 @@ export async function POST(req: NextRequest) {
     }
     const finalGalleryImages = Array.from(new Set(rawImagesList.filter((u) => u && !u.startsWith('data:'))));
 
-    // Empacota metadados detalhados (composição, tabela de medidas, tags, subcategoria, galeria de fotos, cores, tamanhos e variações de backup)
+    // Determina o tipo de bojo
+    const finalCupsType = cups_type || (removable_cups ? 'removable' : has_cups ? 'fixed' : 'none');
+
+    // Empacota metadados detalhados (composição, bojo, descrições bilíngues, tabela de medidas, tags, subcategoria, galeria de fotos, cores, tamanhos e variações de backup)
     const metadataPayload = {
-      bio: description || '',
+      bio: description_en || description || description_pt || '',
+      description_en: description_en || description || '',
+      description_pt: description_pt || '',
+      cups_type: finalCupsType,
+      removable_cups: finalCupsType === 'removable',
+      has_cups: finalCupsType === 'removable' || finalCupsType === 'fixed',
       composition: composition || '',
       sizeGuide: sizeGuide || '',
       tags: Array.isArray(tags) ? tags : [],
