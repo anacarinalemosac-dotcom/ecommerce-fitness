@@ -88,7 +88,22 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { visitorId, page, pageTitle, device, deviceType, clientDurationSeconds, city, region, country, referrer } = body;
+    const { visitorId, page, pageTitle, device, deviceType, clientDurationSeconds, city, region, country, referrer, isAdmin } = body;
+
+    const adminCookie = req.cookies.get('ana_is_admin')?.value;
+    const rawCookies = req.headers.get('cookie') || '';
+    const hasAdminCookie = adminCookie === '1' || rawCookies.includes('ana_is_admin=1');
+
+    const isErpRoute = page && (
+      page.startsWith('/backoffice') ||
+      page.startsWith('/admin') ||
+      page.startsWith('/pos') ||
+      page.startsWith('/vendedora')
+    );
+
+    if (isAdmin || hasAdminCookie || isErpRoute || (typeof visitorId === 'string' && visitorId.includes('admin'))) {
+      return NextResponse.json({ success: true, ignored: true, reason: 'Admin/ERP session ignored' });
+    }
 
     if (!visitorId) {
       return NextResponse.json({ error: 'visitorId é obrigatório' }, { status: 400 });

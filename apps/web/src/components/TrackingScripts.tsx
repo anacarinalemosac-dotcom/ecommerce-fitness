@@ -10,6 +10,11 @@ export function TrackingScripts() {
   const { siteInfo } = useStoreSettings();
   const pathname = usePathname();
 
+  // Não dispara rastreadores externos em rotas de ERP/Backoffice/POS
+  if (pathname && (pathname.startsWith('/backoffice') || pathname.startsWith('/admin') || pathname.startsWith('/pos') || pathname.startsWith('/vendedora'))) {
+    return null;
+  }
+
   // Dispara PageView a cada mudança de rota
   useEffect(() => {
     trackEvent.pageView(pathname);

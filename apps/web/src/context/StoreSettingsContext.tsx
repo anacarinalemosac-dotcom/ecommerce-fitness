@@ -770,7 +770,15 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const savedUser = localStorage.getItem('ana_admin_session');
       if (savedUser) {
-        setAdminUser(JSON.parse(savedUser));
+        const parsed = JSON.parse(savedUser);
+        setAdminUser(parsed);
+        if (parsed?.isLoggedIn) {
+          try {
+            document.cookie = "ana_is_admin=1; path=/; max-age=31536000; SameSite=Lax";
+            sessionStorage.setItem('ana_is_admin', 'true');
+            localStorage.setItem('ana_is_admin', 'true');
+          } catch (_) {}
+        }
       }
 
       const savedInfo = localStorage.getItem('ana_site_info');
@@ -869,6 +877,9 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       setAdminUser(user);
       try {
         localStorage.setItem('ana_admin_session', JSON.stringify(user));
+        document.cookie = "ana_is_admin=1; path=/; max-age=31536000; SameSite=Lax";
+        sessionStorage.setItem('ana_is_admin', 'true');
+        localStorage.setItem('ana_is_admin', 'true');
       } catch (e) {}
       return true;
     }
@@ -892,6 +903,9 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     setAdminUser(user);
     try {
       localStorage.setItem('ana_admin_session', JSON.stringify(user));
+      document.cookie = "ana_is_admin=1; path=/; max-age=31536000; SameSite=Lax";
+      sessionStorage.setItem('ana_is_admin', 'true');
+      localStorage.setItem('ana_is_admin', 'true');
     } catch (e) {}
     return true;
   };
@@ -913,6 +927,9 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     setAdminUser(user);
     try {
       localStorage.removeItem('ana_admin_session');
+      localStorage.removeItem('ana_is_admin');
+      sessionStorage.removeItem('ana_is_admin');
+      document.cookie = "ana_is_admin=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
     } catch (e) {}
   };
 

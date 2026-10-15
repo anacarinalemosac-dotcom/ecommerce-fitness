@@ -2,18 +2,68 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { useStoreSettings } from '../context/StoreSettingsContext';
+
+// Rotas administrativas e do ERP que NUNCA devem ser contabilizadas como visitantes
+const ERP_ADMIN_ROUTES = ['/backoffice', '/admin', '/pos', '/vendedora'];
+
+/**
+ * Verifica se a aba/navegador atual pertence à Ana Carina, Mayne ou qualquer operador do ERP/Backoffice
+ */
+export function isErpOrAdminActive(adminUserLoggedIn?: boolean): boolean {
+  if (adminUserLoggedIn) return true;
+  if (typeof window === 'undefined') return false;
+
+  try {
+    // 1. Verifica se há sessão de admin salva no localStorage
+    const saved = localStorage.getItem('ana_admin_session');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && (parsed.isLoggedIn || parsed.role === 'owner' || parsed.role === 'manager')) {
+        return true;
+      }
+    }
+
+    // 2. Cookie de administrador ativo
+    if (document.cookie && document.cookie.includes('ana_is_admin=1')) {
+      return true;
+    }
+
+    // 3. Flags de controle em localStorage ou sessionStorage
+    if (
+      localStorage.getItem('ana_is_admin') === 'true' ||
+      sessionStorage.getItem('ana_is_admin') === 'true' ||
+      sessionStorage.getItem('ana_pos_unlocked') === 'true'
+    ) {
+      return true;
+    }
+  } catch (_) {}
+
+  return false;
+}
 
 export function LiveVisitorTracker() {
   const pathname = usePathname();
+  const { adminUser } = useStoreSettings();
   const lastPathRef = useRef<string>('');
 
   useEffect(() => {
-    // Não rastreia rotas internas do backoffice para não poluir os visitantes com a própria Ana Carina
-    if (pathname && (pathname.startsWith('/backoffice') || pathname.startsWith('/admin'))) {
+    // 1. Não rastreia rotas internas do ERP, Backoffice, PDV e portal da vendedora
+    if (pathname && ERP_ADMIN_ROUTES.some((route) => pathname.startsWith(route))) {
       return;
     }
 
-    // Identificador único da sessão do visitante (preservado enquanto a aba/navegador estiver aberto)
+    // 2. Se o usuário estiver logado no ERP / Backoffice (Ana Carina, Mayne, admin), NUNCA contabiliza como visitante
+    if (isErpOrAdminActive(adminUser?.isLoggedIn)) {
+      // Remove qualquer ID de visitante residual da sessão do administrador
+      try {
+        sessionStorage.removeItem('ana_vis_id');
+        sessionStorage.removeItem('ana_vis_start_time');
+      } catch (_) {}
+      return;
+    }
+
+    // Identificador único da sessão do visitante real (preservado enquanto a aba/navegador estiver aberto)
     let visitorId = '';
     let sessionStartTime = Date.now();
     try {
@@ -59,6 +109,10 @@ export function LiveVisitorTracker() {
     }
 
     const sendPing = async () => {
+      // Re-valida para garantir que a dona não fez login no meio da sessão
+      if (isErpOrAdminActive(adminUser?.isLoggedIn)) return;
+      if (pathname && ERP_ADMIN_ROUTES.some((route) => pathname.startsWith(route))) return;
+
       try {
         const durationSeconds = Math.max(10, Math.round((Date.now() - sessionStartTime) / 1000));
         const referrer = typeof document !== 'undefined' ? document.referrer || '' : '';
@@ -74,6 +128,7 @@ export function LiveVisitorTracker() {
             deviceType,
             durationSeconds,
             referrer,
+            isAdmin: false,
           }),
         });
       } catch (e) {
@@ -95,7 +150,7 @@ export function LiveVisitorTracker() {
     }, 25000);
 
     return () => clearInterval(interval);
-  }, [pathname]);
+  }, [pathname, adminUser?.isLoggedIn]);
 
   return null;
 }

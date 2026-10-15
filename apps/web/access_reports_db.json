@@ -1,1 +1,809 @@
-{"accesses":[{"id":"acc-mv7c1x16-ns1e","visitorId":"vis-seed-1","date":"2026-10-13","entryTime":1791935370618,"lastPing":1791935472618,"durationSeconds":102,"city":"Boston","region":"MA","country":"US","device":"iPhone 15 Pro (Apple)","deviceType":"mobile","currentPath":"/checkout","currentTitle":"Finalizar Compra - Checkout","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791935370618},{"path":"/produto/samanta-romper","title":"SAMANTA ROMPER","visitedAt":1791935410618},{"path":"/checkout","title":"Finalizar Compra - Checkout","visitedAt":1791935450618}],"referrer":"Instagram Stories (@anacarinalemos)"},{"id":"acc-mv7berp6-4v8b","visitorId":"vis-seed-2","date":"2026-10-13","entryTime":1791934290618,"lastPing":1791934794618,"durationSeconds":504,"city":"Leominster","region":"MA","country":"US","device":"iPhone 14 (Apple)","deviceType":"mobile","currentPath":"/produto/leggings-basica-compressao-top-laura-bicolor","currentTitle":"LEGGINGS + TOP LAURA","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791934290618},{"path":"/produto/leggings-basica-compressao-top-laura-bicolor","title":"LEGGINGS + TOP LAURA","visitedAt":1791934330618}],"referrer":"Instagram Direct"},{"id":"acc-mv7armd6-3gu6","visitorId":"vis-seed-3","date":"2026-10-13","entryTime":1791933210618,"lastPing":1791933264618,"durationSeconds":54,"city":"Worcester","region":"MA","country":"US","device":"iPhone 13 (Apple)","deviceType":"mobile","currentPath":"/produto/jumpsuit-compressao-kenia","currentTitle":"JUMPSUIT Compressão Kênia","pagesVisited":[{"path":"/produto/blusa-bailarina","title":"BAILARINA TOP","visitedAt":1791933210618},{"path":"/","title":"Vitrine Principal","visitedAt":1791933250618},{"path":"/produto/jumpsuit-compressao-kenia","title":"JUMPSUIT Compressão Kênia","visitedAt":1791933290618}],"referrer":"WhatsApp Catálogo"},{"id":"acc-mv7a4h16-eega","visitorId":"vis-seed-4","date":"2026-10-13","entryTime":1791932130618,"lastPing":1791932280618,"durationSeconds":150,"city":"Framingham","region":"MA","country":"US","device":"Samsung Galaxy S24 (Android)","deviceType":"mobile","currentPath":"/contato","currentTitle":"Fale Conosco - Atendimento Showroom","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791932130618},{"path":"/contato","title":"Fale Conosco - Atendimento Showroom","visitedAt":1791932170618}],"referrer":"Google Search"},{"id":"acc-mv79hbp6-zuel","visitorId":"vis-seed-5","date":"2026-10-13","entryTime":1791931050618,"lastPing":1791931158618,"durationSeconds":108,"city":"Fitchburg","region":"MA","country":"US","device":"Samsung Galaxy A54 (Android)","deviceType":"mobile","currentPath":"/produto/romper-deluxe","currentTitle":"ROMPER DELUXE","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791931050618},{"path":"/produto/romper-deluxe","title":"ROMPER DELUXE","visitedAt":1791931090618}],"referrer":"Acesso Direto / Favoritos"},{"id":"acc-mv78u6d6-6i16","visitorId":"vis-seed-6","date":"2026-10-13","entryTime":1791929970618,"lastPing":1791930426618,"durationSeconds":456,"city":"Marlborough","region":"MA","country":"US","device":"Motorola Edge (Android)","deviceType":"mobile","currentPath":"/","currentTitle":"Vitrine Principal","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791929970618}],"referrer":"Indicação de Amiga"},{"id":"acc-mv787116-097s","visitorId":"vis-seed-7","date":"2026-10-13","entryTime":1791928890618,"lastPing":1791929381618,"durationSeconds":491,"city":"Miami","region":"FL","country":"US","device":"Windows 11 (Google Chrome)","deviceType":"desktop","currentPath":"/checkout","currentTitle":"Finalizar Compra - Checkout","pagesVisited":[{"path":"/produto/pants-flare-compressao-top-milena","title":"FLARE COMPRESSION PANTS + MILENA TOP","visitedAt":1791928890618},{"path":"/checkout","title":"Finalizar Compra - Checkout","visitedAt":1791928930618}],"referrer":"Instagram Stories (@anacarinalemos)"},{"id":"acc-mv77jvp6-o02c","visitorId":"vis-seed-8","date":"2026-10-13","entryTime":1791927810618,"lastPing":1791927896618,"durationSeconds":86,"city":"Orlando","region":"FL","country":"US","device":"Windows 10 (Microsoft Edge)","deviceType":"desktop","currentPath":"/checkout","currentTitle":"Finalizar Compra - Checkout","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791927810618},{"path":"/produto/samanta-romper","title":"SAMANTA ROMPER","visitedAt":1791927850618},{"path":"/checkout","title":"Finalizar Compra - Checkout","visitedAt":1791927890618}],"referrer":"Instagram Direct"},{"id":"acc-mv76wqd6-0s7w","visitorId":"vis-seed-9","date":"2026-10-13","entryTime":1791926730618,"lastPing":1791927118618,"durationSeconds":388,"city":"Boca Raton","region":"FL","country":"US","device":"MacBook Pro (macOS Safari)","deviceType":"desktop","currentPath":"/produto/leggings-basica-compressao-top-laura-bicolor","currentTitle":"LEGGINGS + TOP LAURA","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791926730618},{"path":"/produto/leggings-basica-compressao-top-laura-bicolor","title":"LEGGINGS + TOP LAURA","visitedAt":1791926770618}],"referrer":"WhatsApp Catálogo"},{"id":"acc-mv769l16-pal0","visitorId":"vis-seed-10","date":"2026-10-13","entryTime":1791925650618,"lastPing":1791925865618,"durationSeconds":215,"city":"Newark","region":"NJ","country":"US","device":"MacBook Air (macOS Chrome)","deviceType":"desktop","currentPath":"/produto/jumpsuit-compressao-kenia","currentTitle":"JUMPSUIT Compressão Kênia","pagesVisited":[{"path":"/produto/blusa-bailarina","title":"BAILARINA TOP","visitedAt":1791925650618},{"path":"/","title":"Vitrine Principal","visitedAt":1791925690618},{"path":"/produto/jumpsuit-compressao-kenia","title":"JUMPSUIT Compressão Kênia","visitedAt":1791925730618}],"referrer":"Google Search"},{"id":"acc-mv75mfp6-m3lq","visitorId":"vis-seed-11","date":"2026-10-13","entryTime":1791924570618,"lastPing":1791924962618,"durationSeconds":392,"city":"São Paulo","region":"SP","country":"BR","device":"iPhone 15 Pro (Apple)","deviceType":"mobile","currentPath":"/contato","currentTitle":"Fale Conosco - Atendimento Showroom","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791924570618},{"path":"/contato","title":"Fale Conosco - Atendimento Showroom","visitedAt":1791924610618}],"referrer":"Acesso Direto / Favoritos"},{"id":"acc-mv74zad6-xf5a","visitorId":"vis-seed-12","date":"2026-10-13","entryTime":1791923490618,"lastPing":1791924006618,"durationSeconds":516,"city":"Boston","region":"MA","country":"US","device":"iPhone 14 (Apple)","deviceType":"mobile","currentPath":"/produto/romper-deluxe","currentTitle":"ROMPER DELUXE","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791923490618},{"path":"/produto/romper-deluxe","title":"ROMPER DELUXE","visitedAt":1791923530618}],"referrer":"Indicação de Amiga"},{"id":"acc-mv74c516-w1c0","visitorId":"vis-seed-13","date":"2026-10-13","entryTime":1791922410618,"lastPing":1791922554618,"durationSeconds":144,"city":"Leominster","region":"MA","country":"US","device":"iPhone 13 (Apple)","deviceType":"mobile","currentPath":"/","currentTitle":"Vitrine Principal","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791922410618}],"referrer":"Instagram Stories (@anacarinalemos)"},{"id":"acc-mv73ozp6-vobd","visitorId":"vis-seed-14","date":"2026-10-13","entryTime":1791921330618,"lastPing":1791921807618,"durationSeconds":477,"city":"Worcester","region":"MA","country":"US","device":"Samsung Galaxy S24 (Android)","deviceType":"mobile","currentPath":"/checkout","currentTitle":"Finalizar Compra - Checkout","pagesVisited":[{"path":"/produto/pants-flare-compressao-top-milena","title":"FLARE COMPRESSION PANTS + MILENA TOP","visitedAt":1791921330618},{"path":"/checkout","title":"Finalizar Compra - Checkout","visitedAt":1791921370618}],"referrer":"Instagram Direct"},{"id":"acc-mv731ud6-li1t","visitorId":"vis-seed-15","date":"2026-10-13","entryTime":1791920250618,"lastPing":1791920327618,"durationSeconds":77,"city":"Framingham","region":"MA","country":"US","device":"Samsung Galaxy A54 (Android)","deviceType":"mobile","currentPath":"/checkout","currentTitle":"Finalizar Compra - Checkout","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791920250618},{"path":"/produto/samanta-romper","title":"SAMANTA ROMPER","visitedAt":1791920290618},{"path":"/checkout","title":"Finalizar Compra - Checkout","visitedAt":1791920330618}],"referrer":"WhatsApp Catálogo"},{"id":"acc-mv72ep16-t2n3","visitorId":"vis-seed-16","date":"2026-10-13","entryTime":1791919170618,"lastPing":1791919578618,"durationSeconds":408,"city":"Fitchburg","region":"MA","country":"US","device":"Motorola Edge (Android)","deviceType":"mobile","currentPath":"/produto/leggings-basica-compressao-top-laura-bicolor","currentTitle":"LEGGINGS + TOP LAURA","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791919170618},{"path":"/produto/leggings-basica-compressao-top-laura-bicolor","title":"LEGGINGS + TOP LAURA","visitedAt":1791919210618}],"referrer":"Google Search"},{"id":"acc-mv71rjp6-on7e","visitorId":"vis-seed-17","date":"2026-10-13","entryTime":1791918090618,"lastPing":1791918359618,"durationSeconds":269,"city":"Marlborough","region":"MA","country":"US","device":"Windows 11 (Google Chrome)","deviceType":"desktop","currentPath":"/produto/jumpsuit-compressao-kenia","currentTitle":"JUMPSUIT Compressão Kênia","pagesVisited":[{"path":"/produto/blusa-bailarina","title":"BAILARINA TOP","visitedAt":1791918090618},{"path":"/","title":"Vitrine Principal","visitedAt":1791918130618},{"path":"/produto/jumpsuit-compressao-kenia","title":"JUMPSUIT Compressão Kênia","visitedAt":1791918170618}],"referrer":"Acesso Direto / Favoritos"},{"id":"acc-mv714ed6-7u49","visitorId":"vis-seed-18","date":"2026-10-13","entryTime":1791917010618,"lastPing":1791917178618,"durationSeconds":168,"city":"Miami","region":"FL","country":"US","device":"Windows 10 (Microsoft Edge)","deviceType":"desktop","currentPath":"/contato","currentTitle":"Fale Conosco - Atendimento Showroom","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791917010618},{"path":"/contato","title":"Fale Conosco - Atendimento Showroom","visitedAt":1791917050618}],"referrer":"Indicação de Amiga"},{"id":"acc-mv70h916-0m7u","visitorId":"vis-seed-19","date":"2026-10-13","entryTime":1791915930618,"lastPing":1791916202618,"durationSeconds":272,"city":"Orlando","region":"FL","country":"US","device":"MacBook Pro (macOS Safari)","deviceType":"desktop","currentPath":"/produto/romper-deluxe","currentTitle":"ROMPER DELUXE","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791915930618},{"path":"/produto/romper-deluxe","title":"ROMPER DELUXE","visitedAt":1791915970618}],"referrer":"Instagram Stories (@anacarinalemos)"},{"id":"acc-mv6zu3p6-rliu","visitorId":"vis-seed-20","date":"2026-10-13","entryTime":1791914850618,"lastPing":1791915192618,"durationSeconds":342,"city":"Boca Raton","region":"FL","country":"US","device":"MacBook Air (macOS Chrome)","deviceType":"desktop","currentPath":"/","currentTitle":"Vitrine Principal","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791914850618}],"referrer":"Instagram Direct"},{"id":"acc-mv6z6yd6-eolu","visitorId":"vis-seed-21","date":"2026-10-13","entryTime":1791913770618,"lastPing":1791914149618,"durationSeconds":379,"city":"Newark","region":"NJ","country":"US","device":"iPhone 15 Pro (Apple)","deviceType":"mobile","currentPath":"/checkout","currentTitle":"Finalizar Compra - Checkout","pagesVisited":[{"path":"/produto/pants-flare-compressao-top-milena","title":"FLARE COMPRESSION PANTS + MILENA TOP","visitedAt":1791913770618},{"path":"/checkout","title":"Finalizar Compra - Checkout","visitedAt":1791913810618}],"referrer":"WhatsApp Catálogo"},{"id":"acc-mv6yjt16-d9hq","visitorId":"vis-seed-22","date":"2026-10-13","entryTime":1791912690618,"lastPing":1791912748618,"durationSeconds":58,"city":"São Paulo","region":"SP","country":"BR","device":"iPhone 14 (Apple)","deviceType":"mobile","currentPath":"/checkout","currentTitle":"Finalizar Compra - Checkout","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791912690618},{"path":"/produto/samanta-romper","title":"SAMANTA ROMPER","visitedAt":1791912730618},{"path":"/checkout","title":"Finalizar Compra - Checkout","visitedAt":1791912770618}],"referrer":"Google Search"},{"id":"acc-mv6xwnp6-pxhm","visitorId":"vis-seed-23","date":"2026-10-13","entryTime":1791911610618,"lastPing":1791911837618,"durationSeconds":227,"city":"Boston","region":"MA","country":"US","device":"iPhone 13 (Apple)","deviceType":"mobile","currentPath":"/produto/leggings-basica-compressao-top-laura-bicolor","currentTitle":"LEGGINGS + TOP LAURA","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791911610618},{"path":"/produto/leggings-basica-compressao-top-laura-bicolor","title":"LEGGINGS + TOP LAURA","visitedAt":1791911650618}],"referrer":"Acesso Direto / Favoritos"},{"id":"acc-mv6x9id6-mrop","visitorId":"vis-seed-24","date":"2026-10-13","entryTime":1791910530618,"lastPing":1791910904618,"durationSeconds":374,"city":"Leominster","region":"MA","country":"US","device":"Samsung Galaxy S24 (Android)","deviceType":"mobile","currentPath":"/produto/jumpsuit-compressao-kenia","currentTitle":"JUMPSUIT Compressão Kênia","pagesVisited":[{"path":"/produto/blusa-bailarina","title":"BAILARINA TOP","visitedAt":1791910530618},{"path":"/","title":"Vitrine Principal","visitedAt":1791910570618},{"path":"/produto/jumpsuit-compressao-kenia","title":"JUMPSUIT Compressão Kênia","visitedAt":1791910610618}],"referrer":"Indicação de Amiga"},{"id":"acc-mv6wmd16-32yj","visitorId":"vis-seed-25","date":"2026-10-13","entryTime":1791909450618,"lastPing":1791909686618,"durationSeconds":236,"city":"Worcester","region":"MA","country":"US","device":"Samsung Galaxy A54 (Android)","deviceType":"mobile","currentPath":"/contato","currentTitle":"Fale Conosco - Atendimento Showroom","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791909450618},{"path":"/contato","title":"Fale Conosco - Atendimento Showroom","visitedAt":1791909490618}],"referrer":"Instagram Stories (@anacarinalemos)"},{"id":"acc-mv6vz7p6-m5u1","visitorId":"vis-seed-26","date":"2026-10-13","entryTime":1791908370618,"lastPing":1791908609618,"durationSeconds":239,"city":"Framingham","region":"MA","country":"US","device":"Motorola Edge (Android)","deviceType":"mobile","currentPath":"/produto/romper-deluxe","currentTitle":"ROMPER DELUXE","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791908370618},{"path":"/produto/romper-deluxe","title":"ROMPER DELUXE","visitedAt":1791908410618}],"referrer":"Instagram Direct"},{"id":"acc-mv6vc2d6-urdf","visitorId":"vis-seed-27","date":"2026-10-13","entryTime":1791907290618,"lastPing":1791907686618,"durationSeconds":396,"city":"Fitchburg","region":"MA","country":"US","device":"Windows 11 (Google Chrome)","deviceType":"desktop","currentPath":"/","currentTitle":"Vitrine Principal","pagesVisited":[{"path":"/","title":"Vitrine Principal","visitedAt":1791907290618}],"referrer":"WhatsApp Catálogo"},{"id":"acc-mv6uox16-8fqo","visitorId":"vis-seed-28","date":"2026-10-13","entryTime":1791906210618,"lastPing":1791906278618,"durationSeconds":68,"city":"Marlborough","region":"MA","country":"US","device":"Windows 10 (Microsoft Edge)","deviceType":"desktop","currentPath":"/checkout","currentTitle":"Finalizar Compra - Checkout","pagesVisited":[{"path":"/produto/pants-flare-compressao-top-milena","title":"FLARE COMPRESSION PANTS + MILENA TOP","visitedAt":1791906210618},{"path":"/checkout","title":"Finalizar Compra - Checkout","visitedAt":1791906250618}],"referrer":"Google Search"}],"updatedAt":1791935670619}
+﻿{
+    "accesses":  [
+                     {
+                         "id":  "acc-mv7c1x16-ns1e",
+                         "visitorId":  "vis-seed-1",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791935370618,
+                         "lastPing":  1791935472618,
+                         "durationSeconds":  102,
+                         "city":  "Boston",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "iPhone 15 Pro (Apple)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/checkout",
+                         "currentTitle":  "Finalizar Compra - Checkout",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791935370618
+                                              },
+                                              {
+                                                  "path":  "/produto/samanta-romper",
+                                                  "title":  "SAMANTA ROMPER",
+                                                  "visitedAt":  1791935410618
+                                              },
+                                              {
+                                                  "path":  "/checkout",
+                                                  "title":  "Finalizar Compra - Checkout",
+                                                  "visitedAt":  1791935450618
+                                              }
+                                          ],
+                         "referrer":  "Instagram Stories (@anacarinalemos)"
+                     },
+                     {
+                         "id":  "acc-mv7berp6-4v8b",
+                         "visitorId":  "vis-seed-2",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791934290618,
+                         "lastPing":  1791934794618,
+                         "durationSeconds":  504,
+                         "city":  "Leominster",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "iPhone 14 (Apple)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/produto/leggings-basica-compressao-top-laura-bicolor",
+                         "currentTitle":  "LEGGINGS + TOP LAURA",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791934290618
+                                              },
+                                              {
+                                                  "path":  "/produto/leggings-basica-compressao-top-laura-bicolor",
+                                                  "title":  "LEGGINGS + TOP LAURA",
+                                                  "visitedAt":  1791934330618
+                                              }
+                                          ],
+                         "referrer":  "Instagram Direct"
+                     },
+                     {
+                         "id":  "acc-mv7armd6-3gu6",
+                         "visitorId":  "vis-seed-3",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791933210618,
+                         "lastPing":  1791933264618,
+                         "durationSeconds":  54,
+                         "city":  "Worcester",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "iPhone 13 (Apple)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/produto/jumpsuit-compressao-kenia",
+                         "currentTitle":  "JUMPSUIT CompressÃ£o KÃªnia",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/produto/blusa-bailarina",
+                                                  "title":  "BAILARINA TOP",
+                                                  "visitedAt":  1791933210618
+                                              },
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791933250618
+                                              },
+                                              {
+                                                  "path":  "/produto/jumpsuit-compressao-kenia",
+                                                  "title":  "JUMPSUIT CompressÃ£o KÃªnia",
+                                                  "visitedAt":  1791933290618
+                                              }
+                                          ],
+                         "referrer":  "WhatsApp CatÃ¡logo"
+                     },
+                     {
+                         "id":  "acc-mv7a4h16-eega",
+                         "visitorId":  "vis-seed-4",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791932130618,
+                         "lastPing":  1791932280618,
+                         "durationSeconds":  150,
+                         "city":  "Framingham",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "Samsung Galaxy S24 (Android)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/contato",
+                         "currentTitle":  "Fale Conosco - Atendimento Showroom",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791932130618
+                                              },
+                                              {
+                                                  "path":  "/contato",
+                                                  "title":  "Fale Conosco - Atendimento Showroom",
+                                                  "visitedAt":  1791932170618
+                                              }
+                                          ],
+                         "referrer":  "Google Search"
+                     },
+                     {
+                         "id":  "acc-mv79hbp6-zuel",
+                         "visitorId":  "vis-seed-5",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791931050618,
+                         "lastPing":  1791931158618,
+                         "durationSeconds":  108,
+                         "city":  "Fitchburg",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "Samsung Galaxy A54 (Android)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/produto/romper-deluxe",
+                         "currentTitle":  "ROMPER DELUXE",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791931050618
+                                              },
+                                              {
+                                                  "path":  "/produto/romper-deluxe",
+                                                  "title":  "ROMPER DELUXE",
+                                                  "visitedAt":  1791931090618
+                                              }
+                                          ],
+                         "referrer":  "Acesso Direto / Favoritos"
+                     },
+                     {
+                         "id":  "acc-mv78u6d6-6i16",
+                         "visitorId":  "vis-seed-6",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791929970618,
+                         "lastPing":  1791930426618,
+                         "durationSeconds":  456,
+                         "city":  "Marlborough",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "Motorola Edge (Android)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/",
+                         "currentTitle":  "Vitrine Principal",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791929970618
+                                              }
+                                          ],
+                         "referrer":  "IndicaÃ§Ã£o de Amiga"
+                     },
+                     {
+                         "id":  "acc-mv787116-097s",
+                         "visitorId":  "vis-seed-7",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791928890618,
+                         "lastPing":  1791929381618,
+                         "durationSeconds":  491,
+                         "city":  "Miami",
+                         "region":  "FL",
+                         "country":  "US",
+                         "device":  "Windows 11 (Google Chrome)",
+                         "deviceType":  "desktop",
+                         "currentPath":  "/checkout",
+                         "currentTitle":  "Finalizar Compra - Checkout",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/produto/pants-flare-compressao-top-milena",
+                                                  "title":  "FLARE COMPRESSION PANTS + MILENA TOP",
+                                                  "visitedAt":  1791928890618
+                                              },
+                                              {
+                                                  "path":  "/checkout",
+                                                  "title":  "Finalizar Compra - Checkout",
+                                                  "visitedAt":  1791928930618
+                                              }
+                                          ],
+                         "referrer":  "Instagram Stories (@anacarinalemos)"
+                     },
+                     {
+                         "id":  "acc-mv77jvp6-o02c",
+                         "visitorId":  "vis-seed-8",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791927810618,
+                         "lastPing":  1791927896618,
+                         "durationSeconds":  86,
+                         "city":  "Orlando",
+                         "region":  "FL",
+                         "country":  "US",
+                         "device":  "Windows 10 (Microsoft Edge)",
+                         "deviceType":  "desktop",
+                         "currentPath":  "/checkout",
+                         "currentTitle":  "Finalizar Compra - Checkout",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791927810618
+                                              },
+                                              {
+                                                  "path":  "/produto/samanta-romper",
+                                                  "title":  "SAMANTA ROMPER",
+                                                  "visitedAt":  1791927850618
+                                              },
+                                              {
+                                                  "path":  "/checkout",
+                                                  "title":  "Finalizar Compra - Checkout",
+                                                  "visitedAt":  1791927890618
+                                              }
+                                          ],
+                         "referrer":  "Instagram Direct"
+                     },
+                     {
+                         "id":  "acc-mv76wqd6-0s7w",
+                         "visitorId":  "vis-seed-9",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791926730618,
+                         "lastPing":  1791927118618,
+                         "durationSeconds":  388,
+                         "city":  "Boca Raton",
+                         "region":  "FL",
+                         "country":  "US",
+                         "device":  "MacBook Pro (macOS Safari)",
+                         "deviceType":  "desktop",
+                         "currentPath":  "/produto/leggings-basica-compressao-top-laura-bicolor",
+                         "currentTitle":  "LEGGINGS + TOP LAURA",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791926730618
+                                              },
+                                              {
+                                                  "path":  "/produto/leggings-basica-compressao-top-laura-bicolor",
+                                                  "title":  "LEGGINGS + TOP LAURA",
+                                                  "visitedAt":  1791926770618
+                                              }
+                                          ],
+                         "referrer":  "WhatsApp CatÃ¡logo"
+                     },
+                     {
+                         "id":  "acc-mv769l16-pal0",
+                         "visitorId":  "vis-seed-10",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791925650618,
+                         "lastPing":  1791925865618,
+                         "durationSeconds":  215,
+                         "city":  "Newark",
+                         "region":  "NJ",
+                         "country":  "US",
+                         "device":  "MacBook Air (macOS Chrome)",
+                         "deviceType":  "desktop",
+                         "currentPath":  "/produto/jumpsuit-compressao-kenia",
+                         "currentTitle":  "JUMPSUIT CompressÃ£o KÃªnia",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/produto/blusa-bailarina",
+                                                  "title":  "BAILARINA TOP",
+                                                  "visitedAt":  1791925650618
+                                              },
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791925690618
+                                              },
+                                              {
+                                                  "path":  "/produto/jumpsuit-compressao-kenia",
+                                                  "title":  "JUMPSUIT CompressÃ£o KÃªnia",
+                                                  "visitedAt":  1791925730618
+                                              }
+                                          ],
+                         "referrer":  "Google Search"
+                     },
+                     {
+                         "id":  "acc-mv75mfp6-m3lq",
+                         "visitorId":  "vis-seed-11",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791924570618,
+                         "lastPing":  1791924962618,
+                         "durationSeconds":  392,
+                         "city":  "SÃ£o Paulo",
+                         "region":  "SP",
+                         "country":  "BR",
+                         "device":  "iPhone 15 Pro (Apple)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/contato",
+                         "currentTitle":  "Fale Conosco - Atendimento Showroom",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791924570618
+                                              },
+                                              {
+                                                  "path":  "/contato",
+                                                  "title":  "Fale Conosco - Atendimento Showroom",
+                                                  "visitedAt":  1791924610618
+                                              }
+                                          ],
+                         "referrer":  "Acesso Direto / Favoritos"
+                     },
+                     {
+                         "id":  "acc-mv74zad6-xf5a",
+                         "visitorId":  "vis-seed-12",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791923490618,
+                         "lastPing":  1791924006618,
+                         "durationSeconds":  516,
+                         "city":  "Boston",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "iPhone 14 (Apple)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/produto/romper-deluxe",
+                         "currentTitle":  "ROMPER DELUXE",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791923490618
+                                              },
+                                              {
+                                                  "path":  "/produto/romper-deluxe",
+                                                  "title":  "ROMPER DELUXE",
+                                                  "visitedAt":  1791923530618
+                                              }
+                                          ],
+                         "referrer":  "IndicaÃ§Ã£o de Amiga"
+                     },
+                     {
+                         "id":  "acc-mv74c516-w1c0",
+                         "visitorId":  "vis-seed-13",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791922410618,
+                         "lastPing":  1791922554618,
+                         "durationSeconds":  144,
+                         "city":  "Leominster",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "iPhone 13 (Apple)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/",
+                         "currentTitle":  "Vitrine Principal",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791922410618
+                                              }
+                                          ],
+                         "referrer":  "Instagram Stories (@anacarinalemos)"
+                     },
+                     {
+                         "id":  "acc-mv73ozp6-vobd",
+                         "visitorId":  "vis-seed-14",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791921330618,
+                         "lastPing":  1791921807618,
+                         "durationSeconds":  477,
+                         "city":  "Worcester",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "Samsung Galaxy S24 (Android)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/checkout",
+                         "currentTitle":  "Finalizar Compra - Checkout",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/produto/pants-flare-compressao-top-milena",
+                                                  "title":  "FLARE COMPRESSION PANTS + MILENA TOP",
+                                                  "visitedAt":  1791921330618
+                                              },
+                                              {
+                                                  "path":  "/checkout",
+                                                  "title":  "Finalizar Compra - Checkout",
+                                                  "visitedAt":  1791921370618
+                                              }
+                                          ],
+                         "referrer":  "Instagram Direct"
+                     },
+                     {
+                         "id":  "acc-mv731ud6-li1t",
+                         "visitorId":  "vis-seed-15",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791920250618,
+                         "lastPing":  1791920327618,
+                         "durationSeconds":  77,
+                         "city":  "Framingham",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "Samsung Galaxy A54 (Android)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/checkout",
+                         "currentTitle":  "Finalizar Compra - Checkout",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791920250618
+                                              },
+                                              {
+                                                  "path":  "/produto/samanta-romper",
+                                                  "title":  "SAMANTA ROMPER",
+                                                  "visitedAt":  1791920290618
+                                              },
+                                              {
+                                                  "path":  "/checkout",
+                                                  "title":  "Finalizar Compra - Checkout",
+                                                  "visitedAt":  1791920330618
+                                              }
+                                          ],
+                         "referrer":  "WhatsApp CatÃ¡logo"
+                     },
+                     {
+                         "id":  "acc-mv72ep16-t2n3",
+                         "visitorId":  "vis-seed-16",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791919170618,
+                         "lastPing":  1791919578618,
+                         "durationSeconds":  408,
+                         "city":  "Fitchburg",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "Motorola Edge (Android)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/produto/leggings-basica-compressao-top-laura-bicolor",
+                         "currentTitle":  "LEGGINGS + TOP LAURA",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791919170618
+                                              },
+                                              {
+                                                  "path":  "/produto/leggings-basica-compressao-top-laura-bicolor",
+                                                  "title":  "LEGGINGS + TOP LAURA",
+                                                  "visitedAt":  1791919210618
+                                              }
+                                          ],
+                         "referrer":  "Google Search"
+                     },
+                     {
+                         "id":  "acc-mv71rjp6-on7e",
+                         "visitorId":  "vis-seed-17",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791918090618,
+                         "lastPing":  1791918359618,
+                         "durationSeconds":  269,
+                         "city":  "Marlborough",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "Windows 11 (Google Chrome)",
+                         "deviceType":  "desktop",
+                         "currentPath":  "/produto/jumpsuit-compressao-kenia",
+                         "currentTitle":  "JUMPSUIT CompressÃ£o KÃªnia",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/produto/blusa-bailarina",
+                                                  "title":  "BAILARINA TOP",
+                                                  "visitedAt":  1791918090618
+                                              },
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791918130618
+                                              },
+                                              {
+                                                  "path":  "/produto/jumpsuit-compressao-kenia",
+                                                  "title":  "JUMPSUIT CompressÃ£o KÃªnia",
+                                                  "visitedAt":  1791918170618
+                                              }
+                                          ],
+                         "referrer":  "Acesso Direto / Favoritos"
+                     },
+                     {
+                         "id":  "acc-mv714ed6-7u49",
+                         "visitorId":  "vis-seed-18",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791917010618,
+                         "lastPing":  1791917178618,
+                         "durationSeconds":  168,
+                         "city":  "Miami",
+                         "region":  "FL",
+                         "country":  "US",
+                         "device":  "Windows 10 (Microsoft Edge)",
+                         "deviceType":  "desktop",
+                         "currentPath":  "/contato",
+                         "currentTitle":  "Fale Conosco - Atendimento Showroom",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791917010618
+                                              },
+                                              {
+                                                  "path":  "/contato",
+                                                  "title":  "Fale Conosco - Atendimento Showroom",
+                                                  "visitedAt":  1791917050618
+                                              }
+                                          ],
+                         "referrer":  "IndicaÃ§Ã£o de Amiga"
+                     },
+                     {
+                         "id":  "acc-mv70h916-0m7u",
+                         "visitorId":  "vis-seed-19",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791915930618,
+                         "lastPing":  1791916202618,
+                         "durationSeconds":  272,
+                         "city":  "Orlando",
+                         "region":  "FL",
+                         "country":  "US",
+                         "device":  "MacBook Pro (macOS Safari)",
+                         "deviceType":  "desktop",
+                         "currentPath":  "/produto/romper-deluxe",
+                         "currentTitle":  "ROMPER DELUXE",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791915930618
+                                              },
+                                              {
+                                                  "path":  "/produto/romper-deluxe",
+                                                  "title":  "ROMPER DELUXE",
+                                                  "visitedAt":  1791915970618
+                                              }
+                                          ],
+                         "referrer":  "Instagram Stories (@anacarinalemos)"
+                     },
+                     {
+                         "id":  "acc-mv6zu3p6-rliu",
+                         "visitorId":  "vis-seed-20",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791914850618,
+                         "lastPing":  1791915192618,
+                         "durationSeconds":  342,
+                         "city":  "Boca Raton",
+                         "region":  "FL",
+                         "country":  "US",
+                         "device":  "MacBook Air (macOS Chrome)",
+                         "deviceType":  "desktop",
+                         "currentPath":  "/",
+                         "currentTitle":  "Vitrine Principal",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791914850618
+                                              }
+                                          ],
+                         "referrer":  "Instagram Direct"
+                     },
+                     {
+                         "id":  "acc-mv6z6yd6-eolu",
+                         "visitorId":  "vis-seed-21",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791913770618,
+                         "lastPing":  1791914149618,
+                         "durationSeconds":  379,
+                         "city":  "Newark",
+                         "region":  "NJ",
+                         "country":  "US",
+                         "device":  "iPhone 15 Pro (Apple)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/checkout",
+                         "currentTitle":  "Finalizar Compra - Checkout",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/produto/pants-flare-compressao-top-milena",
+                                                  "title":  "FLARE COMPRESSION PANTS + MILENA TOP",
+                                                  "visitedAt":  1791913770618
+                                              },
+                                              {
+                                                  "path":  "/checkout",
+                                                  "title":  "Finalizar Compra - Checkout",
+                                                  "visitedAt":  1791913810618
+                                              }
+                                          ],
+                         "referrer":  "WhatsApp CatÃ¡logo"
+                     },
+                     {
+                         "id":  "acc-mv6yjt16-d9hq",
+                         "visitorId":  "vis-seed-22",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791912690618,
+                         "lastPing":  1791912748618,
+                         "durationSeconds":  58,
+                         "city":  "SÃ£o Paulo",
+                         "region":  "SP",
+                         "country":  "BR",
+                         "device":  "iPhone 14 (Apple)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/checkout",
+                         "currentTitle":  "Finalizar Compra - Checkout",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791912690618
+                                              },
+                                              {
+                                                  "path":  "/produto/samanta-romper",
+                                                  "title":  "SAMANTA ROMPER",
+                                                  "visitedAt":  1791912730618
+                                              },
+                                              {
+                                                  "path":  "/checkout",
+                                                  "title":  "Finalizar Compra - Checkout",
+                                                  "visitedAt":  1791912770618
+                                              }
+                                          ],
+                         "referrer":  "Google Search"
+                     },
+                     {
+                         "id":  "acc-mv6xwnp6-pxhm",
+                         "visitorId":  "vis-seed-23",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791911610618,
+                         "lastPing":  1791911837618,
+                         "durationSeconds":  227,
+                         "city":  "Boston",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "iPhone 13 (Apple)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/produto/leggings-basica-compressao-top-laura-bicolor",
+                         "currentTitle":  "LEGGINGS + TOP LAURA",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791911610618
+                                              },
+                                              {
+                                                  "path":  "/produto/leggings-basica-compressao-top-laura-bicolor",
+                                                  "title":  "LEGGINGS + TOP LAURA",
+                                                  "visitedAt":  1791911650618
+                                              }
+                                          ],
+                         "referrer":  "Acesso Direto / Favoritos"
+                     },
+                     {
+                         "id":  "acc-mv6x9id6-mrop",
+                         "visitorId":  "vis-seed-24",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791910530618,
+                         "lastPing":  1791910904618,
+                         "durationSeconds":  374,
+                         "city":  "Leominster",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "Samsung Galaxy S24 (Android)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/produto/jumpsuit-compressao-kenia",
+                         "currentTitle":  "JUMPSUIT CompressÃ£o KÃªnia",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/produto/blusa-bailarina",
+                                                  "title":  "BAILARINA TOP",
+                                                  "visitedAt":  1791910530618
+                                              },
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791910570618
+                                              },
+                                              {
+                                                  "path":  "/produto/jumpsuit-compressao-kenia",
+                                                  "title":  "JUMPSUIT CompressÃ£o KÃªnia",
+                                                  "visitedAt":  1791910610618
+                                              }
+                                          ],
+                         "referrer":  "IndicaÃ§Ã£o de Amiga"
+                     },
+                     {
+                         "id":  "acc-mv6wmd16-32yj",
+                         "visitorId":  "vis-seed-25",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791909450618,
+                         "lastPing":  1791909686618,
+                         "durationSeconds":  236,
+                         "city":  "Worcester",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "Samsung Galaxy A54 (Android)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/contato",
+                         "currentTitle":  "Fale Conosco - Atendimento Showroom",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791909450618
+                                              },
+                                              {
+                                                  "path":  "/contato",
+                                                  "title":  "Fale Conosco - Atendimento Showroom",
+                                                  "visitedAt":  1791909490618
+                                              }
+                                          ],
+                         "referrer":  "Instagram Stories (@anacarinalemos)"
+                     },
+                     {
+                         "id":  "acc-mv6vz7p6-m5u1",
+                         "visitorId":  "vis-seed-26",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791908370618,
+                         "lastPing":  1791908609618,
+                         "durationSeconds":  239,
+                         "city":  "Framingham",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "Motorola Edge (Android)",
+                         "deviceType":  "mobile",
+                         "currentPath":  "/produto/romper-deluxe",
+                         "currentTitle":  "ROMPER DELUXE",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791908370618
+                                              },
+                                              {
+                                                  "path":  "/produto/romper-deluxe",
+                                                  "title":  "ROMPER DELUXE",
+                                                  "visitedAt":  1791908410618
+                                              }
+                                          ],
+                         "referrer":  "Instagram Direct"
+                     },
+                     {
+                         "id":  "acc-mv6vc2d6-urdf",
+                         "visitorId":  "vis-seed-27",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791907290618,
+                         "lastPing":  1791907686618,
+                         "durationSeconds":  396,
+                         "city":  "Fitchburg",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "Windows 11 (Google Chrome)",
+                         "deviceType":  "desktop",
+                         "currentPath":  "/",
+                         "currentTitle":  "Vitrine Principal",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/",
+                                                  "title":  "Vitrine Principal",
+                                                  "visitedAt":  1791907290618
+                                              }
+                                          ],
+                         "referrer":  "WhatsApp CatÃ¡logo"
+                     },
+                     {
+                         "id":  "acc-mv6uox16-8fqo",
+                         "visitorId":  "vis-seed-28",
+                         "date":  "2026-10-13",
+                         "entryTime":  1791906210618,
+                         "lastPing":  1791906278618,
+                         "durationSeconds":  68,
+                         "city":  "Marlborough",
+                         "region":  "MA",
+                         "country":  "US",
+                         "device":  "Windows 10 (Microsoft Edge)",
+                         "deviceType":  "desktop",
+                         "currentPath":  "/checkout",
+                         "currentTitle":  "Finalizar Compra - Checkout",
+                         "pagesVisited":  [
+                                              {
+                                                  "path":  "/produto/pants-flare-compressao-top-milena",
+                                                  "title":  "FLARE COMPRESSION PANTS + MILENA TOP",
+                                                  "visitedAt":  1791906210618
+                                              },
+                                              {
+                                                  "path":  "/checkout",
+                                                  "title":  "Finalizar Compra - Checkout",
+                                                  "visitedAt":  1791906250618
+                                              }
+                                          ],
+                         "referrer":  "Google Search"
+                     }
+                 ],
+    "updatedAt":  1791935670619
+}

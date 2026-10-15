@@ -173,6 +173,38 @@ function generateDefaultAccessesForToday(): AccessRecord[] {
   return records.sort((a, b) => b.entryTime - a.entryTime);
 }
 
+// Identifica se uma rota pertence ao ERP, Backoffice, PDV ou portal administrativo
+export function isErpRoute(p?: string): boolean {
+  if (!p) return false;
+  return (
+    p.startsWith('/backoffice') ||
+    p.startsWith('/admin') ||
+    p.startsWith('/pos') ||
+    p.startsWith('/vendedora')
+  );
+}
+
+// Filtra e purga qualquer acesso ou página vinculada ao ERP / sessões de admin
+function filterOutErpAccesses(accesses: AccessRecord[]): { list: AccessRecord[]; changed: boolean } {
+  let changed = false;
+  const list = accesses.filter((a) => {
+    if (isErpRoute(a.currentPath)) {
+      changed = true;
+      return false;
+    }
+    if (typeof a.visitorId === 'string' && a.visitorId.includes('admin')) {
+      changed = true;
+      return false;
+    }
+    if (a.pagesVisited?.some((pv) => isErpRoute(pv.path))) {
+      changed = true;
+      return false;
+    }
+    return true;
+  });
+  return { list, changed };
+}
+
 export async function readAccessReportsStore(): Promise<AccessReportsState> {
   const now = Date.now();
   // Se carregou nos últimos 3 segundos, reutiliza memória
@@ -192,8 +224,13 @@ export async function readAccessReportsStore(): Promise<AccessReportsState> {
       try {
         const parsed = JSON.parse(row.description);
         if (parsed && Array.isArray(parsed.accesses)) {
+          const { list, changed } = filterOutErpAccesses(parsed.accesses);
+          parsed.accesses = list;
           memoryStore = parsed;
           lastLoadedFromSupabase = now;
+          if (changed) {
+            saveAccessReportsStore(parsed).catch(() => {});
+          }
           return memoryStore!;
         }
       } catch (_) {}
@@ -208,7 +245,12 @@ export async function readAccessReportsStore(): Promise<AccessReportsState> {
       const raw = fs.readFileSync(REPORTS_FILE, 'utf8');
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.accesses)) {
+        const { list, changed } = filterOutErpAccesses(parsed.accesses);
+        parsed.accesses = list;
         memoryStore = parsed;
+        if (changed) {
+          saveAccessReportsStore(parsed).catch(() => {});
+        }
         return memoryStore!;
       }
     }
@@ -270,6 +312,15 @@ export async function recordVisitorAccess(data: {
   country?: string;
   referrer?: string;
 }): Promise<AccessRecord> {
+  // Bloqueio rigoroso: acessos em rotas de ERP/Backoffice/PDV ou sessões de admin NUNCA são gravados no relatório
+  if (
+    !data.page ||
+    isErpRoute(data.page) ||
+    (typeof data.visitorId === 'string' && data.visitorId.includes('admin'))
+  ) {
+    return {} as any;
+  }
+
   const store = await readAccessReportsStore();
   const now = Date.now();
   const today = getTodayDateString();
@@ -380,11 +431,16 @@ export async function getAccessReports(filterDate?: string) {
   const today = getTodayDateString();
   const selectedDate = filterDate || today;
 
-  // Filtra por data (se for 'all', traz todos)
-  let filtered = store.accesses;
-  if (selectedDate !== 'all') {
-    filtered = store.accesses.filter((a) => a.date === selectedDate);
-  }
+  // Filtra por data e exclui estritamente qualquer acesso ou página vinculada ao ERP / Backoffice
+  let filtered = store.accesses.filter((a) => {
+    if (isErpRoute(a.currentPath)) return false;
+    if (a.pagesVisited?.some((pv) => isErpRoute(pv.path))) return false;
+    if (typeof a.visitorId === 'string' && a.visitorId.includes('admin')) return false;
+    if (selectedDate !== 'all') {
+      return a.date === selectedDate;
+    }
+    return true;
+  });
 
   const now = Date.now();
   const totalVisits = filtered.length;
@@ -427,11 +483,12 @@ export async function getAccessReports(filterDate?: string) {
     }))
     .sort((a, b) => b.count - a.count);
 
-  // 3. Páginas mais acessadas
+  // 3. Páginas mais acessadas (apenas páginas da vitrine do cliente, nunca ERP)
   const pagesMap = new Map<string, { path: string; title: string; count: number }>();
   filtered.forEach((a) => {
     // Conta todas as páginas navegadas dentro da sessão
     (a.pagesVisited || []).forEach((p) => {
+      if (isErpRoute(p.path)) return;
       const cur = pagesMap.get(p.path) || { path: p.path, title: p.title || p.path, count: 0 };
       cur.count++;
       pagesMap.set(p.path, cur);

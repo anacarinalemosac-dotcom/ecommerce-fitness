@@ -8,10 +8,32 @@ export const revalidate = 0;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, page, pageTitle, device, deviceType, durationSeconds, referrer, userCity, userRegion } = body;
+    const { id, page, pageTitle, device, deviceType, durationSeconds, referrer, userCity, userRegion, isAdmin } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'ID do visitante é obrigatório.' }, { status: 400 });
+    }
+
+    // Identifica se a requisição partiu de um administrador logado no ERP/Backoffice
+    const adminCookie = req.cookies.get('ana_is_admin')?.value;
+    const rawCookies = req.headers.get('cookie') || '';
+    const hasAdminCookie = adminCookie === '1' || rawCookies.includes('ana_is_admin=1');
+
+    const isErpRoute = page && (
+      page.startsWith('/backoffice') ||
+      page.startsWith('/admin') ||
+      page.startsWith('/pos') ||
+      page.startsWith('/vendedora')
+    );
+
+    // REGRA DE OURO: Qualquer acesso originado do ERP, Backoffice, PDV ou sessão de admin
+    // NUNCA deve ser registrado como visitante online ou histórico de acessos.
+    if (isAdmin || hasAdminCookie || isErpRoute || (typeof id === 'string' && id.includes('admin'))) {
+      return NextResponse.json({
+        success: true,
+        ignored: true,
+        reason: 'Sessão administrativa / ERP desconsiderada do monitoramento de visitantes.',
+      });
     }
 
     // Tenta detectar localização a partir dos cabeçalhos reais da requisição

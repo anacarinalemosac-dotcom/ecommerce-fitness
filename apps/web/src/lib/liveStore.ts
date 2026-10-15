@@ -91,16 +91,25 @@ async function writeStore(data: LiveStoreData): Promise<void> {
   memoryStore = data;
   lastLoadedFromSupabase = Date.now();
 
-  // Pruna visitantes inativos há mais de 20 minutos para manter o JSON compacto
+  // Pruna visitantes inativos há mais de 20 minutos e remove qualquer rota interna de ERP/Backoffice/POS
   const now = Date.now();
   const prunedVisitors: Record<string, LiveVisitor> = {};
   Object.values(data.visitors).forEach((v) => {
-    if (now - v.lastPing < 20 * 60 * 1000) {
+    const isErpPage = v.page && (
+      v.page.startsWith('/backoffice') ||
+      v.page.startsWith('/admin') ||
+      v.page.startsWith('/pos') ||
+      v.page.startsWith('/vendedora')
+    );
+    if (!isErpPage && now - v.lastPing < 20 * 60 * 1000) {
       prunedVisitors[v.id] = v;
     }
   });
   data.visitors = prunedVisitors;
-  data.events = (data.events || []).slice(0, 40);
+  data.events = (data.events || []).filter((e) => {
+    const desc = (e.description || '').toLowerCase();
+    return !desc.includes('/pos') && !desc.includes('/backoffice') && !desc.includes('/admin') && !desc.includes('/vendedora');
+  }).slice(0, 40);
 
   const serialized = JSON.stringify(data);
 
@@ -123,6 +132,16 @@ async function writeStore(data: LiveStoreData): Promise<void> {
 }
 
 export async function recordHeartbeat(visitor: Partial<LiveVisitor> & { id: string }): Promise<{ isNew: boolean; event?: LiveEvent }> {
+  // Bloqueio rigoroso: acessos em rotas de ERP/Backoffice/PDV não são visitantes da loja
+  if (visitor.page && (
+    visitor.page.startsWith('/backoffice') ||
+    visitor.page.startsWith('/admin') ||
+    visitor.page.startsWith('/pos') ||
+    visitor.page.startsWith('/vendedora')
+  )) {
+    return { isNew: false };
+  }
+
   const store = await readStore();
   const now = Date.now();
   const existing = store.visitors[visitor.id];
@@ -211,8 +230,16 @@ export async function getLiveFeed(cutoffSeconds: number = 300) {
   const now = Date.now();
   const cutoffTime = now - (cutoffSeconds * 1000);
 
-  // Filtra visitantes que enviaram ping nos últimos X segundos (padrão 5 minutos = 300s)
-  const activeVisitors = Object.values(store.visitors).filter((v) => v.lastPing >= cutoffTime);
+  // Filtra visitantes que enviaram ping nos últimos X segundos (padrão 5 minutos = 300s) e ignora páginas de ERP
+  const activeVisitors = Object.values(store.visitors).filter((v) => {
+    const isErpPage = v.page && (
+      v.page.startsWith('/backoffice') ||
+      v.page.startsWith('/admin') ||
+      v.page.startsWith('/pos') ||
+      v.page.startsWith('/vendedora')
+    );
+    return !isErpPage && v.lastPing >= cutoffTime;
+  });
 
   // Agrupa cidades únicas
   const citiesMap = new Map<string, number>();
