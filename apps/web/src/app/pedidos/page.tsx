@@ -262,9 +262,9 @@ export default function OrderLookupPage() {
                     : 'text-white/40'
                 }`}>
                   <Clock className="w-4 h-4 shrink-0" />
-                  <span>2. CONFECÇÃO & ATELIER</span>
+                  <span>2. SEPARANDO MERCADORIA</span>
                 </div>
-                <p className="text-[10px] text-white/60">Corte & costura sob medida</p>
+                <p className="text-[10px] text-white/60">Separação & conferência para envio</p>
               </div>
 
               {/* Etapa 3: Rastreamento USPS */}
@@ -275,9 +275,9 @@ export default function OrderLookupPage() {
                     : 'text-white/40'
                 }`}>
                   <Truck className="w-4 h-4 shrink-0" />
-                  <span>3. ENVIADO VIA USPS</span>
+                  <span>3. MERCADORIA DESPACHADA</span>
                 </div>
-                <p className="text-[10px] text-white/60">Código de rastreamento emitido</p>
+                <p className="text-[10px] text-white/60">Enviado via USPS com rastreamento</p>
               </div>
 
               {/* Etapa 4: Entregue */}
@@ -286,9 +286,9 @@ export default function OrderLookupPage() {
                   orderData.status === 'DELIVERED' ? 'text-gold' : 'text-white/40'
                 }`}>
                   <Package className="w-4 h-4 shrink-0" />
-                  <span>4. ENTREGUE AO DESTINO</span>
+                  <span>4. MERCADORIA ENTREGUE</span>
                 </div>
-                <p className="text-[10px] text-white/60">Recebido em mãos</p>
+                <p className="text-[10px] text-white/60">Pacote entregue ao cliente</p>
               </div>
             </div>
           </div>

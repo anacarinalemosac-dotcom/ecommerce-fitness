@@ -3004,11 +3004,11 @@ export default function BackofficeDashboard() {
                           }`}
                           title="Clique para atualizar a etapa deste pedido"
                         >
-                          <option value="WAITING_PAYMENT">AGUARDANDO PGTO</option>
-                          <option value="PAID">PAGO</option>
-                          <option value="IN_PRODUCTION">EM CONFECÇÃO</option>
-                          <option value="SHIPPED">ENVIADO (USPS)</option>
-                          <option value="DELIVERED">ENTREGUE</option>
+                          <option value="WAITING_PAYMENT">AGUARDANDO PAGAMENTO</option>
+                          <option value="PAID">1. PAGAMENTO APROVADO</option>
+                          <option value="IN_PRODUCTION">2. SEPARANDO MERCADORIA</option>
+                          <option value="SHIPPED">3. MERCADORIA DESPACHADA (USPS)</option>
+                          <option value="DELIVERED">4. MERCADORIA ENTREGUE</option>
                           <option value="CANCELLED">CANCELADO</option>
                         </select>
                       </td>

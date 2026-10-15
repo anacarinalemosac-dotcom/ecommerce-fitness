@@ -499,45 +499,86 @@ export function DashboardMetricsView({
                       </div>
 
                       {/* Botões Rápidos de Ação de Logística */}
-                      <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between gap-2">
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 border ${
-                          order.status === 'COMPLETED' || order.status === 'DELIVERED'
+                      <div className="pt-2 border-t border-deep-black/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 border self-start ${
+                          order.status === 'DELIVERED'
+                            ? 'bg-deep-black text-gold border-gold'
+                            : order.status === 'COMPLETED' || order.status === 'PAID'
                             ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                             : order.status === 'SHIPPED'
-                            ? 'bg-blue-100 text-blue-900 border-blue-300'
+                            ? 'bg-purple-100 text-purple-900 border-purple-300'
                             : order.status === 'IN_PRODUCTION'
-                            ? 'bg-amber-100 text-amber-900 border-amber-300'
-                            : 'bg-gold/20 text-deep-black border-gold'
+                            ? 'bg-blue-100 text-blue-900 border-blue-300'
+                            : 'bg-amber-100 text-amber-900 border-amber-300'
                         }`}>
-                          STATUS: {order.status || 'PAGO'}
+                          {order.status === 'DELIVERED'
+                            ? '✔ MERCADORIA ENTREGUE'
+                            : order.status === 'SHIPPED'
+                            ? '🚚 MERCADORIA DESPACHADA'
+                            : order.status === 'IN_PRODUCTION'
+                            ? '📦 SEPARANDO MERCADORIA'
+                            : order.status === 'WAITING_PAYMENT'
+                            ? '⏳ AGUARDANDO PAGAMENTO'
+                            : order.status === 'CANCELLED'
+                            ? '✖ CANCELADO'
+                            : '🟢 PAGAMENTO APROVADO'}
                         </span>
 
-                        <div className="flex items-center gap-1.5">
-                          {onUpdateOrderStatus && order.status !== 'SHIPPED' && order.status !== 'DELIVERED' && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {/* Passo 1 -> Passo 2: De Pago para Separando Mercadoria */}
+                          {onUpdateOrderStatus && (!order.status || order.status === 'PAID' || order.status === 'COMPLETED') && (
+                            <button
+                              type="button"
+                              onClick={() => onUpdateOrderStatus(order.order_id || order.id, 'IN_PRODUCTION')}
+                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider transition shadow-2xs flex items-center gap-1"
+                              title="Marcar que a mercadoria está sendo separada para envio"
+                            >
+                              <Package className="w-3 h-3" />
+                              <span>SEPARAR</span>
+                            </button>
+                          )}
+
+                          {/* Passo 2 ou 1 -> Passo 3: Despachar nos Correios (USPS) */}
+                          {onUpdateOrderStatus && order.status !== 'SHIPPED' && order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
                             <button
                               type="button"
                               onClick={() => handleOpenShippingModal(order)}
-                              className="px-3 py-1.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[10px] font-black uppercase tracking-wider transition border border-deep-black shadow-xs flex items-center gap-1"
+                              className="px-3 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[10px] font-black uppercase tracking-wider transition border border-deep-black shadow-2xs flex items-center gap-1"
+                              title="Despachar pedido e enviar e-mail com código de rastreamento USPS para a cliente"
                             >
                               <Truck className="w-3 h-3 text-gold" />
-                              <span>MARCAR ENVIADO</span>
+                              <span>DESPACHAR</span>
                             </button>
                           )}
+
+                          {/* Passo 3 -> Passo 4: Marcar como Entregue */}
                           {order.status === 'SHIPPED' && onUpdateOrderStatus && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenShippingModal(order)}
-                              className="px-2.5 py-1.5 bg-gold/20 hover:bg-gold hover:text-deep-black text-deep-black text-[10px] font-black uppercase tracking-wider transition border border-gold/60 flex items-center gap-1"
-                              title="Atualizar ou reenviar código de rastreio"
-                            >
-                              <Truck className="w-3 h-3 text-deep-black" />
-                              <span>RASTREIO</span>
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => onUpdateOrderStatus(order.order_id || order.id, 'DELIVERED')}
+                                className="px-2.5 py-1 bg-green-700 hover:bg-green-800 text-white text-[10px] font-black uppercase tracking-wider transition shadow-2xs flex items-center gap-1"
+                                title="Confirmar que o pedido foi entregue à cliente"
+                              >
+                                <CheckCircle2 className="w-3 h-3 text-white" />
+                                <span>ENTREGUE</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenShippingModal(order)}
+                                className="px-2 py-1 bg-gold/20 hover:bg-gold hover:text-deep-black text-deep-black text-[10px] font-black uppercase tracking-wider transition border border-gold/60 flex items-center gap-1"
+                                title="Ver ou alterar código de rastreamento"
+                              >
+                                <Truck className="w-3 h-3 text-deep-black" />
+                                <span>RASTREIO</span>
+                              </button>
+                            </>
                           )}
+
                           <button
                             type="button"
                             onClick={() => onNavigateTab('sales')}
-                            className="px-2.5 py-1.5 border border-deep-black hover:bg-deep-black hover:text-white text-deep-black text-[10px] font-black uppercase tracking-wider transition"
+                            className="px-2.5 py-1 border border-deep-black hover:bg-deep-black hover:text-white text-deep-black text-[10px] font-black uppercase tracking-wider transition"
                           >
                             DETALHES →
                           </button>
