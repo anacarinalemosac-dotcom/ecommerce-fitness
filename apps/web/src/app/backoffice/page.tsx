@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import {
   DollarSign,
@@ -88,6 +88,7 @@ import { InstagramDirectView } from '../../components/backoffice/InstagramDirect
 import { SimpleFinancesView } from '../../components/backoffice/SimpleFinancesView';
 import { SuppliersManagementView } from '../../components/backoffice/SuppliersManagementView';
 import { AccessReportsView } from '../../components/backoffice/AccessReportsView';
+import { SalesReportModal } from '../../components/backoffice/SalesReportModal';
 
 interface ProductProfit {
   sku: string;
@@ -327,7 +328,10 @@ export default function BackofficeDashboard() {
   const [loadingSales, setLoadingSales] = useState(false);
   const [salesChannelFilter, setSalesChannelFilter] = useState<'ALL' | 'ONLINE' | 'POS_COUNTER'>('ALL');
   const [salesPaymentFilter, setSalesPaymentFilter] = useState<'ALL' | 'CARD' | 'ZELLE' | 'VENMO' | 'CASH' | 'CREDIARIO'>('ALL');
-  const [salesPeriodFilter, setSalesPeriodFilter] = useState<'ALL' | 'TODAY'>('ALL');
+  const [salesPeriodFilter, setSalesPeriodFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'LAST_MONTH' | 'CUSTOM'>('ALL');
+  const [salesCustomStartDate, setSalesCustomStartDate] = useState('');
+  const [salesCustomEndDate, setSalesCustomEndDate] = useState('');
+  const [showSalesReportModal, setShowSalesReportModal] = useState(false);
   const [salesPreorderOnly, setSalesPreorderOnly] = useState(false);
   const [salesSearch, setSalesSearch] = useState('');
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<any | null>(null);
@@ -1118,7 +1122,7 @@ export default function BackofficeDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Filtragem da lista de vendas
+  // Filtragem da lista de vendas (Multiperíodos e Filtros Operacionais)
   const filteredSalesList = (salesData?.sales || []).filter((s: any) => {
     // Filtro por Canal
     if (salesChannelFilter !== 'ALL' && s.channel !== salesChannelFilter) {
@@ -1128,14 +1132,38 @@ export default function BackofficeDashboard() {
     if (salesPaymentFilter !== 'ALL' && s.payment_method !== salesPaymentFilter) {
       return false;
     }
-    // Filtro por Período (Hoje vs Todos)
-    if (salesPeriodFilter === 'TODAY') {
+    // Filtro por Período
+    if (salesPeriodFilter !== 'ALL') {
       if (!s.created_at) return false;
-      const orderDateStr = new Date(s.created_at).toLocaleDateString('en-CA');
-      const todayStr = new Date().toLocaleDateString('en-CA');
-      const diffMs = Date.now() - new Date(s.created_at).getTime();
-      const isToday = orderDateStr === todayStr || diffMs <= 24 * 60 * 60 * 1000;
-      if (!isToday) return false;
+      const orderDate = new Date(s.created_at);
+      const nyDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(orderDate);
+      const nowNy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+
+      if (salesPeriodFilter === 'TODAY') {
+        if (nyDateStr !== nowNy) return false;
+      } else if (salesPeriodFilter === 'YESTERDAY') {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayNy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(yesterday);
+        if (nyDateStr !== yesterdayNy) return false;
+      } else if (salesPeriodFilter === 'THIS_WEEK') {
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
+        startOfWeek.setHours(0, 0, 0, 0);
+        if (orderDate < startOfWeek) return false;
+      } else if (salesPeriodFilter === 'THIS_MONTH') {
+        const currentMonth = nowNy.substring(0, 7);
+        if (!nyDateStr.startsWith(currentMonth)) return false;
+      } else if (salesPeriodFilter === 'LAST_MONTH') {
+        const d = new Date();
+        d.setMonth(d.getMonth() - 1);
+        const lastMonthStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(d).substring(0, 7);
+        if (!nyDateStr.startsWith(lastMonthStr)) return false;
+      } else if (salesPeriodFilter === 'CUSTOM') {
+        if (salesCustomStartDate && nyDateStr < salesCustomStartDate) return false;
+        if (salesCustomEndDate && nyDateStr > salesCustomEndDate) return false;
+      }
     }
     // Filtro Exclusivo de Pré-Vendas
     if (salesPreorderOnly) {
@@ -1154,6 +1182,305 @@ export default function BackofficeDashboard() {
     }
     return true;
   });
+
+  // Totais matemáticos consolidados do relatório (todas as vendas ativas filtradas)
+  const filteredSalesTotals = useMemo(() => {
+    const activeList = filteredSalesList.filter((s: any) => s.status !== 'CANCELLED');
+    const totalSalesGross = activeList.reduce((acc: number, s: any) => acc + (Number(s.subtotal_products) || 0) + (Number(s.shipping_fee) || 0), 0);
+    const totalCogs = activeList.reduce((acc: number, s: any) => acc + (Number(s.cost_of_goods) || 0), 0);
+    const totalDiscounts = activeList.reduce((acc: number, s: any) => acc + (Number(s.discount_amount) || 0), 0);
+    const totalFees = activeList.reduce((acc: number, s: any) => acc + (Number(s.payment_fee) || 0), 0);
+    const totalCommissions = activeList.reduce((acc: number, s: any) => acc + (Number(s.commission_amount) || 0), 0);
+    const totalShippingCollected = activeList.reduce((acc: number, s: any) => acc + (Number(s.shipping_fee) || 0), 0);
+    const totalShippingCost = activeList.reduce((acc: number, s: any) => acc + (Number(s.shipping_cost) || 0), 0);
+    const totalProfit = activeList.reduce((acc: number, s: any) => acc + (Number(s.net_profit) || 0), 0);
+    const marginPct = totalSalesGross > 0 ? (totalProfit / totalSalesGross) * 100 : 0;
+
+    return {
+      count: activeList.length,
+      totalSalesGross,
+      totalCogs,
+      totalDiscounts,
+      totalFees,
+      totalCommissions,
+      totalShippingCollected,
+      totalShippingCost,
+      totalProfit,
+      marginPct,
+    };
+  }, [filteredSalesList]);
+
+  const getSalesPeriodLabel = () => {
+    switch (salesPeriodFilter) {
+      case 'TODAY': return 'Hoje';
+      case 'YESTERDAY': return 'Ontem';
+      case 'THIS_WEEK': return 'Esta Semana';
+      case 'THIS_MONTH': return 'Este Mês';
+      case 'LAST_MONTH': return 'Mês Anterior';
+      case 'CUSTOM':
+        return `Personalizado (${salesCustomStartDate || 'Início'} até ${salesCustomEndDate || 'Hoje'})`;
+      default:
+        return 'Todas as Vendas';
+    }
+  };
+
+  // Exportação oficial do Relatório de Vendas em Excel (CSV)
+  const handleExportSalesCsv = () => {
+    if (filteredSalesList.length === 0) {
+      alert('Nenhuma venda encontrada para exportar com os filtros atuais.');
+      return;
+    }
+    const headers = [
+      'Pedido',
+      'Data_Hora',
+      'Canal',
+      'Vendedora',
+      'Cliente',
+      'Telefone',
+      'Forma_Pagamento',
+      'Valor_Venda_USD',
+      'Custo_Pecas_USD',
+      'Taxas_Juros_Pagas_USD',
+      'Comissao_Paga_USD',
+      'Desconto_Efetuado_USD',
+      'Lucro_Liquido_USD',
+      'Margem_Lucro_Pct',
+      'Status_Entrega',
+      'Status_Pagamento',
+      'Itens_Comprados',
+    ];
+    const rows: string[] = [headers.join(',')];
+
+    filteredSalesList.forEach((s: any) => {
+      const itemsDesc = (s.items || [])
+        .map((i: any) => `${i.title} (${i.color || ''} ${i.size || ''}) x${i.quantity || 1}`)
+        .join('; ');
+      rows.push([
+        `"${s.order_id}"`,
+        `"${s.created_at ? new Date(s.created_at).toLocaleString('pt-BR') : ''}"`,
+        `"${s.channel === 'ONLINE' ? 'LOJA ONLINE' : 'PDV BALCAO'}"`,
+        `"${(s.seller_name || '').replace(/"/g, '""')}"`,
+        `"${(s.customer_name || '').replace(/"/g, '""')}"`,
+        `"${s.customer_phone || ''}"`,
+        `"${s.payment_method || ''}"`,
+        (Number(s.subtotal_products) + Number(s.shipping_fee)).toFixed(2),
+        Number(s.cost_of_goods || 0).toFixed(2),
+        Number(s.payment_fee || 0).toFixed(2),
+        Number(s.commission_amount || 0).toFixed(2),
+        Number(s.discount_amount || 0).toFixed(2),
+        Number(s.net_profit || 0).toFixed(2),
+        `${s.profit_margin_pct || 0}%`,
+        `"${s.fulfillment_status || 'DELIVERED'}"`,
+        `"${s.payment_status || 'PAID'}"`,
+        `"${itemsDesc.replace(/"/g, '""')}"`,
+      ].join(','));
+    });
+
+    // Rodapé consolidado no final do CSV
+    rows.push('');
+    rows.push([
+      '"TOTAIS DO RELATÓRIO"',
+      `"${filteredSalesTotals.count} VENDAS"`,
+      '""',
+      '""',
+      '""',
+      '""',
+      '""',
+      filteredSalesTotals.totalSalesGross.toFixed(2),
+      filteredSalesTotals.totalCogs.toFixed(2),
+      filteredSalesTotals.totalFees.toFixed(2),
+      filteredSalesTotals.totalCommissions.toFixed(2),
+      filteredSalesTotals.totalDiscounts.toFixed(2),
+      filteredSalesTotals.totalProfit.toFixed(2),
+      `"${filteredSalesTotals.marginPct.toFixed(1)}%"`,
+      '""',
+      '""',
+      '""',
+    ].join(','));
+
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `relatorio_vendas_ana_fitness_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Impressão Oficial e Geração de PDF do Relatório Gerencial
+  const handlePrintSalesReportWindow = () => {
+    if (typeof window === 'undefined') return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const period = getSalesPeriodLabel();
+    const rowsHtml = filteredSalesList.map((sale: any) => {
+      const isOnline = sale.channel === 'ONLINE';
+      const saleGross = (Number(sale.subtotal_products) + Number(sale.shipping_fee)).toFixed(2);
+      const cogs = Number(sale.cost_of_goods || 0).toFixed(2);
+      const fee = Number(sale.payment_fee || 0).toFixed(2);
+      const commission = Number(sale.commission_amount || 0).toFixed(2);
+      const discount = Number(sale.discount_amount || 0).toFixed(2);
+      const profit = Number(sale.net_profit || 0).toFixed(2);
+      const isCancelled = sale.status === 'CANCELLED';
+
+      return `
+        <tr style="${isCancelled ? 'text-decoration: line-through; color: #999; background: #fff1f2;' : ''}">
+          <td style="padding: 6px; border: 1px solid #ddd; font-family: monospace;">
+            <strong>${sale.order_id}</strong><br />
+            <small style="color: #666;">${sale.created_at ? new Date(sale.created_at).toLocaleDateString('pt-BR') : ''}</small>
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd;">
+            <strong>${sale.customer_name || 'Cliente'}</strong><br />
+            <small style="color: #666;">${isOnline ? 'Loja Online' : 'PDV Balcão'} • ${sale.seller_name || ''}</small>
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-weight: bold; font-family: monospace;">
+            ${sale.payment_method || '-'}
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace; font-weight: bold;">
+            $${saleGross}
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace;">
+            $${cogs}
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace; color: #b91c1c;">
+            -$${fee}
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace;">
+            -$${commission}
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace; color: #b45309;">
+            -$${discount}
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace; font-weight: bold; color: ${Number(profit) >= 0 ? '#047857' : '#b91c1c'};">
+            $${profit}
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px;">
+            ${sale.fulfillment_status === 'DELIVERED' ? 'Entregue' : sale.fulfillment_status === 'SHIPPED' ? 'Despachada' : 'Aguardando'}
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px;">
+            ${sale.payment_status === 'PAID' ? 'Quitado' : sale.payment_status === 'PARTIAL' ? 'Parcial' : 'Em Aberto'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Relatório de Vendas - ANA FITNESS WEAR</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 24px; color: #000; }
+            .header { border-bottom: 3px solid #000; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .logo { font-size: 24px; font-weight: 900; letter-spacing: 1px; }
+            .subtitle { font-size: 11px; color: #555; text-transform: uppercase; margin-top: 2px; }
+            .summary-box { background: #f4f4f4; border: 2px solid #000; padding: 14px; margin-bottom: 20px; font-family: monospace; }
+            .summary-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 10px; text-align: center; }
+            .summary-item { background: #fff; border: 1px solid #ccc; padding: 8px; }
+            .summary-item .label { font-size: 9px; font-weight: bold; color: #666; text-transform: uppercase; }
+            .summary-item .val { font-size: 15px; font-weight: 900; margin-top: 4px; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
+            th { background: #000; color: #fff; padding: 8px; text-transform: uppercase; font-size: 9px; letter-spacing: 0.5px; }
+            tfoot td { background: #000; color: #fff; font-weight: 900; padding: 10px 6px; }
+            @media print {
+              body { padding: 0; }
+              @page { size: landscape; margin: 12mm; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="logo">ANA FITNESS WEAR</div>
+              <div class="subtitle">RELATÓRIO GERENCIAL & EXTRATO DE VENDAS • LEOMINSTER, MASSACHUSETTS</div>
+            </div>
+            <div style="text-align: right; font-size: 11px; font-family: monospace;">
+              <div><strong>PERÍODO:</strong> ${period.toUpperCase()}</div>
+              <div><strong>EMISSÃO:</strong> ${new Date().toLocaleString('pt-BR')}</div>
+              <div><strong>TOTAL REGISTROS:</strong> ${filteredSalesList.length}</div>
+            </div>
+          </div>
+
+          <div class="summary-box">
+            <div style="font-weight: 900; font-size: 12px; border-bottom: 1px solid #ccc; padding-bottom: 6px;">
+              SOMA GERAL & FECHAMENTO (TOTAL DE TUDO):
+            </div>
+            <div class="summary-grid">
+              <div class="summary-item">
+                <div class="label">Total de Venda</div>
+                <div class="val">$${filteredSalesTotals.totalSalesGross.toFixed(2)}</div>
+              </div>
+              <div class="summary-item">
+                <div class="label">Total de Custo</div>
+                <div class="val" style="color: #444;">-$${filteredSalesTotals.totalCogs.toFixed(2)}</div>
+              </div>
+              <div class="summary-item">
+                <div class="label">Total de Juro / Taxas</div>
+                <div class="val" style="color: #b91c1c;">-$${filteredSalesTotals.totalFees.toFixed(2)}</div>
+              </div>
+              <div class="summary-item">
+                <div class="label">Total de Comissão</div>
+                <div class="val">-$${filteredSalesTotals.totalCommissions.toFixed(2)}</div>
+              </div>
+              <div class="summary-item">
+                <div class="label">Total de Desconto</div>
+                <div class="val" style="color: #b45309;">-$${filteredSalesTotals.totalDiscounts.toFixed(2)}</div>
+              </div>
+              <div class="summary-item" style="border: 2px solid #000; background: #faf5e4;">
+                <div class="label" style="color: #000;">Total de Lucro Real</div>
+                <div class="val" style="color: #047857;">$${filteredSalesTotals.totalProfit.toFixed(2)}</div>
+                <div style="font-size: 9px; color: #555;">Margem: ${filteredSalesTotals.marginPct.toFixed(1)}%</div>
+              </div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: left;">Pedido / Data</th>
+                <th style="text-align: left;">Cliente & Canal</th>
+                <th>Pgto</th>
+                <th style="text-align: right;">Total Venda</th>
+                <th style="text-align: right;">Custo Peça</th>
+                <th style="text-align: right;">Taxas/Juros</th>
+                <th style="text-align: right;">Comissão</th>
+                <th style="text-align: right;">Desconto</th>
+                <th style="text-align: right;">Lucro Real</th>
+                <th>Entrega</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" style="text-transform: uppercase;">SOMA DE TUDO (${filteredSalesTotals.count} VENDAS):</td>
+                <td style="text-align: right; color: #facc15;">$${filteredSalesTotals.totalSalesGross.toFixed(2)}</td>
+                <td style="text-align: right;">-$${filteredSalesTotals.totalCogs.toFixed(2)}</td>
+                <td style="text-align: right; color: #f87171;">-$${filteredSalesTotals.totalFees.toFixed(2)}</td>
+                <td style="text-align: right;">-$${filteredSalesTotals.totalCommissions.toFixed(2)}</td>
+                <td style="text-align: right; color: #fde047;">-$${filteredSalesTotals.totalDiscounts.toFixed(2)}</td>
+                <td style="text-align: right; color: #4ade80; font-size: 13px;">$${filteredSalesTotals.totalProfit.toFixed(2)}</td>
+                <td colspan="2" style="text-align: center; color: #facc15;">${filteredSalesTotals.marginPct.toFixed(1)}% MARGEM</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div style="margin-top: 24px; padding-top: 12px; border-top: 1px solid #ccc; font-size: 9px; color: #666; display: flex; justify-content: space-between;">
+            <span>Ana Fitness Wear • Massachusetts USA</span>
+            <span>Documento gerado automaticamente pelo sistema ERP Backoffice</span>
+          </div>
+          <script>
+            window.onload = function() { window.print(); };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   // Catálogo Base e Filtragem Avançada com Busca
   const baseCatalogList = supabaseProducts.length > 0 ? supabaseProducts : products;
@@ -2425,22 +2752,40 @@ export default function BackofficeDashboard() {
                     <span>MEUS RESULTADOS CONSOLIDADOS</span>
                   </h2>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                   <button
                     type="button"
-                    onClick={fetchSalesData}
-                    className="px-3 py-2 border border-gold hover:bg-gold hover:text-deep-black text-gold text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5"
+                    onClick={() => setShowSalesReportModal(true)}
+                    className="px-3.5 py-2 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 shadow cursor-pointer"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${loadingSales ? 'animate-spin' : ''}`} />
-                    <span>ATUALIZAR DADOS</span>
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>RELATÓRIO & FECHAMENTO</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => window.print()}
-                    className="px-3 py-2 bg-white/10 hover:bg-white hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5"
+                    onClick={handleExportSalesCsv}
+                    className="px-3 py-2 bg-white/10 hover:bg-white hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 border border-white/20 cursor-pointer"
+                    title="Baixar planilha Excel com extrato e fechamento"
                   >
-                    <FileSpreadsheet className="w-3.5 h-3.5" />
-                    <span>IMPRIMIR RELATÓRIO</span>
+                    <Download className="w-3.5 h-3.5" />
+                    <span>EXCEL (CSV)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePrintSalesReportWindow}
+                    className="px-3 py-2 bg-white/10 hover:bg-white hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 border border-white/20 cursor-pointer"
+                    title="Imprimir relatório gerencial com soma de tudo"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>IMPRIMIR / PDF</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={fetchSalesData}
+                    className="px-3 py-2 border border-gold hover:bg-gold hover:text-deep-black text-gold text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loadingSales ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">ATUALIZAR</span>
                   </button>
                 </div>
               </div>
@@ -2819,32 +3164,43 @@ export default function BackofficeDashboard() {
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto">
-              {/* Alternador Período: Hoje vs Todas */}
-              <div className="inline-flex rounded-none border border-deep-black/30 bg-deep-black/5 p-0.5 text-xs font-black uppercase shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setSalesPeriodFilter('TODAY')}
-                  className={`px-3 py-1 transition flex items-center gap-1 ${
-                    salesPeriodFilter === 'TODAY'
-                      ? 'bg-deep-black text-gold shadow-xs'
-                      : 'text-deep-black hover:text-gold'
-                  }`}
+              {/* Seletor Avançado de Período do Relatório */}
+              <div className="flex items-center gap-1.5 border border-deep-black/30 bg-deep-black/5 px-2.5 py-1 text-xs shrink-0">
+                <CalendarDays className="w-3.5 h-3.5 text-gold" />
+                <span className="text-[10px] font-black uppercase text-deep-black/70">PERÍODO:</span>
+                <select
+                  value={salesPeriodFilter}
+                  onChange={(e) => setSalesPeriodFilter(e.target.value as any)}
+                  className="text-xs font-black uppercase bg-transparent border-0 focus:outline-none cursor-pointer text-deep-black"
                 >
-                  <Clock className="w-3 h-3 text-gold" />
-                  <span>HOJE</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSalesPeriodFilter('ALL')}
-                  className={`px-3 py-1 transition flex items-center gap-1 ${
-                    salesPeriodFilter === 'ALL'
-                      ? 'bg-deep-black text-white shadow-xs'
-                      : 'text-deep-black hover:text-gold'
-                  }`}
-                >
-                  <span>TODAS AS VENDAS</span>
-                </button>
+                  <option value="ALL">TODAS AS VENDAS</option>
+                  <option value="TODAY">HOJE</option>
+                  <option value="YESTERDAY">ONTEM</option>
+                  <option value="THIS_WEEK">ESTA SEMANA</option>
+                  <option value="THIS_MONTH">ESTE MÊS</option>
+                  <option value="LAST_MONTH">MÊS ANTERIOR</option>
+                  <option value="CUSTOM">PERSONALIZADO (DATAS)</option>
+                </select>
               </div>
+
+              {salesPeriodFilter === 'CUSTOM' && (
+                <div className="flex items-center gap-1.5 border border-deep-black/30 bg-white px-2 py-1 text-xs shrink-0">
+                  <span className="text-[9px] font-black uppercase text-deep-black/60">DE:</span>
+                  <input
+                    type="date"
+                    value={salesCustomStartDate}
+                    onChange={(e) => setSalesCustomStartDate(e.target.value)}
+                    className="text-xs font-mono font-bold bg-white px-1.5 py-0.5 border border-deep-black/20"
+                  />
+                  <span className="text-[9px] font-black uppercase text-deep-black/60">ATÉ:</span>
+                  <input
+                    type="date"
+                    value={salesCustomEndDate}
+                    onChange={(e) => setSalesCustomEndDate(e.target.value)}
+                    className="text-xs font-mono font-bold bg-white px-1.5 py-0.5 border border-deep-black/20"
+                  />
+                </div>
+              )}
 
               <div className="flex items-center gap-1 border border-deep-black/20 px-2 py-1 text-xs">
                 <Filter className="w-3.5 h-3.5 text-gold" />
@@ -2915,15 +3271,15 @@ export default function BackofficeDashboard() {
                   <th className="p-3">CLIENTE</th>
                   <th className="p-3">ITENS & GRADE (COR/TAM)</th>
                   <th className="p-3">PGTO</th>
-                  <th className="p-3 text-right">TOTAL PAGO</th>
-                  <th className="p-3 text-right">FRETE CLI.</th>
-                  <th className="p-3 text-right">TAXA PGTO</th>
-                  <th className="p-3 text-right">COMISSÃO</th>
+                  <th className="p-3 text-right">VALOR VENDA</th>
                   <th className="p-3 text-right">CUSTO PEÇAS</th>
+                  <th className="p-3 text-right">TAXAS / JUROS</th>
+                  <th className="p-3 text-right">COMISSÃO</th>
+                  <th className="p-3 text-right">DESCONTO</th>
                   <th className="p-3 text-right">LUCRO REAL</th>
                   <th className="p-3 text-center">SITUAÇÃO ENTREGA (LOGÍSTICA)</th>
                   <th className="p-3 text-center">SITUAÇÃO PAGAMENTO (FINANCEIRO)</th>
-                  <th className="p-3 text-center">RAIO-X</th>
+                  <th className="p-3 text-center">AÇÕES</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-deep-black/10">
@@ -3019,19 +3375,19 @@ export default function BackofficeDashboard() {
                         </div>
                       </td>
 
-                      {/* Total Pago */}
+                      {/* Valor Venda */}
                       <td className="p-3 text-right font-mono font-black text-deep-black">
                         ${(Number(sale.subtotal_products) + Number(sale.shipping_fee)).toFixed(2)}
                       </td>
 
-                      {/* Frete Cobrado */}
+                      {/* Custo Peças */}
                       <td className="p-3 text-right font-mono text-deep-black/70">
-                        ${Number(sale.shipping_fee).toFixed(2)}
+                        ${Number(sale.cost_of_goods || 0).toFixed(2)}
                       </td>
 
-                      {/* Taxa Gateway */}
-                      <td className="p-3 text-right font-mono text-red-600">
-                        -${Number(sale.payment_fee).toFixed(2)}
+                      {/* Taxas Pagas / Juros */}
+                      <td className="p-3 text-right font-mono text-red-600 font-bold">
+                        {Number(sale.payment_fee || 0) > 0 ? `-$${Number(sale.payment_fee).toFixed(2)}` : '$0.00'}
                       </td>
 
                       {/* Comissão Vendedora */}
@@ -3043,9 +3399,13 @@ export default function BackofficeDashboard() {
                         )}
                       </td>
 
-                      {/* Custo Peças */}
-                      <td className="p-3 text-right font-mono text-deep-black/70">
-                        ${Number(sale.cost_of_goods).toFixed(2)}
+                      {/* Desconto Efetuado */}
+                      <td className="p-3 text-right font-mono">
+                        {Number(sale.discount_amount || 0) > 0 ? (
+                          <span className="text-amber-700 font-bold">-${Number(sale.discount_amount).toFixed(2)}</span>
+                        ) : (
+                          <span className="text-deep-black/40">$0.00</span>
+                        )}
                       </td>
 
                       {/* Lucro Líquido Real */}
@@ -3169,7 +3529,154 @@ export default function BackofficeDashboard() {
                   );
                 })}
               </tbody>
+              {/* Rodapé Oficial da Tabela com a Soma Exata dos Totais Solicitados */}
+              <tfoot className="bg-deep-black text-white font-mono text-xs border-t-4 border-gold">
+                <tr>
+                  <td colSpan={5} className="p-3 font-black text-gold uppercase tracking-wider">
+                    SOMA TOTAL ({filteredSalesTotals.count} VENDAS NO PERÍODO):
+                  </td>
+                  <td className="p-3 text-right font-black text-gold text-sm">
+                    ${filteredSalesTotals.totalSalesGross.toFixed(2)}
+                  </td>
+                  <td className="p-3 text-right font-bold text-white/80">
+                    -${filteredSalesTotals.totalCogs.toFixed(2)}
+                  </td>
+                  <td className="p-3 text-right font-bold text-red-400">
+                    -${filteredSalesTotals.totalFees.toFixed(2)}
+                  </td>
+                  <td className="p-3 text-right font-bold text-white/80">
+                    -${filteredSalesTotals.totalCommissions.toFixed(2)}
+                  </td>
+                  <td className="p-3 text-right font-bold text-amber-300">
+                    -${filteredSalesTotals.totalDiscounts.toFixed(2)}
+                  </td>
+                  <td className="p-3 text-right font-black text-gold text-sm">
+                    ${filteredSalesTotals.totalProfit.toFixed(2)}
+                  </td>
+                  <td colSpan={3} className="p-3 text-center text-gold font-bold text-[10px]">
+                    MARGEM: {filteredSalesTotals.marginPct.toFixed(1)}%
+                  </td>
+                </tr>
+              </tfoot>
             </table>
+          </div>
+
+          {/* =========================================================================
+              PAINEL EXECUTIVO: FECHAMENTO CONSOLIDADO / TOTAL DE TUDO
+              SOMA: Total de Venda, Total de Juro/Taxas, Total de Lucro, Total de Comissão e Total de Tudo
+             ========================================================================= */}
+          <div className="bg-deep-black text-white border-2 border-gold p-6 space-y-4 shadow-luxury">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/20 pb-3">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-gold" />
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                    FECHAMENTO CONTÁBIL DAS VENDAS FILTRADAS
+                  </span>
+                  <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-white">
+                    SOMA GERAL & TOTAL DE TUDO ({getSalesPeriodLabel().toUpperCase()})
+                  </h3>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setShowSalesReportModal(true)}
+                  className="px-3.5 py-1.5 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 shadow cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>VER RELATÓRIO EXPANDIDO</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrintSalesReportWindow}
+                  className="px-3.5 py-1.5 bg-white/10 hover:bg-white hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 border border-white/20 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>IMPRIMIR / PDF</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {/* 1. TOTAL DE VENDA */}
+              <div className="p-3.5 bg-white/10 border border-white/20 space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-wider text-white/70 block">
+                  1. TOTAL DE VENDA
+                </span>
+                <p className="text-lg sm:text-xl font-black font-mono text-white">
+                  ${filteredSalesTotals.totalSalesGross.toFixed(2)}
+                </p>
+                <span className="text-[8px] text-white/50 uppercase block">Faturamento Bruto</span>
+              </div>
+
+              {/* TOTAL DE CUSTO */}
+              <div className="p-3.5 bg-white/10 border border-white/20 space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-wider text-white/70 block">
+                  TOTAL DE CUSTO
+                </span>
+                <p className="text-lg sm:text-xl font-black font-mono text-white/80">
+                  -${filteredSalesTotals.totalCogs.toFixed(2)}
+                </p>
+                <span className="text-[8px] text-white/50 uppercase block">Custo Confecção</span>
+              </div>
+
+              {/* TOTAL DE DESCONTO */}
+              <div className="p-3.5 bg-white/10 border border-white/20 space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 block">
+                  TOTAL DESCONTOS
+                </span>
+                <p className="text-lg sm:text-xl font-black font-mono text-amber-300">
+                  -${filteredSalesTotals.totalDiscounts.toFixed(2)}
+                </p>
+                <span className="text-[8px] text-white/50 uppercase block">Cupons & Balcão</span>
+              </div>
+
+              {/* 2. TOTAL DE JURO / TAXAS */}
+              <div className="p-3.5 bg-white/10 border border-red-500/30 space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-wider text-red-400 block">
+                  2. TOTAL JUROS / TAXAS
+                </span>
+                <p className="text-lg sm:text-xl font-black font-mono text-red-400">
+                  -${filteredSalesTotals.totalFees.toFixed(2)}
+                </p>
+                <span className="text-[8px] text-white/50 uppercase block">Gateways & Cartão</span>
+              </div>
+
+              {/* 3. TOTAL DE COMISSÃO */}
+              <div className="p-3.5 bg-white/10 border border-white/20 space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-wider text-white/70 block">
+                  3. TOTAL COMISSÃO
+                </span>
+                <p className="text-lg sm:text-xl font-black font-mono text-white">
+                  -${filteredSalesTotals.totalCommissions.toFixed(2)}
+                </p>
+                <span className="text-[8px] text-white/50 uppercase block">Vendedoras Balcão/Online</span>
+              </div>
+
+              {/* 4. TOTAL DE LUCRO & 5. TOTAL DE TUDO */}
+              <div className="p-3.5 bg-gold text-deep-black border-2 border-gold space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/80 block">
+                  4. TOTAL LUCRO REAL
+                </span>
+                <p className="text-lg sm:text-xl font-black font-mono text-deep-black">
+                  ${filteredSalesTotals.totalProfit.toFixed(2)}
+                </p>
+                <span className="text-[8px] font-bold text-deep-black/70 uppercase block">
+                  Margem: {filteredSalesTotals.marginPct.toFixed(1)}% retida
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between text-xs font-mono uppercase tracking-wide gap-2">
+              <span className="text-gold font-bold">
+                🏆 BALANÇO CONSOLIDADO (TOTAL DE TUDO):
+              </span>
+              <span className="text-white/80">
+                ${filteredSalesTotals.totalSalesGross.toFixed(2)} (Venda) - ${filteredSalesTotals.totalCogs.toFixed(2)} (Custo) - ${filteredSalesTotals.totalDiscounts.toFixed(2)} (Desc) - ${filteredSalesTotals.totalFees.toFixed(2)} (Taxas/Juros) - ${filteredSalesTotals.totalCommissions.toFixed(2)} (Comissão) ={' '}
+                <strong className="text-gold underline">${filteredSalesTotals.totalProfit.toFixed(2)} USD LIMPO NO BOLSO</strong>
+              </span>
+            </div>
           </div>
 
           {/* MODAL RAIO-X FINANCEIRO DO PEDIDO SELECIONADO */}
@@ -5227,6 +5734,17 @@ export default function BackofficeDashboard() {
         onClose={() => setShowWhatsAppCatalogModal(false)}
         catalogProducts={baseCatalogList}
         siteInfo={siteInfo}
+      />
+
+      {/* Modal Oficial de Relatório de Vendas e Fechamento com Soma de Tudo */}
+      <SalesReportModal
+        isOpen={showSalesReportModal}
+        onClose={() => setShowSalesReportModal(false)}
+        sales={filteredSalesList}
+        totals={filteredSalesTotals}
+        periodLabel={getSalesPeriodLabel()}
+        onExportCsv={handleExportSalesCsv}
+        onPrintReport={handlePrintSalesReportWindow}
       />
     </div>
   );

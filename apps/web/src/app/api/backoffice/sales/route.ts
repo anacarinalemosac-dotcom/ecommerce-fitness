@@ -289,6 +289,7 @@ export async function GET(req: NextRequest) {
     const totalPaymentFees = activeSales.reduce((acc, s) => acc + s.payment_fee, 0);
     const totalCommissions = activeSales.reduce((acc, s) => acc + s.commission_amount, 0);
     const totalCostOfGoods = activeSales.reduce((acc, s) => acc + s.cost_of_goods, 0);
+    const totalDiscounts = activeSales.reduce((acc, s) => acc + (Number(s.discount_amount) || 0), 0);
     const totalShippingCost = activeSales.reduce((acc, s) => acc + s.shipping_cost, 0);
     const totalNetProfit = activeSales.reduce((acc, s) => acc + s.net_profit, 0);
     const averageMarginPct = totalGrossRevenue > 0 ? (totalNetProfit / totalGrossRevenue) * 100 : 0;
@@ -324,6 +325,7 @@ export async function GET(req: NextRequest) {
         summary: {
           totalGrossRevenue: Number(totalGrossRevenue.toFixed(2)),
           totalProductsRevenue: Number(totalProductsRevenue.toFixed(2)),
+          totalDiscounts: Number(totalDiscounts.toFixed(2)),
           totalShippingCollected: Number(totalShippingCollected.toFixed(2)),
           totalShippingCost: Number(totalShippingCost.toFixed(2)),
           totalPaymentFees: Number(totalPaymentFees.toFixed(2)),
