@@ -24,6 +24,7 @@ import {
   ArrowRight,
   AlertCircle,
   MessageCircle,
+  Copy,
 } from 'lucide-react';
 
 const US_STATES = [
@@ -1098,29 +1099,56 @@ export default function CheckoutPage() {
 
             {/* Instruções Venmo */}
             {paymentMethod === 'VENMO' && (
-              <div className="p-4 border border-deep-black/30 bg-white space-y-2 animate-fadeIn text-xs text-deep-black">
-                <h4 className="font-black uppercase tracking-wider text-deep-black">
-                  {lang === 'pt' ? 'COMO PAGAR VIA VENMO:' : 'HOW TO PAY VIA VENMO:'}
-                </h4>
-                <p className="text-deep-black/80 font-medium leading-relaxed">
+              <div className="p-4 border border-[#008CFF]/40 bg-[#008CFF]/5 space-y-3 animate-fadeIn text-xs text-deep-black">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#008CFF] inline-block" />
+                    <span>{lang === 'pt' ? 'PAGAMENTO VIA VENMO:' : 'PAYMENT VIA VENMO:'}</span>
+                  </h4>
+                  <span className="text-[9px] font-mono font-black text-[#008CFF] uppercase bg-white px-2 py-0.5 border border-[#008CFF]/30 shadow-2xs">
+                    VENMO OFICIAL
+                  </span>
+                </div>
+                <p className="text-deep-black/85 font-medium leading-relaxed">
                   {lang === 'pt'
-                    ? 'Envie o valor para nosso Venmo: '
-                    : 'Send payment to our Venmo account: '}
-                  <strong className="text-deep-black font-mono font-bold">@anafitnessweareua</strong>.
+                    ? 'Envie o valor total da compra para o Venmo oficial da loja: '
+                    : 'Send the total purchase amount to our official Venmo account: '}
+                  <strong className="text-deep-black font-mono font-black text-sm block sm:inline mt-1 sm:mt-0 bg-white px-1.5 py-0.5 border border-deep-black/20">
+                    @Accleaningproservices
+                  </strong>
                 </p>
-                <div className="pt-1">
+                <div className="flex items-center gap-2 flex-wrap pt-1">
+                  <a
+                    href="https://venmo.com/u/Accleaningproservices"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#008CFF] hover:bg-[#0074d9] text-white font-black text-[10px] uppercase tracking-wider transition shadow-2xs"
+                  >
+                    <span>{lang === 'pt' ? '↗ ABRIR APP VENMO' : '↗ OPEN VENMO APP'}</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText('@Accleaningproservices');
+                      alert(lang === 'pt' ? 'Usuário do Venmo @Accleaningproservices copiado com sucesso!' : 'Venmo handle @Accleaningproservices copied successfully!');
+                    }}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 border border-deep-black/30 bg-white hover:bg-gray-100 text-deep-black font-black text-[10px] uppercase tracking-wider transition shadow-2xs cursor-pointer"
+                  >
+                    <Copy className="w-3 h-3 text-gold" />
+                    <span>{lang === 'pt' ? 'COPIAR @' : 'COPY @'}</span>
+                  </button>
                   <a
                     href={`https://wa.me/${rawWhatsApp || '19783139452'}?text=${encodeURIComponent(
                       lang === 'pt'
-                        ? `Olá, Ana Carina! Estou finalizando meu pedido via Venmo no valor de $${total.toFixed(2)} e gostaria de confirmar meu pagamento.`
-                        : `Hello Ana Carina! I am paying via Venmo for $${total.toFixed(2)} and would like to confirm my payment.`
+                        ? `Olá, Ana Carina! Estou finalizando meu pedido via Venmo (@Accleaningproservices) no valor de $${total.toFixed(2)} e gostaria de tirar uma dúvida ou enviar o comprovante.`
+                        : `Hello Ana Carina! I am paying via Venmo (@Accleaningproservices) for $${total.toFixed(2)} and would like to confirm details or send my receipt.`
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-[10px] uppercase tracking-wider transition shadow-xs border border-[#1b9a4a]"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-[10px] uppercase tracking-wider transition shadow-2xs border border-[#1b9a4a]"
                   >
                     <WhatsAppIcon className="w-3.5 h-3.5 text-deep-black" />
-                    <span>{lang === 'pt' ? 'Tirar Dúvida do Venmo no WhatsApp' : 'Venmo Question on WhatsApp'}</span>
+                    <span>{lang === 'pt' ? 'Tirar Dúvida no WhatsApp' : 'Questions on WhatsApp'}</span>
                   </a>
                 </div>
               </div>

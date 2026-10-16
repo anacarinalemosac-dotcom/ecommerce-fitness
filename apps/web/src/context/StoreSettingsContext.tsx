@@ -41,6 +41,7 @@ export interface SiteInfo {
   whatsapp: string;
   instagram: string;
   instagramUrl: string;
+  venmo?: string;
   address: string;
   flatShippingRate: number;
   returnDays: number;
@@ -159,6 +160,7 @@ const DEFAULT_SITE_INFO: SiteInfo = {
   whatsapp: '19783139452',
   instagram: '@anafitnessweareua',
   instagramUrl: 'https://www.instagram.com/anafitnessweareua',
+  venmo: '@Accleaningproservices',
   address: 'Leominster, MA 01453 • United States',
   flatShippingRate: 9.99,
   returnDays: 30,

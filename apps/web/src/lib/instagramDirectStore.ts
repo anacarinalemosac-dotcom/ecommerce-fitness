@@ -102,7 +102,7 @@ export const DEFAULT_RULES: InstagramDirectRule[] = [
     name: 'Formas de Pagamento & Zelle',
     triggerType: 'keywords',
     keywords: ['pagamento', 'pagar', 'zelle', 'venmo', 'cartao', 'cartão', 'parcela', 'crediario', 'crediário'],
-    replyText: 'Aceitamos Zelle (+1 978 313-9452 ou anafitweareua@gmail.com), Venmo, Cartão de Crédito/Apple Pay no site e Crediário facilitado no Showroom! 💳✨',
+    replyText: 'Aceitamos Zelle (+1 978 313-9452 ou anafitweareua@gmail.com), Venmo (@Accleaningproservices), Cartão de Crédito/Apple Pay no site e Crediário facilitado no Showroom! 💳✨',
     enabled: true,
   },
 ];
