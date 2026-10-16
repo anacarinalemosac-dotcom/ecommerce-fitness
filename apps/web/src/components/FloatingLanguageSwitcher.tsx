@@ -1,10 +1,16 @@
 'use client';
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { useLanguage } from '../context/LanguageContext';
 import { Globe } from 'lucide-react';
 
 export function FloatingLanguageSwitcher() {
+  const pathname = usePathname();
+  if (pathname === '/links' || pathname === '/bio') {
+    return null;
+  }
+
   const { lang, setLang } = useLanguage();
 
   return (

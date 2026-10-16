@@ -2,11 +2,17 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import { ArrowRight, MapPin, Phone, Instagram, ShieldCheck, DollarSign } from 'lucide-react';
 
 export function SiteFooter() {
+  const pathname = usePathname();
+  if (pathname === '/links' || pathname === '/bio') {
+    return null;
+  }
+
   const { lang, t } = useLanguage();
   const { siteInfo, siteImages } = useStoreSettings();
 
