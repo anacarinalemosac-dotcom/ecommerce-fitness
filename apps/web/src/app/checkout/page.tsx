@@ -195,12 +195,6 @@ export default function CheckoutPage() {
 
   // Pagamento Online
   const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'APPLE_PAY' | 'ZELLE' | 'VENMO'>('CARD');
-  const [cardData, setCardData] = useState({
-    number: '',
-    name: '',
-    expiry: '',
-    cvv: '',
-  });
 
   // Cupom de Vendedora (Comissão Oculta para o Cliente)
   const [couponInput, setCouponInput] = useState('');
@@ -996,68 +990,55 @@ export default function CheckoutPage() {
               </button>
             </div>
 
-            {/* Formulário de Cartão de Crédito */}
+            {/* Informações de Pagamento Seguro via Stripe */}
             {paymentMethod === 'CARD' && (
-              <div className="p-4 border border-deep-black/20 bg-white space-y-3 animate-fadeIn">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                    {lang === 'pt' ? 'NÚMERO DO CARTÃO:' : 'CARD NUMBER:'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={19}
-                    value={cardData.number}
-                    onChange={(e) => setCardData({ ...cardData, number: e.target.value })}
-                    placeholder="4000 1234 5678 9010"
-                    className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                  />
+              <div className="p-4 sm:p-5 border-2 border-deep-black bg-deep-black/5 space-y-3 animate-fadeIn text-xs text-deep-black">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-gold" />
+                    <span className="font-black uppercase tracking-wider text-deep-black">
+                      {lang === 'pt' ? 'PAGAMENTO SEGURO VIA STRIPE' : 'SECURE STRIPE PAYMENT'}
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[9px] font-black uppercase font-mono">
+                    CRIPTOGRAFIA 256-BIT SSL
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                      {lang === 'pt' ? 'VALIDADE (MM/AA):' : 'EXPIRATION (MM/YY):'}
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      maxLength={5}
-                      value={cardData.expiry}
-                      onChange={(e) => setCardData({ ...cardData, expiry: e.target.value })}
-                      placeholder="12/28"
-                      className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                    />
-                  </div>
+                <p className="text-deep-black/80 font-medium leading-relaxed">
+                  {lang === 'pt'
+                    ? 'Ao clicar no botão "PAGAR COM CARTÃO", você será direcionada para a página oficial e 100% segura da Stripe para preencher os dados do seu cartão com proteção bancária e antifraude.'
+                    : 'When you click "PAY WITH CARD", you will be redirected to the official, 100% secure Stripe Checkout page to enter your card details with banking-level fraud protection.'}
+                </p>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                      CVV / CVC:
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      maxLength={4}
-                      value={cardData.cvv}
-                      onChange={(e) => setCardData({ ...cardData, cvv: e.target.value })}
-                      placeholder="123"
-                      className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                    />
-                  </div>
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  <span className="px-2 py-1 bg-white border border-deep-black/20 font-black text-[9px] font-mono shadow-2xs">VISA</span>
+                  <span className="px-2 py-1 bg-white border border-deep-black/20 font-black text-[9px] font-mono shadow-2xs">MASTERCARD</span>
+                  <span className="px-2 py-1 bg-white border border-deep-black/20 font-black text-[9px] font-mono shadow-2xs">AMERICAN EXPRESS</span>
+                  <span className="px-2 py-1 bg-white border border-deep-black/20 font-black text-[9px] font-mono shadow-2xs">DISCOVER</span>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-[10px] text-deep-black/70 pt-1 font-bold">
+                  <ShieldCheck className="w-3.5 h-3.5 text-gold" />
+                  <span>
+                    {lang === 'pt'
+                      ? 'Nenhum dado do seu cartão é armazenado na nossa loja. Transação certificada PCI-DSS Nível 1.'
+                      : 'No card numbers are stored on our servers. Certified PCI-DSS Level 1 transaction.'}
+                  </span>
                 </div>
               </div>
             )}
 
             {/* Apple Pay Direct */}
             {paymentMethod === 'APPLE_PAY' && (
-              <div className="p-4 bg-deep-black text-white text-center space-y-2 animate-fadeIn border border-gold">
+              <div className="p-4 sm:p-5 bg-deep-black text-white text-center space-y-2 animate-fadeIn border-2 border-gold">
                 <span className="text-xs font-black uppercase tracking-widest text-gold block">
                   APPLE PAY INSTANT CHECKOUT
                 </span>
                 <p className="text-xs text-white/80 uppercase">
                   {lang === 'pt'
-                    ? 'Clique no botão abaixo para autorizar o pagamento com Face ID ou Touch ID.'
-                    : 'Click Place Order to authorize payment with Touch ID or Face ID.'}
+                    ? 'Ao clicar no botão abaixo, a Stripe abrirá a janela de autorização direta do Apple Pay via Face ID ou Touch ID no seu aparelho.'
+                    : 'When you click the button below, Stripe will open the Apple Pay window for direct authorization via Face ID or Touch ID.'}
                 </p>
               </div>
             )}
@@ -1278,17 +1259,22 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-4 bg-deep-black hover:bg-gold text-white hover:text-deep-black disabled:opacity-50 text-xs sm:text-sm font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-luxury"
+              className="w-full py-4 bg-deep-black hover:bg-gold text-white hover:text-deep-black disabled:opacity-50 text-xs sm:text-sm font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-luxury cursor-pointer"
             >
               {isSubmitting ? (
-                <span>{lang === 'pt' ? 'PROCESSANDO COMPRA...' : 'PROCESSING ORDER...'}</span>
+                <span>
+                  {paymentMethod === 'CARD' || paymentMethod === 'APPLE_PAY'
+                    ? (lang === 'pt' ? 'REDIRECIONANDO PARA O STRIPE...' : 'REDIRECTING TO STRIPE...')
+                    : (lang === 'pt' ? 'PROCESSANDO PEDIDO...' : 'PROCESSING ORDER...')}
+                </span>
               ) : (
                 <>
                   <Lock className="w-4 h-4 text-gold" />
                   <span>
-                    {lang === 'pt'
-                      ? `FINALIZAR COMPRA ONLINE • $${total.toFixed(2)}`
-                      : `PLACE ORDER NOW • $${total.toFixed(2)}`}
+                    {paymentMethod === 'CARD' && (lang === 'pt' ? `PAGAR COM CARTÃO (STRIPE) • $${total.toFixed(2)}` : `PAY WITH CARD (STRIPE) • $${total.toFixed(2)}`)}
+                    {paymentMethod === 'APPLE_PAY' && (lang === 'pt' ? `PAGAR COM APPLE PAY • $${total.toFixed(2)}` : `PAY WITH APPLE PAY • $${total.toFixed(2)}`)}
+                    {paymentMethod === 'ZELLE' && (lang === 'pt' ? `FINALIZAR PEDIDO (ZELLE) • $${total.toFixed(2)}` : `CONFIRM ORDER (ZELLE) • $${total.toFixed(2)}`)}
+                    {paymentMethod === 'VENMO' && (lang === 'pt' ? `FINALIZAR PEDIDO (VENMO) • $${total.toFixed(2)}` : `CONFIRM ORDER (VENMO) • $${total.toFixed(2)}`)}
                   </span>
                 </>
               )}
