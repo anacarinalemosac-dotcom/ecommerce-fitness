@@ -475,6 +475,44 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ success: bool
         });
         return { success: true, messageId: resData.id };
       } else {
+        // Fallback inteligente: se o domínio próprio ainda não foi verificado no DNS do Resend, tenta com onboarding@resend.dev
+        if (resData.message && (resData.message.includes('domain') || resData.message.includes('verify')) && fromEmail !== 'ANA Fitness Wear <onboarding@resend.dev>') {
+          console.log('Domínio próprio ainda não verificado no Resend. Tentando fallback com onboarding@resend.dev...');
+          try {
+            const fbResponse = await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${resendApiKey}`,
+              },
+              body: JSON.stringify({
+                from: 'ANA Fitness Wear <onboarding@resend.dev>',
+                to: [to],
+                subject,
+                html,
+              }),
+            });
+            const fbData = await fbResponse.json();
+            if (fbResponse.ok && fbData.id) {
+              console.log(`✓ [EMAIL REAL ENVIADO COM SUCESSO VIA RESEND ONBOARDING] Para: ${to} | ID: ${fbData.id}`);
+              saveEmailRecord({
+                id: `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                order_id,
+                to,
+                subject,
+                type,
+                status: 'SENT',
+                provider_id: fbData.id,
+                created_at: new Date().toISOString(),
+                html_preview: html,
+              });
+              return { success: true, messageId: fbData.id };
+            }
+          } catch (fbErr) {
+            console.warn('Falha no fallback do Resend:', fbErr);
+          }
+        }
+
         console.warn(`⚠ [RESEND API ERRO]:`, resData);
         saveEmailRecord({
           id: `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
