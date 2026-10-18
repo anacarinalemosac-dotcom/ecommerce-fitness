@@ -36,6 +36,104 @@ export interface SellerRecord {
 let memorySellers: SellerRecord[] | null = null;
 let lastSellersFetch = 0;
 
+const DEFAULT_SEED_SELLERS: SellerRecord[] = [
+  {
+    id: 'seller-beatriz',
+    name: 'Beatriz Figueredo',
+    email: 'beatriz.fig@miamifit.com',
+    phone: '+1 (305) 555-0199',
+    password: 'ana123',
+    coupon_code: 'BEATRIZ10',
+    commission_pct: 10,
+    customer_discount_pct: 10,
+    channel: 'ALL',
+    active: true,
+    approval_status: 'APPROVED',
+    payout_method: 'ZELLE',
+    payout_key: 'beatriz.fig@miamifit.com',
+    payout_beneficiary: 'Beatriz Figueredo',
+    total_sales_count: 0,
+    total_revenue_generated: 0,
+    total_commission_earned: 0,
+    total_commission_paid: 0,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'seller-camila',
+    name: 'Camila Rocha',
+    email: 'camila.rocha@fitness.com',
+    phone: '+1 (407) 555-0144',
+    password: 'ana123',
+    coupon_code: 'CAMILA10',
+    commission_pct: 10,
+    customer_discount_pct: 10,
+    channel: 'ALL',
+    active: true,
+    approval_status: 'APPROVED',
+    payout_method: 'ZELLE',
+    payout_key: 'camila.rocha@fitness.com',
+    payout_beneficiary: 'Camila Rocha',
+    total_sales_count: 0,
+    total_revenue_generated: 0,
+    total_commission_earned: 0,
+    total_commission_paid: 0,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'seller-juliana',
+    name: 'Juliana Mendes',
+    email: 'juliana.mendes@bostonfit.com',
+    phone: '+1 (508) 555-0177',
+    password: 'ana123',
+    coupon_code: 'JULIANA10',
+    commission_pct: 10,
+    customer_discount_pct: 10,
+    channel: 'ALL',
+    active: true,
+    approval_status: 'APPROVED',
+    payout_method: 'ZELLE',
+    payout_key: 'juliana.mendes@bostonfit.com',
+    payout_beneficiary: 'Juliana Mendes',
+    total_sales_count: 0,
+    total_revenue_generated: 0,
+    total_commission_earned: 0,
+    total_commission_paid: 0,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'seller-mariana',
+    name: 'Mariana Salles',
+    email: 'mariana.salles@gmail.com',
+    phone: '+1 (617) 555-0188',
+    password: 'ana123',
+    coupon_code: 'MARIANA10',
+    commission_pct: 10,
+    customer_discount_pct: 10,
+    channel: 'ALL',
+    active: true,
+    approval_status: 'APPROVED',
+    payout_method: 'ZELLE',
+    payout_key: 'mariana.salles@gmail.com',
+    payout_beneficiary: 'Mariana Salles',
+    total_sales_count: 0,
+    total_revenue_generated: 0,
+    total_commission_earned: 0,
+    total_commission_paid: 0,
+    created_at: new Date().toISOString(),
+  },
+];
+
+// Helper para fundir vendedoras padrão com as salvas no banco
+function mergeDefaultSellers(loaded: SellerRecord[]): SellerRecord[] {
+  const result = [...loaded];
+  for (const def of DEFAULT_SEED_SELLERS) {
+    if (!result.some((s) => s.coupon_code.toUpperCase() === def.coupon_code.toUpperCase() || s.name.toLowerCase() === def.name.toLowerCase())) {
+      result.push(def);
+    }
+  }
+  return result;
+}
+
 async function readSellers(): Promise<SellerRecord[]> {
   const now = Date.now();
   if (memorySellers && now - lastSellersFetch < 3000) {
@@ -53,12 +151,12 @@ async function readSellers(): Promise<SellerRecord[]> {
     if (!error && row?.description) {
       try {
         const parsed = JSON.parse(row.description);
-        if (Array.isArray(parsed)) {
-          memorySellers = parsed.map((s: any) => ({
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          memorySellers = mergeDefaultSellers(parsed.map((s: any) => ({
             ...s,
             password: (s.password && s.password.trim() !== '') ? s.password.trim() : 'ana123',
             approval_status: s.approval_status || (s.active ? 'APPROVED' : 'PENDING'),
-          }));
+          })));
           lastSellersFetch = now;
           return memorySellers;
         }
@@ -73,12 +171,12 @@ async function readSellers(): Promise<SellerRecord[]> {
     if (fs.existsSync(SELLERS_FILE)) {
       const raw = fs.readFileSync(SELLERS_FILE, 'utf8');
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        memorySellers = parsed.map((s: any) => ({
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        memorySellers = mergeDefaultSellers(parsed.map((s: any) => ({
           ...s,
           password: (s.password && s.password.trim() !== '') ? s.password.trim() : 'ana123',
           approval_status: s.approval_status || (s.active ? 'APPROVED' : 'PENDING'),
-        }));
+        })));
         lastSellersFetch = now;
         return memorySellers;
       }
@@ -87,7 +185,9 @@ async function readSellers(): Promise<SellerRecord[]> {
     console.warn('Erro ao ler sellers_db.json:', e);
   }
 
-  return memorySellers || [];
+  memorySellers = DEFAULT_SEED_SELLERS;
+  lastSellersFetch = now;
+  return memorySellers;
 }
 
 async function writeSellers(sellers: SellerRecord[]): Promise<void> {
@@ -138,7 +238,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ sellers });
+    return NextResponse.json({ success: true, sellers, data: sellers });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

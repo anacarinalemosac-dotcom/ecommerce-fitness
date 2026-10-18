@@ -195,18 +195,14 @@ export default function PosTerminalPage() {
   const [commissionMode, setCommissionMode] = useState<'NONE' | 'PERCENT' | 'FIXED'>('NONE');
   const [commissionInputValue, setCommissionInputValue] = useState<string>('0');
 
-  const handleSellerChange = (newSeller: string) => {
-    setSeller(newSeller);
-    if (newSeller.toLowerCase().includes('ana karina') || newSeller.toLowerCase().includes('loja oficial')) {
-      setCommissionMode('NONE');
-      setCommissionInputValue('0');
-    } else {
-      setCommissionMode('PERCENT');
-      setCommissionInputValue('10');
-    }
-  };
+  const DEFAULT_POS_SELLERS = [
+    { id: 'seller-beatriz', name: 'Beatriz Figueredo', coupon_code: 'BEATRIZ10', commission_pct: 10 },
+    { id: 'seller-camila', name: 'Camila Rocha', coupon_code: 'CAMILA10', commission_pct: 10 },
+    { id: 'seller-juliana', name: 'Juliana Mendes', coupon_code: 'JULIANA10', commission_pct: 10 },
+    { id: 'seller-mariana', name: 'Mariana Salles', coupon_code: 'MARIANA10', commission_pct: 10 },
+  ];
 
-  const [registeredSellers, setRegisteredSellers] = useState<any[]>([]);
+  const [registeredSellers, setRegisteredSellers] = useState<any[]>(DEFAULT_POS_SELLERS);
   const [customerName, setCustomerName] = useState('Cliente Balcão');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -214,24 +210,38 @@ export default function PosTerminalPage() {
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
 
+  const handleSellerChange = (newSeller: string) => {
+    setSeller(newSeller);
+    if (!newSeller || newSeller.toLowerCase().includes('ana karina') || newSeller.toLowerCase().includes('loja oficial')) {
+      setCommissionMode('NONE');
+      setCommissionInputValue('0');
+    } else {
+      const found = registeredSellers.find((s) => s.name.toLowerCase() === newSeller.toLowerCase());
+      const defaultPct = found?.commission_pct !== undefined ? String(found.commission_pct) : '10';
+      setCommissionMode('PERCENT');
+      setCommissionInputValue(defaultPct);
+    }
+  };
+
   // Busca vendedoras reais cadastradas e aprovadas
   useEffect(() => {
     fetch('/api/backoffice/sellers')
       .then((r) => r.json())
       .then((d) => {
-        if (d.success && Array.isArray(d.data)) {
-          const approved = d.data.filter(
-            (s: any) =>
-              s.active &&
-              s.approval_status === 'APPROVED' &&
-              s.name &&
-              !s.name.includes('Juliana Silva') &&
-              !s.name.includes('Camila')
-          );
+        const rawList = Array.isArray(d.sellers) ? d.sellers : (Array.isArray(d.data) ? d.data : []);
+        const approved = rawList.filter(
+          (s: any) => (s.active !== false) && (s.approval_status === 'APPROVED' || !s.approval_status) && s.name
+        );
+        if (approved.length > 0) {
           setRegisteredSellers(approved);
+        } else {
+          setRegisteredSellers(DEFAULT_POS_SELLERS);
         }
       })
-      .catch((e) => console.warn('Erro ao buscar vendedoras no PDV:', e));
+      .catch((e) => {
+        console.warn('Erro ao buscar vendedoras no PDV, mantendo lista padrão:', e);
+        setRegisteredSellers(DEFAULT_POS_SELLERS);
+      });
   }, []);
 
   // Meios de Pagamento (incluindo CREDIÁRIO / Carnê Próprio da Loja)
@@ -535,6 +545,11 @@ export default function PosTerminalPage() {
         installments: generatedInstallments,
       } : undefined;
 
+      const selectedSellerRecord = registeredSellers.find((s) => s.name.toLowerCase() === seller.toLowerCase());
+      const linkedCoupon = discountReason.trim()
+        ? discountReason.trim().toUpperCase()
+        : (selectedSellerRecord?.coupon_code ? selectedSellerRecord.coupon_code.toUpperCase() : undefined);
+
       const payload = {
         order_id: `POS-LEO-${Math.floor(1000 + Math.random() * 9000)}`,
         channel: 'POS_COUNTER',
@@ -542,7 +557,7 @@ export default function PosTerminalPage() {
         customer_phone: customerPhone.trim() || undefined,
         customer_email: customerEmail.trim() || undefined,
         seller_name: seller,
-        coupon_code: discountReason.trim() ? discountReason.trim().toUpperCase() : undefined,
+        coupon_code: linkedCoupon,
         payment_method: paymentMethod,
         subtotal_products: subtotal,
         discount_amount: calculatedDiscountAmount,
@@ -1594,31 +1609,72 @@ export default function PosTerminalPage() {
                 </div>
               )}
 
-              {/* Seção de Comissão da Vendedora - 100% Editável e Opcional */}
-              <div className="bg-white/5 border border-gold/30 p-2.5 space-y-2">
-                <div className="flex justify-between items-center text-gold font-bold">
-                  <span className="flex items-center gap-1.5 text-[10px]">
-                    <DollarSign className="w-3.5 h-3.5" /> COMISSÃO DA VENDEDORA:
+              {/* =========================================================================
+                  SEÇÃO PRINCIPAL: VENDEDORA & COMISSÃO DA VENDA (100% SELECIONÁVEL & EDITÁVEL)
+                 ========================================================================= */}
+              <div className="bg-deep-black/60 border-2 border-gold/50 p-3 space-y-2.5 shadow-sm">
+                <div className="flex justify-between items-center text-gold font-bold border-b border-white/10 pb-2">
+                  <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider">
+                    <UserCheck className="w-4 h-4 text-gold" />
+                    <span>VENDEDORA & COMISSÃO:</span>
                   </span>
-                  <span className="font-mono text-sm font-black">
+                  <span className="font-mono text-sm font-black text-gold">
                     ${commission.toFixed(2)}
                     {commissionMode === 'NONE' && (
-                      <span className="text-[9px] text-white/50 font-normal ml-1.5">(SEM COMISSÃO)</span>
+                      <span className="text-[9px] text-white/50 font-normal ml-1">($0)</span>
                     )}
                     {commissionMode === 'PERCENT' && (
-                      <span className="text-[9px] text-gold/80 font-normal ml-1.5">({commissionInputValue}%)</span>
+                      <span className="text-[9px] text-gold/80 font-normal ml-1">({commissionInputValue}%)</span>
                     )}
                     {commissionMode === 'FIXED' && (
-                      <span className="text-[9px] text-gold/80 font-normal ml-1.5">($ FIXO)</span>
+                      <span className="text-[9px] text-gold/80 font-normal ml-1">($ FIXO)</span>
                     )}
                   </span>
                 </div>
 
-                {/* Seletores rápidos de comissão */}
-                <div className="space-y-1.5 pt-1.5 border-t border-white/10">
-                  <span className="text-[8px] font-black uppercase tracking-wider text-white/50 block">
-                    SELECIONE OU EDITE A COMISSÃO (NÃO OBRIGATÓRIA):
-                  </span>
+                {/* 1. SELETOR DA VENDEDORA RESPONSÁVEL PELA VENDA */}
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black uppercase tracking-wider text-white/70 flex items-center justify-between">
+                    <span>SELECIONE QUEM RECEBE A COMISSÃO:</span>
+                    <span className="text-[8px] font-mono text-gold uppercase">
+                      {seller.toLowerCase().includes('ana karina') ? 'VENDA DIRETA' : 'COMISSÃO ATIVA'}
+                    </span>
+                  </label>
+                  <select
+                    value={seller}
+                    onChange={(e) => handleSellerChange(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-black uppercase tracking-wider bg-deep-black text-white border-2 border-gold/40 focus:border-gold focus:outline-none cursor-pointer"
+                  >
+                    <option value="Ana Karina">
+                      🏢 VENDA PRÓPRIA / BALCÃO (ANA KARINA) - SEM COMISSÃO
+                    </option>
+                    <optgroup label="✨ Vendedoras / Consultoras Oficiais">
+                      {registeredSellers.map((s) => (
+                        <option key={s.id || s.name} value={s.name}>
+                          👩‍💼 {s.name} {s.coupon_code ? `(${s.coupon_code})` : ''} • Padrão: {s.commission_pct || 10}%
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+
+                {/* 2. BOTÕES RÁPIDOS DE COMISSÃO */}
+                <div className="space-y-1.5 pt-1 border-t border-white/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[8px] font-black uppercase tracking-wider text-white/50">
+                      APLICAR COMISSÃO PARA: <strong className="text-gold">{seller}</strong>
+                    </span>
+                    {commissionMode === 'NONE' ? (
+                      <span className="text-[8.5px] font-mono font-bold text-red-400 bg-red-950/40 px-1.5 py-0.5 border border-red-500/30">
+                        SEM COMISSÃO ($0)
+                      </span>
+                    ) : (
+                      <span className="text-[8.5px] font-mono font-bold text-green-400 bg-green-950/40 px-1.5 py-0.5 border border-green-500/30">
+                        ✓ COMISSÃO ATIVA
+                      </span>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-4 gap-1">
                     <button
                       type="button"
@@ -1626,7 +1682,7 @@ export default function PosTerminalPage() {
                         setCommissionMode('NONE');
                         setCommissionInputValue('0');
                       }}
-                      className={`py-1 px-1 text-[8px] font-black uppercase border transition text-center ${
+                      className={`py-1.5 px-1 text-[8px] font-black uppercase border transition text-center ${
                         commissionMode === 'NONE'
                           ? 'bg-red-600 text-white border-red-500 shadow-xs'
                           : 'bg-white/5 text-white/70 border-white/20 hover:border-gold hover:text-white'
@@ -1641,7 +1697,7 @@ export default function PosTerminalPage() {
                         setCommissionMode('PERCENT');
                         setCommissionInputValue('5');
                       }}
-                      className={`py-1 px-1 text-[8px] font-black uppercase border transition text-center ${
+                      className={`py-1.5 px-1 text-[8px] font-black uppercase border transition text-center ${
                         commissionMode === 'PERCENT' && commissionInputValue === '5'
                           ? 'bg-gold text-deep-black border-gold shadow-xs'
                           : 'bg-white/5 text-white/70 border-white/20 hover:border-gold hover:text-white'
@@ -1655,7 +1711,7 @@ export default function PosTerminalPage() {
                         setCommissionMode('PERCENT');
                         setCommissionInputValue('10');
                       }}
-                      className={`py-1 px-1 text-[8px] font-black uppercase border transition text-center ${
+                      className={`py-1.5 px-1 text-[8px] font-black uppercase border transition text-center ${
                         commissionMode === 'PERCENT' && commissionInputValue === '10'
                           ? 'bg-gold text-deep-black border-gold shadow-xs'
                           : 'bg-white/5 text-white/70 border-white/20 hover:border-gold hover:text-white'
@@ -1669,7 +1725,7 @@ export default function PosTerminalPage() {
                         setCommissionMode('FIXED');
                         if (commissionMode !== 'FIXED') setCommissionInputValue('10');
                       }}
-                      className={`py-1 px-1 text-[8px] font-black uppercase border transition text-center ${
+                      className={`py-1.5 px-1 text-[8px] font-black uppercase border transition text-center ${
                         commissionMode === 'FIXED'
                           ? 'bg-gold text-deep-black border-gold shadow-xs'
                           : 'bg-white/5 text-white/70 border-white/20 hover:border-gold hover:text-white'
@@ -1679,10 +1735,12 @@ export default function PosTerminalPage() {
                     </button>
                   </div>
 
-                  {/* Input direto quando não for 'NONE' */}
+                  {/* 3. INPUT MANUAL LIVRE (SE QUISER AJUSTAR VALOR OU PORCENTAGEM) */}
                   {commissionMode !== 'NONE' && (
-                    <div className="flex items-center gap-1.5 pt-1">
-                      <span className="text-[8px] font-bold text-white/60">VALOR LIVRE:</span>
+                    <div className="flex items-center gap-2 pt-1 bg-white/5 p-2 border border-white/10">
+                      <span className="text-[9px] font-bold text-white/70 uppercase shrink-0">
+                        {commissionMode === 'PERCENT' ? 'PORCENTAGEM:' : 'VALOR FIXO:'}
+                      </span>
                       <div className="relative flex-1">
                         <input
                           type="number"
@@ -1691,14 +1749,26 @@ export default function PosTerminalPage() {
                           value={commissionInputValue}
                           onChange={(e) => setCommissionInputValue(e.target.value)}
                           placeholder={commissionMode === 'PERCENT' ? 'Digite a % (ex: 8.5)' : 'Digite em $ (ex: 15.00)'}
-                          className="w-full px-2 py-0.5 text-xs font-mono font-bold bg-white/10 border border-white/20 text-white placeholder-white/30 focus:outline-none focus:border-gold"
+                          className="w-full px-2 py-1 text-xs font-mono font-bold bg-deep-black border border-gold/40 text-gold placeholder-white/30 focus:outline-none focus:border-gold"
                         />
-                        <span className="absolute right-2 top-0.5 text-[9px] font-mono font-bold text-gold">
-                          {commissionMode === 'PERCENT' ? '% SOBRE LÍQUIDO' : 'USD TOTAL'}
+                        <span className="absolute right-2 top-1 text-[9px] font-mono font-bold text-gold/80">
+                          {commissionMode === 'PERCENT' ? '% sobre líquido' : 'USD'}
                         </span>
                       </div>
                     </div>
                   )}
+
+                  {/* Feedback visual de destino */}
+                  <div className="text-[10px] text-white/75 pt-1 flex items-center justify-between">
+                    <span>Crédito da comissão:</span>
+                    <span className="font-bold">
+                      {commission > 0 ? (
+                        <span className="text-green-400">✓ ${commission.toFixed(2)} para {seller}</span>
+                      ) : (
+                        <span className="text-white/50">Nenhuma comissão a pagar ($0.00)</span>
+                      )}
+                    </span>
+                  </div>
                 </div>
               </div>
 
