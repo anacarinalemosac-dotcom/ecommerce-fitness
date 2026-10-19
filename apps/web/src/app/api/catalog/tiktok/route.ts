@@ -133,44 +133,66 @@ export async function GET(req: NextRequest) {
           .from('product_variants')
           .select('*');
 
-        rawProducts = dbProds.map((p) => {
-          let meta: any = {};
-          try {
-            if (p.description && p.description.startsWith('{')) {
-              meta = JSON.parse(p.description);
-            } else if (p.description) {
-              meta = { bio: p.description };
-            }
-          } catch (e) {}
+        rawProducts = dbProds
+          .filter((p) => {
+            // Ignora registros internos de estado
+            if (p.slug?.startsWith('__') || p.title?.startsWith('__')) return false;
+            try {
+              if (p.description && p.description.startsWith('{')) {
+                const meta = JSON.parse(p.description);
+                if (meta.visible_online === false) return false;
+              }
+            } catch (e) {}
+            return true;
+          })
+          .map((p) => {
+            let meta: any = {};
+            try {
+              if (p.description && p.description.startsWith('{')) {
+                meta = JSON.parse(p.description);
+              } else if (p.description) {
+                meta = { bio: p.description };
+              }
+            } catch (e) {}
 
-          const pVars = (allVars || []).filter((v) => v.product_id === p.id);
-          const effectiveVars = (pVars.length > 0)
-            ? pVars
-            : (Array.isArray(meta.variants) && meta.variants.length > 0 ? meta.variants : []);
+            const pVars = (allVars || []).filter((v) => v.product_id === p.id);
+            const effectiveVars = (pVars.length > 0)
+              ? pVars
+              : (Array.isArray(meta.variants) && meta.variants.length > 0 ? meta.variants : []);
 
-          const primaryImage = meta.primary_image || meta.images?.[0] || effectiveVars[0]?.images?.[0] || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
-          const gallery = Array.isArray(meta.images) && meta.images.length > 0
-            ? meta.images
-            : [primaryImage];
+            // Prioriza imagem da variação com estoque > 0
+            const inStockVar = effectiveVars.find((v: any) => {
+              const st = v.stock_quantity !== undefined ? Number(v.stock_quantity) : (v.stock !== undefined ? Number(v.stock) : 0);
+              const img = v.image || (Array.isArray(v.images) && v.images[0]);
+              return st > 0 && !!img;
+            });
+            const inStockImg = inStockVar ? (inStockVar.image || (Array.isArray(inStockVar.images) && inStockVar.images[0])) : null;
 
-          return {
-            id: p.id,
-            slug: p.slug,
-            title: p.title,
-            category: p.categories?.name || meta.category || 'Activewear',
-            description: meta.bio || meta.description || p.description || 'Moda fitness premium com zero transparência e alta compressão anatômica.',
-            price: Number(p.price || meta.price || 44.90),
-            primaryImage,
-            images: gallery,
-            color: meta.colors?.[0]?.name || effectiveVars[0]?.color || 'Onyx Black',
-            hasPadding: meta.has_padding !== false,
-            variants: effectiveVars.length > 0 ? effectiveVars : [
-              { size: 'S', color: 'Onyx Black', stock_quantity: 10, sku: `${p.slug}-S` },
-              { size: 'M', color: 'Onyx Black', stock_quantity: 10, sku: `${p.slug}-M` },
-              { size: 'L', color: 'Onyx Black', stock_quantity: 10, sku: `${p.slug}-L` },
-            ],
-          };
-        });
+            const primaryImage = inStockImg || meta.primary_image || meta.images?.[0] || effectiveVars[0]?.images?.[0] || effectiveVars[0]?.image || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
+            const gallery = Array.isArray(meta.images) && meta.images.length > 0
+              ? meta.images
+              : [primaryImage];
+
+            const basePrice = Number(meta.promotional_price || meta.price || p.price || 49.90);
+
+            return {
+              id: p.id,
+              slug: p.slug,
+              title: p.title,
+              category: p.categories?.name || meta.category || 'Activewear',
+              description: meta.bio || meta.description || p.description || 'Moda fitness premium com zero transparência e alta compressão anatômica.',
+              price: basePrice,
+              primaryImage,
+              images: gallery,
+              color: inStockVar?.color || meta.colors?.[0]?.name || effectiveVars[0]?.color || 'Onyx Black',
+              hasPadding: meta.has_padding !== false,
+              variants: effectiveVars.length > 0 ? effectiveVars : [
+                { size: 'S', color: 'Onyx Black', stock_quantity: 10, sku: `${p.slug}-S` },
+                { size: 'M', color: 'Onyx Black', stock_quantity: 10, sku: `${p.slug}-M` },
+                { size: 'L', color: 'Onyx Black', stock_quantity: 10, sku: `${p.slug}-L` },
+              ],
+            };
+          });
       }
     } catch (err) {
       console.warn('Erro ao ler produtos para o feed TikTok:', err);
@@ -208,10 +230,13 @@ export async function GET(req: NextRequest) {
       vars.forEach((v: any) => {
         const size = v.size || 'M';
         const color = v.color || prod.color || 'Onyx Black';
-        const sku = v.sku || `${prod.slug}-${size}-${color.replace(/\s+/g, '')}`;
-        const stock = v.stock_quantity !== undefined ? Number(v.stock_quantity) : 10;
+        const sku = v.sku || `${prod.slug}-${size}-${color.replace(/[^a-zA-Z0-9]/g, '')}`;
+        const stock = v.stock_quantity !== undefined ? Number(v.stock_quantity) : (v.stock !== undefined ? Number(v.stock) : 0);
         const availability = stock > 0 ? 'in stock' : 'preorder';
         const itemUrl = `${origin}/produto/${prod.slug}?size=${encodeURIComponent(size)}&color=${encodeURIComponent(color)}&utm_source=tiktok_shop&utm_medium=catalog_feed&utm_campaign=product_showcase`;
+        const variantImg = v.image || (Array.isArray(v.images) && v.images[0]) || prod.primaryImage;
+        const addImg = prod.images?.find((img: string) => img !== variantImg) || prod.primaryImage;
+        const itemPrice = Number(v.price || prod.price).toFixed(2);
 
         feedItems.push({
           id: sku,
@@ -219,10 +244,10 @@ export async function GET(req: NextRequest) {
           title: `${prod.title} - ${color} (${size})`,
           description: `${prod.description} Zero transparência e modelagem anatômica. Marca oficial ANA FITNESS WEAR LLC.`,
           link: itemUrl,
-          image_link: v.image || prod.primaryImage,
-          additional_image_link: prod.images?.[1] || prod.primaryImage,
+          image_link: variantImg,
+          additional_image_link: addImg,
           availability,
-          price: `${Number(v.price || prod.price).toFixed(2)} USD`,
+          price: `${itemPrice} USD`,
           brand: 'ANA FITNESS WEAR',
           condition: 'new',
           google_product_category: '1604', // Apparel & Accessories > Clothing > Activewear
