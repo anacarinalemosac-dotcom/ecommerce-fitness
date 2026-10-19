@@ -314,14 +314,25 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     (a, b) => (sizeOrder[a.toUpperCase()] || 99) - (sizeOrder[b.toUpperCase()] || 99)
   );
 
+  // Identifica a primeira variação com estoque real (> 0) para selecionar automaticamente na abertura
+  const inStockVariant = (productData.variants || []).find((v: Variant) => Number(v.stock) > 0);
+  const initialColor = inStockVariant?.color || availableColors[0]?.name || 'Preto Ônix';
+  const initialSize = inStockVariant?.size || availableSizes[0] || 'S';
+
   // Estados de seleção
-  const [selectedColor, setSelectedColor] = useState(
-    availableColors[0]?.name || 'Preto Ônix'
-  );
-  const [selectedSize, setSelectedSize] = useState(
-    availableSizes[0] || 'S'
-  );
+  const [selectedColor, setSelectedColor] = useState(initialColor);
+  const [selectedSize, setSelectedSize] = useState(initialSize);
   const [selectedMediaIdx, setSelectedMediaIdx] = useState(0);
+
+  // Sincroniza a foto da galeria inicial com a foto da variação em estoque
+  useEffect(() => {
+    if (inStockVariant && inStockVariant.image) {
+      const idx = (productData.media || []).findIndex((m: any) => m.url === inStockVariant.image);
+      if (idx >= 0) {
+        setSelectedMediaIdx(idx);
+      }
+    }
+  }, [inStockVariant?.image]);
   const [isZoomed, setIsZoomed] = useState(false);
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'desc' | 'sizing' | 'care' | 'preorder'>('desc');

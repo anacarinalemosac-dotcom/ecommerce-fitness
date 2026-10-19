@@ -546,8 +546,37 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             });
           }
 
+          // Procura variação que possui estoque real (> 0) e imagem definida
+          const inStockVariantWithImg = variants.find((v: any) => {
+            const stockQty = Number(v.stock_quantity ?? v.stock ?? 0);
+            const varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
+            return stockQty > 0 && Boolean(varImg);
+          });
+
+          const metaVariants = Array.isArray(meta.variants) ? meta.variants : [];
+          const effectiveInStockVariant = inStockVariantWithImg || metaVariants.find((v: any) => {
+            const stockQty = Number(v.stock_quantity ?? v.stock ?? 0);
+            const varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
+            return stockQty > 0 && Boolean(varImg);
+          });
+
+          const inStockImage = effectiveInStockVariant
+            ? (Array.isArray(effectiveInStockVariant.images) && effectiveInStockVariant.images.length > 0
+                ? effectiveInStockVariant.images[0]
+                : effectiveInStockVariant.image)
+            : null;
+
           if (meta.primary_image && !allImages.includes(meta.primary_image)) {
             allImages.unshift(meta.primary_image);
+          }
+
+          // REGRA DE OURO: Se houver imagem de um item/variação com estoque disponível (>0), coloca ela na frente absoluta!
+          if (inStockImage) {
+            const idx = allImages.indexOf(inStockImage);
+            if (idx !== -1) {
+              allImages.splice(idx, 1);
+            }
+            allImages.unshift(inStockImage);
           }
 
           const categorySlug = (p.categories?.slug || '').toLowerCase();
@@ -658,6 +687,16 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
           const colors = Array.from(colorsMap.entries()).map(([name, hex]) => ({ name, hex }));
           if (colors.length === 0) colors.push({ name: 'Preto Ônix', hex: '#0A0A0A' });
+
+          // Se houver uma variação com estoque > 0, coloca a cor dela em primeiro lugar no array de cores
+          if (effectiveInStockVariant?.color) {
+            const inStockColorName = effectiveInStockVariant.color.toLowerCase();
+            colors.sort((a, b) => {
+              if (a.name.toLowerCase() === inStockColorName) return -1;
+              if (b.name.toLowerCase() === inStockColorName) return 1;
+              return 0;
+            });
+          }
           const sizes = Array.from(sizesSet);
           if (sizes.length === 0) sizes.push('P', 'M', 'G');
 

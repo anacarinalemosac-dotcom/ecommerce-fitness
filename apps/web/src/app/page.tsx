@@ -52,6 +52,9 @@ interface ProductItem {
   sizes: string[];
   stock: number;
   allowBackorder: boolean;
+  galleryImages?: string[];
+  variants?: any[];
+  visibleOnline?: boolean;
 }
 
 const FEATURED_PRODUCTS: ProductItem[] = [
@@ -307,6 +310,7 @@ export default function HomePage() {
   const [quickAddedItem, setQuickAddedItem] = useState<{ id: string; size: string } | null>(null);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [shareModalProduct, setShareModalProduct] = useState<any | null>(null);
+  const [cardImageOverrides, setCardImageOverrides] = useState<Record<string, string>>({});
 
   // Escuta filtros disparados pelo menu sem forçar salto brusco para o rodapé
   useEffect(() => {
@@ -681,7 +685,15 @@ export default function HomePage() {
               <div
                 key={product.id}
                 onMouseEnter={() => setHoveredProduct(product.id)}
-                onMouseLeave={() => setHoveredProduct(null)}
+                onMouseLeave={() => {
+                  setHoveredProduct(null);
+                  setCardImageOverrides((prev) => {
+                    if (!prev[product.id]) return prev;
+                    const next = { ...prev };
+                    delete next[product.id];
+                    return next;
+                  });
+                }}
                 className="group flex flex-col bg-white border border-deep-black/15 transition-all hover:border-deep-black hover:shadow-luxury"
               >
                 {/* 1. Imagem do Produto em Proporção Atlética 4:5 */}
@@ -689,7 +701,7 @@ export default function HomePage() {
                   <Link href={`/produto/${product.slug}`} className="block w-full h-full">
                     {/* Imagem Frontal com Crossfade para Pose de Ação */}
                     <img
-                      src={isHovered ? product.secondaryImage : product.primaryImage}
+                      src={cardImageOverrides[product.id] || (isHovered ? product.secondaryImage : product.primaryImage)}
                       alt={product.title}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
@@ -794,14 +806,39 @@ export default function HomePage() {
                     {/* Swatches de Cores (Bolinhas) */}
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-1.5">
-                        {product.colors.map((color, cIdx) => (
-                          <span
-                            key={cIdx}
-                            className="w-3.5 h-3.5 rounded-full border border-deep-black/30 shadow-xs cursor-pointer transition hover:scale-125"
-                            style={{ backgroundColor: color.hex }}
-                            title={color.name}
-                          />
-                        ))}
+                        {product.colors.map((color, cIdx) => {
+                          const matchingVar = Array.isArray(product.variants)
+                            ? product.variants.find(
+                                (v: any) =>
+                                  v.color?.toLowerCase() === color.name.toLowerCase() &&
+                                  (v.image || (Array.isArray(v.images) && v.images.length > 0))
+                              )
+                            : null;
+                          const colorImg = matchingVar
+                            ? (Array.isArray(matchingVar.images) && matchingVar.images.length > 0 ? matchingVar.images[0] : matchingVar.image)
+                            : null;
+
+                          return (
+                            <span
+                              key={cIdx}
+                              onMouseEnter={() => {
+                                if (colorImg) {
+                                  setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
+                                }
+                              }}
+                              onClick={(e) => {
+                                if (colorImg) {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
+                                }
+                              }}
+                              className="w-3.5 h-3.5 rounded-full border border-deep-black/30 shadow-xs cursor-pointer transition hover:scale-125"
+                              style={{ backgroundColor: color.hex }}
+                              title={color.name}
+                            />
+                          );
+                        })}
                       </div>
 
                       <div className="flex items-center gap-1 text-[11px] font-bold text-deep-black/60">

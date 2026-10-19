@@ -40,7 +40,16 @@ export async function GET(req: NextRequest) {
         ? variants
         : (Array.isArray(meta.variants) && meta.variants.length > 0 ? meta.variants : []);
 
-      const primaryImage = meta.primary_image || (meta.images?.[0]) || (effectiveVariants?.[0]?.images?.[0]) || '';
+      const inStockVariant = effectiveVariants.find((v: any) => {
+        const stockQty = Number(v.stock_quantity ?? v.stock ?? 0);
+        const varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
+        return stockQty > 0 && Boolean(varImg);
+      });
+      const inStockImage = inStockVariant
+        ? (Array.isArray(inStockVariant.images) && inStockVariant.images.length > 0 ? inStockVariant.images[0] : inStockVariant.image)
+        : null;
+
+      const primaryImage = inStockImage || meta.primary_image || (meta.images?.[0]) || (effectiveVariants?.[0]?.images?.[0]) || '';
       const galleryImages = Array.isArray(meta.images) && meta.images.length > 0
         ? meta.images
         : Array.isArray(meta.gallery) && meta.gallery.length > 0
@@ -123,7 +132,16 @@ export async function GET(req: NextRequest) {
         ? pVariants
         : (Array.isArray(meta.variants) && meta.variants.length > 0 ? meta.variants : []);
 
-      const primaryImage = meta.primary_image || (meta.images?.[0]) || (effectiveVariants[0]?.images?.[0]) || '';
+      const inStockVariant = effectiveVariants.find((v: any) => {
+        const stockQty = Number(v.stock_quantity ?? v.stock ?? 0);
+        const varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
+        return stockQty > 0 && Boolean(varImg);
+      });
+      const inStockImage = inStockVariant
+        ? (Array.isArray(inStockVariant.images) && inStockVariant.images.length > 0 ? inStockVariant.images[0] : inStockVariant.image)
+        : null;
+
+      const primaryImage = inStockImage || meta.primary_image || (meta.images?.[0]) || (effectiveVariants[0]?.images?.[0]) || '';
       const galleryImages = Array.isArray(meta.images) && meta.images.length > 0
         ? meta.images
         : Array.isArray(meta.gallery) && meta.gallery.length > 0
