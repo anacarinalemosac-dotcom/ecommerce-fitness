@@ -18,11 +18,22 @@ import {
   Smartphone,
   Activity,
   BarChart3,
+  ShoppingBag,
+  Radio,
+  Globe,
+  Download,
 } from 'lucide-react';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 
 export function TechnicalSettingsView() {
   const { siteInfo, updateSiteInfo, changeMasterPassword, adminProfiles } = useStoreSettings();
+  const [baseUrl, setBaseUrl] = useState('https://anafitwear.com');
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.origin) {
+      setBaseUrl(window.location.origin);
+    }
+  }, []);
 
   const [shippingRate, setShippingRate] = useState(siteInfo.flatShippingRate || 9.99);
   const [returnDays, setReturnDays] = useState(siteInfo.returnDays || 30);
@@ -640,6 +651,229 @@ export function TechnicalSettingsView() {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* 5. CATÁLOGO DINÂMICO & SOCIAL COMMERCE (TIKTOK SHOP / INSTAGRAM / META) */}
+      <div className="bg-white border-2 border-deep-black p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-deep-black/10 pb-3">
+          <h3 className="text-xs font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
+            <ShoppingBag className="w-4 h-4 text-gold" />
+            <span>5. CATÁLOGO DINÂMICO &amp; SOCIAL COMMERCE (TIKTOK SHOP &amp; INSTAGRAM)</span>
+          </h3>
+          <span className="text-[10px] text-green-700 font-black uppercase flex items-center gap-1.5 bg-green-50 px-2 py-0.5 border border-green-300">
+            <span className="w-2 h-2 rounded-full bg-green-600 animate-pulse" />
+            <span>SINCRONIZAÇÃO EM TEMPO REAL ATIVA</span>
+          </span>
+        </div>
+
+        <p className="text-xs text-deep-black/70 uppercase tracking-wide leading-relaxed">
+          Sincronize todo o estoque e catálogo da <strong className="text-deep-black">ANA FITNESS WEAR</strong> diretamente com o <strong className="text-deep-black">TikTok Shop</strong>, <strong className="text-deep-black">TikTok for Business</strong>, <strong className="text-deep-black">Instagram Shopping</strong> e <strong className="text-deep-black">Facebook Shop (Meta Commerce Manager)</strong>. 
+          Ao cadastrar a URL do Feed abaixo, seus produtos aparecem automaticamente na aba Loja do seu perfil, podem ser marcados nos seus vídeos orgânicos e lives, e os clientes compram com 1 toque.
+        </p>
+
+        {/* URLs do Feed de Dados */}
+        <div className="space-y-4">
+          {/* Card Feed Principal XML */}
+          <div className="p-5 border-2 border-deep-black bg-stone-50 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 bg-deep-black text-gold text-[9px] font-black uppercase tracking-widest">
+                  OFICIAL • PADRÃO XML RSS 2.0
+                </span>
+                <span className="text-xs font-black uppercase tracking-wider text-deep-black">
+                  Feed TikTok Shop &amp; Meta Catalog (Recomendado)
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-green-700 font-bold">
+                ✓ Compatível com TikTok Shop &amp; Meta Commerce
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="flex-1 bg-white border border-deep-black/30 px-3 py-2 text-xs font-mono font-bold text-deep-black truncate select-all">
+                {`${baseUrl}/api/catalog/tiktok`}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleCopy(`${baseUrl}/api/catalog/tiktok`, 'tiktok-xml')}
+                  className={`px-4 py-2 text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 ${
+                    copiedKey === 'tiktok-xml'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-deep-black text-white hover:bg-gold hover:text-deep-black'
+                  }`}
+                >
+                  {copiedKey === 'tiktok-xml' ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-white" />
+                      <span>Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copiar URL</span>
+                    </>
+                  )}
+                </button>
+                <a
+                  href={`${baseUrl}/api/catalog/tiktok`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-2 border border-deep-black bg-white hover:bg-stone-100 text-deep-black text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition"
+                  title="Abrir Feed XML no navegador"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Ver Feed</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px] text-deep-black/70">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                <span>Variações separadas por tamanho (S, M, L) e cor</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                <span>Rastreamento UTM automático para vendas</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                <span>Frete fixo $9.99 USPS e estoque em tempo real</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Feed CSV Alternativo */}
+            <div className="p-4 border border-deep-black/20 bg-white space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <Download className="w-3.5 h-3.5 text-gold" />
+                  <span>Feed Alternativo em Formato CSV</span>
+                </div>
+                <span className="text-[9px] font-mono text-stone-500 uppercase">Planilha / Tabela</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${baseUrl}/api/catalog/tiktok?format=csv`}
+                  className="flex-1 bg-stone-50 border border-deep-black/20 px-2 py-1.5 text-[11px] font-mono font-bold text-deep-black/80 truncate"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleCopy(`${baseUrl}/api/catalog/tiktok?format=csv`, 'tiktok-csv')}
+                  className={`px-3 py-1.5 text-[10px] font-black uppercase transition shrink-0 ${
+                    copiedKey === 'tiktok-csv' ? 'bg-green-600 text-white' : 'bg-deep-black text-white hover:bg-gold hover:text-deep-black'
+                  }`}
+                >
+                  {copiedKey === 'tiktok-csv' ? 'Copiado!' : 'Copiar'}
+                </button>
+                <a
+                  href={`${baseUrl}/api/catalog/tiktok?format=csv`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 border border-deep-black/30 hover:bg-stone-100 text-deep-black transition shrink-0"
+                  title="Baixar ou visualizar CSV"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+              <p className="text-[10px] text-deep-black/60 uppercase">
+                Utilize caso o TikTok ou Meta solicite arquivo em formato delimitado por vírgula (CSV).
+              </p>
+            </div>
+
+            {/* Feed Meta / Instagram */}
+            <div className="p-4 border border-deep-black/20 bg-white space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-gold" />
+                  <span>Meta Catalog / Instagram Shopping</span>
+                </div>
+                <span className="text-[9px] font-mono text-stone-500 uppercase">Meta Commerce</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${baseUrl}/api/catalog/facebook`}
+                  className="flex-1 bg-stone-50 border border-deep-black/20 px-2 py-1.5 text-[11px] font-mono font-bold text-deep-black/80 truncate"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleCopy(`${baseUrl}/api/catalog/facebook`, 'meta-feed')}
+                  className={`px-3 py-1.5 text-[10px] font-black uppercase transition shrink-0 ${
+                    copiedKey === 'meta-feed' ? 'bg-green-600 text-white' : 'bg-deep-black text-white hover:bg-gold hover:text-deep-black'
+                  }`}
+                >
+                  {copiedKey === 'meta-feed' ? 'Copiado!' : 'Copiar'}
+                </button>
+                <a
+                  href={`${baseUrl}/api/catalog/facebook`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 border border-deep-black/30 hover:bg-stone-100 text-deep-black transition shrink-0"
+                  title="Abrir Feed Meta"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+              <p className="text-[10px] text-deep-black/60 uppercase">
+                Endpoint otimizado com os mesmos cabeçalhos RSS 2.0 aceitos no Meta Commerce Manager.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Guia Prático Passo a Passo: Como Configurar no TikTok Shop */}
+        <div className="p-5 border-2 border-gold/40 bg-gold/5 space-y-4">
+          <div className="flex items-center gap-2">
+            <Radio className="w-4 h-4 text-gold" />
+            <h4 className="text-xs font-black uppercase tracking-wider text-deep-black">
+              GUIA RÁPIDO: COMO ATIVAR A VITRINE NO TIKTOK FOR BUSINESS / TIKTOK SHOP
+            </h4>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white p-4 border border-deep-black/10 space-y-2">
+              <span className="w-6 h-6 rounded-full bg-deep-black text-gold text-xs font-black flex items-center justify-center">
+                1
+              </span>
+              <h5 className="text-[11px] font-black uppercase text-deep-black">
+                Acesse o Catálogo TikTok
+              </h5>
+              <p className="text-[10px] text-deep-black/70 leading-relaxed uppercase">
+                Entre em <a href="https://business.tiktok.com" target="_blank" rel="noopener noreferrer" className="font-bold underline text-deep-black">business.tiktok.com</a> ou no painel do <strong className="text-deep-black">TikTok Shop Seller Center</strong>. Vá no menu <strong className="text-deep-black">Ativos (Assets) &gt; Catálogos (Catalogs)</strong>.
+              </p>
+            </div>
+
+            <div className="bg-white p-4 border border-deep-black/10 space-y-2">
+              <span className="w-6 h-6 rounded-full bg-deep-black text-gold text-xs font-black flex items-center justify-center">
+                2
+              </span>
+              <h5 className="text-[11px] font-black uppercase text-deep-black">
+                Adicionar via Feed de Dados
+              </h5>
+              <p className="text-[10px] text-deep-black/70 leading-relaxed uppercase">
+                Clique em <strong className="text-deep-black">Adicionar Produtos</strong> e selecione a opção <strong className="text-deep-black">Programação de Feed de Dados (Data Feed Schedule)</strong>.
+              </p>
+            </div>
+
+            <div className="bg-white p-4 border border-deep-black/10 space-y-2">
+              <span className="w-6 h-6 rounded-full bg-deep-black text-gold text-xs font-black flex items-center justify-center">
+                3
+              </span>
+              <h5 className="text-[11px] font-black uppercase text-deep-black">
+                Cole a URL e Programe
+              </h5>
+              <p className="text-[10px] text-deep-black/70 leading-relaxed uppercase">
+                Cole a URL do Feed acima (<span className="font-mono font-bold text-deep-black">{baseUrl}/api/catalog/tiktok</span>) e escolha atualização <strong className="text-deep-black">Diária (Daily)</strong> ou horária. Pronto! Seus produtos sincronizam sozinhos.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
