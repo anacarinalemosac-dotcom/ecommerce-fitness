@@ -666,6 +666,18 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
           const isOnline = p.visible_online === true || meta.visible_online === true;
           const isPos = p.visible_pos !== false && meta.visible_pos !== false;
 
+          const isAllowBackorder =
+            variants.some((v: any) => v.allow_backorder === true || v.allow_backorder === 'true' || v.allow_backorder === 1) ||
+            meta.allow_backorder === true ||
+            meta.allowBackorder === true ||
+            p.allow_backorder === true ||
+            isPreorder;
+
+          // Se zerar o estoque e for pré-order (ou categoria pré-venda), a peça vai automaticamente para preorder!
+          if ((totalStock <= 0 && isAllowBackorder) || isPreorder) {
+            categoryKey = 'preorder';
+          }
+
           let sellingPrice = Number(firstVar.price) || 44.9;
           let regularPrice: number | undefined = undefined;
 
@@ -757,7 +769,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             sizes,
             sizeStock: sizeStockMap,
             stock: totalStock,
-            allowBackorder: variants.some((v: any) => v.allow_backorder),
+            allowBackorder: isAllowBackorder,
             productionDays: firstVar.estimated_production_days || 7,
             zeroTransparency: true,
             removableCups: cupsType === 'removable',
@@ -1019,7 +1031,19 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updateProduct = (id: string, updatedFields: Partial<ProductItem>) => {
     setProductsState((prev) => {
-      const updated = prev.map((p) => (p.id === id ? { ...p, ...updatedFields } : p));
+      const updated = prev.map((p) => {
+        if (p.id !== id) return p;
+        const merged = { ...p, ...updatedFields };
+        const newStock = merged.stock !== undefined ? merged.stock : p.stock;
+        const newAllowBackorder = merged.allowBackorder !== undefined ? merged.allowBackorder : p.allowBackorder;
+
+        if (newStock <= 0 && newAllowBackorder) {
+          merged.categoryKey = 'preorder';
+          merged.badgePt = 'PRÉ-VENDA';
+          merged.badgeEn = 'PRE-ORDER';
+        }
+        return merged;
+      });
       try {
         localStorage.setItem('ana_products_list', JSON.stringify(updated));
       } catch (e) {}

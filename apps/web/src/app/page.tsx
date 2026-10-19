@@ -314,6 +314,8 @@ export default function HomePage() {
       if (e.detail) {
         const cat = e.detail === 'new' ? 'all' : e.detail;
         setActiveCategoryFilter(cat);
+        const el = document.getElementById('vitrine');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
       }
     };
     window.addEventListener('ana_filter_category', handleCategoryEvent);
@@ -323,6 +325,10 @@ export default function HomePage() {
       const cat = params.get('cat');
       if (cat) {
         setActiveCategoryFilter(cat === 'new' ? 'all' : (cat as any));
+        setTimeout(() => {
+          const el = document.getElementById('vitrine');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 150);
       }
     } catch (_) {}
 
@@ -344,13 +350,45 @@ export default function HomePage() {
     }, 3000);
   };
 
-  // Vitrine exibe estritamente produtos com visibilidade online ativa (visibleOnline === true)
-  const onlineProducts = storeProducts ? storeProducts.filter((p) => p.visibleOnline === true) : [];
+  // Vitrine exibe estritamente produtos com visibilidade online ativa
+  const onlineProducts = storeProducts && storeProducts.length > 0
+    ? storeProducts.filter((p) => p.visibleOnline !== false)
+    : FEATURED_PRODUCTS;
   const activeProducts = onlineProducts;
 
-  const filteredProducts = activeCategoryFilter === 'all'
-    ? activeProducts
-    : activeProducts.filter((p) => p.categoryKey === activeCategoryFilter);
+  // Função auxiliar: identifica se a peça é Pré-Order (se zerou o estoque e aceita encomenda, ou categoria pré-venda)
+  const isProductPreOrder = (p: ProductItem) => {
+    return (
+      (p.stock <= 0 && p.allowBackorder) ||
+      p.categoryKey === 'preorder' ||
+      p.badgePt === 'PRÉ-VENDA' ||
+      p.badgeEn === 'PRE-ORDER'
+    );
+  };
+
+  const preorderItemsCount = activeProducts.filter(isProductPreOrder).length;
+
+  const filteredProducts = activeProducts.filter((p) => {
+    const isPreOrder = isProductPreOrder(p);
+
+    // 1. Aba "TODAS AS PEÇAS": exibe o catálogo completo (pronta entrega e pré-venda)
+    if (activeCategoryFilter === 'all') {
+      return true;
+    }
+
+    // 2. Aba "PRÉ-ORDER": exibe todos os itens que zeraram o estoque e aceitam encomenda/pré-venda
+    if (activeCategoryFilter === 'preorder') {
+      return isPreOrder;
+    }
+
+    // 3. Abas de categorias regulares (Conjuntos, Macaquinhos, Macacões, Tops, Casacos):
+    // Se o item zerou o estoque e for pré-order, ele vai para a aba de pré-order
+    if (isPreOrder) {
+      return false;
+    }
+
+    return p.categoryKey === activeCategoryFilter;
+  });
 
   const categoriesData = [
     { key: 'sets', namePt: 'CONJUNTOS', nameEn: 'SETS', descPt: 'HARMONIA & LUXO', descEn: 'HARMONY & SCULPT', image: siteImages?.categoryImages?.sets || 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=700&q=80' },
@@ -422,13 +460,17 @@ export default function HomePage() {
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition" />
             </button>
 
-            <Link
-              href="/produto/samanta-romper"
+            <button
+              onClick={() => {
+                setActiveCategoryFilter('preorder');
+                const el = document.getElementById('vitrine');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
               className="px-8 py-4 bg-deep-black/90 hover:bg-white hover:text-deep-black text-gold text-xs font-black uppercase tracking-widest border border-gold/70 transition flex items-center justify-center gap-2 backdrop-blur-sm shadow-xl"
             >
               <Sparkles className="w-4 h-4 text-gold" />
               <span>{t('hero.preorderCta')}</span>
-            </Link>
+            </button>
           </div>
         </div>
 
@@ -542,36 +584,85 @@ export default function HomePage() {
               { id: 'jumpsuits', labelPt: 'MACACÕES', labelEn: 'JUMPSUITS' },
               { id: 'tops', labelPt: 'TOPS', labelEn: 'TOPS' },
               { id: 'jackets', labelPt: 'CASACOS & JAQUETAS', labelEn: 'JACKETS' },
+              { id: 'preorder', labelPt: 'PRÉ-ORDER (SOB ENCOMENDA)', labelEn: 'PRE-ORDER' },
             ].map((filter) => {
               const isActive = activeCategoryFilter === filter.id;
+              const isPreorderPill = filter.id === 'preorder';
               return (
                 <button
                   key={filter.id}
                   onClick={() => setActiveCategoryFilter(filter.id as any)}
-                  className={`px-4 py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all shrink-0 border ${
+                  className={`px-4 py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all shrink-0 border flex items-center gap-1.5 ${
                     isActive
-                      ? 'bg-deep-black text-white border-deep-black shadow-md'
+                      ? isPreorderPill
+                        ? 'bg-gold text-deep-black border-gold shadow-md'
+                        : 'bg-deep-black text-white border-deep-black shadow-md'
+                      : isPreorderPill
+                      ? 'bg-gold/10 text-gold border-gold/60 hover:bg-gold hover:text-deep-black'
                       : 'bg-white text-deep-black/80 border-deep-black/20 hover:border-deep-black hover:text-deep-black'
                   }`}
                 >
-                  {lang === 'pt' ? filter.labelPt : filter.labelEn}
+                  {isPreorderPill && <Sparkles className="w-3.5 h-3.5 text-gold shrink-0" />}
+                  <span>{lang === 'pt' ? filter.labelPt : filter.labelEn}</span>
+                  {isPreorderPill && preorderItemsCount > 0 && (
+                    <span
+                      className={`text-[9px] px-1.5 py-0.5 rounded-full font-black ${
+                        isActive ? 'bg-deep-black text-gold' : 'bg-gold text-deep-black'
+                      }`}
+                    >
+                      {preorderItemsCount}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
+        {/* Banner Informativo Exclusivo da Aba Pré-Order */}
+        {activeCategoryFilter === 'preorder' && (
+          <div className="p-4 bg-deep-black text-white border-2 border-gold flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-gold text-deep-black shrink-0">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-black uppercase tracking-wider text-gold flex items-center gap-2">
+                  <span>{lang === 'pt' ? 'PEÇAS SOB ENCOMENDA • ATELIER (PRÉ-ORDER)' : 'EXCLUSIVE MADE-TO-ORDER • ATELIER'}</span>
+                  <span className="text-[9px] px-2 py-0.5 bg-gold/20 text-gold border border-gold/40">
+                    {lang === 'pt' ? 'PRAZO DE CONFECÇÃO: ~30 DIAS' : 'PRODUCTION: ~30 DAYS'}
+                  </span>
+                </h4>
+                <p className="text-[11px] text-white/80 uppercase">
+                  {lang === 'pt'
+                    ? 'Peças cujo estoque imediato esgotou mas que confeccionamos sob medida no ateliê especialmente para você.'
+                    : 'Styles currently out of immediate inventory, tailored to order in our atelier for your sculpt fit.'}
+                </p>
+              </div>
+            </div>
+            <span className="self-start sm:self-auto px-3 py-1.5 bg-gold text-deep-black text-[10px] font-black uppercase tracking-widest shrink-0">
+              {filteredProducts.length} {lang === 'pt' ? (filteredProducts.length === 1 ? 'PEÇA DISPONÍVEL' : 'PEÇAS DISPONÍVEIS') : 'PIECES AVAILABLE'}
+            </span>
+          </div>
+        )}
+
         {/* Grid de Produtos Gymshark: Aspect 4:5, Hover Swap, Quick Add Drawer */}
         {filteredProducts.length === 0 ? (
           <div className="py-20 text-center border-2 border-dashed border-deep-black/20 p-12 bg-deep-black/5 space-y-4">
             <ShoppingBag className="w-12 h-12 text-gold mx-auto" />
             <h3 className="text-base font-black uppercase tracking-wider text-deep-black">
-              {lang === 'pt' ? 'Nenhuma peça publicada nesta categoria' : 'No pieces published in this category'}
+              {activeCategoryFilter === 'preorder'
+                ? (lang === 'pt' ? 'Nenhuma peça em pré-order no momento' : 'No pre-order pieces at the moment')
+                : (lang === 'pt' ? 'Nenhuma peça publicada nesta categoria' : 'No pieces published in this category')}
             </h3>
             <p className="text-xs text-deep-black/60 max-w-md mx-auto uppercase">
-              {lang === 'pt'
-                ? 'As peças estão sendo revisadas no ateliê. Acesse o Painel Backoffice para conferir dados, fotos e ativar os produtos na vitrine.'
-                : 'Pieces are being prepared in the atelier. Open Backoffice to review photos and activate products for the showcase.'}
+              {activeCategoryFilter === 'preorder'
+                ? (lang === 'pt'
+                    ? 'Todas as nossas peças estão com estoque disponível para envio imediato!'
+                    : 'All styles currently have ready-to-ship inventory in stock!')
+                : (lang === 'pt'
+                    ? 'As peças estão sendo revisadas no ateliê. Acesse o Painel Backoffice para conferir dados, fotos e ativar os produtos na vitrine.'
+                    : 'Pieces are being prepared in the atelier. Open Backoffice to review photos and activate products for the showcase.')}
             </p>
           </div>
         ) : (
