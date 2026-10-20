@@ -63,7 +63,7 @@ const OFFICIAL_SELLERS = [
 
 function LinksContent() {
   const { lang, setLang } = useLanguage();
-  const { siteInfo } = useStoreSettings();
+  const { siteInfo, siteImages } = useStoreSettings();
   const searchParams = useSearchParams();
 
   const [copiedLink, setCopiedLink] = useState(false);
@@ -150,34 +150,33 @@ function LinksContent() {
            ======================================================================= */}
         <div className="text-center space-y-3 pt-2">
           
-          {/* Avatar com Borda Fina Dourada Metálica e Glow Suave */}
+          {/* Emblema / Logomarca Oficial com Borda Dourada Metálica e Glow Suave */}
           <div className="relative inline-block mx-auto">
-            <div className="w-36 h-36 sm:w-40 sm:h-40 rounded-full p-[2px] bg-gradient-to-b from-[#e5c158] via-[#b8860b] to-[#6d4c06] shadow-[0_0_35px_rgba(212,175,55,0.35)] mx-auto">
-              <div className="w-full h-full rounded-full overflow-hidden bg-[#100c09] relative flex items-center justify-center">
+            <div className="w-36 h-36 sm:w-40 sm:h-40 rounded-full p-[2px] bg-gradient-to-b from-[#e5c158] via-[#b8860b] to-[#6d4c06] shadow-[0_0_35px_rgba(212,175,55,0.4)] mx-auto">
+              <div className="w-full h-full rounded-full overflow-hidden bg-gradient-to-b from-[#18120c] to-[#0a0705] relative flex items-center justify-center p-3 sm:p-4">
                 <img
-                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&q=80"
-                  alt="Ana Carina • Founder"
-                  className="w-full h-full object-cover object-top scale-105"
+                  src={siteImages.symbolUrl || '/symbol-ana-fitness.png'}
+                  alt={siteInfo.storeName || 'ANA FITNESS WEAR'}
+                  className="w-full h-full object-contain filter drop-shadow-[0_4px_16px_rgba(212,175,55,0.45)] transition-transform duration-300 hover:scale-105"
                   onError={(e) => {
-                    // Fallback para o símbolo da marca se a imagem falhar
-                    (e.target as any).src = '/symbol-ana-fitness.png';
+                    (e.target as any).src = '/logo-ana-fitness.png';
                   }}
                 />
               </div>
             </div>
           </div>
 
-          {/* Nome em Fonte Serif Elegante (Idêntico ao 'Seu Nome Aqui') */}
+          {/* Nome da Marca Oficial */}
           <div className="space-y-1 pt-1">
             <h1 
-              className="text-3xl sm:text-4xl font-normal tracking-wide text-[#fbf8f3]"
+              className="text-2xl sm:text-3xl font-bold tracking-[0.12em] text-[#fbf8f3] uppercase"
               style={{ fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif" }}
             >
-              Ana Carina
+              {siteInfo.storeName || 'ANA FITNESS WEAR'}
             </h1>
 
-            <p className="text-[10px] sm:text-[11px] font-medium tracking-[0.3em] uppercase text-[#c9b292]">
-              {lang === 'pt' ? 'FUNDADORA & CEO • MODA FITNESS' : 'FOUNDER & CEO • ACTIVEWEAR'}
+            <p className="text-[10px] sm:text-[11px] font-medium tracking-[0.25em] uppercase text-[#c9b292]">
+              {lang === 'pt' ? 'MODA FITNESS PREMIUM • ESTILO BRASILEIRO NOS EUA' : 'LUXURY ACTIVEWEAR • BRAZILIAN FIT IN THE USA'}
             </p>
           </div>
 
