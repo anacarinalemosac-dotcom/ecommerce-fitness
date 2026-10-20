@@ -335,10 +335,42 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   }, [inStockVariant?.image]);
   const [isZoomed, setIsZoomed] = useState(false);
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'desc' | 'sizing' | 'care' | 'preorder'>('desc');
+  const [activeTab, setActiveTab] = useState<'desc' | 'sizing' | 'care' | 'preorder' | 'reviews'>('desc');
+  const [productReviews, setProductReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  useEffect(() => {
+    async function loadReviews() {
+      setLoadingReviews(true);
+      try {
+        const res = await fetch(`/api/reviews?slug=${encodeURIComponent(slug)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.reviews && data.reviews.length > 0) {
+            setProductReviews(data.reviews);
+          } else {
+            const generalRes = await fetch('/api/reviews');
+            if (generalRes.ok) {
+              const genData = await generalRes.json();
+              setProductReviews(genData.reviews || []);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao carregar avaliações do produto:', e);
+      } finally {
+        setLoadingReviews(false);
+      }
+    }
+    loadReviews();
+  }, [slug]);
+
+  const avgRating = productReviews.length > 0
+    ? (productReviews.reduce((acc, r) => acc + (Number(r.rating) || 5), 0) / productReviews.length).toFixed(1)
+    : '5.0';
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -573,16 +605,24 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               {productData.title}
             </h1>
 
-            <div className="flex items-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('reviews');
+                const el = document.getElementById('product-tabs');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="flex items-center gap-3 pt-1 text-left group cursor-pointer"
+            >
               <div className="flex text-gold">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="w-4 h-4 fill-gold text-gold" />
                 ))}
               </div>
-              <span className="text-xs font-black uppercase tracking-wider text-deep-black">
-                5.0 ({lang === 'pt' ? 'AVALIAÇÕES VERIFICADAS' : 'VERIFIED REVIEWS'})
+              <span className="text-xs font-black uppercase tracking-wider text-deep-black group-hover:text-gold transition">
+                {avgRating} ({productReviews.length > 0 ? `${productReviews.length} ${lang === 'pt' ? 'avaliações' : 'reviews'}` : (lang === 'pt' ? 'AVALIAÇÕES VERIFICADAS' : 'VERIFIED REVIEWS')}) • {lang === 'pt' ? 'Ver Opiniões' : 'See Reviews'}
               </span>
-            </div>
+            </button>
 
             {/* PREÇO EM DÓLAR ($) */}
             <div className="flex items-baseline gap-3 pt-3">
@@ -961,6 +1001,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             { id: 'sizing', label: t('tab.sizing'), icon: Ruler },
             { id: 'care', label: t('tab.care'), icon: Droplets },
             { id: 'preorder', label: t('tab.preorder'), icon: Clock },
+            { id: 'reviews', label: `${lang === 'pt' ? 'AVALIAÇÕES' : 'REVIEWS'} (${productReviews.length})`, icon: Star },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1198,6 +1239,120 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ABA 5: AVALIAÇÕES & PROVA SOCIAL */}
+          {activeTab === 'reviews' && (
+            <div className="space-y-8 animate-fadeIn">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white border-2 border-deep-black p-6 sm:p-8">
+                <div className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                    OPINIÃO DE QUEM JÁ VESTE
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-deep-black flex items-center gap-2">
+                    <span>{lang === 'pt' ? 'AVALIAÇÕES & PROVA SOCIAL' : 'CUSTOMER REVIEWS'}</span>
+                  </h3>
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="flex items-center gap-1 text-gold">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="w-5 h-5 fill-gold text-gold" />
+                      ))}
+                    </div>
+                    <span className="text-2xl font-black font-mono text-deep-black">{avgRating}</span>
+                    <span className="text-xs text-deep-black/60 font-bold uppercase">
+                      ({productReviews.length} {lang === 'pt' ? 'avaliações verificadas' : 'verified reviews'})
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <Link
+                    href={`/avaliar?produto=${encodeURIComponent(productData.title)}`}
+                    className="px-6 py-3.5 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
+                  >
+                    <Star className="w-4 h-4 fill-current" />
+                    <span>{lang === 'pt' ? 'AVALIAR ESTA PEÇA (+10% OFF)' : 'LEAVE A REVIEW (+10% OFF)'}</span>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Lista de Avaliações */}
+              {productReviews.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-deep-black/20 p-8 space-y-4 bg-white">
+                  <Sparkles className="w-8 h-8 text-gold mx-auto" />
+                  <h4 className="text-sm font-black uppercase tracking-wider text-deep-black">
+                    {lang === 'pt' ? 'SEJA A PRIMEIRA A AVALIAR ESTA PEÇA!' : 'BE THE FIRST TO REVIEW THIS PIECE!'}
+                  </h4>
+                  <p className="text-xs text-deep-black/70 max-w-md mx-auto uppercase tracking-wide">
+                    {lang === 'pt'
+                      ? 'Adquiriu este look? Compartilhe sua experiência com o caimento e tecido e ganhe 10% OFF na sua próxima compra!'
+                      : 'Purchased this silhouette? Share your thoughts on compression and fit and get 10% OFF your next order!'}
+                  </p>
+                  <Link
+                    href={`/avaliar?produto=${encodeURIComponent(productData.title)}`}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-deep-black text-white hover:bg-gold hover:text-deep-black font-black text-xs uppercase tracking-wider transition"
+                  >
+                    <span>{lang === 'pt' ? 'ESCREVER AVALIAÇÃO AGORA' : 'WRITE A REVIEW NOW'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {productReviews.map((rev, idx) => (
+                    <div
+                      key={rev.id || idx}
+                      className="bg-white border-2 border-deep-black p-6 space-y-4 shadow-sm flex flex-col justify-between"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-3">
+                            {rev.photoUrl ? (
+                              <img
+                                src={rev.photoUrl}
+                                alt={rev.customerName}
+                                className="w-11 h-11 rounded-full object-cover border border-deep-black"
+                              />
+                            ) : (
+                              <div className="w-11 h-11 rounded-full bg-gold/20 flex items-center justify-center font-black text-gold border border-gold text-sm">
+                                {(rev.customerName || 'A').charAt(0)}
+                              </div>
+                            )}
+                            <div>
+                              <strong className="text-xs font-black uppercase text-deep-black block">
+                                {rev.customerName}
+                              </strong>
+                              <span className="text-[10px] text-deep-black/60 font-mono block">
+                                📍 {rev.city || 'Massachusetts, EUA'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <span className="px-2 py-0.5 bg-green-50 border border-green-300 text-green-800 text-[8px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0">
+                            <CheckCircle2 className="w-2.5 h-2.5 text-green-600" />
+                            <span>{lang === 'pt' ? 'COMPRA VERIFICADA' : 'VERIFIED BUYER'}</span>
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 text-gold">
+                          {[...Array(rev.rating || 5)].map((_, i) => (
+                            <Star key={i} className="w-3.5 h-3.5 fill-gold text-gold" />
+                          ))}
+                        </div>
+
+                        <p className="text-xs text-deep-black/85 leading-relaxed italic">
+                          "{rev.comment}"
+                        </p>
+                      </div>
+
+                      <div className="pt-3 border-t border-deep-black/10 flex items-center justify-between text-[10px] text-deep-black/50 font-mono">
+                        <span className="font-bold uppercase text-gold">{rev.productTitle || productData.title}</span>
+                        <span>{rev.createdAt ? new Date(rev.createdAt).toLocaleDateString() : 'Recent'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
