@@ -438,6 +438,12 @@ export function StockWriteOffModal({
                 {reason === 'INVENTORY_ADJUSTMENT' && <CheckCircle2 className="w-3.5 h-3.5 text-gold" />}
               </button>
             </div>
+
+            {/* Aviso Contábil */}
+            <div className="p-2.5 bg-gold/10 border border-gold/40 text-[10.5px] font-bold text-deep-black uppercase flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-gold shrink-0" />
+              <span>✓ Toda retirada reduz o estoque físico e é lançada automaticamente como DESPESA no Financeiro a preço de custo contábil.</span>
+            </div>
           </div>
 
           {/* 2. DADOS DO BENEFICIÁRIO & VENDEDORA */}

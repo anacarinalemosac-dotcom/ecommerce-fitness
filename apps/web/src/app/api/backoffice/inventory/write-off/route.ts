@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabaseServer';
 import { recordOrderEvent } from '@/lib/liveStore';
 import fs from 'fs';
 import path from 'path';
+import { readFinances, writeFinances, ExpenseRecord, ExpenseCategory } from '@/lib/financesStore';
 
 const WRITEOFFS_FILE = path.join(process.cwd(), 'inventory_writeoffs_db.json');
 const SALES_FILE = path.join(process.cwd(), 'sales_history_db.json');
@@ -207,6 +208,37 @@ export async function POST(req: NextRequest) {
       }
     } catch (e) {
       console.warn('Erro ao espelhar baixa no sales_history:', e);
+    }
+
+    // 3.1 Registra automaticamente como DESPESA no Módulo Financeiro / Fluxo de Caixa
+    try {
+      const finances = await readFinances();
+      const expenseCat: ExpenseCategory = reason === 'OWNER_PERSONAL_USE'
+        ? 'WITHDRAWAL'
+        : (reason === 'GIFT_MARKETING' || reason === 'SELLER_SAMPLE' ? 'MARKETING' : 'OTHER');
+
+      const itemsSummaryText = processedItems.map((p) => `${p.quantity}x ${p.title} (${p.color} - ${p.size})`).join(', ');
+
+      const expenseRecord: ExpenseRecord = {
+        id: `exp-writeoff-${Date.now()}`,
+        date: new Date().toISOString().split('T')[0],
+        description: `[Saída Estoque #${docNumber}] ${reasonLabel} (${newRecord.beneficiary_name}): ${itemsSummaryText}`,
+        category: expenseCat,
+        amount: Number(newRecord.total_cost_value.toFixed(2)),
+        payment_method: 'OTHER',
+        status: 'PAID',
+        paid_at: new Date().toISOString().split('T')[0],
+        notes: `Documento: ${docNumber}. Baixa de ${newRecord.total_items_count} peça(s) a preço de custo contábil. ${notes}`.trim(),
+        created_at: new Date().toISOString(),
+      };
+
+      if (!Array.isArray(finances.expenses)) {
+        finances.expenses = [];
+      }
+      finances.expenses.unshift(expenseRecord);
+      await writeFinances(finances);
+    } catch (finErr) {
+      console.warn('Erro ao registrar despesa financeira da saída de estoque:', finErr);
     }
 
     // 4. Dispara notificação no radar live

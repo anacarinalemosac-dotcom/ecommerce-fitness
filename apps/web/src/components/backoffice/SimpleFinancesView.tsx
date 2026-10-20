@@ -35,13 +35,15 @@ import {
   ChevronRight,
   Tag,
   Calculator,
+  PackageMinus,
 } from 'lucide-react';
-import { ExpenseRecord, ExpenseCategory, FinancesState } from '@/app/api/backoffice/finances/route';
+import { ExpenseRecord, ExpenseCategory, FinancesState } from '@/lib/financesStore';
 import { ClothingPricingCalculator } from './ClothingPricingCalculator';
 
 interface SimpleFinancesViewProps {
   salesData: any;
   sellers?: any[];
+  onOpenWriteOffModal?: () => void;
 }
 
 const CATEGORY_MAP: Record<
@@ -113,7 +115,7 @@ const CATEGORY_MAP: Record<
   },
 };
 
-export function SimpleFinancesView({ salesData, sellers = [] }: SimpleFinancesViewProps) {
+export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModal }: SimpleFinancesViewProps) {
   const [loading, setLoading] = useState(true);
   const [finances, setFinances] = useState<FinancesState>({
     expenses: [],
@@ -869,6 +871,18 @@ export function SimpleFinancesView({ salesData, sellers = [] }: SimpleFinancesVi
               <Plus className="w-3.5 h-3.5" />
               <span>+ Nova</span>
             </button>
+
+            {onOpenWriteOffModal && (
+              <button
+                type="button"
+                onClick={onOpenWriteOffModal}
+                className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 shadow border border-red-800"
+                title="Lançar ou ver histórico de mercadorias retiradas para uso próprio, mostruário ou marketing"
+              >
+                <PackageMinus className="w-3.5 h-3.5" />
+                <span>Retiradas de Peças</span>
+              </button>
+            )}
           </div>
         </div>
 

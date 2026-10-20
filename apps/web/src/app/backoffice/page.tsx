@@ -5606,10 +5606,13 @@ export default function BackofficeDashboard() {
         );
       })()}
 
-      {/* =========================================================================
-          TAB 5: FINANCEIRO DA LOJA (DRE, FLUXO DE CAIXA, DESPESAS, CONTAS A PAGAR)
-         ========================================================================= */}
-      {activeTab === 'finances' && <SimpleFinancesView salesData={salesData} sellers={sellers} />}
+      {activeTab === 'finances' && (
+        <SimpleFinancesView
+          salesData={salesData}
+          sellers={sellers}
+          onOpenWriteOffModal={() => setShowWriteOffModal(true)}
+        />
+      )}
 
       {/* =========================================================================
           TAB: FORNECEDORES & CONFECÇÕES PARCEIRAS
