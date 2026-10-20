@@ -49,7 +49,29 @@ const REASON_LABELS: Record<string, string> = {
   INVENTORY_ADJUSTMENT: 'Ajuste de Inventário / Perda',
 };
 
-function readWriteOffs(): WriteOffRecord[] {
+const WRITEOFFS_ROW_ID = '00000000-0000-0000-0000-000000000097';
+const WRITEOFFS_SLUG = '__inventory_writeoffs_state__';
+
+async function readWriteOffs(): Promise<WriteOffRecord[]> {
+  // 1. Tenta carregar do Supabase (Nuvem em produção / Vercel)
+  try {
+    const { data: row, error } = await supabaseServer
+      .from('products')
+      .select('description')
+      .eq('id', WRITEOFFS_ROW_ID)
+      .maybeSingle();
+
+    if (!error && row?.description) {
+      try {
+        const parsed = JSON.parse(row.description);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (_) {}
+    }
+  } catch (err) {
+    console.warn('Erro ao ler writeOffs do Supabase:', err);
+  }
+
+  // 2. Fallback para arquivo local
   try {
     if (fs.existsSync(WRITEOFFS_FILE)) {
       const raw = fs.readFileSync(WRITEOFFS_FILE, 'utf8');
@@ -62,16 +84,31 @@ function readWriteOffs(): WriteOffRecord[] {
   return [];
 }
 
-function saveWriteOffs(list: WriteOffRecord[]) {
+async function saveWriteOffs(list: WriteOffRecord[]): Promise<void> {
+  const serialized = JSON.stringify(list, null, 2);
+
+  // 1. Salva no Supabase (Nuvem permanente para produção)
   try {
-    fs.writeFileSync(WRITEOFFS_FILE, JSON.stringify(list, null, 2), 'utf8');
+    await supabaseServer.from('products').upsert({
+      id: WRITEOFFS_ROW_ID,
+      title: '__INVENTORY_WRITEOFFS_STATE__',
+      slug: WRITEOFFS_SLUG,
+      description: serialized,
+    });
+  } catch (err) {
+    console.warn('Erro ao salvar writeOffs no Supabase:', err);
+  }
+
+  // 2. Salva no arquivo local
+  try {
+    fs.writeFileSync(WRITEOFFS_FILE, serialized, 'utf8');
   } catch (e) {
     console.error('Erro ao salvar inventory_writeoffs_db.json:', e);
   }
 }
 
 export async function GET() {
-  const writeOffs = readWriteOffs();
+  const writeOffs = await readWriteOffs();
   const totalCost = writeOffs.reduce((acc, w) => acc + w.total_cost_value, 0);
   const totalItems = writeOffs.reduce((acc, w) => acc + w.total_items_count, 0);
 
@@ -170,10 +207,10 @@ export async function POST(req: NextRequest) {
       items: processedItems,
     };
 
-    // 2. Salva no banco local de retiradas sem custo
-    const allRecords = readWriteOffs();
+    // 2. Salva no banco de retiradas sem custo (Supabase + Local)
+    const allRecords = await readWriteOffs();
     allRecords.unshift(newRecord);
-    saveWriteOffs(allRecords);
+    await saveWriteOffs(allRecords);
 
     // 3. Registra na tabela de histórico contábil (como saída de custo $0 receita)
     try {
