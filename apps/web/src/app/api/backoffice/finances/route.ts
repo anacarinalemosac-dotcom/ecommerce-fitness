@@ -40,14 +40,20 @@ export interface ClothingItemDetail {
   name: string;
   quantity: number;
   unitCost: number;
+  totalCost?: number;
   freightPerUnit: number;
   totalCostPerUnit: number;
   suggestedPrice: number;
+  commissionPct?: number;
+  commissionAmount?: number;
   profitPerUnit: number;
+  marginPct?: number;
+  totalItemProfit?: number;
 }
 
 export interface ClothingPurchaseRecord {
   id: string;
+  invoiceNumber?: string;
   date: string;
   supplier?: string;
   totalPieces: number;
@@ -57,6 +63,8 @@ export interface ClothingPurchaseRecord {
   freightPerPiece: number;
   unitCostAverage: number;
   totalCostPerPiece: number;
+  defaultCommissionPct?: number;
+  totalCommissionsProjected?: number;
   markupMultiplier: number;
   suggestedSalePrice: number;
   profitPerPiece: number;
@@ -282,19 +290,23 @@ export async function POST(req: NextRequest) {
 
     // 5. Salvar Compra de Roupas & Frete (Precificação)
     if (action === 'save_clothing_purchase') {
+      const purchase = body.purchase || {};
       const {
         id,
+        invoiceNumber = '',
         date,
         supplier,
         totalPieces,
         clothesAmount,
         freightAmount,
+        defaultCommissionPct = 15,
+        totalCommissionsProjected = 0,
         markupMultiplier = 2.0,
         suggestedSalePriceCustom,
         items = [],
         notes = '',
         register_as_expense = false,
-      } = body.purchase || {};
+      } = purchase;
 
       const pieces = Math.max(1, Number(totalPieces) || 1);
       const clothes = Math.max(0, Number(clothesAmount) || 0);
@@ -321,6 +333,7 @@ export async function POST(req: NextRequest) {
           if (p.id === id) {
             return {
               ...p,
+              invoiceNumber: invoiceNumber || purchase.invoice_number || p.invoiceNumber || '',
               date: purchaseDate,
               supplier: supplier?.trim() || 'Confecção / Fornecedor',
               totalPieces: pieces,
@@ -330,6 +343,8 @@ export async function POST(req: NextRequest) {
               freightPerPiece,
               unitCostAverage,
               totalCostPerPiece,
+              defaultCommissionPct: Number(defaultCommissionPct ?? 15),
+              totalCommissionsProjected: Number(totalCommissionsProjected || 0),
               markupMultiplier: multiplier,
               suggestedSalePrice,
               profitPerPiece,
@@ -344,6 +359,7 @@ export async function POST(req: NextRequest) {
         const newPurchaseId = `purch-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
         const newPurchase: ClothingPurchaseRecord = {
           id: newPurchaseId,
+          invoiceNumber: invoiceNumber || purchase.invoice_number || '',
           date: purchaseDate,
           supplier: supplier?.trim() || 'Confecção / Fornecedor',
           totalPieces: pieces,
@@ -353,6 +369,8 @@ export async function POST(req: NextRequest) {
           freightPerPiece,
           unitCostAverage,
           totalCostPerPiece,
+          defaultCommissionPct: Number(defaultCommissionPct ?? 15),
+          totalCommissionsProjected: Number(totalCommissionsProjected || 0),
           markupMultiplier: multiplier,
           suggestedSalePrice,
           profitPerPiece,

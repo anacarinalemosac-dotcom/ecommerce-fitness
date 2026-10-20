@@ -511,8 +511,8 @@ export function SimpleFinancesView({ salesData, sellers = [] }: SimpleFinancesVi
           }`}
         >
           <Calculator className="w-4 h-4 text-gold" />
-          <span>COMPRAS DE ROUPAS & FRETE (CALCULAR PREÇO POR PEÇA)</span>
-          <span className="px-1.5 py-0.5 bg-gold text-deep-black text-[9px] font-black">SIMPLES</span>
+          <span>ENTRADA DE NOTA FISCAL, FRETE & FORMAÇÃO DE PREÇO</span>
+          <span className="px-1.5 py-0.5 bg-gold text-deep-black text-[9px] font-black">NOTA FISCAL</span>
         </button>
 
         <button
