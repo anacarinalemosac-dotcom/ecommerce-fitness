@@ -37,6 +37,12 @@ interface DashboardMetricsViewProps {
   liveFeed?: any;
   onNavigateTab: (tab: any) => void;
   onUpdateOrderStatus?: (orderId: string, status: string, tracking?: string) => void;
+  writeOffsSummary?: {
+    totalDocuments: number;
+    totalItemsWithdrawn: number;
+    totalCostValue: number;
+  };
+  onOpenWriteOffModal?: (tab?: 'NEW' | 'HISTORY') => void;
 }
 
 export function DashboardMetricsView({
@@ -47,6 +53,8 @@ export function DashboardMetricsView({
   liveFeed,
   onNavigateTab,
   onUpdateOrderStatus,
+  writeOffsSummary,
+  onOpenWriteOffModal,
 }: DashboardMetricsViewProps) {
   const sales = salesData?.sales || [];
   const [salesMode, setSalesMode] = useState<'today' | 'all'>('today');
@@ -118,6 +126,12 @@ export function DashboardMetricsView({
   const totalOrders = sales.length;
   const avgTicket = paidOrdersCount > 0 ? totalGross / paidOrdersCount : (totalOrders > 0 ? totalGross / totalOrders : 0);
   const conversionRate = liveVisitors > 0 ? Math.min(100, ((totalOrders / Math.max(totalOrders + liveVisitors, 10)) * 100)).toFixed(1) : '0.0';
+
+  // 1.1 Despesas de Produtos Retirados (Uso Próprio, Brindes, Influencers, Amostras)
+  const writeOffCost = writeOffsSummary?.totalCostValue || 0;
+  const writeOffPieces = writeOffsSummary?.totalItemsWithdrawn || 0;
+  const writeOffDocs = writeOffsSummary?.totalDocuments || 0;
+  const netProfitInPocket = totalNetProfit - writeOffCost;
 
   // 2. Alertas Operacionais de Estoque
   const outOfStockItems: any[] = [];
@@ -647,14 +661,18 @@ export function DashboardMetricsView({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
               <div className="p-3 bg-white/5 border border-white/10 space-y-1">
                 <span className="text-[10px] text-white/60 uppercase block">FATURAMENTO TOTAL</span>
                 <span className="text-xl font-black text-white font-mono">${totalGross.toFixed(2)}</span>
               </div>
               <div className="p-3 bg-white/5 border border-white/10 space-y-1">
                 <span className="text-[10px] text-gold uppercase block font-bold">LUCRO REAL NO BOLSO</span>
-                <span className="text-xl font-black text-gold font-mono">${totalNetProfit.toFixed(2)}</span>
+                <span className="text-xl font-black text-gold font-mono">${netProfitInPocket.toFixed(2)}</span>
+              </div>
+              <div className="p-3 bg-white/5 border border-white/10 space-y-1">
+                <span className="text-[10px] text-red-400 uppercase block font-bold">(-) PRODUTOS RETIRADOS</span>
+                <span className="text-xl font-black text-red-400 font-mono">-${writeOffCost.toFixed(2)}</span>
               </div>
               <div className="p-3 bg-white/5 border border-white/10 space-y-1">
                 <span className="text-[10px] text-white/60 uppercase block">PEDIDOS FATURADOS</span>
@@ -725,7 +743,7 @@ export function DashboardMetricsView({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* 1. VENDA DO DIA */}
           <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-gold transition flex flex-col justify-between">
             <div>
@@ -794,27 +812,66 @@ export function DashboardMetricsView({
                 </span>
               </div>
               <div className="text-2xl sm:text-3xl font-black text-gold font-mono mt-1">
-                ${totalNetProfit.toFixed(2)}
+                ${netProfitInPocket.toFixed(2)}
               </div>
-              <p className="text-[10px] text-white/70 uppercase font-bold mt-1">
-                Livre no bolso após custos e taxas
-              </p>
+              <div className="space-y-0.5 mt-1 text-[9px] uppercase font-mono border-t border-gold/20 pt-1">
+                <div className="flex justify-between text-white/70">
+                  <span>Lucro Vendas:</span>
+                  <span className="font-bold text-white">${totalNetProfit.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-amber-300">
+                  <span>(-) Retiradas:</span>
+                  <span className="font-bold text-amber-300">-${writeOffCost.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
             <div className="pt-2 border-t border-gold/30 flex items-center justify-between text-[10px]">
-              <span className="text-white/60 font-bold uppercase">Margem Líquida:</span>
+              <span className="text-white/60 font-bold uppercase">Margem Líquida Real:</span>
               <span className="font-mono font-black text-gold">
-                {totalGross > 0 ? ((totalNetProfit / totalGross) * 100).toFixed(1) : '0.0'}%
+                {totalGross > 0 ? ((netProfitInPocket / totalGross) * 100).toFixed(1) : '0.0'}%
               </span>
             </div>
           </div>
 
-          {/* 4. ITENS ENTREGUES */}
+          {/* 4. PRODUTOS RETIRADOS (DESPESAS) */}
+          <div
+            onClick={() => (onOpenWriteOffModal ? onOpenWriteOffModal('HISTORY') : onNavigateTab('sales'))}
+            className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-red-500 transition flex flex-col justify-between cursor-pointer"
+            title="Clique para ver o histórico e detalhes dos produtos retirados"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5 text-red-600" />
+                  <span>4. PRODUTOS RETIRADOS</span>
+                </span>
+                <span className="px-1.5 py-0.5 bg-red-100 text-red-800 border border-red-300 text-[9px] font-black uppercase font-mono">
+                  DESPESA
+                </span>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-red-600 font-mono mt-1">
+                -${writeOffCost.toFixed(2)}
+              </div>
+              <p className="text-[10px] text-deep-black/70 uppercase font-bold mt-1">
+                {writeOffPieces} peça(s) retirada(s) ({writeOffDocs} baixas)
+              </p>
+              <p className="text-[9px] text-deep-black/50 uppercase">
+                Uso próprio, brindes e mostruário
+              </p>
+            </div>
+            <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px]">
+              <span className="text-red-700 font-black uppercase">Ver Histórico</span>
+              <span className="font-mono font-bold text-deep-black/60">Abrir ↗</span>
+            </div>
+          </div>
+
+          {/* 5. ITENS ENTREGUES */}
           <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-gold transition flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>4. ITENS ENTREGUES</span>
+                  <span>5. ITENS ENTREGUES</span>
                 </span>
                 <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[9px] font-black uppercase">
                   CONCLUÍDOS

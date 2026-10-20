@@ -27,6 +27,7 @@ interface WriteOffModalProps {
   onClose: () => void;
   onSuccess: (record: any) => void;
   catalogProducts: any[];
+  initialTab?: 'NEW' | 'HISTORY';
 }
 
 interface SelectedItem {
@@ -47,6 +48,7 @@ export function StockWriteOffModal({
   onClose,
   onSuccess,
   catalogProducts = [],
+  initialTab = 'NEW',
 }: WriteOffModalProps) {
   const [reason, setReason] = useState<
     'OWNER_PERSONAL_USE' | 'SELLER_SAMPLE' | 'GIFT_MARKETING' | 'DEFECT_DAMAGE' | 'INVENTORY_ADJUSTMENT'
@@ -69,7 +71,7 @@ export function StockWriteOffModal({
   const [errorMessage, setErrorMessage] = useState('');
 
   // Sub-tabs internas do modal (Nova Retirada vs Histórico)
-  const [activeModalTab, setActiveModalTab] = useState<'NEW' | 'HISTORY'>('NEW');
+  const [activeModalTab, setActiveModalTab] = useState<'NEW' | 'HISTORY'>(initialTab);
   const [writeOffHistory, setWriteOffHistory] = useState<any[]>([]);
   const [historySummary, setHistorySummary] = useState<any | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -106,11 +108,12 @@ export function StockWriteOffModal({
       }
     };
     if (isOpen) {
+      setActiveModalTab(initialTab);
       fetchSellers();
       fetchHistory();
       setErrorMessage('');
     }
-  }, [isOpen]);
+  }, [isOpen, initialTab]);
 
   // Atualiza beneficiário quando o motivo mudar
   const handleReasonChange = (newReason: any) => {

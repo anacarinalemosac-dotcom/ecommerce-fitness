@@ -315,6 +315,15 @@ export default function BackofficeDashboard() {
   const [saveSuccessMessage, setSaveSuccessMessage] = useState(false);
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
   const [showWriteOffModal, setShowWriteOffModal] = useState(false);
+  const [writeOffModalTab, setWriteOffModalTab] = useState<'NEW' | 'HISTORY'>('NEW');
+  const [writeOffsData, setWriteOffsData] = useState<{
+    writeOffs: any[];
+    summary: { totalDocuments: number; totalItemsWithdrawn: number; totalCostValue: number };
+  }>({
+    writeOffs: [],
+    summary: { totalDocuments: 0, totalItemsWithdrawn: 0, totalCostValue: 0 },
+  });
+  const [loadingWriteOffs, setLoadingWriteOffs] = useState(false);
   const [showWhatsAppCatalogModal, setShowWhatsAppCatalogModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
 
@@ -619,6 +628,27 @@ export default function BackofficeDashboard() {
       console.warn('Erro ao carregar dados de vendas:', err);
     } finally {
       setLoadingSales(false);
+    }
+  };
+
+  const fetchWriteOffs = async () => {
+    setLoadingWriteOffs(true);
+    try {
+      const res = await fetch(`/api/backoffice/inventory/write-off?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setWriteOffsData({
+          writeOffs: Array.isArray(data.writeOffs) ? data.writeOffs : [],
+          summary: data.summary || { totalDocuments: 0, totalItemsWithdrawn: 0, totalCostValue: 0 },
+        });
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar retiradas de estoque:', err);
+    } finally {
+      setLoadingWriteOffs(false);
     }
   };
 
@@ -996,6 +1026,7 @@ export default function BackofficeDashboard() {
 
     fetchSupabaseProducts();
     fetchSalesData();
+    fetchWriteOffs();
     fetchSellers();
     fetchLiveFeed();
 
@@ -1791,6 +1822,223 @@ export default function BackofficeDashboard() {
         </div>
       )}
 
+      {/* =========================================================================
+          CENTRO DE COMANDO & AÇÕES RÁPIDAS DA ADMINISTRAÇÃO (ACESSO DIRETO NO TOPO)
+          Todos os botões principais concentrados no topo para nunca precisar rolar a página
+         ========================================================================= */}
+      <section className="bg-gradient-to-r from-deep-black via-zinc-950 to-deep-black border-2 border-gold p-4 sm:p-5 shadow-luxury space-y-3.5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-gold/20 pb-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-2.5 h-2.5 bg-gold rounded-full animate-pulse shadow-xs" />
+            <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-gold" />
+              <span>CENTRO DE COMANDO & AÇÕES RÁPIDAS DA ADMINISTRAÇÃO</span>
+            </span>
+            <span className="hidden lg:inline-block text-[9px] bg-gold/20 text-gold border border-gold/40 px-2 py-0.5 font-bold uppercase font-mono">
+              PAINEL EXECUTIVO
+            </span>
+          </div>
+          <p className="text-[11px] text-white/70 uppercase font-medium">
+            Acesso instantâneo com 1 clique para todas as rotinas do negócio (sem rolar a tela)
+          </p>
+        </div>
+
+        {/* Grade de Ações Rápidas de Alta Prioridade */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
+          {/* 1. Cadastrar Novo Produto */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('catalog');
+              setEditingProduct(null);
+              setShowAddForm(true);
+              if (typeof window !== 'undefined') {
+                window.scrollTo({ top: 350, behavior: 'smooth' });
+              }
+            }}
+            className="p-3 bg-gold hover:bg-white text-deep-black font-black text-xs uppercase tracking-wider transition flex flex-col items-center justify-center text-center gap-1.5 shadow-md border border-gold cursor-pointer group"
+            title="Abrir formulário de cadastro de novo produto com grade cor x tamanho"
+          >
+            <PlusCircle className="w-5 h-5 text-deep-black group-hover:scale-110 transition-transform" />
+            <span className="leading-tight text-[11px] font-black">+ NOVO PRODUTO</span>
+            <span className="text-[8px] opacity-75 font-bold">Com Grade</span>
+          </button>
+
+          {/* 2. PDV Balcão (Venda no Showroom) */}
+          <Link
+            href="/pos"
+            target="_blank"
+            className="p-3 bg-white/10 hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-wider transition flex flex-col items-center justify-center text-center gap-1.5 border border-white/20 hover:border-gold shadow-sm group"
+            title="Abrir o PDV Balcão para registrar vendas físicas no showroom"
+          >
+            <Store className="w-5 h-5 text-gold group-hover:text-deep-black transition-colors" />
+            <span className="leading-tight text-[11px] font-black">PDV BALCÃO</span>
+            <span className="text-[8px] text-gold/80 group-hover:text-deep-black/80 font-bold">Vender Agora ↗</span>
+          </Link>
+
+          {/* 3. Retirada / Uso Próprio & Brindes */}
+          <button
+            type="button"
+            onClick={() => {
+              setWriteOffModalTab('NEW');
+              setShowWriteOffModal(true);
+            }}
+            className="p-3 bg-red-600/20 hover:bg-red-600 hover:text-white text-red-400 border border-red-500/40 hover:border-red-500 font-black text-xs uppercase tracking-wider transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm cursor-pointer group"
+            title="Registrar saída de peças para uso próprio, brinde influencer ou mostruário sem custo"
+          >
+            <PackageMinus className="w-5 h-5 text-red-400 group-hover:text-white transition-colors" />
+            <span className="leading-tight text-[11px] font-black">- RETIRADA PEÇA</span>
+            <span className="text-[8px] opacity-80 font-bold">Uso Próprio/Brinde</span>
+          </button>
+
+          {/* 4. Histórico de Retiradas / Despesas */}
+          <button
+            type="button"
+            onClick={() => {
+              setWriteOffModalTab('HISTORY');
+              setShowWriteOffModal(true);
+            }}
+            className="p-3 bg-white/5 hover:bg-white/15 text-white/90 border border-white/15 hover:border-gold/40 font-black text-xs uppercase tracking-wider transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm cursor-pointer"
+            title="Ver histórico de saídas de mercadoria e total lançado como despesa"
+          >
+            <Receipt className="w-5 h-5 text-amber-400" />
+            <span className="leading-tight text-[11px] font-black">HISTÓRICO SAÍDAS</span>
+            <span className="text-[8px] text-amber-300 font-bold font-mono">
+              -${(writeOffsData?.summary?.totalCostValue || 0).toFixed(2)}
+            </span>
+          </button>
+
+          {/* 5. Vendas & Lucro Real */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('sales');
+              fetchSalesData();
+              fetchWriteOffs();
+            }}
+            className={`p-3 transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm border cursor-pointer ${
+              activeTab === 'sales'
+                ? 'bg-gold/20 border-gold text-gold font-black'
+                : 'bg-white/5 hover:bg-white/15 text-white/90 border-white/15 hover:border-gold/40'
+            }`}
+            title="Ir para o Painel de Vendas e Lucro Real"
+          >
+            <BarChart3 className="w-5 h-5 text-gold" />
+            <span className="leading-tight text-[11px] font-black">VENDAS & LUCRO</span>
+            <span className="text-[8px] opacity-75 font-bold font-mono">
+              {salesData?.sales?.length || 0} pedidos
+            </span>
+          </button>
+
+          {/* 6. Catálogo WhatsApp (PDF) */}
+          <button
+            type="button"
+            onClick={() => setShowWhatsAppCatalogModal(true)}
+            className="p-3 bg-emerald-600/20 hover:bg-[#25d366] hover:text-black text-[#25d366] border border-emerald-500/40 hover:border-[#25d366] font-black text-xs uppercase tracking-wider transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm cursor-pointer group"
+            title="Gerar catálogo PDF formatado para envio no WhatsApp"
+          >
+            <Smartphone className="w-5 h-5 text-[#25d366] group-hover:text-black transition-colors" />
+            <span className="leading-tight text-[11px] font-black">CATÁLOGO PDF</span>
+            <span className="text-[8px] opacity-80 font-bold">WhatsApp</span>
+          </button>
+
+          {/* 7. Entrada de Notas / Precificação */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('finances')}
+            className={`p-3 transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm border cursor-pointer ${
+              activeTab === 'finances'
+                ? 'bg-gold/20 border-gold text-gold font-black'
+                : 'bg-white/5 hover:bg-white/15 text-white/90 border-white/15 hover:border-gold/40'
+            }`}
+            title="Lançar notas de confecção, despesas e calculadora de precificação"
+          >
+            <DollarSign className="w-5 h-5 text-gold" />
+            <span className="leading-tight text-[11px] font-black">NOTAS & FINANÇAS</span>
+            <span className="text-[8px] opacity-75 font-bold">DRE & Custos</span>
+          </button>
+
+          {/* 8. Vendedoras & Cupons */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('commissions')}
+            className={`p-3 transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm border cursor-pointer ${
+              activeTab === 'commissions'
+                ? 'bg-gold/20 border-gold text-gold font-black'
+                : 'bg-white/5 hover:bg-white/15 text-white/90 border-white/15 hover:border-gold/40'
+            }`}
+            title="Gerenciar vendedoras, cupons e comissões"
+          >
+            <Users className="w-5 h-5 text-gold" />
+            <span className="leading-tight text-[11px] font-black">VENDEDORAS</span>
+            <span className="text-[8px] opacity-75 font-bold font-mono">
+              {sellers.length} cadastradas
+            </span>
+          </button>
+        </div>
+
+        {/* Segunda Linha de Ferramentas / Ações Secundárias */}
+        <div className="flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-white/10 text-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setShowCategoryModal(true)}
+              className="px-3 py-1.5 bg-white/5 hover:bg-gold hover:text-deep-black text-white/80 font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-white/15 cursor-pointer"
+            >
+              <Tag className="w-3 h-3 text-gold" />
+              <span>+ Gerenciar Categorias</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowCsvImportModal(true)}
+              className="px-3 py-1.5 bg-white/5 hover:bg-gold hover:text-deep-black text-white/80 font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-white/15 cursor-pointer"
+            >
+              <Upload className="w-3 h-3 text-gold" />
+              <span>Importar Planilha (Excel/CSV)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportCatalogCsv}
+              className="px-3 py-1.5 bg-white/5 hover:bg-white hover:text-deep-black text-white/80 font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-white/15 cursor-pointer"
+            >
+              <Download className="w-3 h-3" />
+              <span>Exportar Catálogo (.csv)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('instagram-direct')}
+              className="px-3 py-1.5 bg-pink-500/10 hover:bg-pink-600 hover:text-white text-pink-300 font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-pink-500/30 cursor-pointer"
+            >
+              <Instagram className="w-3 h-3 text-pink-400" />
+              <span>Direct Instagram & Bot</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href="/links"
+              target="_blank"
+              className="px-3 py-1.5 bg-gold/10 hover:bg-gold hover:text-deep-black text-gold font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-gold/40"
+            >
+              <ExternalLink className="w-3 h-3" />
+              <span>Link da Bio (/links)</span>
+            </Link>
+
+            <Link
+              href="/"
+              target="_blank"
+              className="px-3 py-1.5 bg-white/10 hover:bg-white hover:text-deep-black text-white font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-white/20"
+            >
+              <ExternalLink className="w-3 h-3" />
+              <span>Ver Loja Online</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Tabs de Navegação do Backoffice - Os 7 Pilares Profissionais */}
       <div className="flex border-b-2 border-deep-black/10 gap-2 sm:gap-4 text-xs font-black uppercase tracking-widest overflow-x-auto pb-1 scrollbar-none">
         {/* 1. Painel Geral (Dashboard & Métricas) */}
@@ -2044,6 +2292,11 @@ export default function BackofficeDashboard() {
           liveFeed={liveFeed}
           onNavigateTab={setActiveTab}
           onUpdateOrderStatus={handleUpdateOrderStatus}
+          writeOffsSummary={writeOffsData.summary}
+          onOpenWriteOffModal={(tab) => {
+            setWriteOffModalTab(tab || 'NEW');
+            setShowWriteOffModal(true);
+          }}
         />
       )}
 
@@ -2187,19 +2440,6 @@ export default function BackofficeDashboard() {
               setTimeout(() => setSaveSuccessMessage(false), 5000);
               fetchSupabaseProducts();
             }}
-          />
-
-          {/* Modal de Saída / Baixa de Estoque sem Custo (Uso Próprio & Vendedoras) */}
-          <StockWriteOffModal
-            isOpen={showWriteOffModal}
-            onClose={() => setShowWriteOffModal(false)}
-            onSuccess={() => {
-              setSaveSuccessMessage(true);
-              setTimeout(() => setSaveSuccessMessage(false), 5000);
-              fetchSupabaseProducts();
-              fetchSalesData();
-            }}
-            catalogProducts={supabaseProducts.length > 0 ? supabaseProducts : products}
           />
 
           {/* FORMULÁRIO DE CADASTRO E EDIÇÃO COM GRADE DE VARIAÇÕES (MATRIZ COR X TAMANHO) */}
@@ -2728,7 +2968,13 @@ export default function BackofficeDashboard() {
         // 3. O Meu Lucro
         const totalNetProfit = salesData?.summary?.totalNetProfit ?? activeSales.reduce((acc: number, s: any) => acc + (Number(s.net_profit) || 0), 0);
         const totalGrossRevenue = salesData?.summary?.totalGrossRevenue ?? activeSales.reduce((acc: number, s: any) => acc + (Number(s.subtotal_products) || 0) + (Number(s.shipping_fee) || 0), 0);
-        const avgMarginPct = totalGrossRevenue > 0 ? ((totalNetProfit / totalGrossRevenue) * 100).toFixed(1) : '0.0';
+
+        // 3.1 Despesas de Produtos Retirados (Uso Próprio, Brindes, Influencers, Mostruário)
+        const totalWriteOffCost = writeOffsData?.summary?.totalCostValue || 0;
+        const totalWriteOffPieces = writeOffsData?.summary?.totalItemsWithdrawn || 0;
+        const totalWriteOffDocs = writeOffsData?.summary?.totalDocuments || 0;
+        const finalNetProfitInPocket = totalNetProfit - totalWriteOffCost;
+        const avgMarginPct = totalGrossRevenue > 0 ? ((finalNetProfitInPocket / totalGrossRevenue) * 100).toFixed(1) : '0.0';
 
         // 4. Os Itens Entregues
         const deliveredOrders = activeSales.filter((s: any) => s.status === 'DELIVERED' || s.status === 'COMPLETED');
@@ -2781,7 +3027,10 @@ export default function BackofficeDashboard() {
                   </button>
                   <button
                     type="button"
-                    onClick={fetchSalesData}
+                    onClick={() => {
+                      fetchSalesData();
+                      fetchWriteOffs();
+                    }}
                     className="px-3 py-2 border border-gold hover:bg-gold hover:text-deep-black text-gold text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${loadingSales ? 'animate-spin' : ''}`} />
@@ -2793,28 +3042,28 @@ export default function BackofficeDashboard() {
               <div className="pt-2 text-xs text-white/80 uppercase font-mono tracking-wide leading-relaxed bg-white/5 p-4 border border-white/10">
                 <span className="text-gold font-black">FÓRMULA EXATA DE LUCRO LÍQUIDO NO SEU BOLSO: </span>
                 <span>
-                  (Receita de Peças + Fretes Cobrados $9.99) - Custo das Peças (COGS) - Taxas Gateway (Stripe/Venmo) - Custo Envio USPS ($7.50) - Comissões Vendedoras (10%) ={' '}
+                  (Receita de Peças + Fretes Cobrados $9.99) - Custo das Peças (COGS) - Taxas Gateway (Stripe/Venmo) - Custo Envio USPS ($7.50) - Comissões Vendedoras (10%) - <strong className="text-amber-300">Despesas Produtos Retirados (Uso Próprio/Brindes)</strong> ={' '}
                 </span>
-                <strong className="text-gold font-black underline">LUCRO LÍQUIDO REAL ($ USD)</strong>
+                <strong className="text-gold font-black underline">LUCRO REAL NO SEU BOLSO ($ USD)</strong>
               </div>
             </div>
 
             {/* =========================================================================
-                AS 4 MÉTRICAS PRIORITÁRIAS DA ANA CARINA (ORDEM EXATA SOLICITADA)
-                1. Venda do Dia | 2. Acumulado do Mês | 3. O Meu Lucro | 4. Itens Entregues
+                AS 5 MÉTRICAS PRIORITÁRIAS DA ANA CARINA
+                1. Venda do Dia | 2. Acumulado do Mês | 3. O Meu Lucro | 4. Produtos Retirados | 5. Itens Entregues
                ========================================================================= */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[11px] font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
                   <span className="w-2.5 h-2.5 bg-gold inline-block" />
-                  <span>SEUS 4 RESULTADOS PRINCIPAIS</span>
+                  <span>SEUS 5 RESULTADOS PRINCIPAIS</span>
                 </span>
                 <span className="text-[10px] text-deep-black/60 font-mono font-bold uppercase">
                   Fuso Leominster/MA (EDT)
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 {/* 1. VENDA DO DIA */}
                 <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-gold transition flex flex-col justify-between">
                   <div>
@@ -2879,31 +3128,85 @@ export default function BackofficeDashboard() {
                       </span>
                       <span className="flex items-center gap-1 px-1.5 py-0.5 bg-gold text-deep-black text-[9px] font-black uppercase">
                         <Sparkles className="w-2.5 h-2.5 text-deep-black" />
-                        <span>LÍQUIDO REAL</span>
+                        <span>NO SEU BOLSO</span>
                       </span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-black text-gold font-mono mt-2">
-                      ${totalNetProfit.toFixed(2)}
+                      ${finalNetProfitInPocket.toFixed(2)}
                     </div>
-                    <p className="text-[11px] text-white/70 uppercase font-bold mt-1">
-                      Livre no bolso após custos e taxas
-                    </p>
+                    <div className="space-y-0.5 mt-2 text-[10px] uppercase font-mono border-t border-gold/20 pt-1.5">
+                      <div className="flex justify-between text-white/70">
+                        <span>Lucro das Vendas:</span>
+                        <span className="font-bold text-white">${totalNetProfit.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-amber-300">
+                        <span>(-) Produtos Retirados:</span>
+                        <span className="font-bold text-amber-300">-${totalWriteOffCost.toFixed(2)}</span>
+                      </div>
+                    </div>
                   </div>
                   <div className="pt-2 border-t border-gold/30 flex items-center justify-between text-[10px]">
-                    <span className="text-white/60 font-bold uppercase">Margem Líquida:</span>
+                    <span className="text-white/60 font-bold uppercase">Margem Real Final:</span>
                     <span className="font-mono font-black text-gold">
                       {avgMarginPct}%
                     </span>
                   </div>
                 </div>
 
-                {/* 4. ITENS ENTREGUES */}
+                {/* 4. DESPESAS DE PRODUTOS RETIRADOS */}
+                <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-red-500 transition flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 flex items-center gap-1.5">
+                        <PackageMinus className="w-4 h-4 text-red-600" />
+                        <span>4. PRODUTOS RETIRADOS</span>
+                      </span>
+                      <span className="px-1.5 py-0.5 bg-red-100 text-red-800 border border-red-300 text-[9px] font-black uppercase font-mono">
+                        DESPESA
+                      </span>
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-red-600 font-mono mt-2">
+                      -${totalWriteOffCost.toFixed(2)}
+                    </div>
+                    <p className="text-[11px] text-deep-black/70 uppercase font-bold mt-1">
+                      {totalWriteOffPieces} peça(s) retirada(s) ({totalWriteOffDocs} baixas)
+                    </p>
+                    <p className="text-[10px] text-deep-black/50 uppercase mt-0.5">
+                      Uso próprio, brindes, influencer e mostruário
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWriteOffModalTab('HISTORY');
+                        setShowWriteOffModal(true);
+                      }}
+                      className="font-black uppercase text-red-700 hover:text-deep-black underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Ver Extrato</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWriteOffModalTab('NEW');
+                        setShowWriteOffModal(true);
+                      }}
+                      className="text-[9px] font-black uppercase bg-deep-black hover:bg-gold hover:text-deep-black text-white px-2 py-1 shadow-xs cursor-pointer"
+                    >
+                      + Lançar Saída
+                    </button>
+                  </div>
+                </div>
+
+                {/* 5. ITENS ENTREGUES */}
                 <div className="bg-white border-2 border-deep-black p-5 space-y-2 shadow-sm hover:border-gold transition flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>4. ITENS ENTREGUES</span>
+                        <span>5. ITENS ENTREGUES</span>
                       </span>
                       <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[9px] font-black uppercase font-mono">
                         CONCLUÍDOS
@@ -2938,7 +3241,7 @@ export default function BackofficeDashboard() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
                 {/* COGS */}
                 <div className="p-3 bg-deep-black/5 border border-deep-black/10 space-y-1">
                   <span className="text-[9px] font-black uppercase text-deep-black/60 block">CUSTO PEÇAS (COGS)</span>
@@ -2975,6 +3278,15 @@ export default function BackofficeDashboard() {
                     -${(salesData?.summary?.totalCommissions || 0).toFixed(2)}
                   </p>
                   <span className="text-[8px] text-deep-black/50 uppercase font-bold block">Equipe balcão / afiliadas</span>
+                </div>
+
+                {/* Despesas de Retiradas */}
+                <div className="p-3 bg-red-50 border border-red-200 space-y-1">
+                  <span className="text-[9px] font-black uppercase text-red-800 block">PRODUTOS RETIRADOS</span>
+                  <p className="text-lg font-black text-red-600 font-mono">
+                    -${totalWriteOffCost.toFixed(2)}
+                  </p>
+                  <span className="text-[8px] text-red-700 uppercase font-bold block">Uso Próprio & Brindes</span>
                 </div>
 
                 {/* Lucro Retido */}
@@ -5610,7 +5922,10 @@ export default function BackofficeDashboard() {
         <SimpleFinancesView
           salesData={salesData}
           sellers={sellers}
-          onOpenWriteOffModal={() => setShowWriteOffModal(true)}
+          onOpenWriteOffModal={() => {
+            setWriteOffModalTab('NEW');
+            setShowWriteOffModal(true);
+          }}
         />
       )}
 
@@ -5730,6 +6045,21 @@ export default function BackofficeDashboard() {
 
       {/* 12. Direct Instagram & Atendimento Automatizado (Robô Meta API) */}
       {activeTab === 'instagram-direct' && <InstagramDirectView />}
+
+      {/* Modal Oficial de Baixa / Saída de Estoque Sem Custo (Uso Próprio, Brindes, Amostras) */}
+      <StockWriteOffModal
+        isOpen={showWriteOffModal}
+        onClose={() => setShowWriteOffModal(false)}
+        onSuccess={() => {
+          setSaveSuccessMessage(true);
+          setTimeout(() => setSaveSuccessMessage(false), 5000);
+          fetchSupabaseProducts();
+          fetchSalesData();
+          fetchWriteOffs();
+        }}
+        catalogProducts={baseCatalogList}
+        initialTab={writeOffModalTab}
+      />
 
       {/* Modal de Catálogo PDF para Divulgação no WhatsApp (Renderizado no nível raiz para funcionar em QUALQUER aba) */}
       <WhatsAppCatalogPdfModal
