@@ -27,6 +27,8 @@ import {
   X,
   Archive,
   Download,
+  ArrowRightLeft,
+  Globe2,
 } from 'lucide-react';
 import { ClothingPurchaseRecord, ClothingItemDetail, FinancesState } from '@/app/api/backoffice/finances/route';
 
@@ -54,21 +56,27 @@ export function ClothingPricingCalculator({
   const [defaultCommissionPct, setDefaultCommissionPct] = useState<number>(15); // 15% padrão
   const [notes, setNotes] = useState<string>('');
 
-  // 2. Frete da Nota Fiscal
+  // 2. Moeda da Compra e Taxa de Câmbio
+  const [purchaseCurrency, setPurchaseCurrency] = useState<'BRL' | 'USD'>('BRL');
+  const [exchangeRate, setExchangeRate] = useState<string>('5.50'); // 1 USD = R$ 5.50
+
+  // 3. Frete da Nota Fiscal
+  const [freightCurrency, setFreightCurrency] = useState<'USD' | 'BRL'>('USD');
   const [freightAmount, setFreightAmount] = useState<string>('150.00');
 
-  // 3. Fornecedores e Produtos do Catálogo para Autocomplete
+  // 4. Fornecedores e Produtos do Catálogo para Autocomplete
   const [suppliersList, setSuppliersList] = useState<any[]>([]);
   const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
 
-  // 4. Itens da Nota Fiscal
+  // 5. Itens da Nota Fiscal
+  // unitCost: valor na moeda da compra (ex: em R$ se purchaseCurrency === 'BRL')
   const [items, setItems] = useState<ClothingItemDetail[]>([
     {
       id: 'item-1',
       name: 'Conjunto Mirela Top + Legging Compressão',
       quantity: 20,
-      unitCost: 18.0,
-      totalCost: 360.0,
+      unitCost: 99.0, // R$ 99,00
+      totalCost: 1980.0,
       freightPerUnit: 3.0,
       totalCostPerUnit: 21.0,
       suggestedPrice: 49.9,
@@ -82,8 +90,8 @@ export function ClothingPricingCalculator({
       id: 'item-2',
       name: 'Blusa Poliamida Manga Longa Bailarina',
       quantity: 15,
-      unitCost: 12.0,
-      totalCost: 180.0,
+      unitCost: 66.0, // R$ 66,00
+      totalCost: 990.0,
       freightPerUnit: 3.0,
       totalCostPerUnit: 15.0,
       suggestedPrice: 34.9,
@@ -97,8 +105,8 @@ export function ClothingPricingCalculator({
       id: 'item-3',
       name: 'Macaquinho Beach Samanta Open Back',
       quantity: 15,
-      unitCost: 16.0,
-      totalCost: 240.0,
+      unitCost: 88.0, // R$ 88,00
+      totalCost: 1320.0,
       freightPerUnit: 3.0,
       totalCostPerUnit: 19.0,
       suggestedPrice: 44.9,
@@ -138,94 +146,123 @@ export function ClothingPricingCalculator({
       .catch((err) => console.warn('Erro ao carregar produtos:', err));
   }, []);
 
+  // Câmbio numérico seguro
+  const rateNum = Math.max(0.01, parseFloat(exchangeRate) || 5.50);
+
   // Totais Automáticos da Nota Fiscal
   const totalPieces = items.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0);
-  const totalClothesAmount = items.reduce(
+
+  // Subtotal na Moeda Original da Compra (R$ ou $)
+  const totalClothesOriginal = items.reduce(
     (acc, it) => acc + (Number(it.quantity) || 0) * (Number(it.unitCost) || 0),
     0
   );
-  const freightNum = Math.max(0, Number(freightAmount) || 0);
-  const totalInvoiceAmount = totalClothesAmount + freightNum;
 
-  // Rateio do Frete por Unidade
-  const freightPerUnit = totalPieces > 0 ? freightNum / totalPieces : 0;
+  // Subtotal Convertido para Dólares ($ USD)
+  const totalClothesUSD = purchaseCurrency === 'BRL'
+    ? totalClothesOriginal / rateNum
+    : totalClothesOriginal;
 
-  // Recalcula campos dinâmicos de cada item sempre que frete ou itens mudarem
+  // Frete Convertido para Dólares ($ USD)
+  const rawFreightNum = Math.max(0, parseFloat(freightAmount) || 0);
+  const freightUSD = freightCurrency === 'BRL'
+    ? rawFreightNum / rateNum
+    : rawFreightNum;
+
+  // Total Geral da Nota em Dólares ($ USD)
+  const totalInvoiceUSD = totalClothesUSD + freightUSD;
+
+  // Rateio do Frete por Unidade em Dólares ($ USD)
+  const freightPerUnitUSD = totalPieces > 0 ? freightUSD / totalPieces : 0;
+
+  // Recalcula campos dinâmicos de cada item sempre que frete, itens ou câmbio mudarem
   const enrichedItems = items.map((it) => {
     const q = Math.max(1, Number(it.quantity) || 1);
-    const uCost = Math.max(0, Number(it.unitCost) || 0);
-    const lineTotalCost = q * uCost;
+    const uCostOriginal = Math.max(0, Number(it.unitCost) || 0);
+    const lineTotalOriginal = q * uCostOriginal;
 
-    // Custo real com a fatia do frete
-    const realCostPerUnit = uCost + freightPerUnit;
+    // Custo de fábrica convertido para Dólares ($ USD)
+    const uCostUSD = purchaseCurrency === 'BRL'
+      ? uCostOriginal / rateNum
+      : uCostOriginal;
 
-    // Preço de venda pretendido (se não preenchido, sugere dobro do custo real)
-    const salePrice = Number(it.suggestedPrice) > 0 ? Number(it.suggestedPrice) : Math.ceil(realCostPerUnit * 2) - 0.1;
+    const lineTotalUSD = q * uCostUSD;
+
+    // Custo real em dólar com a fatia do frete
+    const realCostPerUnitUSD = uCostUSD + freightPerUnitUSD;
+
+    // Preço de venda pretendido em dólar ($)
+    const salePriceUSD = Number(it.suggestedPrice) > 0
+      ? Number(it.suggestedPrice)
+      : Math.ceil(realCostPerUnitUSD * 2) - 0.1;
 
     // Comissão da vendedora (padrão 15% ou personalizada da linha)
     const commPct = it.commissionPct !== undefined ? Number(it.commissionPct) : defaultCommissionPct;
-    const commAmount = salePrice * (commPct / 100);
+    const commAmountUSD = salePriceUSD * (commPct / 100);
 
-    // Lucro Líquido no Bolso por Peça (Preço - Custo Real com Frete - Comissão Vendedora)
-    const netProfitUnit = salePrice - realCostPerUnit - commAmount;
+    // Lucro Líquido no Bolso por Peça em Dólar (Preço - Custo Real com Frete - Comissão Vendedora)
+    const netProfitUnitUSD = salePriceUSD - realCostPerUnitUSD - commAmountUSD;
 
     // Margem Líquida % (Lucro Líquido / Preço de Venda)
-    const netMarginPct = salePrice > 0 ? (netProfitUnit / salePrice) * 100 : 0;
+    const netMarginPct = salePriceUSD > 0 ? (netProfitUnitUSD / salePriceUSD) * 100 : 0;
 
-    // Lucro Total do Lote deste Item
-    const lineTotalProfit = netProfitUnit * q;
+    // Lucro Total do Lote deste Item em Dólar
+    const lineTotalProfitUSD = netProfitUnitUSD * q;
 
     return {
       ...it,
       quantity: q,
-      unitCost: uCost,
-      totalCost: lineTotalCost,
-      freightPerUnit,
-      totalCostPerUnit: realCostPerUnit,
-      suggestedPrice: salePrice,
+      unitCost: uCostUSD, // em USD
+      unitCostOriginal: uCostOriginal, // na moeda original (ex: BRL)
+      totalCost: lineTotalUSD, // em USD
+      totalCostOriginal: lineTotalOriginal, // na moeda original
+      freightPerUnit: freightPerUnitUSD,
+      totalCostPerUnit: realCostPerUnitUSD,
+      suggestedPrice: salePriceUSD,
       commissionPct: commPct,
-      commissionAmount: commAmount,
-      profitPerUnit: netProfitUnit,
+      commissionAmount: commAmountUSD,
+      profitPerUnit: netProfitUnitUSD,
       marginPct: netMarginPct,
-      totalItemProfit: lineTotalProfit,
+      totalItemProfit: lineTotalProfitUSD,
     };
   });
 
-  // Totais Gerais Consolidados da Nota
-  const totalProjectedRevenue = enrichedItems.reduce(
+  // Totais Gerais Consolidados da Nota em Dólares ($ USD)
+  const totalProjectedRevenueUSD = enrichedItems.reduce(
     (acc, it) => acc + it.suggestedPrice * it.quantity,
     0
   );
-  const totalProjectedCommissions = enrichedItems.reduce(
+  const totalProjectedCommissionsUSD = enrichedItems.reduce(
     (acc, it) => acc + (it.commissionAmount || 0) * it.quantity,
     0
   );
-  const totalProjectedNetProfit = enrichedItems.reduce(
+  const totalProjectedNetProfitUSD = enrichedItems.reduce(
     (acc, it) => acc + (it.totalItemProfit || 0),
     0
   );
   const averageNetMarginPct =
-    totalProjectedRevenue > 0 ? (totalProjectedNetProfit / totalProjectedRevenue) * 100 : 0;
+    totalProjectedRevenueUSD > 0 ? (totalProjectedNetProfitUSD / totalProjectedRevenueUSD) * 100 : 0;
 
   // Peças necessárias para amortizar 100% do frete da remessa
-  const avgProfitPerPiece = totalPieces > 0 ? totalProjectedNetProfit / totalPieces : 0;
+  const avgProfitPerPieceUSD = totalPieces > 0 ? totalProjectedNetProfitUSD / totalPieces : 0;
   const piecesToBreakEvenFreight =
-    avgProfitPerPiece > 0 ? Math.ceil(freightNum / avgProfitPerPiece) : 0;
+    avgProfitPerPieceUSD > 0 ? Math.ceil(freightUSD / avgProfitPerPieceUSD) : 0;
 
   // Manipulação de Linhas de Itens
   const handleAddItem = () => {
+    const defaultCost = purchaseCurrency === 'BRL' ? 110.0 : 20.0;
     const newItem: ClothingItemDetail = {
       id: `item-${Date.now()}`,
       name: '',
       quantity: 10,
-      unitCost: 20.0,
-      totalCost: 200.0,
-      freightPerUnit,
-      totalCostPerUnit: 20.0 + freightPerUnit,
+      unitCost: defaultCost,
+      totalCost: defaultCost * 10,
+      freightPerUnit: freightPerUnitUSD,
+      totalCostPerUnit: (defaultCost / (purchaseCurrency === 'BRL' ? rateNum : 1)) + freightPerUnitUSD,
       suggestedPrice: 49.9,
       commissionPct: defaultCommissionPct,
       commissionAmount: 49.9 * (defaultCommissionPct / 100),
-      profitPerUnit: 49.9 - (20.0 + freightPerUnit) - 49.9 * (defaultCommissionPct / 100),
+      profitPerUnit: 20.0,
       marginPct: 40.0,
       totalItemProfit: 0,
     };
@@ -251,6 +288,27 @@ export function ClothingPricingCalculator({
           return { ...it, [field]: val };
         }
         return it;
+      })
+    );
+  };
+
+  // Alternar Moeda da Compra (com conversão aproximada para conveniência)
+  const handleToggleCurrency = (newCurr: 'BRL' | 'USD') => {
+    if (newCurr === purchaseCurrency) return;
+    setPurchaseCurrency(newCurr);
+    // Ajusta custos unitários aproximados para que o usuário não se assuste
+    setItems((prev) =>
+      prev.map((it) => {
+        let newUnitCost = it.unitCost;
+        if (newCurr === 'BRL') {
+          newUnitCost = Math.round(it.unitCost * rateNum);
+        } else {
+          newUnitCost = Math.round((it.unitCost / rateNum) * 100) / 100;
+        }
+        return {
+          ...it,
+          unitCost: newUnitCost,
+        };
       })
     );
   };
@@ -282,18 +340,23 @@ export function ClothingPricingCalculator({
           action: 'save_clothing_purchase',
           purchase: {
             invoiceNumber,
+            currency: purchaseCurrency,
+            exchangeRate: rateNum,
+            clothesAmountOriginal: totalClothesOriginal,
             date: purchaseDate,
             supplier,
             totalPieces,
-            clothesAmount: totalClothesAmount,
-            freightAmount: freightNum,
+            clothesAmount: totalClothesUSD,
+            freightAmount: freightUSD,
             defaultCommissionPct,
-            totalCommissionsProjected: totalProjectedCommissions,
-            markupMultiplier: totalClothesAmount > 0 ? totalProjectedRevenue / totalInvoiceAmount : 2.0,
-            suggestedSalePrice: totalPieces > 0 ? totalProjectedRevenue / totalPieces : 49.9,
-            profitPerPiece: avgProfitPerPiece,
-            totalProjectedProfit: totalProjectedNetProfit,
-            notes: notes ? `Nota: ${invoiceNumber} • ${notes}` : `Nota Fiscal: ${invoiceNumber}`,
+            totalCommissionsProjected: totalProjectedCommissionsUSD,
+            markupMultiplier: totalClothesUSD > 0 ? totalProjectedRevenueUSD / totalInvoiceUSD : 2.0,
+            suggestedSalePrice: totalPieces > 0 ? totalProjectedRevenueUSD / totalPieces : 49.9,
+            profitPerPiece: avgProfitPerPieceUSD,
+            totalProjectedProfit: totalProjectedNetProfitUSD,
+            notes: notes
+              ? `Nota: ${invoiceNumber} • Câmbio: R$ ${rateNum.toFixed(2)} • ${notes}`
+              : `Nota Fiscal: ${invoiceNumber} (${purchaseCurrency === 'BRL' ? `R$ ${totalClothesOriginal.toFixed(2)} conv. @ ${rateNum.toFixed(2)}` : '$ USD'})`,
             register_as_expense: registerAsExpense,
             items: enrichedItems,
           },
@@ -303,13 +366,16 @@ export function ClothingPricingCalculator({
       const data = await res.json();
       if (data.success) {
         await onRefresh();
-        setSuccessBanner(
-          `Nota Fiscal "${invoiceNumber}" de ${supplier} (${totalPieces} peças) gravada com sucesso! Frete de $${freightNum.toFixed(2)} rateado ($${freightPerUnit.toFixed(2)}/un) e margens calculadas.`
-        );
+        const msg = `Nota Fiscal "${invoiceNumber}" (${supplier}) gravada com sucesso! ${
+          purchaseCurrency === 'BRL'
+            ? `Total R$ ${totalClothesOriginal.toFixed(2)} convertido para $${totalClothesUSD.toFixed(2)} USD (Câmbio ${rateNum.toFixed(2)}).`
+            : `$${totalInvoiceUSD.toFixed(2)} USD gravado.`
+        }`;
+        setSuccessBanner(msg);
         if (onShowFeedback) {
           onShowFeedback(`Nota fiscal ${invoiceNumber} registrada com sucesso!`);
         }
-        setTimeout(() => setSuccessBanner(null), 8000);
+        setTimeout(() => setSuccessBanner(null), 9000);
       } else {
         alert(data.error || 'Erro ao salvar nota fiscal.');
       }
@@ -326,6 +392,9 @@ export function ClothingPricingCalculator({
     setSupplier(p.supplier || '');
     setPurchaseDate(p.date || new Date().toISOString().split('T')[0]);
     setFreightAmount(String(p.freightAmount || 0));
+    setFreightCurrency('USD');
+    setPurchaseCurrency(p.currency || 'USD');
+    setExchangeRate(String(p.exchangeRate || 5.50));
     setDefaultCommissionPct(p.defaultCommissionPct || 15);
     if (p.notes) setNotes(p.notes);
 
@@ -335,8 +404,8 @@ export function ClothingPricingCalculator({
           id: it.id || `item-hist-${idx}`,
           name: it.name || `Item ${idx + 1}`,
           quantity: it.quantity || 1,
-          unitCost: it.unitCost || 0,
-          totalCost: (it.quantity || 1) * (it.unitCost || 0),
+          unitCost: it.unitCostOriginal || it.unitCost || 0,
+          totalCost: (it.quantity || 1) * (it.unitCostOriginal || it.unitCost || 0),
           freightPerUnit: it.freightPerUnit || 0,
           totalCostPerUnit: it.totalCostPerUnit || it.unitCost,
           suggestedPrice: it.suggestedPrice || 49.9,
@@ -380,7 +449,10 @@ export function ClothingPricingCalculator({
   const handleResetNewInvoice = () => {
     setInvoiceNumber(`NF-${new Date().getFullYear()}/${String(Math.floor(Math.random() * 900 + 100))}`);
     setPurchaseDate(new Date().toISOString().split('T')[0]);
-    setFreightAmount('100.00');
+    setPurchaseCurrency('BRL');
+    setExchangeRate('5.50');
+    setFreightCurrency('USD');
+    setFreightAmount('150.00');
     setDefaultCommissionPct(15);
     setNotes('');
     setItems([
@@ -388,8 +460,8 @@ export function ClothingPricingCalculator({
         id: `item-${Date.now()}`,
         name: '',
         quantity: 10,
-        unitCost: 20.0,
-        totalCost: 200.0,
+        unitCost: 110.0,
+        totalCost: 1100.0,
         freightPerUnit: 0,
         totalCostPerUnit: 20.0,
         suggestedPrice: 49.9,
@@ -413,13 +485,13 @@ export function ClothingPricingCalculator({
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-gold text-deep-black font-black text-[10px] uppercase tracking-widest shadow">
               <Receipt className="w-3.5 h-3.5" />
-              <span>ENTRADA DE MERCADORIA ESTILO NOTA FISCAL</span>
+              <span>ENTRADA DE MERCADORIA • NOTA FISCAL MULTIMOEDA</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white mt-1">
-              NOTA FISCAL DE COMPRA & ARQUIVO DE ENTRADAS
+              NOTA FISCAL DE COMPRA (REAIS OU DÓLAR)
             </h2>
             <p className="text-xs uppercase tracking-wider text-white/70 max-w-3xl">
-              Lance a remessa de peças linha por linha como em uma Nota Fiscal. O sistema rateia o frete automaticamente entre os itens, desconta a comissão das vendedoras (15%) e te dá a margem líquida real e o lucro exato em dólar no seu bolso.
+              Lance suas compras de confecção feitas no Brasil (em R$) ou nos Estados Unidos (em $). Informe a taxa de câmbio do dia, veja o valor convertido automaticamente por peça, adicione o frete e calcule o preço de venda com a dedução da comissão da vendedora (15%).
             </p>
           </div>
 
@@ -489,21 +561,44 @@ export function ClothingPricingCalculator({
       {/* SEÇÃO 1: FORMULÁRIO ESTILO NOTA FISCAL (SELECIONADO: 'create') */}
       {activeTabMode === 'create' && (
         <div className="bg-white border-2 border-deep-black shadow-sm divide-y-2 divide-deep-black animate-fadeIn">
-          {/* CABEÇALHO DA NOTA (Fornecedor, Data, Nº NF, Comissão) */}
-          <div className="p-6 bg-stone-50 space-y-4">
-            <div className="flex items-center justify-between border-b border-deep-black/10 pb-3">
+          {/* CABEÇALHO DA NOTA (Moeda, Câmbio, Fornecedor, Data, Nº NF, Comissão) */}
+          <div className="p-6 bg-stone-50 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-deep-black/10 pb-3">
               <h3 className="text-xs font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
                 <Building className="w-4 h-4 text-gold" />
-                <span>CABEÇALHO DA NOTA FISCAL / PEDIDO DE COMPRA</span>
+                <span>CABEÇALHO DA NOTA & SELEÇÃO DE MOEDA (R$ OU $)</span>
               </h3>
-              <span className="text-[10px] text-deep-black/60 font-mono font-bold uppercase">
-                Moeda Oficial: $ USD (Dólares)
-              </span>
+
+              {/* SELETOR DE MOEDA DA COMPRA (REAIS OU DÓLARES) */}
+              <div className="flex items-center gap-1 bg-stone-200 p-1 border border-deep-black/20">
+                <button
+                  type="button"
+                  onClick={() => handleToggleCurrency('BRL')}
+                  className={`px-3 py-1 text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 ${
+                    purchaseCurrency === 'BRL'
+                      ? 'bg-green-700 text-white shadow'
+                      : 'text-deep-black/70 hover:text-deep-black'
+                  }`}
+                >
+                  <span>🇧🇷 COMPRA EM REAIS (R$)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleCurrency('USD')}
+                  className={`px-3 py-1 text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 ${
+                    purchaseCurrency === 'USD'
+                      ? 'bg-deep-black text-gold shadow'
+                      : 'text-deep-black/70 hover:text-deep-black'
+                  }`}
+                >
+                  <span>🇺🇸 COMPRA EM DÓLAR ($)</span>
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               {/* Fornecedor / Confecção */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 lg:col-span-1">
                 <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
                   <span>FORNECEDOR / CONFECÇÃO:</span>
                   {suppliersList.length > 0 && (
@@ -528,7 +623,7 @@ export function ClothingPricingCalculator({
               {/* Número da Nota Fiscal */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
-                  Nº DA NOTA / INVOICE / ROMANEIO:
+                  Nº DA NOTA / INVOICE:
                 </label>
                 <input
                   type="text"
@@ -552,6 +647,46 @@ export function ClothingPricingCalculator({
                 />
               </div>
 
+              {/* Taxa de Câmbio do Dia (Apenas quando compra em BRL) */}
+              {purchaseCurrency === 'BRL' ? (
+                <div className="space-y-1.5 bg-green-50 p-2.5 border-2 border-green-600 animate-fadeIn">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-green-950 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <ArrowRightLeft className="w-3.5 h-3.5 text-green-700" />
+                      CÂMBIO DO DIA:
+                    </span>
+                    <span className="text-green-800 font-mono font-black">$1 = R$ {rateNum.toFixed(2)}</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1.5 font-mono text-green-800 font-bold text-xs">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.1"
+                      value={exchangeRate}
+                      onChange={(e) => setExchangeRate(e.target.value)}
+                      placeholder="5.50"
+                      className="w-full pl-8 pr-2 py-1 text-xs font-mono font-black border border-green-700 bg-white text-green-900 focus:outline-none"
+                    />
+                  </div>
+                  <span className="text-[9px] text-green-900 block font-medium leading-tight">
+                    Digite a cotação que você pagou na transferência/banco.
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-1.5 bg-stone-100 p-2.5 border border-deep-black/20 text-xs">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-deep-black block">
+                    MOEDA DA NOTA:
+                  </span>
+                  <div className="font-mono font-black text-sm text-deep-black">
+                    Dólar Americano ($ USD)
+                  </div>
+                  <span className="text-[9px] text-deep-black/60 block uppercase">
+                    Sem conversão cambial.
+                  </span>
+                </div>
+              )}
+
               {/* Comissão Padrão da Vendedora */}
               <div className="space-y-1.5 bg-gold/10 p-2.5 border border-gold/40">
                 <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
@@ -574,22 +709,26 @@ export function ClothingPricingCalculator({
                   <span className="text-xs font-black font-mono">%</span>
                 </div>
                 <span className="text-[9px] text-deep-black/70 block uppercase leading-tight">
-                  Padrão 15% (descontado do lucro líquido).
+                  Padrão 15% (editável linha por linha).
                 </span>
               </div>
             </div>
           </div>
 
-          {/* CORPO DA NOTA: TABELA DE ITENS (ADICIONAR MANUALMENTE LINHA A LINHA) */}
+          {/* CORPO DA NOTA: TABELA DE ITENS (VALOR ORIGINAL + VALOR CONVERTIDO) */}
           <div className="p-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-xs font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
                   <FileText className="w-4 h-4 text-gold" />
-                  <span>ITENS DA NOTA FISCAL (ROUPAS & CONJUNTOS)</span>
+                  <span>
+                    ITENS DA NOTA FISCAL {purchaseCurrency === 'BRL' ? '(VALORES EM REAIS R$ & CONVERTIDOS EM DÓLAR $)' : '(VALORES EM DÓLAR $)'}
+                  </span>
                 </h3>
                 <p className="text-[10px] text-deep-black/60 uppercase mt-0.5">
-                  Adicione cada modelo comprado. O total de cada linha é calculado na hora.
+                  {purchaseCurrency === 'BRL'
+                    ? `Digite o valor em Reais (R$). O sistema converte automaticamente para Dólares ($ USD) usando a taxa de R$ ${rateNum.toFixed(2)}.`
+                    : 'Digite a quantidade e o valor unitário em Dólares ($ USD).'}
                 </p>
               </div>
 
@@ -617,14 +756,28 @@ export function ClothingPricingCalculator({
                     <th className="p-3 w-8 text-center">#</th>
                     <th className="p-3">DESCRIÇÃO DO ITEM / MODELO</th>
                     <th className="p-3 w-28 text-center">QUANTIDADE</th>
-                    <th className="p-3 w-36">VALOR UNITÁRIO ($)</th>
-                    <th className="p-3 w-36">VALOR TOTAL ($)</th>
+                    <th className="p-3 w-36">
+                      {purchaseCurrency === 'BRL' ? 'UNITÁRIO (R$)' : 'UNITÁRIO ($)'}
+                    </th>
+                    {purchaseCurrency === 'BRL' && (
+                      <th className="p-3 w-36 bg-green-950 text-emerald-300">
+                        CONVERTIDO ($ USD)
+                      </th>
+                    )}
+                    <th className="p-3 w-40">
+                      {purchaseCurrency === 'BRL' ? 'SUBTOTAL (R$ & $)' : 'SUBTOTAL ($)'}
+                    </th>
                     <th className="p-3 w-12 text-center">REMOVER</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-deep-black/10">
                   {items.map((it, idx) => {
-                    const lineTotal = (Number(it.quantity) || 0) * (Number(it.unitCost) || 0);
+                    const q = Number(it.quantity) || 0;
+                    const uCost = Number(it.unitCost) || 0;
+                    const lineTotalOriginal = q * uCost;
+                    const uCostUSD = purchaseCurrency === 'BRL' ? uCost / rateNum : uCost;
+                    const lineTotalUSD = q * uCostUSD;
+
                     return (
                       <tr key={it.id} className="hover:bg-amber-50/40 transition">
                         <td className="p-3 text-center font-bold text-deep-black/50 font-mono">
@@ -652,19 +805,41 @@ export function ClothingPricingCalculator({
                         </td>
                         <td className="p-3">
                           <div className="relative">
-                            <span className="absolute left-2.5 top-1.5 font-mono text-deep-black/40">$</span>
+                            <span className="absolute left-2.5 top-1.5 font-mono text-deep-black/40">
+                              {purchaseCurrency === 'BRL' ? 'R$' : '$'}
+                            </span>
                             <input
                               type="number"
                               min="0"
                               step="0.01"
                               value={it.unitCost}
                               onChange={(e) => handleUpdateItem(it.id, 'unitCost', parseFloat(e.target.value) || 0)}
-                              className="w-full pl-6 pr-2 py-1.5 text-xs font-mono font-black border border-deep-black/20 text-green-700 bg-white"
+                              className="w-full pl-8 pr-2 py-1.5 text-xs font-mono font-black border border-deep-black/20 text-deep-black bg-white"
                             />
                           </div>
                         </td>
-                        <td className="p-3 font-mono font-black text-xs text-green-800">
-                          ${lineTotal.toFixed(2)}
+
+                        {/* Coluna de Custo Convertido em Dólar (Quando em BRL) */}
+                        {purchaseCurrency === 'BRL' && (
+                          <td className="p-3 font-mono font-black text-xs text-emerald-700 bg-emerald-50/50">
+                            ${uCostUSD.toFixed(2)} USD
+                            <span className="text-[9px] text-deep-black/50 block font-normal">
+                              (@ R$ {rateNum.toFixed(2)})
+                            </span>
+                          </td>
+                        )}
+
+                        <td className="p-3 font-mono font-black text-xs text-deep-black">
+                          {purchaseCurrency === 'BRL' ? (
+                            <div>
+                              <span>R$ {lineTotalOriginal.toFixed(2)}</span>
+                              <span className="text-[10px] text-emerald-700 block font-normal">
+                                (${lineTotalUSD.toFixed(2)} USD)
+                              </span>
+                            </div>
+                          ) : (
+                            <span>${lineTotalOriginal.toFixed(2)}</span>
+                          )}
                         </td>
                         <td className="p-3 text-center">
                           <button
@@ -687,27 +862,57 @@ export function ClothingPricingCalculator({
           {/* RODAPÉ DA NOTA (SOMAS, FRETE E RATEIO) */}
           <div className="p-6 bg-stone-50 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Subtotal das Roupas */}
+              {/* Subtotal das Roupas (Original e Convertido) */}
               <div className="p-4 bg-white border-2 border-deep-black/20 space-y-1">
                 <span className="text-[10px] text-deep-black/60 font-black uppercase block">
                   1. SUBTOTAL DAS ROUPAS:
                 </span>
-                <div className="text-xl font-mono font-black text-green-700">
-                  ${totalClothesAmount.toFixed(2)}
-                </div>
+                {purchaseCurrency === 'BRL' ? (
+                  <div>
+                    <div className="text-lg font-mono font-black text-deep-black">
+                      R$ {totalClothesOriginal.toFixed(2)}
+                    </div>
+                    <div className="text-base font-mono font-black text-emerald-700">
+                      (${totalClothesUSD.toFixed(2)} USD)
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xl font-mono font-black text-green-700">
+                    ${totalClothesUSD.toFixed(2)}
+                  </div>
+                )}
                 <span className="text-[10px] font-mono text-deep-black/60 block">
                   Total: <strong>{totalPieces} peças</strong>
                 </span>
               </div>
 
-              {/* Valor do Frete */}
+              {/* Valor do Frete com Moeda */}
               <div className="p-4 bg-sky-50 border-2 border-sky-400 space-y-1">
-                <label className="text-[10px] text-sky-950 font-black uppercase flex items-center justify-between">
-                  <span>2. VALOR DO FRETE ($):</span>
-                  <Truck className="w-4 h-4 text-sky-600" />
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] text-sky-950 font-black uppercase">
+                    2. VALOR DO FRETE:
+                  </label>
+                  <div className="flex items-center gap-1 text-[9px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setFreightCurrency('USD')}
+                      className={`px-1.5 py-0.5 ${freightCurrency === 'USD' ? 'bg-sky-700 text-white' : 'text-sky-900'}`}
+                    >
+                      $ USD
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFreightCurrency('BRL')}
+                      className={`px-1.5 py-0.5 ${freightCurrency === 'BRL' ? 'bg-sky-700 text-white' : 'text-sky-900'}`}
+                    >
+                      R$ BRL
+                    </button>
+                  </div>
+                </div>
                 <div className="relative">
-                  <span className="absolute left-2.5 top-1.5 font-mono text-sky-700 font-bold">$</span>
+                  <span className="absolute left-2.5 top-1.5 font-mono text-sky-700 font-bold">
+                    {freightCurrency === 'BRL' ? 'R$' : '$'}
+                  </span>
                   <input
                     type="number"
                     min="0"
@@ -715,55 +920,57 @@ export function ClothingPricingCalculator({
                     value={freightAmount}
                     onChange={(e) => setFreightAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full pl-6 pr-2 py-1.5 text-lg font-mono font-black border-2 border-sky-500 bg-white text-sky-900 focus:outline-none"
+                    className="w-full pl-8 pr-2 py-1.5 text-lg font-mono font-black border-2 border-sky-500 bg-white text-sky-900 focus:outline-none"
                   />
                 </div>
                 <div className="text-[10px] text-sky-800 font-mono font-bold leading-tight">
-                  Frete Rateado: <strong>+${freightPerUnit.toFixed(2)} / peça</strong>
+                  Frete em Dólar: <strong>${freightUSD.toFixed(2)}</strong> (+${freightPerUnitUSD.toFixed(2)} / peça)
                 </div>
               </div>
 
-              {/* Total Geral da Nota */}
+              {/* Total Geral Pago na Nota (em USD) */}
               <div className="p-4 bg-white border-2 border-deep-black space-y-1">
                 <span className="text-[10px] text-deep-black/60 font-black uppercase block">
-                  3. TOTAL GERAL PAGO NA NOTA:
+                  3. TOTAL GERAL PAGO (USD):
                 </span>
                 <div className="text-xl font-mono font-black text-deep-black">
-                  ${totalInvoiceAmount.toFixed(2)}
+                  ${totalInvoiceUSD.toFixed(2)}
                 </div>
                 <span className="text-[10px] text-deep-black/60 font-mono block">
-                  (Roupas + Frete Total)
+                  {purchaseCurrency === 'BRL'
+                    ? `(R$ ${totalClothesOriginal.toFixed(2)} @ ${rateNum.toFixed(2)} + frete)`
+                    : '(Roupas + Frete em Dólar)'}
                 </span>
               </div>
 
-              {/* Custo Médio Real */}
+              {/* Custo Médio Real em Dólar por Peça */}
               <div className="p-4 bg-white border-2 border-gold space-y-1">
                 <span className="text-[10px] text-deep-black/60 font-black uppercase block">
                   4. CUSTO MÉDIO REAL / PEÇA:
                 </span>
                 <div className="text-xl font-mono font-black text-gold">
-                  ${(totalPieces > 0 ? totalInvoiceAmount / totalPieces : 0).toFixed(2)}
+                  ${(totalPieces > 0 ? totalInvoiceUSD / totalPieces : 0).toFixed(2)} USD
                 </div>
                 <span className="text-[10px] text-deep-black/70 font-mono block font-bold">
-                  (Já com o frete embutido)
+                  (Custo convertido + frete rateado)
                 </span>
               </div>
             </div>
           </div>
 
-          {/* 3. TABELA DE FORMAÇÃO DE PREÇO, COMISSÃO (15%) E MARGEM REAL */}
+          {/* 3. TABELA DE FORMAÇÃO DE PREÇO, COMISSÃO (15%) E MARGEM REAL EM DÓLARES */}
           <div className="p-6 space-y-4 bg-white">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-deep-black/10 pb-3">
               <div>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-deep-black text-gold font-black text-[9px] uppercase tracking-widest mb-1">
                   <Sparkles className="w-3 h-3 text-gold" />
-                  <span>ANÁLISE DE VENDA & LUCRO LÍQUIDO NO BOLSO</span>
+                  <span>PREÇO DE VENDA NOS EUA & LUCRO LÍQUIDO NO BOLSO</span>
                 </div>
                 <h3 className="text-sm font-black uppercase tracking-wider text-deep-black">
-                  PREÇO DE VENDA, COMISSÃO DAS VENDEDORAS E MARGEM REAL POR ITEM
+                  PRECIFICAÇÃO EM DÓLAR, COMISSÃO DAS VENDEDORAS E MARGEM REAL
                 </h3>
                 <p className="text-[10px] text-deep-black/60 uppercase mt-0.5">
-                  Digite o preço de venda que você vai cobrar. O sistema deduz o custo real (com frete) e a comissão da vendedora, mostrando o lucro líquido limpo em dólar e a porcentagem.
+                  O custo de fábrica já está convertido em Dólar ($). Digite o preço de venda que você vai cobrar nos EUA. O sistema deduz a comissão da vendedora e calcula a margem líquida limpa.
                 </p>
               </div>
             </div>
@@ -774,9 +981,11 @@ export function ClothingPricingCalculator({
                   <tr>
                     <th className="p-3">ITEM</th>
                     <th className="p-3 text-center">QTD</th>
-                    <th className="p-3">CUSTO FÁBRICA</th>
+                    <th className="p-3">
+                      {purchaseCurrency === 'BRL' ? 'CUSTO R$ & $' : 'CUSTO FÁBRICA'}
+                    </th>
                     <th className="p-3">FRETE RATEADO</th>
-                    <th className="p-3 bg-zinc-800 text-gold">CUSTO REAL TOTAL</th>
+                    <th className="p-3 bg-zinc-800 text-gold">CUSTO REAL / UN</th>
                     <th className="p-3 w-36">PREÇO VENDA ($)</th>
                     <th className="p-3 w-36">COMISSÃO VENDEDORA</th>
                     <th className="p-3 bg-emerald-950 text-emerald-300">LUCRO NO BOLSO ($)</th>
@@ -793,8 +1002,17 @@ export function ClothingPricingCalculator({
                       <td className="p-3 text-center font-bold text-deep-black">
                         {it.quantity} un
                       </td>
-                      <td className="p-3 text-deep-black/70">
-                        ${it.unitCost.toFixed(2)}
+                      <td className="p-3 text-deep-black/80">
+                        {purchaseCurrency === 'BRL' ? (
+                          <div>
+                            <span className="font-bold text-emerald-700">${it.unitCost.toFixed(2)} USD</span>
+                            <span className="text-[10px] text-deep-black/50 block font-normal">
+                              (R$ {(it.unitCostOriginal || 0).toFixed(2)})
+                            </span>
+                          </div>
+                        ) : (
+                          <span>${it.unitCost.toFixed(2)}</span>
+                        )}
                       </td>
                       <td className="p-3 text-sky-700 font-bold">
                         +${it.freightPerUnit.toFixed(2)}
@@ -860,7 +1078,7 @@ export function ClothingPricingCalculator({
                 <span>RESULTADO FINANCEIRO CONSOLIDADO DA NOTA FISCAL</span>
               </span>
               <span className="text-[10px] text-white/60 font-mono">
-                {totalPieces} peças no total
+                {totalPieces} peças no total {purchaseCurrency === 'BRL' && `• Câmbio R$ ${rateNum.toFixed(2)}`}
               </span>
             </div>
 
@@ -869,25 +1087,27 @@ export function ClothingPricingCalculator({
               <div className="p-3 bg-white/5 border border-white/10 space-y-1">
                 <span className="text-[9px] text-white/60 uppercase block">INVESTIMENTO TOTAL</span>
                 <div className="text-base sm:text-lg font-mono font-black text-white">
-                  ${totalInvoiceAmount.toFixed(2)}
+                  ${totalInvoiceUSD.toFixed(2)}
                 </div>
-                <span className="text-[9px] text-white/40 uppercase block">Roupas + Frete</span>
+                <span className="text-[9px] text-white/40 uppercase block">
+                  {purchaseCurrency === 'BRL' ? `R$ ${totalClothesOriginal.toFixed(2)} + Frete` : 'Roupas + Frete'}
+                </span>
               </div>
 
               {/* Faturamento Bruto */}
               <div className="p-3 bg-white/5 border border-white/10 space-y-1">
                 <span className="text-[9px] text-white/60 uppercase block">FATURAMENTO BRUTO</span>
                 <div className="text-base sm:text-lg font-mono font-black text-white">
-                  ${totalProjectedRevenue.toFixed(2)}
+                  ${totalProjectedRevenueUSD.toFixed(2)}
                 </div>
-                <span className="text-[9px] text-white/40 uppercase block">100% Vendido</span>
+                <span className="text-[9px] text-white/40 uppercase block">100% Vendido ($ USD)</span>
               </div>
 
               {/* Total Comissões */}
               <div className="p-3 bg-white/5 border border-white/10 space-y-1">
                 <span className="text-[9px] text-gold uppercase block">COMISSÕES VENDEDORAS</span>
                 <div className="text-base sm:text-lg font-mono font-black text-gold">
-                  ${totalProjectedCommissions.toFixed(2)}
+                  ${totalProjectedCommissionsUSD.toFixed(2)}
                 </div>
                 <span className="text-[9px] text-white/40 uppercase block">Total a Pagar</span>
               </div>
@@ -898,10 +1118,10 @@ export function ClothingPricingCalculator({
                   LUCRO LÍQUIDO NO BOLSO
                 </span>
                 <div className="text-lg sm:text-xl font-mono font-black text-emerald-400">
-                  +${totalProjectedNetProfit.toFixed(2)}
+                  +${totalProjectedNetProfitUSD.toFixed(2)}
                 </div>
                 <span className="text-[9px] text-emerald-200 uppercase block font-bold">
-                  Livre de Custos e Comissão
+                  Livre de Roupas, Frete e Comissão
                 </span>
               </div>
 
@@ -911,7 +1131,7 @@ export function ClothingPricingCalculator({
                 <div className="text-base sm:text-lg font-mono font-black text-emerald-400">
                   {averageNetMarginPct.toFixed(1)}%
                 </div>
-                <span className="text-[9px] text-white/40 uppercase block">Sobre o Faturamento</span>
+                <span className="text-[9px] text-white/40 uppercase block">Sobre a Venda Total</span>
               </div>
             </div>
 
@@ -919,7 +1139,7 @@ export function ClothingPricingCalculator({
               <div>
                 🚚 <strong>Amortização de Frete:</strong> Vendendo apenas{' '}
                 <strong>{piecesToBreakEvenFreight} peças</strong> deste lote, você já cobre 100% do frete de $
-                {freightNum.toFixed(2)}! As outras{' '}
+                {freightUSD.toFixed(2)}! As outras{' '}
                 <strong>{Math.max(0, totalPieces - piecesToBreakEvenFreight)} peças</strong> são lucro livre.
               </div>
             </div>
@@ -934,8 +1154,8 @@ export function ClothingPricingCalculator({
                   className="accent-gold w-4 h-4"
                 />
                 <span>
-                  Lançar despesa de Roupas (${totalClothesAmount.toFixed(2)}) e Frete ($
-                  {freightNum.toFixed(2)}) no Fluxo de Caixa / DRE
+                  Lançar despesa de Roupas (${totalClothesUSD.toFixed(2)}) e Frete ($
+                  {freightUSD.toFixed(2)}) no Fluxo de Caixa / DRE
                 </span>
               </label>
 
@@ -973,7 +1193,7 @@ export function ClothingPricingCalculator({
                   <span>ARQUIVO COMPLETO DE NOTAS FISCAIS ({clothingPurchases.length} REGISTRADAS)</span>
                 </h3>
                 <p className="text-[10px] text-deep-black/60 uppercase mt-0.5 font-medium">
-                  Clique em qualquer nota fiscal para abrir o espelho individual com todos os modelos, custos, comissões e margens.
+                  Clique em qualquer nota fiscal para abrir o espelho individual com todos os modelos, custos, conversão cambial, comissões e margens.
                 </p>
               </div>
 
@@ -1008,6 +1228,8 @@ export function ClothingPricingCalculator({
                 {clothingPurchases.map((p) => {
                   const invNum = p.invoiceNumber || `NF-${p.id.substring(6, 12)}`;
                   const itemsCount = p.items?.length || 1;
+                  const isBRL = p.currency === 'BRL';
+
                   return (
                     <div
                       key={p.id}
@@ -1015,9 +1237,18 @@ export function ClothingPricingCalculator({
                     >
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
-                          <span className="px-2 py-0.5 bg-deep-black text-gold text-[9px] font-black uppercase tracking-wider inline-block">
-                            {invNum}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 bg-deep-black text-gold text-[9px] font-black uppercase tracking-wider inline-block">
+                              {invNum}
+                            </span>
+                            <span
+                              className={`px-1.5 py-0.5 text-[8px] font-black uppercase ${
+                                isBRL ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-stone-200 text-stone-800'
+                              }`}
+                            >
+                              {isBRL ? `🇧🇷 R$ (Câmbio ${p.exchangeRate?.toFixed(2)})` : '🇺🇸 $ USD'}
+                            </span>
+                          </div>
                           <h4 className="text-sm font-black uppercase text-deep-black line-clamp-1">
                             {p.supplier || 'Confecção Parceira'}
                           </h4>
@@ -1033,8 +1264,13 @@ export function ClothingPricingCalculator({
 
                       <div className="grid grid-cols-2 gap-2 text-[11px] font-mono border-y border-deep-black/10 py-2.5">
                         <div>
-                          <span className="text-[9px] text-deep-black/60 uppercase block">Total Pago</span>
+                          <span className="text-[9px] text-deep-black/60 uppercase block">Total Pago ($)</span>
                           <span className="font-black text-deep-black">${p.totalPaid.toFixed(2)}</span>
+                          {isBRL && p.clothesAmountOriginal && (
+                            <span className="text-[9px] text-deep-black/50 block font-sans">
+                              (R$ {p.clothesAmountOriginal.toFixed(2)})
+                            </span>
+                          )}
                           <span className="text-[9px] text-sky-700 block">(frete ${p.freightAmount.toFixed(2)})</span>
                         </div>
                         <div className="text-right">
@@ -1073,7 +1309,7 @@ export function ClothingPricingCalculator({
         </div>
       )}
 
-      {/* MODAL OFICIAL: ESPELHO DA NOTA FISCAL (VISUALIZAÇÃO INDIVIDUAL UMA POR UMA) */}
+      {/* MODAL OFICIAL: ESPELHO DA NOTA FISCAL COM CONVERSÃO CAMBIAL */}
       {selectedInvoiceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-deep-black/80 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white border-2 border-deep-black max-w-4xl w-full max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col">
@@ -1084,6 +1320,11 @@ export function ClothingPricingCalculator({
                 <span className="text-xs font-black uppercase tracking-widest text-gold">
                   ESPELHO DA NOTA FISCAL • {selectedInvoiceModal.invoiceNumber || `NF-${selectedInvoiceModal.id.substring(6, 12)}`}
                 </span>
+                {selectedInvoiceModal.currency === 'BRL' && (
+                  <span className="px-2 py-0.5 bg-green-900 text-emerald-300 text-[9px] font-black uppercase border border-emerald-600">
+                    🇧🇷 Compra em Reais (Câmbio {selectedInvoiceModal.exchangeRate?.toFixed(2)})
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -1142,11 +1383,16 @@ export function ClothingPricingCalculator({
                   <span className="text-[10px] text-deep-black/70 block">
                     Data: <strong>{selectedInvoiceModal.date}</strong>
                   </span>
+                  {selectedInvoiceModal.currency === 'BRL' && (
+                    <span className="text-[9px] text-green-700 block font-bold">
+                      Câmbio Aplicado: $1 = R$ {selectedInvoiceModal.exchangeRate?.toFixed(2)}
+                    </span>
+                  )}
                 </div>
               </div>
 
               {/* Informações da Compra e Fornecedor */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-stone-50 border border-deep-black/20 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 bg-stone-50 border border-deep-black/20 text-xs">
                 <div>
                   <span className="text-[9px] text-deep-black/60 uppercase font-black block">FORNECEDOR / FÁBRICA:</span>
                   <strong className="text-sm text-deep-black">{selectedInvoiceModal.supplier || 'Confecção'}</strong>
@@ -1154,6 +1400,14 @@ export function ClothingPricingCalculator({
                 <div>
                   <span className="text-[9px] text-deep-black/60 uppercase font-black block">TOTAL DE PEÇAS:</span>
                   <strong className="text-sm font-mono text-deep-black">{selectedInvoiceModal.totalPieces} unidades</strong>
+                </div>
+                <div>
+                  <span className="text-[9px] text-deep-black/60 uppercase font-black block">MOEDA DA COMPRA:</span>
+                  <strong className="text-sm font-mono text-deep-black">
+                    {selectedInvoiceModal.currency === 'BRL'
+                      ? `🇧🇷 Reais (R$ ${selectedInvoiceModal.clothesAmountOriginal?.toFixed(2) || '0.00'})`
+                      : '🇺🇸 Dólar Americano ($ USD)'}
+                  </strong>
                 </div>
                 <div>
                   <span className="text-[9px] text-deep-black/60 uppercase font-black block">COMISSÃO VENDEDORA:</span>
@@ -1174,9 +1428,14 @@ export function ClothingPricingCalculator({
                       <tr>
                         <th className="p-2.5">MODELO / ITEM</th>
                         <th className="p-2.5 text-center">QTD</th>
-                        <th className="p-2.5">CUSTO FÁBRICA</th>
+                        <th className="p-2.5">
+                          {selectedInvoiceModal.currency === 'BRL' ? 'CUSTO R$' : 'CUSTO FÁBRICA'}
+                        </th>
+                        {selectedInvoiceModal.currency === 'BRL' && (
+                          <th className="p-2.5 bg-green-950 text-emerald-300">CONVERTIDO ($)</th>
+                        )}
                         <th className="p-2.5">FRETE RATEADO</th>
-                        <th className="p-2.5 bg-zinc-800 text-gold">CUSTO REAL TOTAL</th>
+                        <th className="p-2.5 bg-zinc-800 text-gold">CUSTO REAL / UN</th>
                         <th className="p-2.5">PREÇO VENDA</th>
                         <th className="p-2.5">COMISSÃO (15%)</th>
                         <th className="p-2.5 bg-emerald-950 text-emerald-300">LUCRO UNIT.</th>
@@ -1193,6 +1452,7 @@ export function ClothingPricingCalculator({
                               name: 'Lote de Peças Diversas',
                               quantity: selectedInvoiceModal.totalPieces,
                               unitCost: selectedInvoiceModal.unitCostAverage,
+                              unitCostOriginal: selectedInvoiceModal.unitCostAverage,
                               freightPerUnit: selectedInvoiceModal.freightPerPiece,
                               totalCostPerUnit: selectedInvoiceModal.totalCostPerPiece,
                               suggestedPrice: selectedInvoiceModal.suggestedSalePrice,
@@ -1219,8 +1479,15 @@ export function ClothingPricingCalculator({
                             {item.quantity} un
                           </td>
                           <td className="p-2.5 text-deep-black/70">
-                            ${(item.unitCost || 0).toFixed(2)}
+                            {selectedInvoiceModal.currency === 'BRL' && item.unitCostOriginal
+                              ? `R$ ${item.unitCostOriginal.toFixed(2)}`
+                              : `$${(item.unitCost || 0).toFixed(2)}`}
                           </td>
+                          {selectedInvoiceModal.currency === 'BRL' && (
+                            <td className="p-2.5 font-black text-emerald-700 bg-emerald-50/50">
+                              ${(item.unitCost || 0).toFixed(2)} USD
+                            </td>
+                          )}
                           <td className="p-2.5 text-sky-700 font-bold">
                             +${(item.freightPerUnit || selectedInvoiceModal.freightPerPiece || 0).toFixed(2)}
                           </td>
@@ -1258,16 +1525,22 @@ export function ClothingPricingCalculator({
                   <span className="font-black uppercase tracking-wider text-deep-black block border-b border-deep-black/10 pb-1">
                     CUSTOS DA REMESSA
                   </span>
+                  {selectedInvoiceModal.currency === 'BRL' && selectedInvoiceModal.clothesAmountOriginal && (
+                    <div className="flex justify-between font-mono">
+                      <span className="text-deep-black/70">Subtotal em Reais:</span>
+                      <strong className="text-deep-black">R$ {selectedInvoiceModal.clothesAmountOriginal.toFixed(2)}</strong>
+                    </div>
+                  )}
                   <div className="flex justify-between font-mono">
-                    <span className="text-deep-black/70">Subtotal das Roupas:</span>
+                    <span className="text-deep-black/70">Roupas Convertidas ($ USD):</span>
                     <strong className="text-green-800">${selectedInvoiceModal.clothesAmount.toFixed(2)}</strong>
                   </div>
                   <div className="flex justify-between font-mono">
-                    <span className="text-deep-black/70">Frete Total Pago:</span>
+                    <span className="text-deep-black/70">Frete Total Pago ($ USD):</span>
                     <strong className="text-sky-800">${selectedInvoiceModal.freightAmount.toFixed(2)}</strong>
                   </div>
                   <div className="flex justify-between font-mono text-sm border-t border-deep-black/10 pt-1.5 font-black">
-                    <span>TOTAL PAGO NA NOTA:</span>
+                    <span>TOTAL PAGO NA NOTA ($ USD):</span>
                     <span className="text-deep-black">${selectedInvoiceModal.totalPaid.toFixed(2)}</span>
                   </div>
                 </div>
@@ -1295,7 +1568,7 @@ export function ClothingPricingCalculator({
                     </strong>
                   </div>
                   <div className="flex justify-between font-mono text-sm border-t border-white/10 pt-1.5 font-black text-emerald-300">
-                    <span>LUCRO LÍQUIDO NO BOLSO:</span>
+                    <span>LUCRO LÍQUIDO NO BOLSO ($ USD):</span>
                     <span className="text-base text-emerald-400">
                       +${selectedInvoiceModal.totalProjectedProfit.toFixed(2)}
                     </span>

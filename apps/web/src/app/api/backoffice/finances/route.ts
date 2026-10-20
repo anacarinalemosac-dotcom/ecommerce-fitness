@@ -39,8 +39,10 @@ export interface ClothingItemDetail {
   id: string;
   name: string;
   quantity: number;
-  unitCost: number;
-  totalCost?: number;
+  unitCost: number; // in USD (converted)
+  unitCostOriginal?: number; // in original currency (e.g. BRL)
+  totalCost?: number; // in USD (converted)
+  totalCostOriginal?: number; // in original currency (e.g. BRL)
   freightPerUnit: number;
   totalCostPerUnit: number;
   suggestedPrice: number;
@@ -54,6 +56,9 @@ export interface ClothingItemDetail {
 export interface ClothingPurchaseRecord {
   id: string;
   invoiceNumber?: string;
+  currency?: 'BRL' | 'USD';
+  exchangeRate?: number;
+  clothesAmountOriginal?: number;
   date: string;
   supplier?: string;
   totalPieces: number;
@@ -294,6 +299,9 @@ export async function POST(req: NextRequest) {
       const {
         id,
         invoiceNumber = '',
+        currency = 'USD',
+        exchangeRate = 1.0,
+        clothesAmountOriginal = 0,
         date,
         supplier,
         totalPieces,
@@ -334,6 +342,9 @@ export async function POST(req: NextRequest) {
             return {
               ...p,
               invoiceNumber: invoiceNumber || purchase.invoice_number || p.invoiceNumber || '',
+              currency: currency as 'BRL' | 'USD',
+              exchangeRate: Number(exchangeRate) || 1.0,
+              clothesAmountOriginal: Number(clothesAmountOriginal) || 0,
               date: purchaseDate,
               supplier: supplier?.trim() || 'Confecção / Fornecedor',
               totalPieces: pieces,
@@ -360,6 +371,9 @@ export async function POST(req: NextRequest) {
         const newPurchase: ClothingPurchaseRecord = {
           id: newPurchaseId,
           invoiceNumber: invoiceNumber || purchase.invoice_number || '',
+          currency: currency as 'BRL' | 'USD',
+          exchangeRate: Number(exchangeRate) || 1.0,
+          clothesAmountOriginal: Number(clothesAmountOriginal) || 0,
           date: purchaseDate,
           supplier: supplier?.trim() || 'Confecção / Fornecedor',
           totalPieces: pieces,
