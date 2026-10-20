@@ -427,7 +427,7 @@ export interface SendEmailOptions {
   subject: string;
   html: string;
   order_id: string;
-  type: 'ORDER_CONFIRMATION' | 'SHIPPING_NOTIFICATION';
+  type: 'ORDER_CONFIRMATION' | 'SHIPPING_NOTIFICATION' | 'GENERAL';
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<{ success: boolean; simulated?: boolean; messageId?: string; error?: string }> {
@@ -610,3 +610,125 @@ export async function sendShippingNotificationEmail(order: any, trackingCode: st
     type: 'SHIPPING_NOTIFICATION',
   });
 }
+
+// ============================================================================
+// TEMPLATE 3: CUPOM PRESENTE DE AVALIAÇÃO (REVIEW REWARD COUPON)
+// ============================================================================
+export function generateReviewRewardCouponHtml(customerName: string, couponCode: string = 'OBRIGADA10'): string {
+  const cleanName = customerName ? customerName.trim().toUpperCase() : 'CLIENTE ESPECIAL';
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seu Presente Chegou! 🎁 10% OFF - ANA Fitness Wear</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f6f6f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111111;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f6f6f8; padding: 30px 10px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 4px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #0b0b0b; padding: 36px 30px; text-align: center; border-bottom: 3px solid #d4af37;">
+              <div style="color: #d4af37; font-size: 11px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 6px;">
+                LEOMINSTER, MASSACHUSETTS &bull; OFFICIAL STORE
+              </div>
+              <h1 style="color: #ffffff; font-size: 26px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; margin: 0;">
+                ANA FITNESS WEAR
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Banner de Agradecimento -->
+          <tr>
+            <td style="padding: 28px 30px; background-color: #faf8f2; border-bottom: 1px solid #eee; text-align: center;">
+              <span style="display: inline-block; background-color: #d4af37; color: #0b0b0b; padding: 6px 14px; font-size: 11px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase;">
+                ★ PRESENTE EXCLUSIVO DE AVALIAÇÃO
+              </span>
+              <h2 style="font-size: 22px; font-weight: 900; text-transform: uppercase; margin: 16px 0 6px 0; color: #111;">
+                MUITO OBRIGADA, ${cleanName}! 💖
+              </h2>
+              <p style="font-size: 13px; color: #555555; line-height: 1.6; max-width: 480px; margin: 0 auto;">
+                Sua avaliação foi recebida com muito carinho e já está ajudando outras mulheres a escolherem seus looks favoritos com confiança!
+              </p>
+            </td>
+          </tr>
+
+          <!-- Bloco do Cupom de Desconto -->
+          <tr>
+            <td style="padding: 36px 30px; text-align: center;">
+              <div style="background: linear-gradient(135deg, #0b0b0b 0%, #1a1a1a 100%); border: 2px dashed #d4af37; border-radius: 8px; padding: 26px 20px; color: #ffffff; margin-bottom: 24px;">
+                <div style="font-size: 11px; font-weight: 800; color: #d4af37; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">
+                  SEU CUPOM DE 10% DE DESCONTO
+                </div>
+                <div style="font-size: 32px; font-weight: 900; color: #d4af37; font-family: monospace; letter-spacing: 4px; background: rgba(255,255,255,0.05); border: 1px solid #d4af37; display: inline-block; padding: 10px 24px; border-radius: 4px;">
+                  ${couponCode}
+                </div>
+                <p style="font-size: 12px; color: #e0e0e0; margin-top: 12px; margin-bottom: 0;">
+                  Válido para qualquer peça do nosso catálogo oficial.
+                </p>
+              </div>
+
+              <!-- Instruções de Uso -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fafafa; border: 1px solid #eee; padding: 16px 20px; text-align: left; margin-bottom: 28px;">
+                <tr>
+                  <td style="font-size: 13px; color: #333; line-height: 1.6;">
+                    <strong>Como usar seu cupom:</strong><br />
+                    1. Acesse nosso site oficial <a href="https://anafitwear.com" style="color: #d4af37; font-weight: 700;">anafitwear.com</a>.<br />
+                    2. Escolha suas peças favoritas e vá para a sacola de compras.<br />
+                    3. No campo <strong>CUPOM DE DESCONTO</strong>, digite <span style="font-family: monospace; font-weight: 800; background: #eee; padding: 2px 6px;">${couponCode}</span> e garanta 10% OFF na hora!
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Botão CTA -->
+              <a href="https://anafitwear.com" target="_blank" style="display: inline-block; background-color: #0b0b0b; color: #d4af37; text-decoration: none; padding: 16px 36px; font-size: 13px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; border: 2px solid #d4af37; border-radius: 2px; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">
+                USAR MEU CUPOM NO SITE AGORA &rarr;
+              </a>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f2f2f2; padding: 24px 30px; text-align: center; border-top: 1px solid #e0e0e0; font-size: 12px; color: #666; line-height: 1.6;">
+              <div style="font-weight: 800; color: #111; text-transform: uppercase; margin-bottom: 4px;">
+                ANA FITNESS WEAR LLC
+              </div>
+              <div>Showroom & Concierge: Leominster, MA &bull; United States</div>
+              <div style="margin-top: 6px;">
+                Atendimento VIP via WhatsApp: <a href="https://wa.me/19783139452" style="color: #111; font-weight: 700; text-decoration: none;">+1 (978) 313-9452</a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+// Disparo facilitado de Cupom de Avaliação para o e-mail da cliente
+export async function sendReviewCouponEmail(opts: { customerEmail: string; customerName: string; couponCode?: string }) {
+  const { customerEmail, customerName, couponCode = 'OBRIGADA10' } = opts;
+  const recipientEmail = (customerEmail || '').trim();
+
+  if (!recipientEmail || !recipientEmail.includes('@')) {
+    return { success: false, error: 'E-mail do cliente não informado.' };
+  }
+
+  const subject = `Seu Presente Chegou! 🎁 10% OFF na sua próxima compra - ANA Fitness Wear`;
+  const html = generateReviewRewardCouponHtml(customerName, couponCode);
+
+  return sendEmail({
+    to: recipientEmail,
+    subject,
+    html,
+    order_id: 'REVIEW-COUPON',
+    type: 'GENERAL',
+  });
+}
+

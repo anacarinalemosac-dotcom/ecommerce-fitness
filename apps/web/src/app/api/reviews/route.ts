@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readReviews, writeReviews, ProductReview } from '@/lib/reviewsStore';
 import { recordOrderEvent } from '@/lib/liveStore';
+import { sendReviewCouponEmail } from '@/lib/emailService';
 
 export async function GET(req: NextRequest) {
   try {
@@ -94,12 +95,28 @@ export async function POST(req: NextRequest) {
       });
     } catch (_) {}
 
+    // Envia o cupom por e-mail para o cliente caso o e-mail tenha sido informado
+    let emailSent = false;
+    if (newReview.customerEmail && newReview.customerEmail.includes('@')) {
+      try {
+        const mailRes = await sendReviewCouponEmail({
+          customerEmail: newReview.customerEmail,
+          customerName: newReview.customerName,
+          couponCode: 'OBRIGADA10',
+        });
+        emailSent = Boolean(mailRes?.success);
+      } catch (mailErr) {
+        console.warn('Erro ao disparar e-mail de cupom de avaliação:', mailErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Sua avaliação foi publicada com sucesso! Muito obrigado pelo carinho!',
       review: newReview,
       coupon: 'OBRIGADA10',
       discountPct: 10,
+      emailSent,
     });
   } catch (error: any) {
     console.error('Erro ao gravar avaliação:', error);

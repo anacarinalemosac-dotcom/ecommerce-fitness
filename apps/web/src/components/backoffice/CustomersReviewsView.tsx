@@ -234,9 +234,10 @@ export function CustomersReviewsView({ salesData }: CustomersReviewsViewProps) {
     const phone = getCleanPhone(c.phone);
     const prodParam = c.lastProduct ? `?produto=${encodeURIComponent(c.lastProduct)}` : '';
     const nameParam = c.name ? `${prodParam ? '&' : '?'}nome=${encodeURIComponent(c.name)}` : '';
-    const reviewUrl = `https://anafitwear.com/avaliar${prodParam}${nameParam}`;
+    const emailParam = c.email ? `${prodParam || nameParam ? '&' : '?'}email=${encodeURIComponent(c.email)}` : '';
+    const reviewUrl = `https://anafitwear.com/avaliar${prodParam}${nameParam}${emailParam}`;
 
-    const message = `Olá ${c.name}! 🥰 Adoramos ter você como cliente da Ana Fitness Wear. 💖 Você já recebeu seus looks? Gostaríamos muito de saber o que achou das peças! Leva só 1 minutinho para avaliar no nosso site e você ainda ganha 10% OFF na sua próxima compra com cupom exclusivo:\n\n${reviewUrl}`;
+    const message = `Olá ${c.name}! 🥰 Adoramos ter você como cliente da Ana Fitness Wear. 💖 Você já recebeu seus looks? Gostaríamos muito de saber o que achou das peças! Leva só 1 minutinho para avaliar no nosso site e você ainda ganha 10% OFF enviado direto para o seu e-mail:\n\n${reviewUrl}`;
 
     if (!phone) {
       navigator.clipboard.writeText(reviewUrl);
@@ -443,7 +444,8 @@ export function CustomersReviewsView({ salesData }: CustomersReviewsViewProps) {
                               onClick={() => {
                                 const prodParam = c.lastProduct ? `?produto=${encodeURIComponent(c.lastProduct)}` : '';
                                 const nameParam = c.name ? `${prodParam ? '&' : '?'}nome=${encodeURIComponent(c.name)}` : '';
-                                const link = `https://anafitwear.com/avaliar${prodParam}${nameParam}`;
+                                const emailParam = c.email ? `${prodParam || nameParam ? '&' : '?'}email=${encodeURIComponent(c.email)}` : '';
+                                const link = `https://anafitwear.com/avaliar${prodParam}${nameParam}${emailParam}`;
                                 navigator.clipboard.writeText(link);
                                 setCopiedCustomerLink(c.name);
                                 setTimeout(() => setCopiedCustomerLink(null), 2500);

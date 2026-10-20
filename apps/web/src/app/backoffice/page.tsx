@@ -3845,8 +3845,9 @@ export default function BackofficeDashboard() {
                                 const firstItem = (sale.items && sale.items[0]) ? (sale.items[0].product_title || sale.items[0].sku || '') : '';
                                 const prodParam = firstItem ? `?produto=${encodeURIComponent(firstItem)}` : '';
                                 const nameParam = sale.customer_name ? `${prodParam ? '&' : '?'}nome=${encodeURIComponent(sale.customer_name)}` : '';
-                                const reviewUrl = `https://anafitwear.com/avaliar${prodParam}${nameParam}`;
-                                const msg = `Olá ${sale.customer_name || 'linda'}! 🥰 Adoramos ter você na família Ana Fitness Wear. Seu look já chegou? Gostaríamos muito de saber o que achou! Leva só 1 minutinho para avaliar no nosso site e você ganha 10% OFF na sua próxima compra com cupom exclusivo:\n\n${reviewUrl}`;
+                                const emailParam = sale.customer_email ? `${prodParam || nameParam ? '&' : '?'}email=${encodeURIComponent(sale.customer_email)}` : '';
+                                const reviewUrl = `https://anafitwear.com/avaliar${prodParam}${nameParam}${emailParam}`;
+                                const msg = `Olá ${sale.customer_name || 'linda'}! 🥰 Adoramos ter você na família Ana Fitness Wear. Seu look já chegou? Gostaríamos muito de saber o que achou! Leva só 1 minutinho para avaliar no nosso site e você ganha 10% OFF enviado direto para o seu e-mail:\n\n${reviewUrl}`;
                                 if (fullPhone) {
                                   window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
                                 } else {
