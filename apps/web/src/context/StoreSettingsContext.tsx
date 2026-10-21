@@ -67,6 +67,13 @@ export interface SiteInfo {
   googleTagManagerId?: string;
   tiktokPixelId?: string;
   pinterestTagId?: string;
+  // TikTok Shop Open API (Sincronização Direta em Tempo Real)
+  tiktokShopAppKey?: string;
+  tiktokShopAppSecret?: string;
+  tiktokShopAccessToken?: string;
+  tiktokShopId?: string;
+  tiktokShopCipher?: string;
+  tiktokShopAutoSync?: boolean;
 }
 
 export interface SiteImages {
@@ -184,6 +191,12 @@ const DEFAULT_SITE_INFO: SiteInfo = {
   googleTagManagerId: '',
   tiktokPixelId: '',
   pinterestTagId: '',
+  tiktokShopAppKey: '',
+  tiktokShopAppSecret: '',
+  tiktokShopAccessToken: '',
+  tiktokShopId: '7494943021231081116',
+  tiktokShopCipher: '',
+  tiktokShopAutoSync: false,
 };
 
 const DEFAULT_SITE_IMAGES: SiteImages = {

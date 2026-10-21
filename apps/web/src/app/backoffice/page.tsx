@@ -506,6 +506,36 @@ export default function BackofficeDashboard() {
     }
   };
 
+  // 1.2 Disparo individual de sincronização com o TikTok Shop US
+  const [syncingTikTokId, setSyncingTikTokId] = useState<string | null>(null);
+  const handleSyncSingleProductTikTok = async (item: any) => {
+    setSyncingTikTokId(item.id);
+    try {
+      const res = await fetch('/api/catalog/tiktok/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: item.id,
+          action: 'sync',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.simulated) {
+          alert(`🎵 Validação TikTok Shop Concluída!\n\n${data.message}`);
+        } else {
+          alert(`🎉 Produto "${item.title}" sincronizado com sucesso no TikTok Shop!\nID TikTok: ${data.tiktokProductId}`);
+        }
+      } else {
+        alert(`Aviso ao enviar para o TikTok Shop: ${data.error || data.message || 'Falha de comunicação.'}`);
+      }
+    } catch (err: any) {
+      alert(`Erro na sincronização: ${err.message}`);
+    } finally {
+      setSyncingTikTokId(null);
+    }
+  };
+
   // Atualização interativa de status geral legado do pedido
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string, trackingCode?: string) => {
     if (newStatus === 'CANCELLED') {
@@ -2949,6 +2979,17 @@ export default function BackofficeDashboard() {
                           >
                             <Edit3 className="w-3.5 h-3.5 text-gold" />
                             <span>EDITAR</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={syncingTikTokId === item.id}
+                            onClick={() => handleSyncSingleProductTikTok(item)}
+                            className="p-1.5 border border-deep-black bg-stone-100 hover:bg-gold hover:text-deep-black text-deep-black transition flex items-center gap-1 text-[10px] font-black cursor-pointer disabled:opacity-50"
+                            title="Sincronizar este produto diretamente com o TikTok Shop US"
+                          >
+                            <Radio className="w-3.5 h-3.5 text-deep-black" />
+                            <span>{syncingTikTokId === item.id ? 'ENVIANDO...' : 'TIKTOK'}</span>
                           </button>
 
                           {item.id && !item.id.startsWith('p') && (

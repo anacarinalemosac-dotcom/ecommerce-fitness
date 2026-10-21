@@ -52,18 +52,42 @@ export function TechnicalSettingsView() {
   const [pinterestTagId, setPinterestTagId] = useState(siteInfo.pinterestTagId || '');
   const [savePixelsSuccess, setSavePixelsSuccess] = useState(false);
 
+  // Estados da Conexão Direta TikTok Shop Open API (Opção 3)
+  const [tiktokShopAppKey, setTiktokShopAppKey] = useState(siteInfo.tiktokShopAppKey || '');
+  const [tiktokShopAppSecret, setTiktokShopAppSecret] = useState(siteInfo.tiktokShopAppSecret || '');
+  const [tiktokShopAccessToken, setTiktokShopAccessToken] = useState(siteInfo.tiktokShopAccessToken || '');
+  const [tiktokShopId, setTiktokShopId] = useState(siteInfo.tiktokShopId || '7494943021231081116');
+  const [tiktokShopCipher, setTiktokShopCipher] = useState(siteInfo.tiktokShopCipher || '');
+  const [tiktokShopAutoSync, setTiktokShopAutoSync] = useState(siteInfo.tiktokShopAutoSync || false);
+  const [saveTikTokSuccess, setSaveTikTokSuccess] = useState(false);
+  const [testingTikTok, setTestingTikTok] = useState(false);
+  const [syncingAllTikTok, setSyncingAllTikTok] = useState(false);
+  const [tiktokStatusMsg, setTiktokStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
   React.useEffect(() => {
     if (siteInfo.metaPixelId !== undefined) setMetaPixelId(siteInfo.metaPixelId || '');
     if (siteInfo.googleAnalyticsId !== undefined) setGoogleAnalyticsId(siteInfo.googleAnalyticsId || '');
     if (siteInfo.googleTagManagerId !== undefined) setGoogleTagManagerId(siteInfo.googleTagManagerId || '');
     if (siteInfo.tiktokPixelId !== undefined) setTiktokPixelId(siteInfo.tiktokPixelId || '');
     if (siteInfo.pinterestTagId !== undefined) setPinterestTagId(siteInfo.pinterestTagId || '');
+    if (siteInfo.tiktokShopAppKey !== undefined) setTiktokShopAppKey(siteInfo.tiktokShopAppKey || '');
+    if (siteInfo.tiktokShopAppSecret !== undefined) setTiktokShopAppSecret(siteInfo.tiktokShopAppSecret || '');
+    if (siteInfo.tiktokShopAccessToken !== undefined) setTiktokShopAccessToken(siteInfo.tiktokShopAccessToken || '');
+    if (siteInfo.tiktokShopId !== undefined) setTiktokShopId(siteInfo.tiktokShopId || '7494943021231081116');
+    if (siteInfo.tiktokShopCipher !== undefined) setTiktokShopCipher(siteInfo.tiktokShopCipher || '');
+    if (siteInfo.tiktokShopAutoSync !== undefined) setTiktokShopAutoSync(siteInfo.tiktokShopAutoSync || false);
   }, [
     siteInfo.metaPixelId,
     siteInfo.googleAnalyticsId,
     siteInfo.googleTagManagerId,
     siteInfo.tiktokPixelId,
     siteInfo.pinterestTagId,
+    siteInfo.tiktokShopAppKey,
+    siteInfo.tiktokShopAppSecret,
+    siteInfo.tiktokShopAccessToken,
+    siteInfo.tiktokShopId,
+    siteInfo.tiktokShopCipher,
+    siteInfo.tiktokShopAutoSync,
   ]);
 
   const handleCopy = (text: string, id: string) => {
@@ -83,6 +107,108 @@ export function TechnicalSettingsView() {
     });
     setSavePixelsSuccess(true);
     setTimeout(() => setSavePixelsSuccess(false), 4000);
+  };
+
+  const handleSaveTikTokSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateSiteInfo({
+      tiktokShopAppKey: tiktokShopAppKey.trim(),
+      tiktokShopAppSecret: tiktokShopAppSecret.trim(),
+      tiktokShopAccessToken: tiktokShopAccessToken.trim(),
+      tiktokShopId: tiktokShopId.trim() || '7494943021231081116',
+      tiktokShopCipher: tiktokShopCipher.trim(),
+      tiktokShopAutoSync,
+    });
+    setSaveTikTokSuccess(true);
+    setTiktokStatusMsg({
+      type: 'success',
+      text: '✓ Credenciais do TikTok Shop salvas com sucesso! O sistema está pronto para sincronizar produtos.',
+    });
+    setTimeout(() => setSaveTikTokSuccess(false), 4000);
+  };
+
+  const handleTestTikTokConnection = async () => {
+    setTestingTikTok(true);
+    setTiktokStatusMsg(null);
+    try {
+      const res = await fetch('/api/catalog/tiktok/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'test_connection',
+          credentials: {
+            appKey: tiktokShopAppKey.trim(),
+            appSecret: tiktokShopAppSecret.trim(),
+            accessToken: tiktokShopAccessToken.trim(),
+            sellerId: tiktokShopId.trim(),
+            shopCipher: tiktokShopCipher.trim(),
+          },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.configured) {
+        setTiktokStatusMsg({
+          type: 'success',
+          text: `✓ Conexão validada! ${data.message}`,
+        });
+      } else {
+        setTiktokStatusMsg({
+          type: 'info',
+          text: `ℹ ${data.message || 'Chaves ainda não configuradas ou em modo de validação.'}`,
+        });
+      }
+    } catch (err: any) {
+      setTiktokStatusMsg({
+        type: 'error',
+        text: `Erro ao testar conexão: ${err.message}`,
+      });
+    } finally {
+      setTestingTikTok(false);
+    }
+  };
+
+  const handleSyncAllTikTok = async () => {
+    if (!window.confirm('Deseja iniciar a sincronização em lote de todos os produtos do catálogo para o TikTok Shop (até 200 produtos permitidos)?')) {
+      return;
+    }
+
+    setSyncingAllTikTok(true);
+    setTiktokStatusMsg(null);
+    try {
+      const res = await fetch('/api/catalog/tiktok/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'bulk_sync',
+          credentials: {
+            appKey: tiktokShopAppKey.trim(),
+            appSecret: tiktokShopAppSecret.trim(),
+            accessToken: tiktokShopAccessToken.trim(),
+            sellerId: tiktokShopId.trim(),
+            shopCipher: tiktokShopCipher.trim(),
+          },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTiktokStatusMsg({
+          type: 'success',
+          text: `🎉 Sincronização concluída! ${data.totalProcessed} produtos foram processados e validados segundo as diretrizes de qualidade do TikTok Shop US.`,
+        });
+      } else {
+        setTiktokStatusMsg({
+          type: 'error',
+          text: `Aviso na sincronização: ${data.error || 'Não foi possível completar o envio.'}`,
+        });
+      }
+    } catch (err: any) {
+      setTiktokStatusMsg({
+        type: 'error',
+        text: `Falha na sincronização: ${err.message}`,
+      });
+    } finally {
+      setSyncingAllTikTok(false);
+    }
   };
 
   const handleSaveShipping = (e: React.FormEvent) => {
@@ -824,6 +950,192 @@ export function TechnicalSettingsView() {
                 Endpoint otimizado com os mesmos cabeçalhos RSS 2.0 aceitos no Meta Commerce Manager.
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            INTEGRAÇÃO OFICIAL TIKTOK SHOP OPEN API (OPÇÃO 3: ENVIO EM TEMPO REAL)
+           ========================================================================= */}
+        <div className="p-6 border-2 border-gold bg-gradient-to-br from-white via-amber-50/20 to-white shadow-luxury space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-deep-black/10 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                  OPÇÃO 3 ATIVADA • TIKTOK SHOP OPEN API
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-deep-black mt-0.5">
+                CONEXÃO DIRETA EM TEMPO REAL (TRANSMISSÃO IMEDIATA)
+              </h3>
+              <p className="text-xs text-deep-black/70 mt-1 max-w-2xl leading-relaxed">
+                Cadastre suas chaves de API da sua loja no TikTok Shop. Ao ativar, você clica em <strong>Salvar Produto</strong> no site e o look é criado diretamente no TikTok Shop US com suas fotos, tamanhos (S/M/L), estoque e descrição squat-proof!
+              </p>
+            </div>
+
+            <div className="bg-deep-black text-white px-3 py-2 border border-gold/40 text-center shrink-0">
+              <span className="text-[9px] font-black uppercase tracking-widest text-gold block">
+                COTA AUTORIZADA
+              </span>
+              <span className="text-lg font-mono font-black text-gold">200 PRODUTOS</span>
+            </div>
+          </div>
+
+          {/* Mensagem de Feedback de Conexão ou Sincronização */}
+          {tiktokStatusMsg && (
+            <div
+              className={`p-4 border-2 flex items-start gap-3 animate-fadeIn text-xs ${
+                tiktokStatusMsg.type === 'success'
+                  ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-bold'
+                  : tiktokStatusMsg.type === 'error'
+                  ? 'bg-red-50 border-red-500 text-red-950 font-bold'
+                  : 'bg-amber-50 border-amber-400 text-amber-950'
+              }`}
+            >
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="leading-relaxed">{tiktokStatusMsg.text}</p>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSaveTikTokSettings} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* App Key */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
+                  <span>APP KEY DO TIKTOK SHOP *</span>
+                  <span className="text-[9px] text-stone-500 font-mono">partner.tiktokshop.com</span>
+                </label>
+                <input
+                  type="text"
+                  value={tiktokShopAppKey}
+                  onChange={(e) => setTiktokShopAppKey(e.target.value)}
+                  placeholder="Ex: 6b7a8c9d0e1f2..."
+                  className="w-full bg-white border border-deep-black/30 px-3 py-2 text-xs font-mono font-bold text-deep-black focus:outline-none focus:border-gold"
+                />
+              </div>
+
+              {/* App Secret */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
+                  <span>APP SECRET DO TIKTOK SHOP *</span>
+                  <span className="text-[9px] text-stone-500 font-mono">HMAC-SHA256</span>
+                </label>
+                <input
+                  type="password"
+                  value={tiktokShopAppSecret}
+                  onChange={(e) => setTiktokShopAppSecret(e.target.value)}
+                  placeholder="••••••••••••••••••••••••"
+                  className="w-full bg-white border border-deep-black/30 px-3 py-2 text-xs font-mono font-bold text-deep-black focus:outline-none focus:border-gold"
+                />
+              </div>
+
+              {/* Access Token */}
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
+                  <span>AUTHORIZED SHOP ACCESS TOKEN *</span>
+                  <span className="text-[9px] text-stone-500 font-mono">Token de Autorização da Loja</span>
+                </label>
+                <input
+                  type="text"
+                  value={tiktokShopAccessToken}
+                  onChange={(e) => setTiktokShopAccessToken(e.target.value)}
+                  placeholder="Ex: TTP_abc123xyz789..."
+                  className="w-full bg-white border border-deep-black/30 px-3 py-2 text-xs font-mono font-bold text-deep-black focus:outline-none focus:border-gold"
+                />
+              </div>
+
+              {/* Seller ID / Shop ID */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-black uppercase tracking-wider text-deep-black">
+                  SELLER ID / SHOP ID (EUA)
+                </label>
+                <input
+                  type="text"
+                  value={tiktokShopId}
+                  onChange={(e) => setTiktokShopId(e.target.value)}
+                  placeholder="7494943021231081116"
+                  className="w-full bg-white border border-deep-black/30 px-3 py-2 text-xs font-mono font-bold text-deep-black focus:outline-none focus:border-gold"
+                />
+                <span className="text-[9px] text-stone-500">ID da sua loja no TikTok Seller Center US</span>
+              </div>
+
+              {/* Shop Cipher (Opcional) */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-black uppercase tracking-wider text-deep-black">
+                  SHOP CIPHER (OPCIONAL)
+                </label>
+                <input
+                  type="text"
+                  value={tiktokShopCipher}
+                  onChange={(e) => setTiktokShopCipher(e.target.value)}
+                  placeholder="Ex: GCP_shop_xyz..."
+                  className="w-full bg-white border border-deep-black/30 px-3 py-2 text-xs font-mono font-bold text-deep-black focus:outline-none focus:border-gold"
+                />
+                <span className="text-[9px] text-stone-500">Fornecido pelo TikTok se usar app global</span>
+              </div>
+            </div>
+
+            {/* Checkbox de Envio Automático */}
+            <div className="p-3.5 bg-warm-light/30 border border-deep-black/20 flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="tiktok-auto-sync"
+                checked={tiktokShopAutoSync}
+                onChange={(e) => setTiktokShopAutoSync(e.target.checked)}
+                className="w-4 h-4 accent-gold cursor-pointer"
+              />
+              <label htmlFor="tiktok-auto-sync" className="text-xs font-bold text-deep-black cursor-pointer select-none">
+                Sincronizar automaticamente para o TikTok Shop sempre que eu cadastrar ou salvar um produto no site
+              </label>
+            </div>
+
+            {/* Ações: Salvar, Testar Conexão e Sincronizar Tudo */}
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-2 border border-gold shadow-sm cursor-pointer"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{saveTikTokSuccess ? 'CREDENCIAS SALVAS!' : 'SALVAR CREDENCIAIS TIKTOK SHOP'}</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={testingTikTok}
+                onClick={handleTestTikTokConnection}
+                className="px-4 py-2.5 bg-white hover:bg-stone-100 text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center gap-2 border border-deep-black shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                <Activity className="w-3.5 h-3.5 text-gold" />
+                <span>{testingTikTok ? 'TESTANDO...' : 'TESTAR CONEXÃO'}</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={syncingAllTikTok}
+                onClick={handleSyncAllTikTok}
+                className="px-4 py-2.5 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center gap-2 border border-deep-black shadow-xs cursor-pointer disabled:opacity-50"
+                title="Sincroniza todos os produtos cadastrados com o TikTok Shop"
+              >
+                <Radio className="w-3.5 h-3.5" />
+                <span>{syncingAllTikTok ? 'TRANSMITINDO AO TIKTOK...' : '⚡ TRANSMITIR TODOS OS LOOKS AO TIKTOK (ATÉ 200)'}</span>
+              </button>
+            </div>
+          </form>
+
+          {/* Guia Rápido de Onde Pegar as Chaves */}
+          <div className="p-4 bg-stone-50 border border-deep-black/15 text-xs text-deep-black/80 space-y-2">
+            <h5 className="font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5 text-gold" />
+              <span>Onde encontrar sua App Key e Access Token no TikTok:</span>
+            </h5>
+            <ol className="list-decimal list-inside space-y-1 text-[11px] leading-relaxed">
+              <li>Acesse o portal de desenvolvedores do TikTok Shop em <a href="https://partner.tiktokshop.com" target="_blank" rel="noopener noreferrer" className="font-bold underline text-deep-black">partner.tiktokshop.com</a> com o mesmo login do Seller Center.</li>
+              <li>Vá em <strong>App Management &gt; Create Custom App</strong> (Aplicativo Próprio da Loja) e selecione o mercado <strong>United States</strong>.</li>
+              <li>Copie a <strong>App Key</strong> e a <strong>App Secret</strong> geradas e cole nos campos acima.</li>
+              <li>Na aba de autorização, clique em <strong>Authorize My Shop</strong> para gerar o <strong>Access Token</strong> e cole aqui!</li>
+            </ol>
           </div>
         </div>
 

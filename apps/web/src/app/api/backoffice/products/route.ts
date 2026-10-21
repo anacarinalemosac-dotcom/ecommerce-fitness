@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
+import { syncProductToTikTokShop } from '@/lib/tiktokShopService';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -451,6 +452,42 @@ export async function POST(req: NextRequest) {
       } else {
         savedVariants = variantsData;
       }
+    }
+
+    // Auto-sincronização com TikTok Shop em segundo plano (se ativada nas configurações)
+    try {
+      const { data: settingsRow } = await supabaseServer
+        .from('products')
+        .select('description')
+        .eq('id', '00000000-0000-0000-0000-000000000098')
+        .maybeSingle();
+
+      if (settingsRow?.description) {
+        const parsedSettings = JSON.parse(settingsRow.description);
+        if (parsedSettings.tiktokShopAutoSync) {
+          const productToSync = {
+            id: targetProductId,
+            title,
+            slug: cleanSlug,
+            description,
+            description_en,
+            description_pt,
+            primary_image: primaryImg,
+            primaryImage: primaryImg,
+            images: finalGalleryImages,
+            variants: savedVariants,
+          };
+          syncProductToTikTokShop(productToSync, {
+            appKey: parsedSettings.tiktokShopAppKey || '',
+            appSecret: parsedSettings.tiktokShopAppSecret || '',
+            accessToken: parsedSettings.tiktokShopAccessToken || '',
+            shopCipher: parsedSettings.tiktokShopCipher || '',
+            sellerId: parsedSettings.tiktokShopId || '7494943021231081116',
+          }).catch((ttErr) => console.warn('TikTok Shop auto-sync aviso:', ttErr));
+        }
+      }
+    } catch (ttIgnored) {
+      // Ignora para garantir que o salvamento principal não seja afetado
     }
 
     return NextResponse.json({
