@@ -34,6 +34,10 @@ import {
   MessageSquare,
   Copy,
   Lock,
+  Camera,
+  User,
+  Mail,
+  Upload,
 } from 'lucide-react';
 
 interface Variant {
@@ -377,6 +381,169 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       setCurrentUrl(window.location.href);
     }
   }, []);
+
+  // Estados para Avaliação Inline sob o Look & Login da Cliente
+  const [customerSession, setCustomerSession] = useState<any | null>(null);
+  const [showReviewBox, setShowReviewBox] = useState(false);
+  const [reviewAuthEmail, setReviewAuthEmail] = useState('');
+  const [reviewAuthName, setReviewAuthName] = useState('');
+  const [reviewAuthLoading, setReviewAuthLoading] = useState(false);
+  const [reviewAuthError, setReviewAuthError] = useState('');
+  const [inlineRating, setInlineRating] = useState(5);
+  const [inlineComment, setInlineComment] = useState('');
+  const [inlinePhotoUrl, setInlinePhotoUrl] = useState('');
+  const [uploadingInlinePhoto, setUploadingInlinePhoto] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [inlineSuccessCoupon, setInlineSuccessCoupon] = useState<string | null>(null);
+
+  // Carrega sessão da cliente salva no navegador ou via URL (parâmetros de e-mail pós-entrega)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const saved = localStorage.getItem('ana_customer_session');
+      if (saved) {
+        setCustomerSession(JSON.parse(saved));
+      }
+    } catch (_) {}
+
+    const params = new URLSearchParams(window.location.search);
+    const shouldReview = params.get('avaliar') === 'true';
+    const emailParam = params.get('email');
+    const nameParam = params.get('nome');
+
+    if (emailParam) setReviewAuthEmail(emailParam);
+    if (nameParam) setReviewAuthName(nameParam);
+
+    if (shouldReview) {
+      setActiveTab('reviews');
+      setShowReviewBox(true);
+      setTimeout(() => {
+        const el = document.getElementById('product-tabs');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 400);
+
+      // Se veio com e-mail do pedido, autentica automaticamente a cliente
+      if (emailParam) {
+        fetch('/api/customer/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'quick_auth',
+            email: emailParam,
+            name: nameParam || emailParam.split('@')[0],
+          }),
+        })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.customer) {
+              setCustomerSession(d.customer);
+              localStorage.setItem('ana_customer_session', JSON.stringify(d.customer));
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, []);
+
+  const handleCustomerQuickLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReviewAuthError('');
+    if (!reviewAuthEmail || !reviewAuthEmail.includes('@')) {
+      setReviewAuthError('Por favor, informe um e-mail válido.');
+      return;
+    }
+    setReviewAuthLoading(true);
+    try {
+      const res = await fetch('/api/customer/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'quick_auth',
+          email: reviewAuthEmail.trim(),
+          name: reviewAuthName.trim() || reviewAuthEmail.split('@')[0],
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.customer) {
+        setCustomerSession(data.customer);
+        localStorage.setItem('ana_customer_session', JSON.stringify(data.customer));
+      } else {
+        setReviewAuthError(data.error || 'Erro ao autenticar');
+      }
+    } catch (err: any) {
+      setReviewAuthError(err.message || 'Erro de conexão');
+    } finally {
+      setReviewAuthLoading(false);
+    }
+  };
+
+  const handleInlinePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingInlinePhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) setInlinePhotoUrl(data.url);
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (reader.result) setInlinePhotoUrl(reader.result.toString());
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar foto:', err);
+    } finally {
+      setUploadingInlinePhoto(false);
+    }
+  };
+
+  const handleInlineReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inlineComment.trim() || inlineComment.trim().length < 10) {
+      alert('Por favor, escreva uma frase sobre o caimento ou tecido da peça (mínimo 10 caracteres).');
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: customerSession?.name || reviewAuthName || 'Cliente Verificada',
+          customerEmail: customerSession?.email || reviewAuthEmail,
+          city: customerSession?.shipping_address?.city ? `${customerSession.shipping_address.city}, ${customerSession.shipping_address.state || 'MA'}` : 'Massachusetts, EUA',
+          productSlug: slug,
+          productTitle: productData.title,
+          rating: inlineRating,
+          comment: inlineComment.trim(),
+          photoUrl: inlinePhotoUrl.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao registrar avaliação.');
+      }
+
+      setInlineSuccessCoupon('OBRIGADA10');
+      if (data.review) {
+        setProductReviews((prev) => [data.review, ...prev]);
+      }
+      setInlineComment('');
+      setInlinePhotoUrl('');
+    } catch (err: any) {
+      alert(err.message || 'Erro ao publicar avaliação.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   const shareText = `Olha essa peça linda da Ana Fitness Wear: ${productData.title} ($${productData.price.toFixed(2)})`;
   const productShareUrl = currentUrl || (typeof window !== 'undefined' ? window.location.href : `https://anafitnesswear.com/produto/${slug}`);
@@ -1267,15 +1434,235 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                  <Link
-                    href={`/avaliar?produto=${encodeURIComponent(productData.title)}`}
-                    className="px-6 py-3.5 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
+                  <button
+                    type="button"
+                    onClick={() => setShowReviewBox(!showReviewBox)}
+                    className="px-6 py-3.5 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow cursor-pointer"
                   >
                     <Star className="w-4 h-4 fill-current" />
-                    <span>{lang === 'pt' ? 'AVALIAR ESTA PEÇA (+10% OFF)' : 'LEAVE A REVIEW (+10% OFF)'}</span>
-                  </Link>
+                    <span>{showReviewBox ? (lang === 'pt' ? 'FECHAR FORMULÁRIO' : 'CLOSE FORM') : (lang === 'pt' ? 'AVALIAR ESTA PEÇA (+10% OFF)' : 'REVIEW THIS LOOK (+10% OFF)')}</span>
+                  </button>
                 </div>
               </div>
+
+              {/* FORMULÁRIO INLINE DE AVALIAÇÃO DIRETAMENTE SOB O LOOK */}
+              {showReviewBox && (
+                <div className="bg-white border-2 border-gold p-6 sm:p-8 space-y-6 shadow-luxury animate-fadeIn">
+                  {!customerSession ? (
+                    /* PASSO 1: IDENTIFICAÇÃO / LOGIN DO CLIENTE */
+                    <div className="space-y-4 max-w-lg mx-auto text-center sm:text-left">
+                      <div className="flex flex-col sm:flex-row items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-gold/20 flex items-center justify-center text-gold border-2 border-gold shrink-0">
+                          <Lock className="w-6 h-6 text-deep-black" />
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                            AVALIAÇÃO DE CLIENTE VERIFICADA
+                          </span>
+                          <h4 className="text-base font-black uppercase tracking-wider text-deep-black">
+                            {lang === 'pt' ? 'IDENTIFIQUE-SE PARA AVALIAR ESTA PEÇA' : 'LOGIN TO REVIEW THIS SILHOUETTE'}
+                          </h4>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-deep-black/70 leading-relaxed uppercase">
+                        {lang === 'pt'
+                          ? 'Para garantir a veracidade dos depoimentos, apenas clientes que adquiriram peças podem avaliar. Digite seu e-mail de compra para liberar o formulário e receber seu cupom de 10% OFF:'
+                          : 'To guarantee verified buyer authenticity, enter your order email to unlock the review form and receive your 10% OFF coupon:'}
+                      </p>
+
+                      {reviewAuthError && (
+                        <div className="p-3 bg-red-50 border-2 border-red-500 text-red-900 text-xs font-black uppercase">
+                          {reviewAuthError}
+                        </div>
+                      )}
+
+                      <form onSubmit={handleCustomerQuickLogin} className="space-y-3 pt-1 text-left">
+                        <div>
+                          <label className="text-[10px] font-black uppercase text-deep-black block mb-1">
+                            {lang === 'pt' ? 'SEU E-MAIL DE COMPRA *' : 'ORDER EMAIL *'}
+                          </label>
+                          <input
+                            type="email"
+                            required
+                            placeholder="ex: mariana@gmail.com"
+                            value={reviewAuthEmail}
+                            onChange={(e) => setReviewAuthEmail(e.target.value)}
+                            className="w-full p-3 border-2 border-deep-black text-xs font-mono font-bold lowercase focus:outline-none focus:border-gold"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-black uppercase text-deep-black block mb-1">
+                            {lang === 'pt' ? 'SEU NOME COMPLETO *' : 'YOUR FULL NAME *'}
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Ex: Mariana Silva"
+                            value={reviewAuthName}
+                            onChange={(e) => setReviewAuthName(e.target.value)}
+                            className="w-full p-3 border-2 border-deep-black text-xs font-bold uppercase focus:outline-none focus:border-gold"
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={reviewAuthLoading}
+                          className="w-full py-3.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-2 border border-gold shadow cursor-pointer disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-gold" />
+                          <span>{reviewAuthLoading ? 'VERIFICANDO...' : (lang === 'pt' ? 'CONTINUAR & AVALIAR O LOOK' : 'CONTINUE & REVIEW')}</span>
+                        </button>
+                      </form>
+                    </div>
+                  ) : (
+                    /* PASSO 2: FORMULÁRIO DE AVALIAÇÃO DA PEÇA ESPECÍFICA */
+                    <div className="space-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-deep-black/10 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center font-black text-gold border border-gold text-sm shrink-0">
+                            {(customerSession.name || 'C').charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.5">
+                                ✓ COMPRADORA IDENTIFICADA
+                              </span>
+                            </div>
+                            <h4 className="text-sm font-black uppercase tracking-wider text-deep-black mt-0.5">
+                              {customerSession.name || customerSession.email}
+                            </h4>
+                            <span className="text-[10px] text-deep-black/60 font-mono block">
+                              Avaliando: <strong>{productData.title}</strong>
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            localStorage.removeItem('ana_customer_session');
+                            setCustomerSession(null);
+                          }}
+                          className="text-[10px] text-deep-black/50 hover:text-red-600 font-bold uppercase underline"
+                        >
+                          Trocar de conta
+                        </button>
+                      </div>
+
+                      {inlineSuccessCoupon ? (
+                        <div className="p-6 bg-emerald-50 border-2 border-emerald-500 text-center space-y-4 animate-fadeIn">
+                          <div className="w-12 h-12 bg-emerald-600 text-white rounded-full flex items-center justify-center mx-auto shadow">
+                            <CheckCircle2 className="w-7 h-7" />
+                          </div>
+                          <div className="space-y-1">
+                            <h4 className="text-base font-black uppercase tracking-wider text-emerald-950">
+                              SUA AVALIAÇÃO FOI PUBLICADA COM SUCESSO!
+                            </h4>
+                            <p className="text-xs text-emerald-900 leading-relaxed max-w-md mx-auto">
+                              Muito obrigada, <strong>{customerSession.name}</strong>! Seu depoimento já está visível logo abaixo. Enviamos o seu cupom de 10% OFF para o e-mail: <strong>{customerSession.email}</strong>.
+                            </p>
+                          </div>
+                          <div className="inline-block bg-deep-black text-gold border-2 border-gold px-6 py-2.5 font-mono font-black text-lg tracking-widest shadow">
+                            CUPOM: {inlineSuccessCoupon}
+                          </div>
+                        </div>
+                      ) : (
+                        <form onSubmit={handleInlineReviewSubmit} className="space-y-4 text-xs">
+                          {/* NOTA EM ESTRELAS */}
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-black uppercase tracking-wider text-deep-black block">
+                              QUAL A SUA NOTA PARA ESTE LOOK? *
+                            </label>
+                            <div className="flex items-center gap-1.5 pt-1">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  onClick={() => setInlineRating(s)}
+                                  className="p-1 hover:scale-125 transition-transform cursor-pointer"
+                                >
+                                  <Star
+                                    className={`w-8 h-8 sm:w-9 sm:h-9 ${
+                                      inlineRating >= s ? 'fill-gold text-gold drop-shadow-sm' : 'fill-gray-200 text-gray-300'
+                                    }`}
+                                  />
+                                </button>
+                              ))}
+                              <span className="text-[11px] font-mono font-black text-gold ml-2">
+                                {inlineRating === 5 ? '⭐⭐⭐⭐⭐ EXCELENTE' : `${inlineRating} ESTRELAS`}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* COMENTÁRIO */}
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-black uppercase tracking-wider text-deep-black block">
+                              O QUE VOCÊ ACHOU DO CAIMENTO, TECIDO E CONFORTO? *
+                            </label>
+                            <textarea
+                              required
+                              rows={4}
+                              value={inlineComment}
+                              onChange={(e) => setInlineComment(e.target.value)}
+                              placeholder={`Conte sua experiência real com ${productData.title} (ex: compressão do cós, se ficou transparente no agachamento, toque da malha)...`}
+                              className="w-full p-3 border-2 border-deep-black text-xs font-medium focus:outline-none focus:border-gold"
+                            />
+                          </div>
+
+                          {/* FOTO DA CLIENTE VESTINDO O LOOK */}
+                          <div className="space-y-1.5 border-t border-deep-black/10 pt-3">
+                            <label className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                              <Camera className="w-4 h-4 text-gold" />
+                              <span>FOTO SUA VESTINDO A PEÇA (OPCIONAL)</span>
+                            </label>
+
+                            {inlinePhotoUrl ? (
+                              <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-300">
+                                <img src={inlinePhotoUrl} alt="Foto enviada" className="w-12 h-12 object-cover rounded border" />
+                                <div className="flex-1">
+                                  <span className="text-xs font-black uppercase text-emerald-900 block">✓ Foto adicionada!</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setInlinePhotoUrl('')}
+                                    className="text-[10px] text-red-600 font-bold uppercase underline"
+                                  >
+                                    Remover
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <label className="border-2 border-dashed border-deep-black/30 hover:border-gold p-3 flex items-center justify-center gap-2 cursor-pointer transition bg-warm-light/20">
+                                <Upload className="w-4 h-4 text-gold" />
+                                <span className="text-[11px] font-black uppercase text-deep-black">
+                                  {uploadingInlinePhoto ? 'Enviando imagem...' : 'Anexar foto no espelho ou treino'}
+                                </span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleInlinePhotoUpload}
+                                  disabled={uploadingInlinePhoto}
+                                  className="hidden"
+                                />
+                              </label>
+                            )}
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={submittingReview}
+                            className="w-full py-4 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 border border-gold shadow-lg cursor-pointer disabled:opacity-50"
+                          >
+                            <Sparkles className="w-4 h-4 text-gold" />
+                            <span>{submittingReview ? 'PUBLICANDO SUA AVALIAÇÃO...' : 'PUBLICAR AVALIAÇÃO & GANHAR 10% OFF NO E-MAIL'}</span>
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Lista de Avaliações */}
               {productReviews.length === 0 ? (

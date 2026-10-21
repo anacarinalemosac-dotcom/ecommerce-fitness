@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { recordOrderEvent } from '@/lib/liveStore';
-import { sendOrderConfirmationEmail, sendShippingNotificationEmail } from '@/lib/emailService';
+import { sendOrderConfirmationEmail, sendShippingNotificationEmail, sendPostDeliveryReviewEmail } from '@/lib/emailService';
 import fs from 'fs';
 import path from 'path';
 
@@ -659,6 +659,30 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'order_id é obrigatório' }, { status: 400 });
     }
 
+    // AÇÃO 0: DISPARO MANUAL/AVULSO DE E-MAIL PÓS-ENTREGA (AVALIAÇÃO DO LOOK)
+    if (action === 'send_review_email') {
+      const sales = readSavedSales();
+      const targetSale = sales.find((s: any) => s.order_id === order_id || s.id === order_id);
+      if (!targetSale) {
+        return NextResponse.json({ error: 'Pedido não encontrado' }, { status: 404 });
+      }
+      if (body.customer_email && (!targetSale.customer_email || targetSale.customer_email !== body.customer_email)) {
+        targetSale.customer_email = body.customer_email.trim();
+        writeSavedSales(sales);
+      }
+      const mailRes = await sendPostDeliveryReviewEmail(targetSale);
+      if (!mailRes.success) {
+        return NextResponse.json({
+          error: mailRes.error || 'Falha ao disparar e-mail de avaliação.',
+        }, { status: 400 });
+      }
+      return NextResponse.json({
+        success: true,
+        message: 'E-mail de solicitação de avaliação pós-entrega enviado com sucesso!',
+        result: mailRes,
+      });
+    }
+
     // =========================================================================
     // AÇÃO 1: EDITAR VENDA COMPLETA DO PDV (DATA, CLIENTE, ITENS, PGTO, TOTAL)
     // =========================================================================
@@ -998,6 +1022,7 @@ export async function PATCH(req: NextRequest) {
     // 2. Atualiza no backup local
     const sales = readSavedSales();
     let shippedSaleToEmail: any = null;
+    let deliveredSaleToEmail: any = null;
     const updated = sales.map((s: any) => {
       if (s.order_id === order_id || s.id === order_id) {
         let cred = s.crediario;
@@ -1035,6 +1060,7 @@ export async function PATCH(req: NextRequest) {
         }
 
         const isShipped = nextFulfillment === 'SHIPPED';
+        const isDelivered = nextFulfillment === 'DELIVERED';
         const finalTracking = tracking_code !== undefined ? tracking_code : s.tracking_code;
 
         const updatedOrder = {
@@ -1045,11 +1071,17 @@ export async function PATCH(req: NextRequest) {
           tracking_code: finalTracking,
           shipped_at: isShipped ? (s.shipped_at || new Date().toISOString()) : s.shipped_at,
           shipping_email_sent: isShipped ? true : s.shipping_email_sent,
+          delivered_at: isDelivered ? (s.delivered_at || new Date().toISOString()) : s.delivered_at,
+          review_email_sent: isDelivered ? true : s.review_email_sent,
           crediario: cred,
         };
 
         if (isShipped || tracking_code) {
           shippedSaleToEmail = updatedOrder;
+        }
+
+        if (isDelivered && s.fulfillment_status !== 'DELIVERED') {
+          deliveredSaleToEmail = updatedOrder;
         }
 
         return updatedOrder;
@@ -1064,6 +1096,15 @@ export async function PATCH(req: NextRequest) {
         await sendShippingNotificationEmail(shippedSaleToEmail, codeToSend);
       } catch (emailErr) {
         console.warn('Erro ao disparar e-mail com código de rastreamento:', emailErr);
+      }
+    }
+
+    // 4. Dispara e-mail pós-entrega convidando a cliente a avaliar a peça comprada e ganhar 10% OFF
+    if (deliveredSaleToEmail && (deliveredSaleToEmail.customer_email || deliveredSaleToEmail.shipping_address?.customer_email)) {
+      try {
+        await sendPostDeliveryReviewEmail(deliveredSaleToEmail);
+      } catch (delivErr) {
+        console.warn('Erro ao disparar e-mail pós-entrega de avaliação:', delivErr);
       }
     }
 

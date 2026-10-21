@@ -732,3 +732,152 @@ export async function sendReviewCouponEmail(opts: { customerEmail: string; custo
   });
 }
 
+// ============================================================================
+// TEMPLATE 4: SOLICITAÇÃO PÓS-ENTREGA DE AVALIAÇÃO DO LOOK COMPRADO
+// ============================================================================
+export function generatePostDeliveryReviewEmailHtml(order: any): string {
+  const orderId = order.order_id || order.id || 'ANA-ORDER';
+  const customerName = order.customer_name || 'Cliente Especial';
+  const recipientEmail = order.customer_email || order.shipping_address?.customer_email || '';
+
+  const addr = order.shipping_address;
+  const rawItems = Array.isArray(order.items) && order.items.length > 0
+    ? order.items
+    : (Array.isArray(addr?.items) ? addr.items : []);
+
+  const itemsHtml = rawItems.map((item: any) => {
+    const title = item.title || item.product_title || 'Peça Fitness';
+    const size = item.size || 'M';
+    const color = item.color || 'Preto Ônix';
+    const slug = item.slug || (title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
+    const itemImg = item.image || item.image_url || item.thumbnail || item.photo || '';
+    const reviewLink = `https://anafitwear.com/produto/${slug}?avaliar=true&email=${encodeURIComponent(recipientEmail)}&nome=${encodeURIComponent(customerName)}`;
+
+    return `
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 16px; background-color: #fafafa; border: 1px solid #e0e0e0; padding: 14px;">
+        <tr>
+          ${itemImg ? `
+          <td width="90" valign="top" style="padding-right: 14px;">
+            <img src="${itemImg}" alt="${title}" style="width: 80px; height: 100px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; display: block;" />
+          </td>
+          ` : ''}
+          <td valign="middle">
+            <div style="font-weight: 800; color: #111111; font-size: 14px; text-transform: uppercase;">
+              ${title}
+            </div>
+            <div style="font-size: 12px; color: #666666; margin-top: 2px;">
+              Tamanho: <strong style="color: #111;">${size}</strong> &bull; Cor: <strong style="color: #111;">${color}</strong>
+            </div>
+            <div style="margin-top: 10px;">
+              <a href="${reviewLink}" target="_blank" style="display: inline-block; background-color: #d4af37; color: #0b0b0b; padding: 10px 18px; font-size: 11px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; text-decoration: none; border-radius: 2px;">
+                ★ AVALIAR ESTA PEÇA (+10% OFF) &rarr;
+              </a>
+            </div>
+          </td>
+        </tr>
+      </table>
+    `;
+  }).join('');
+
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seu look chegou! O que você achou? 💖 - ANA Fitness Wear</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f6f6f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111111;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f6f6f8; padding: 30px 10px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 4px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #0b0b0b; padding: 36px 30px; text-align: center; border-bottom: 3px solid #d4af37;">
+              <div style="color: #d4af37; font-size: 11px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 6px;">
+                LEOMINSTER, MASSACHUSETTS &bull; OFFICIAL ATELIER
+              </div>
+              <h1 style="color: #ffffff; font-size: 26px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; margin: 0;">
+                ANA FITNESS WEAR
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Banner -->
+          <tr>
+            <td style="padding: 26px 30px; background-color: #faf8f2; border-bottom: 1px solid #eee; text-align: center;">
+              <span style="display: inline-block; background-color: #0b0b0b; color: #d4af37; padding: 6px 14px; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;">
+                🛍️ PEDIDO ENTREGUE COM SUCESSO
+              </span>
+              <h2 style="font-size: 22px; font-weight: 900; text-transform: uppercase; margin: 14px 0 6px 0; color: #111;">
+                COMO FICOU SEU LOOK, ${customerName.toUpperCase()}? 💖
+              </h2>
+              <p style="font-size: 13px; color: #555555; line-height: 1.6; max-width: 480px; margin: 0 auto;">
+                Seu pedido #${orderId} foi entregue! Esperamos que você tenha amado a modelagem anatômica, a firmeza do cós e o toque amanteigado das nossas peças.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Conteúdo -->
+          <tr>
+            <td style="padding: 28px 30px;">
+              <p style="font-size: 13px; color: #333333; line-height: 1.6; margin-bottom: 20px;">
+                Poderia dedicar <strong>1 minutinho</strong> para nos contar como foi a sua experiência com a sua peça? Ao enviar sua avaliação diretamente na página do produto, você ganha <strong>10% OFF</strong> na sua próxima compra com o cupom <strong>OBRIGADA10</strong>!
+              </p>
+
+              <h3 style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #111; margin: 0 0 12px 0; border-bottom: 2px solid #111; padding-bottom: 6px;">
+                SELECIONE A PEÇA QUE VOCÊ RECEBEU:
+              </h3>
+
+              ${itemsHtml}
+
+              <div style="background-color: #fff8e1; border: 1px solid #ffd54f; padding: 14px 18px; margin-top: 20px; font-size: 12px; color: #7f6000;">
+                ★ <strong>Garantia de 10% OFF:</strong> Ao enviar sua avaliação na página da peça, o cupom <strong>OBRIGADA10</strong> é enviado direto para seu e-mail para você continuar arrasando nos treinos!
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f2f2f2; padding: 24px 30px; text-align: center; border-top: 1px solid #e0e0e0; font-size: 12px; color: #666; line-height: 1.6;">
+              <div style="font-weight: 800; color: #111; text-transform: uppercase; margin-bottom: 4px;">
+                ANA FITNESS WEAR LLC
+              </div>
+              <div>Leominster, MA &bull; United States</div>
+              <div style="margin-top: 6px;">
+                Atendimento VIP WhatsApp: <a href="https://wa.me/19783139452" style="color: #111; font-weight: 700; text-decoration: none;">+1 (978) 313-9452</a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+export async function sendPostDeliveryReviewEmail(order: any) {
+  const recipientEmail = order.customer_email || order.shipping_address?.customer_email;
+  const orderId = order.order_id || order.id || 'ANA-ORDER';
+
+  if (!recipientEmail) {
+    console.warn(`[EMAIL] Pedido #${orderId} sem customer_email. E-mail de avaliação pós-entrega não enviado.`);
+    return { success: false, error: 'E-mail do cliente não informado.' };
+  }
+
+  const subject = `Seu look chegou! O que você achou? Conte para nós e ganhe 10% OFF 💖 - ANA Fitness Wear`;
+  const html = generatePostDeliveryReviewEmailHtml(order);
+
+  return sendEmail({
+    to: recipientEmail,
+    subject,
+    html,
+    order_id: orderId,
+    type: 'GENERAL',
+  });
+}
+
+

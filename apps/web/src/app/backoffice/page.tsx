@@ -70,6 +70,7 @@ import {
   Ban,
   Building2,
   MessageCircle,
+  Mail,
 } from 'lucide-react';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
@@ -458,6 +459,50 @@ export default function BackofficeDashboard() {
       }
     } catch (err: any) {
       alert(`Falha ao atualizar entrega: ${err.message}`);
+    }
+  };
+
+  // 1.1 Disparo manual/avulso de e-mail de avaliação pós-entrega com 10% OFF
+  const [sendingReviewEmailId, setSendingReviewEmailId] = useState<string | null>(null);
+  const handleSendReviewEmail = async (orderId: string, customerEmail?: string, customerName?: string) => {
+    let finalEmail = customerEmail?.trim();
+    if (!finalEmail || !finalEmail.includes('@')) {
+      const entered = window.prompt(
+        `⭐ Enviar Convite de Avaliação & Cupom 10% OFF\n\nInforme o e-mail de ${customerName || 'da cliente'}:`,
+        customerEmail || ''
+      );
+      if (!entered || !entered.includes('@')) {
+        return;
+      }
+      finalEmail = entered.trim();
+    }
+
+    if (!window.confirm(`Disparar e-mail convidando ${customerName || 'a cliente'} (${finalEmail}) para avaliar o look recebido no pedido #${orderId} com direito a 10% OFF?`)) {
+      return;
+    }
+
+    setSendingReviewEmailId(orderId);
+    try {
+      const res = await fetch('/api/backoffice/sales', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: orderId,
+          action: 'send_review_email',
+          customer_email: finalEmail,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`⭐ E-mail de avaliação enviado com sucesso para ${finalEmail}!\nA cliente receberá as fotos dos looks e o link direto para avaliar na página do produto e receber o cupom OBRIGADA10.`);
+        fetchSalesData();
+      } else {
+        alert(`Aviso: ${data.error || 'Não foi possível disparar o e-mail de avaliação.'}`);
+      }
+    } catch (err: any) {
+      alert(`Falha ao disparar e-mail de avaliação: ${err.message}`);
+    } finally {
+      setSendingReviewEmailId(null);
     }
   };
 
@@ -3835,32 +3880,47 @@ export default function BackofficeDashboard() {
                           >
                             RAIO-X
                           </button>
-                          {/* Pedir Avaliação WhatsApp */}
+                          {/* Pedir Avaliação WhatsApp & E-mail */}
                           {!isWriteOff && sale.status !== 'CANCELLED' && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const cleanPhone = String(sale.customer_phone || '').replace(/\D/g, '');
-                                const fullPhone = cleanPhone.length === 10 ? `1${cleanPhone}` : cleanPhone;
-                                const firstItem = (sale.items && sale.items[0]) ? (sale.items[0].product_title || sale.items[0].sku || '') : '';
-                                const prodParam = firstItem ? `?produto=${encodeURIComponent(firstItem)}` : '';
-                                const nameParam = sale.customer_name ? `${prodParam ? '&' : '?'}nome=${encodeURIComponent(sale.customer_name)}` : '';
-                                const emailParam = sale.customer_email ? `${prodParam || nameParam ? '&' : '?'}email=${encodeURIComponent(sale.customer_email)}` : '';
-                                const reviewUrl = `https://anafitwear.com/avaliar${prodParam}${nameParam}${emailParam}`;
-                                const msg = `Olá ${sale.customer_name || 'linda'}! 🥰 Adoramos ter você na família Ana Fitness Wear. Seu look já chegou? Gostaríamos muito de saber o que achou! Leva só 1 minutinho para avaliar no nosso site e você ganha 10% OFF enviado direto para o seu e-mail:\n\n${reviewUrl}`;
-                                if (fullPhone) {
-                                  window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
-                                } else {
-                                  navigator.clipboard.writeText(reviewUrl);
-                                  alert(`Link copiado para a cliente!\n\n${reviewUrl}`);
-                                }
-                              }}
-                              className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border border-emerald-800 shadow-2xs cursor-pointer"
-                              title="Enviar solicitação de avaliação no WhatsApp (Cliente ganha 10% OFF)"
-                            >
-                              <Star className="w-3 h-3 text-yellow-300 fill-yellow-300" />
-                              <span>PEDIR REVIEW</span>
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const cleanPhone = String(sale.customer_phone || '').replace(/\D/g, '');
+                                  const fullPhone = cleanPhone.length === 10 ? `1${cleanPhone}` : cleanPhone;
+                                  const firstItem = (sale.items && sale.items[0]) ? sale.items[0] : null;
+                                  const itemSlug = firstItem ? (firstItem.slug || (firstItem.title || firstItem.product_title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')) : '';
+                                  const emailParam = sale.customer_email ? `&email=${encodeURIComponent(sale.customer_email)}` : '';
+                                  const nameParam = sale.customer_name ? `&nome=${encodeURIComponent(sale.customer_name)}` : '';
+                                  const reviewUrl = itemSlug 
+                                    ? `https://anafitwear.com/produto/${itemSlug}?avaliar=true${emailParam}${nameParam}`
+                                    : `https://anafitwear.com/avaliar${sale.customer_email ? `?email=${encodeURIComponent(sale.customer_email)}` : ''}`;
+                                  const msg = `Olá ${sale.customer_name || 'linda'}! 🥰 Adoramos ter você na família Ana Fitness Wear. Seu look já chegou? Gostaríamos muito de saber o que achou! Leva só 1 minutinho para avaliar no nosso site e você ganha 10% OFF enviado direto para o seu e-mail:\n\n${reviewUrl}`;
+                                  if (fullPhone) {
+                                    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+                                  } else {
+                                    navigator.clipboard.writeText(reviewUrl);
+                                    alert(`Link copiado para a cliente!\n\n${reviewUrl}`);
+                                  }
+                                }}
+                                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border border-emerald-800 shadow-2xs cursor-pointer"
+                                title="Enviar solicitação de avaliação no WhatsApp (Cliente ganha 10% OFF)"
+                              >
+                                <Star className="w-3 h-3 text-yellow-300 fill-yellow-300" />
+                                <span>WHATSAPP REVIEW</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={sendingReviewEmailId === sale.order_id}
+                                onClick={() => handleSendReviewEmail(sale.order_id, sale.customer_email, sale.customer_name)}
+                                className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-deep-black text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border border-amber-700 shadow-2xs cursor-pointer disabled:opacity-50"
+                                title="Disparar e-mail pós-entrega com fotos dos looks para a cliente avaliar no site e receber cupom de 10% OFF"
+                              >
+                                <Mail className="w-3 h-3 text-deep-black" />
+                                <span>{sendingReviewEmailId === sale.order_id ? 'ENVIANDO...' : 'E-MAIL REVIEW'}</span>
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>

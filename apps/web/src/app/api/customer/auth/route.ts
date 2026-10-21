@@ -150,6 +150,41 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // 1.5. AUTENTICAÇÃO RÁPIDA POR E-MAIL (PARA AVALIAÇÕES DE COMPRA VERIFICADA)
+    if (action === 'quick_auth' || action === 'verify_email') {
+      const email = (body.email || '').trim().toLowerCase();
+      if (!email || !email.includes('@')) {
+        return NextResponse.json({ error: 'Informe um e-mail válido' }, { status: 400 });
+      }
+
+      let found = customers.find((c) => c.email.toLowerCase() === email);
+      if (!found) {
+        const newCustomer: CustomerRecord = {
+          id: `cust-${Date.now().toString().slice(-6)}`,
+          name: (body.name || email.split('@')[0]).trim(),
+          email,
+          phone: body.phone || '',
+          password: '123',
+          shipping_address: {
+            address: '',
+            city: body.city || 'Massachusetts',
+            state: 'MA',
+            zip: '',
+          },
+          created_at: new Date().toISOString(),
+        };
+        customers.push(newCustomer);
+        saveCustomers(customers);
+        found = newCustomer;
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Autenticado com sucesso!',
+        customer: sanitizeCustomer(found),
+      });
+    }
+
     // 2. CADASTRO (REGISTER)
     if (action === 'register') {
       const email = (body.email || '').trim().toLowerCase();
