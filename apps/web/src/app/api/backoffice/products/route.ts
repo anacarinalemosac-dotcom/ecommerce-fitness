@@ -156,6 +156,14 @@ export async function GET(req: NextRequest) {
         ? Number(effectiveVariants[0].cost_price)
         : (meta.cost_price !== undefined ? Number(meta.cost_price) : 16.0);
 
+      const resolvedPrice = (meta.promotional_price !== undefined && meta.promotional_price !== null && !isNaN(Number(meta.promotional_price)))
+        ? Number(meta.promotional_price)
+        : (meta.price !== undefined && meta.price !== null && !isNaN(Number(meta.price)))
+        ? Number(meta.price)
+        : (effectiveVariants[0]?.price !== undefined && effectiveVariants[0]?.price !== null && !isNaN(Number(effectiveVariants[0].price)))
+        ? Number(effectiveVariants[0].price)
+        : 44.90;
+
       return {
         ...p,
         meta,
@@ -166,12 +174,14 @@ export async function GET(req: NextRequest) {
         media_list: meta.media_list || [],
         colors: meta.colors || [],
         sizes: meta.sizes || [],
+        price: resolvedPrice,
         cost_price: resolvedCost,
         costPrice: resolvedCost,
         visible_online: meta.visible_online === true,
         visible_pos: meta.visible_pos !== false,
         variants: effectiveVariants.map((v: any) => ({
           ...v,
+          price: (v.price !== undefined && v.price !== null && !isNaN(Number(v.price))) ? Number(v.price) : resolvedPrice,
           images: Array.isArray(v.images) && v.images.length > 0 ? v.images : (v.image ? [v.image] : galleryImages),
           cost_price: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
           costPrice: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
@@ -218,6 +228,8 @@ export async function POST(req: NextRequest) {
       variants,
       visible_online,
       visible_pos,
+      price,
+      defaultPrice,
       promotional_price,
       compare_price,
       ribbon,
@@ -261,6 +273,18 @@ export async function POST(req: NextRequest) {
       ? Number(rawExplicitCost)
       : 16.0;
 
+    const rawExplicitPrice = (price !== undefined && price !== null && price !== '')
+      ? price
+      : (defaultPrice !== undefined && defaultPrice !== null && defaultPrice !== '')
+      ? defaultPrice
+      : (promotional_price !== undefined && promotional_price !== null && promotional_price !== '')
+      ? promotional_price
+      : (variants?.[0]?.price !== undefined && variants?.[0]?.price !== null && variants?.[0]?.price !== '')
+      ? variants[0].price
+      : 44.90;
+
+    const parsedExplicitPrice = !isNaN(Number(rawExplicitPrice)) ? Number(rawExplicitPrice) : 44.90;
+
     // Constrói galeria completa com todas as fotos passadas
     const rawImagesList: string[] = [];
     if (Array.isArray(images)) rawImagesList.push(...images);
@@ -301,7 +325,8 @@ export async function POST(req: NextRequest) {
       sizeGuide: sizeGuide || '',
       tags: Array.isArray(tags) ? tags : [],
       subcategory: subcategory || '',
-      promotional_price: promotional_price || null,
+      price: parsedExplicitPrice,
+      promotional_price: promotional_price ? parseFloat(promotional_price) : (compare_price ? parsedExplicitPrice : null),
       compare_price: compare_price ? parseFloat(compare_price) : null,
       ribbon: ribbon || '',
       brand: brand || 'ANA Fitness Wear',
@@ -396,13 +421,18 @@ export async function POST(req: NextRequest) {
           ? [primaryImg]
           : [];
 
+        const rawVarPrice = (v.price !== undefined && v.price !== null && v.price !== '')
+          ? v.price
+          : parsedExplicitPrice;
+        const vPrice = !isNaN(Number(rawVarPrice)) ? Number(rawVarPrice) : parsedExplicitPrice;
+
         const variantPayload: any = {
           product_id: targetProductId,
           sku: finalSku,
           barcode: genBarcode,
           size: v.size || 'M',
           color: v.color || 'Preto Ônix',
-          price: parseFloat(v.price) || 39.9,
+          price: vPrice,
           cost_price: vCost,
           stock_quantity: parseInt(v.stock_quantity) || 0,
           allow_backorder: Boolean(v.allow_backorder),
@@ -531,7 +561,7 @@ export async function DELETE(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, visible_online, visible_pos, cost_price, costPrice } = body;
+    const { id, visible_online, visible_pos, cost_price, costPrice, price, promotional_price, compare_price } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'ID do produto é obrigatório.' }, { status: 400 });
@@ -578,6 +608,26 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
+    const inputPrice = price !== undefined ? price : promotional_price;
+    if (inputPrice !== undefined && inputPrice !== null && inputPrice !== '') {
+      const numPrice = parseFloat(inputPrice);
+      if (!isNaN(numPrice)) {
+        meta.price = numPrice;
+        if (meta.promotional_price !== undefined && meta.promotional_price !== null) {
+          meta.promotional_price = numPrice;
+        }
+        // Atualiza o preço em todas as variações do produto na tabela product_variants
+        await supabaseServer
+          .from('product_variants')
+          .update({ price: numPrice })
+          .eq('product_id', id);
+      }
+    }
+
+    if (compare_price !== undefined) {
+      meta.compare_price = compare_price ? parseFloat(compare_price) : null;
+    }
+
     const { data: updatedRows, error: updErr } = await supabaseServer
       .from('products')
       .update({ description: JSON.stringify(meta) })
@@ -593,6 +643,7 @@ export async function PATCH(req: NextRequest) {
       product: updatedRows?.[0] || null,
       visible_online: meta.visible_online,
       visible_pos: meta.visible_pos,
+      price: meta.price,
       cost_price: meta.cost_price,
       costPrice: meta.cost_price,
     });

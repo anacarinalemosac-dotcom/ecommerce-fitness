@@ -730,7 +730,15 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             categoryKey = 'preorder';
           }
 
-          let sellingPrice = Number(firstVar.price) || 44.9;
+          const baseExplicitPrice = meta.promotional_price
+            ? Number(meta.promotional_price)
+            : meta.price
+            ? Number(meta.price)
+            : p.price
+            ? Number(p.price)
+            : Number(firstVar.price) || 44.9;
+
+          let sellingPrice = baseExplicitPrice;
           let regularPrice: number | undefined = undefined;
 
           const pCompare = meta.compare_price ? Number(meta.compare_price) : undefined;
@@ -742,15 +750,16 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             if (higher > lower) {
               sellingPrice = lower;
               regularPrice = higher;
+            } else {
+              sellingPrice = lower;
+            }
+          } else if (pPromo) {
+            sellingPrice = pPromo;
+            if (pCompare && pCompare > pPromo) {
+              regularPrice = pCompare;
             }
           } else if (pCompare && pCompare > sellingPrice) {
             regularPrice = pCompare;
-          } else if (pPromo && pPromo < sellingPrice) {
-            regularPrice = sellingPrice;
-            sellingPrice = pPromo;
-          } else if (pCompare && pCompare < sellingPrice) {
-            regularPrice = sellingPrice;
-            sellingPrice = pCompare;
           }
 
           const rawBio = meta.bio || (typeof p.description === 'string' && !p.description.startsWith('{') ? p.description : '') || '';

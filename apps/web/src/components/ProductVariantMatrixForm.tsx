@@ -260,11 +260,16 @@ export function ProductVariantMatrixForm({
               setIsOnSale(true);
             } else if (parsedMeta.compare_price) {
               setComparePrice(String(parsedMeta.compare_price));
+              if (parsedMeta.price || initialProduct.price) {
+                setDefaultPrice(String(parsedMeta.price || initialProduct.price));
+              }
               setIsOnSale(true);
             } else if (parsedMeta.promotional_price) {
-              setComparePrice(String(initialProduct.price || 49.90));
+              setComparePrice(String(initialProduct.price || parsedMeta.price || 49.90));
               setDefaultPrice(String(parsedMeta.promotional_price));
               setIsOnSale(true);
+            } else if (parsedMeta.price || initialProduct.price) {
+              setDefaultPrice(String(parsedMeta.price || initialProduct.price));
             }
             setVisibleOnline(parsedMeta.visible_online === true || initialProduct.visible_online === true);
             setVisiblePos(parsedMeta.visible_pos !== false && initialProduct.visible_pos !== false);
@@ -426,10 +431,9 @@ export function ProductVariantMatrixForm({
 
         // Preço padrão das variantes
         if (loadedVariants[0]) {
-          if (parsedMeta.promotional_price) {
-            setDefaultPrice(String(parsedMeta.promotional_price));
-          } else {
-            setDefaultPrice(String(loadedVariants[0].price));
+          const resolvedP = parsedMeta.promotional_price || parsedMeta.price || initialProduct.price || loadedVariants[0].price;
+          if (resolvedP) {
+            setDefaultPrice(String(resolvedP));
           }
           if (loadedVariants[0].cost_price !== undefined && loadedVariants[0].cost_price !== null) {
             setDefaultCostPrice(String(loadedVariants[0].cost_price));
@@ -1109,6 +1113,8 @@ export function ProductVariantMatrixForm({
         sizeGuide,
         cost_price: numCost,
         costPrice: numCost,
+        price: finalSellingPrice,
+        defaultPrice: finalSellingPrice,
         variants: variantsWithPromoPrice,
         visible_online: visibleOnline,
         visible_pos: visiblePos,

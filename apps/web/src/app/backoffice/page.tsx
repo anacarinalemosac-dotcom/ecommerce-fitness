@@ -1221,6 +1221,70 @@ export default function BackofficeDashboard() {
     }
   };
 
+  const [savingPriceId, setSavingPriceId] = useState<string | null>(null);
+
+  const updatePrice = async (idOrSku: string, newPrice: number) => {
+    setProductsMargin((prev) =>
+      prev.map((p) => (p.sku === idOrSku ? { ...p, salePrice: newPrice } : p))
+    );
+
+    setSupabaseProducts((prev) =>
+      prev.map((p) => {
+        const match = p.id === idOrSku || p.sku === idOrSku || p.meta?.general_sku === idOrSku || p.variants?.[0]?.sku === idOrSku;
+        if (match) {
+          const updatedMeta = {
+            ...(p.meta || {}),
+            price: newPrice,
+            ...(p.meta?.promotional_price !== undefined ? { promotional_price: newPrice } : {}),
+          };
+          return {
+            ...p,
+            price: newPrice,
+            meta: updatedMeta,
+            variants: (p.variants || []).map((v: any) => ({ ...v, price: newPrice })),
+          };
+        }
+        return p;
+      })
+    );
+
+    setProducts((prev) =>
+      prev.map((p) => {
+        const match = p.id === idOrSku || p.sku === idOrSku;
+        if (match) {
+          return {
+            ...p,
+            price: newPrice,
+          };
+        }
+        return p;
+      })
+    );
+
+    const targetProduct = supabaseProducts.find(
+      (p) => p.id === idOrSku || p.sku === idOrSku || p.meta?.general_sku === idOrSku || p.variants?.[0]?.sku === idOrSku
+    );
+    const targetId = targetProduct?.id || idOrSku;
+
+    if (targetId && !targetId.startsWith('p') && typeof targetId === 'string' && targetId.length > 10) {
+      setSavingPriceId(targetId);
+      try {
+        await fetch('/api/backoffice/products', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: targetId, price: newPrice }),
+        });
+        if (refreshProducts) {
+          refreshProducts();
+        }
+      } catch (err) {
+        console.warn('Erro ao salvar preço no Supabase:', err);
+      } finally {
+        setTimeout(() => setSavingPriceId(null), 1200);
+      }
+    }
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       setOnlineCount((prev) => Math.max(4, prev + (Math.random() > 0.5 ? 1 : -1)));
@@ -2812,7 +2876,7 @@ export default function BackofficeDashboard() {
                   const firstImage = itemVariants[0]?.images?.[0] || item.primaryImage || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
                   const supplierName = item.suppliers?.company_name || 'Confecções FitPro Brasil';
                   const categoryName = item.categories?.name || item.category || 'CONJUNTOS';
-                  const basePrice = itemVariants[0]?.price ?? item.price ?? 44.9;
+                  const basePrice = item.meta?.promotional_price ?? item.meta?.price ?? item.price ?? itemVariants[0]?.price ?? 44.9;
                   const baseCost = itemVariants[0]?.cost_price ?? item.costPrice ?? 16.0;
 
                   return (
@@ -2878,7 +2942,20 @@ export default function BackofficeDashboard() {
 
                       <td className="p-4 font-mono font-black text-deep-black">
                         <div>
-                          <span>${Number(basePrice).toFixed(2)}</span>
+                          <div className="flex items-center gap-1">
+                            <span>$</span>
+                            <input
+                              type="number"
+                              step="0.5"
+                              value={Number(basePrice)}
+                              onChange={(e) => updatePrice(item.id, parseFloat(e.target.value) || 0)}
+                              className="w-16 p-1 border border-deep-black/20 hover:border-deep-black text-xs font-mono font-bold bg-white focus:outline-none focus:border-gold"
+                              title="Preço de Venda (atualiza automaticamente no Supabase e na Loja Virtual)"
+                            />
+                            {savingPriceId === item.id && (
+                              <span className="text-[8px] text-green-700 font-black animate-pulse">✓</span>
+                            )}
+                          </div>
                           {item.meta?.compare_price && Number(item.meta.compare_price) > Number(basePrice) && (
                             <div className="flex items-center gap-1 mt-0.5">
                               <span className="text-[10px] text-deep-black/40 line-through">
@@ -2964,6 +3041,8 @@ export default function BackofficeDashboard() {
                             onClick={() => {
                               setEditingProduct({
                                 ...item,
+                                price: basePrice,
+                                defaultPrice: basePrice,
                                 cost_price: baseCost,
                                 costPrice: baseCost,
                                 variants: itemVariants,
@@ -4744,7 +4823,22 @@ export default function BackofficeDashboard() {
                           )}
                         </div>
                       </td>
-                      <td className="p-4 font-mono font-bold">${item.salePrice.toFixed(2)}</td>
+                      <td className="p-4 font-mono font-bold">
+                        <div className="flex items-center gap-1.5">
+                          <span>$</span>
+                          <input
+                            type="number"
+                            step="0.5"
+                            value={item.salePrice}
+                            onChange={(e) => updatePrice(item.id || item.sku, parseFloat(e.target.value) || 0)}
+                            className="w-20 p-1.5 border border-deep-black/30 text-xs font-mono font-bold bg-white focus:outline-none focus:border-deep-black"
+                            title="Preço de Venda (atualiza automaticamente no Supabase e na Loja Virtual)"
+                          />
+                          {savingPriceId === item.id && (
+                            <span className="text-[9px] text-green-700 font-black animate-pulse">✓ SALVO</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-4 font-mono text-deep-black/70">-${comm.toFixed(2)}</td>
                       <td className="p-4 font-mono text-deep-black/70">-${gateway.toFixed(2)}</td>
                       <td className="p-4 font-mono font-black text-gold">${netProfit.toFixed(2)}</td>
