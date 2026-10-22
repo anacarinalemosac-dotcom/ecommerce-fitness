@@ -348,7 +348,7 @@ export default function BackofficeDashboard() {
   const [editingSale, setEditingSale] = useState<any | null>(null);
   const [cancellingSale, setCancellingSale] = useState<any | null>(null);
 
-  // Modal de Baixa de Pagamento no Crediário: "Pagou como? Zelle? Cash? Card? Venmo?"
+  // Modal de Baixa de Pagamento / Abatimento Parcial
   const [crediarioPayModal, setCrediarioPayModal] = useState<{
     isOpen: boolean;
     order: any | null;
@@ -359,21 +359,78 @@ export default function BackofficeDashboard() {
     order: null,
   });
 
+  const [payAmountInput, setPayAmountInput] = useState<string>('');
+  const [payMethodSelected, setPayMethodSelected] = useState<'ZELLE' | 'CASH' | 'CARD' | 'VENMO'>('ZELLE');
+  const [payNotesInput, setPayNotesInput] = useState<string>('');
+  const [submittingPayment, setSubmittingPayment] = useState<boolean>(false);
+
   const handleOpenCrediarioPayModal = (sale: any, installmentNumber?: number, amount?: number) => {
+    const grossTotal = Math.max(0,
+      Number(sale.subtotal_products || 0) -
+      Number(sale.discount_amount || 0) +
+      Number(sale.shipping_fee || 0)
+    );
+    const paymentsList = Array.isArray(sale.payments)
+      ? sale.payments
+      : (Array.isArray(sale.crediario?.payments) ? sale.crediario.payments : []);
+    const alreadyPaid = paymentsList.length > 0
+      ? paymentsList.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
+      : (
+          Number(sale.crediario?.down_payment || 0) +
+          (sale.crediario?.installments || []).filter((i: any) => i.status === 'PAID').reduce((sum: number, i: any) => sum + (Number(i.amount) || 0), 0)
+        );
+    const remaining = sale.remaining_balance !== undefined
+      ? Number(sale.remaining_balance)
+      : (sale.payment_status === 'PAID' ? 0 : Math.max(0, Number((grossTotal - alreadyPaid).toFixed(2))));
+
+    const initialAmount = amount !== undefined && amount > 0
+      ? amount
+      : (remaining > 0 ? remaining : grossTotal);
+
+    setPayAmountInput(String(initialAmount > 0 ? initialAmount : ''));
+    setPayMethodSelected('ZELLE');
+    setPayNotesInput('');
     setCrediarioPayModal({
       isOpen: true,
       order: sale,
       installmentNumber,
-      amount,
+      amount: initialAmount,
     });
   };
 
-  const handleExecuteCrediarioPayment = async (orderId: string, method: string = 'CASH', installmentNumber?: number) => {
+  const handleExecuteCrediarioPayment = async (
+    orderId: string,
+    method: string = payMethodSelected,
+    installmentNumber?: number,
+    customAmount?: number,
+    notes?: string
+  ) => {
+    let finalAmt = customAmount !== undefined
+      ? customAmount
+      : (parseFloat(payAmountInput) || 0);
+
+    // Se chamado para uma parcela específica sem valor digitado, pega o valor da parcela
+    if (finalAmt <= 0 && installmentNumber !== undefined) {
+      const order = (salesData?.sales || []).find((s: any) => s.order_id === orderId || s.id === orderId) || selectedSaleDetail;
+      const targetInst = (order?.crediario?.installments || []).find((i: any) => i.number === installmentNumber);
+      if (targetInst && targetInst.amount) {
+        finalAmt = Number(targetInst.amount);
+      }
+    }
+
+    if (finalAmt <= 0) {
+      alert('Por favor, informe um valor maior que zero para abater ou dar baixa na venda.');
+      return;
+    }
+
+    setSubmittingPayment(true);
     try {
       const payload: any = {
         order_id: orderId,
         payment_method: method,
-        action: installmentNumber !== undefined ? 'pay_installment' : 'pay_crediario_full',
+        action: 'partial_payment',
+        amount: finalAmt,
+        notes: notes || payNotesInput,
       };
       if (installmentNumber !== undefined) {
         payload.installment_number = installmentNumber;
@@ -385,41 +442,25 @@ export default function BackofficeDashboard() {
         body: JSON.stringify(payload),
       });
 
+      const data = await res.json();
       if (res.ok) {
-        if (selectedSaleDetail && (selectedSaleDetail.order_id === orderId || selectedSaleDetail.id === orderId)) {
-          const updatedCred = { ...(selectedSaleDetail.crediario || {}) };
-          if (updatedCred.installments) {
-            updatedCred.installments = updatedCred.installments.map((inst: any) => {
-              if (installmentNumber === undefined || inst.number === installmentNumber) {
-                return {
-                  ...inst,
-                  status: 'PAID',
-                  paid_at: new Date().toISOString(),
-                  paid_method: method,
-                  payment_method: method,
-                };
-              }
-              return inst;
-            });
-          }
-          const allPaid = (updatedCred.installments || []).every((i: any) => i.status === 'PAID');
-          setSelectedSaleDetail({
-            ...selectedSaleDetail,
-            payment_status: allPaid ? 'PAID' : 'PARTIAL',
-            crediario: updatedCred,
-          });
-        }
-
         setCrediarioPayModal({ isOpen: false, order: null });
-        fetchSalesData();
+        await fetchSalesData();
+        if (selectedSaleDetail && (selectedSaleDetail.order_id === orderId || selectedSaleDetail.id === orderId)) {
+          const updatedSale = (data.sales || []).find((s: any) => s.order_id === orderId || s.id === orderId);
+          if (updatedSale) {
+            setSelectedSaleDetail(updatedSale);
+          }
+        }
         setSaveSuccessMessage(true);
         setTimeout(() => setSaveSuccessMessage(false), 3000);
       } else {
-        const err = await res.json();
-        alert(err.error || 'Erro ao registrar baixa no crediário.');
+        alert(data.error || 'Erro ao registrar baixa no pagamento.');
       }
     } catch (err: any) {
       alert(`Falha ao registrar baixa: ${err.message}`);
+    } finally {
+      setSubmittingPayment(false);
     }
   };
 
@@ -3927,44 +3968,84 @@ export default function BackofficeDashboard() {
 
                       {/* 2. Situação de Pagamento (Financeiro: Quitado, Parcial, Em Aberto, Cancelado) */}
                       <td className="p-3 text-center">
-                        <div className="flex flex-col items-center justify-center gap-1">
-                          {sale.payment_status === 'CANCELLED' ? (
-                            <span className="text-[8.5px] font-black uppercase px-2 py-0.5 bg-red-100 text-red-900 border border-red-300">
-                              ✕ CANCELADO
-                            </span>
-                          ) : (sale.payment_status === 'PAID' || sale.payment_status === 'COMPLETED') ? (
-                            <span className="text-[8.5px] font-black uppercase px-2 py-0.5 bg-green-100 text-green-900 border border-green-400 flex items-center gap-1 shadow-2xs">
-                              <CheckCircle2 className="w-3 h-3 text-green-700" />
-                              <span>PAGAMENTO EFETUADO</span>
-                            </span>
-                          ) : (
-                            <div className="space-y-1 w-full flex flex-col items-center">
-                              <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 border block ${
-                                sale.payment_status === 'PARTIAL'
-                                  ? 'bg-amber-100 text-amber-950 border-amber-400'
-                                  : 'bg-amber-50 text-amber-900 border-amber-300'
-                              }`}>
-                                {sale.payment_status === 'PARTIAL' ? '🟡 PARCIALMENTE PAGO' : '⏳ EM ABERTO (CREDIÁRIO)'}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenCrediarioPayModal(sale)}
-                                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-[8.5px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1 border border-emerald-900 shadow-2xs cursor-pointer w-full max-w-[125px]"
-                                title="Dar baixa no pagamento e informar meio (Zelle ou Cash)"
-                              >
-                                <DollarSign className="w-2.5 h-2.5 text-gold" />
-                                <span>+ DAR BAIXA</span>
-                              </button>
-                            </div>
-                          )}
+                        {(() => {
+                          const rowGross = Math.max(0,
+                            Number(sale.subtotal_products || 0) -
+                            Number(sale.discount_amount || 0) +
+                            Number(sale.shipping_fee || 0)
+                          );
+                          const rowPayments = Array.isArray(sale.payments)
+                            ? sale.payments
+                            : (Array.isArray(sale.crediario?.payments) ? sale.crediario.payments : []);
+                          const rowPaid = sale.amount_paid !== undefined
+                            ? Number(sale.amount_paid)
+                            : (rowPayments.length > 0
+                                ? rowPayments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0)
+                                : (Number(sale.crediario?.down_payment || 0) + (sale.crediario?.installments || []).filter((i: any) => i.status === 'PAID').reduce((s: number, i: any) => s + (Number(i.amount) || 0), 0))
+                              );
+                          const rowRemaining = sale.remaining_balance !== undefined
+                            ? Number(sale.remaining_balance)
+                            : (sale.payment_status === 'PAID' ? 0 : Math.max(0, Number((rowGross - rowPaid).toFixed(2))));
 
-                          {/* Se for Crediário, exibe resumo de parcelas */}
-                          {sale.crediario?.installments && (
-                            <span className="text-[7.5px] font-mono text-deep-black/60 font-bold block">
-                              {sale.crediario.installments.filter((i: any) => i.status === 'PAID').length} de {sale.crediario.installments.length} parcelas pagas
-                            </span>
-                          )}
-                        </div>
+                          return (
+                            <div className="flex flex-col items-center justify-center gap-1">
+                              {sale.payment_status === 'CANCELLED' ? (
+                                <span className="text-[8.5px] font-black uppercase px-2 py-0.5 bg-red-100 text-red-900 border border-red-300">
+                                  ✕ CANCELADO
+                                </span>
+                              ) : (sale.payment_status === 'PAID' || sale.payment_status === 'COMPLETED' || (rowRemaining <= 0 && rowGross > 0)) ? (
+                                <div className="space-y-0.5">
+                                  <span className="text-[8.5px] font-black uppercase px-2 py-0.5 bg-green-100 text-green-900 border border-green-400 flex items-center justify-center gap-1 shadow-2xs">
+                                    <CheckCircle2 className="w-3 h-3 text-green-700" />
+                                    <span>QUITADO (${rowGross.toFixed(2)})</span>
+                                  </span>
+                                  {rowPayments.length > 1 && (
+                                    <span className="text-[7.5px] text-green-800 font-mono block">
+                                      {rowPayments.length} baixas registradas
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="space-y-1 w-full flex flex-col items-center">
+                                  <div className={`px-2 py-0.5 border text-center w-full max-w-[130px] ${
+                                    sale.payment_status === 'PARTIAL' || rowPaid > 0
+                                      ? 'bg-amber-100 text-amber-950 border-amber-400'
+                                      : 'bg-amber-50 text-amber-900 border-amber-300'
+                                  }`}>
+                                    <span className="text-[8.5px] font-black uppercase block">
+                                      {sale.payment_status === 'PARTIAL' || rowPaid > 0 ? '🟡 PARCIAL' : '⏳ EM ABERTO'}
+                                    </span>
+                                    {rowPaid > 0 && (
+                                      <span className="text-[7.5px] font-mono text-green-800 font-bold block">
+                                        Pago: ${rowPaid.toFixed(2)}
+                                      </span>
+                                    )}
+                                    <span className="text-[8px] font-mono text-red-700 font-black block">
+                                      Falta: ${rowRemaining.toFixed(2)}
+                                    </span>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenCrediarioPayModal(sale)}
+                                    className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-[8.5px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1 border border-emerald-900 shadow-2xs cursor-pointer w-full max-w-[130px]"
+                                    title="Abater qualquer valor ($20, $30, etc.) ou quitar todo o saldo"
+                                  >
+                                    <DollarSign className="w-2.5 h-2.5 text-gold" />
+                                    <span>+ ABATER / BAIXA</span>
+                                  </button>
+                                </div>
+                              )}
+
+                              {/* Se for Crediário, exibe resumo de parcelas */}
+                              {sale.crediario?.installments && (
+                                <span className="text-[7.5px] font-mono text-deep-black/60 font-bold block">
+                                  {sale.crediario.installments.filter((i: any) => i.status === 'PAID').length} de {sale.crediario.installments.length} parcelas pagas
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Botões Ação: Editar Venda, Cancelar & Raio-X */}
@@ -4252,6 +4333,125 @@ export default function BackofficeDashboard() {
                     )}
                   </div>
                 </div>
+
+                {/* RESUMO FINANCEIRO, SALDO DEVEDOR & BAIXAS / ABATIMENTOS */}
+                {(() => {
+                  const gross = Math.max(0,
+                    Number(selectedSaleDetail.subtotal_products || 0) -
+                    Number(selectedSaleDetail.discount_amount || 0) +
+                    Number(selectedSaleDetail.shipping_fee || 0)
+                  );
+                  const paymentsList: any[] = Array.isArray(selectedSaleDetail.payments)
+                    ? selectedSaleDetail.payments
+                    : (Array.isArray(selectedSaleDetail.crediario?.payments) ? selectedSaleDetail.crediario.payments : []);
+                  const paid = selectedSaleDetail.amount_paid !== undefined
+                    ? Number(selectedSaleDetail.amount_paid)
+                    : (paymentsList.length > 0
+                        ? paymentsList.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0)
+                        : (Number(selectedSaleDetail.crediario?.down_payment || 0) + (selectedSaleDetail.crediario?.installments || []).filter((i: any) => i.status === 'PAID').reduce((s: number, i: any) => s + (Number(i.amount) || 0), 0))
+                      );
+                  const remaining = selectedSaleDetail.remaining_balance !== undefined
+                    ? Number(selectedSaleDetail.remaining_balance)
+                    : (selectedSaleDetail.payment_status === 'PAID' ? 0 : Math.max(0, Number((gross - paid).toFixed(2))));
+
+                  return (
+                    <div className="bg-neutral-50 border-2 border-deep-black p-4 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-deep-black/15 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="w-5 h-5 text-gold bg-deep-black p-1 rounded-full shrink-0" />
+                          <div>
+                            <span className="text-[9.5px] font-black uppercase tracking-widest text-deep-black block">
+                              SITUAÇÃO FINANCEIRA DO PEDIDO:
+                            </span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className={`text-[10px] font-black uppercase px-2 py-0.5 border ${
+                                remaining <= 0
+                                  ? 'bg-green-100 text-green-950 border-green-400'
+                                  : paid > 0
+                                    ? 'bg-amber-100 text-amber-950 border-amber-400'
+                                    : 'bg-red-50 text-red-950 border-red-300'
+                              }`}>
+                                {remaining <= 0 ? '🟢 100% QUITADO' : paid > 0 ? '🟡 PARCIALMENTE PAGO' : '⏳ EM ABERTO'}
+                              </span>
+                              <span className="text-[9.5px] font-mono font-bold text-deep-black/60">
+                                Meio: {selectedSaleDetail.payment_method}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Botão de Abater / Dar Baixa */}
+                        {remaining > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCrediarioPayModal(selectedSaleDetail)}
+                            className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm border border-emerald-950 transition cursor-pointer"
+                            title="Abater qualquer valor ($20, $30, etc.) ou quitar todo o restante"
+                          >
+                            <DollarSign className="w-3.5 h-3.5 text-gold" />
+                            <span>+ ABATER / DAR BAIXA</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* 3 Cartões de Valores */}
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-white border border-deep-black/15 p-2">
+                          <span className="text-[8.5px] font-bold uppercase text-deep-black/60 block">Valor da Venda</span>
+                          <strong className="text-xs sm:text-sm font-black font-mono text-deep-black block mt-0.5">
+                            ${gross.toFixed(2)}
+                          </strong>
+                        </div>
+                        <div className="bg-white border border-green-200 p-2">
+                          <span className="text-[8.5px] font-bold uppercase text-green-800 block">Total Já Pago</span>
+                          <strong className="text-xs sm:text-sm font-black font-mono text-green-700 block mt-0.5">
+                            ${paid.toFixed(2)}
+                          </strong>
+                        </div>
+                        <div className={`p-2 border ${remaining > 0 ? 'bg-amber-50 border-amber-300' : 'bg-green-50 border-green-300'}`}>
+                          <span className="text-[8.5px] font-bold uppercase block text-amber-950">Saldo Devedor</span>
+                          <strong className={`text-xs sm:text-sm font-black font-mono block mt-0.5 ${remaining > 0 ? 'text-amber-800' : 'text-green-700'}`}>
+                            ${remaining.toFixed(2)}
+                          </strong>
+                        </div>
+                      </div>
+
+                      {/* Extrato de Baixas Anteriores neste Pedido */}
+                      {paymentsList.length > 0 && (
+                        <div className="pt-2 border-t border-deep-black/10 space-y-1.5">
+                          <span className="text-[9px] font-black uppercase tracking-wider text-deep-black block">
+                            📜 EXTRATO DE BAIXAS REALIZADAS ({paymentsList.length}):
+                          </span>
+                          <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                            {paymentsList.map((p: any, idx: number) => (
+                              <div key={p.id || idx} className="p-2 bg-white border border-deep-black/15 text-[10px] flex items-center justify-between">
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <strong className="font-mono text-emerald-800 font-black">
+                                      +${Number(p.amount || 0).toFixed(2)} USD
+                                    </strong>
+                                    <span className="px-1 py-0.2 bg-neutral-100 border text-[8px] font-black uppercase">
+                                      {p.payment_method || 'CASH'}
+                                    </span>
+                                  </div>
+                                  <span className="text-[8.5px] text-deep-black/60 font-mono block">
+                                    {p.paid_at ? new Date(p.paid_at).toLocaleString('pt-BR') : ''}
+                                    {p.notes ? ` • "${p.notes}"` : ''}
+                                  </span>
+                                </div>
+                                {p.balance_after !== undefined && (
+                                  <div className="text-right text-[8.5px] font-mono text-deep-black/70">
+                                    Saldo restante: <strong>${Number(p.balance_after).toFixed(2)}</strong>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* SEÇÃO ESPECIAL DE GESTÃO DO CREDIÁRIO / CARNÊ */}
                 {(selectedSaleDetail.payment_method === 'CREDIARIO' || selectedSaleDetail.crediario) && (
@@ -4598,149 +4798,336 @@ export default function BackofficeDashboard() {
             }}
           />
 
-          {/* Modal de Confirmação de Baixa no Pagamento / Crediário: "Pagou como? Zelle? Cash? Card? Venmo?" */}
-          {crediarioPayModal.isOpen && crediarioPayModal.order && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-deep-black/85 backdrop-blur-sm animate-fadeIn">
-              <div className="bg-white border-4 border-gold w-full max-w-md shadow-2xl overflow-hidden animate-scaleIn">
-                {/* Cabeçalho */}
-                <div className="bg-deep-black text-white p-5 flex items-center justify-between border-b-2 border-gold">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center border border-gold">
-                      <DollarSign className="w-5 h-5 text-gold" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
-                        BAIXA DE PAGAMENTO • CREDIÁRIO
-                      </span>
-                      <h3 className="text-base font-black uppercase tracking-wider text-white">
-                        PEDIDO #{crediarioPayModal.order.order_id}
-                      </h3>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setCrediarioPayModal({ isOpen: false, order: null })}
-                    className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 transition font-black cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
+          {/* Modal de Baixa de Pagamento & Abatimento Parcial (Qualquer Valor: $20, $30, etc.) */}
+          {crediarioPayModal.isOpen && crediarioPayModal.order && (() => {
+            const sale = crediarioPayModal.order;
+            const gross = Math.max(0,
+              Number(sale.subtotal_products || 0) -
+              Number(sale.discount_amount || 0) +
+              Number(sale.shipping_fee || 0)
+            );
+            const paymentsList: any[] = Array.isArray(sale.payments)
+              ? sale.payments
+              : (Array.isArray(sale.crediario?.payments) ? sale.crediario.payments : []);
 
-                {/* Conteúdo do Modal */}
-                <div className="p-6 space-y-5 text-deep-black">
-                  <div className="bg-neutral-50 border border-deep-black/15 p-3.5 space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-deep-black/60 font-bold uppercase">Cliente:</span>
-                      <span className="font-black uppercase">{crediarioPayModal.order.customer_name}</span>
-                    </div>
-                    {crediarioPayModal.installmentNumber !== undefined ? (
-                      <div className="flex justify-between text-xs pt-1 border-t border-deep-black/10">
-                        <span className="text-deep-black/60 font-bold uppercase">Recebendo Parcela:</span>
-                        <span className="font-black text-deep-black font-mono">
-                          Parcela {crediarioPayModal.installmentNumber} • ${Number(crediarioPayModal.amount || 0).toFixed(2)} USD
+            const alreadyPaid = sale.amount_paid !== undefined
+              ? Number(sale.amount_paid)
+              : (paymentsList.length > 0
+                  ? paymentsList.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0)
+                  : (Number(sale.crediario?.down_payment || 0) + (sale.crediario?.installments || []).filter((i: any) => i.status === 'PAID').reduce((s: number, i: any) => s + (Number(i.amount) || 0), 0))
+                );
+
+            const remaining = sale.remaining_balance !== undefined
+              ? Number(sale.remaining_balance)
+              : (sale.payment_status === 'PAID' ? 0 : Math.max(0, Number((gross - alreadyPaid).toFixed(2))));
+
+            const enteredAmt = parseFloat(payAmountInput) || 0;
+            const simulatedRemaining = Math.max(0, Number((remaining - enteredAmt).toFixed(2)));
+            const isFullPayoff = enteredAmt >= remaining && remaining > 0;
+
+            return (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-deep-black/85 backdrop-blur-sm animate-fadeIn overflow-y-auto">
+                <div className="bg-white border-4 border-gold w-full max-w-lg shadow-2xl overflow-hidden animate-scaleIn my-6">
+                  {/* Cabeçalho */}
+                  <div className="bg-deep-black text-white p-5 flex items-center justify-between border-b-2 border-gold">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center border border-gold shrink-0">
+                        <DollarSign className="w-5 h-5 text-gold" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                          BAIXA & ABATIMENTO DE VALOR • {sale.channel === 'POS_COUNTER' ? 'BALCÃO' : 'ONLINE'}
                         </span>
+                        <h3 className="text-base font-black uppercase tracking-wider text-white">
+                          PEDIDO #{sale.order_id} • {sale.customer_name || 'CLIENTE'}
+                        </h3>
                       </div>
-                    ) : (
-                      <div className="flex justify-between text-xs pt-1 border-t border-deep-black/10">
-                        <span className="text-deep-black/60 font-bold uppercase">Operação:</span>
-                        <span className="font-black text-emerald-800 uppercase">
-                          QUITAÇÃO TOTAL DO CREDIÁRIO
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Pergunta Chave do Usuário: "Pagou como? Zelle? Cash?" */}
-                  <div className="space-y-1 text-center">
-                    <label className="text-sm font-black uppercase tracking-wider text-deep-black block">
-                      COMO O CLIENTE FEZ O PAGAMENTO?
-                    </label>
-                    <span className="text-[10px] text-deep-black/60 block font-bold">
-                      Selecione se foi no Zelle, no Cash, Cartão ou Venmo:
-                    </span>
-                  </div>
-
-                  {/* 4 Grandes Botões de Meio de Pagamento */}
-                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    {/* 1. ZELLE */}
-                    <button
-                      type="button"
-                      onClick={() => handleExecuteCrediarioPayment(
-                        crediarioPayModal.order.order_id,
-                        'ZELLE',
-                        crediarioPayModal.installmentNumber
-                      )}
-                      className="p-4 bg-purple-50 hover:bg-purple-700 text-purple-950 hover:text-white border-2 border-purple-400 hover:border-purple-800 transition flex flex-col items-center justify-center gap-1.5 shadow-sm group cursor-pointer"
-                    >
-                      <div className="w-9 h-9 rounded-full bg-purple-700 text-white flex items-center justify-center font-black text-base group-hover:bg-white group-hover:text-purple-700 transition">
-                        Z
-                      </div>
-                      <strong className="text-xs font-black uppercase tracking-wider">ZELLE</strong>
-                      <span className="text-[9px] uppercase tracking-wider opacity-75 font-mono">Transferência Zelle</span>
-                    </button>
-
-                    {/* 2. CASH / DINHEIRO */}
-                    <button
-                      type="button"
-                      onClick={() => handleExecuteCrediarioPayment(
-                        crediarioPayModal.order.order_id,
-                        'CASH',
-                        crediarioPayModal.installmentNumber
-                      )}
-                      className="p-4 bg-green-50 hover:bg-green-700 text-green-950 hover:text-white border-2 border-green-500 hover:border-green-800 transition flex flex-col items-center justify-center gap-1.5 shadow-sm group cursor-pointer"
-                    >
-                      <div className="w-9 h-9 rounded-full bg-green-700 text-white flex items-center justify-center font-black text-base group-hover:bg-white group-hover:text-green-700 transition">
-                        $
-                      </div>
-                      <strong className="text-xs font-black uppercase tracking-wider">CASH (DINHEIRO)</strong>
-                      <span className="text-[9px] uppercase tracking-wider opacity-75 font-mono">Em Espécie no Balcão</span>
-                    </button>
-
-                    {/* 3. CARD / CARTÃO */}
-                    <button
-                      type="button"
-                      onClick={() => handleExecuteCrediarioPayment(
-                        crediarioPayModal.order.order_id,
-                        'CARD',
-                        crediarioPayModal.installmentNumber
-                      )}
-                      className="p-4 bg-neutral-100 hover:bg-deep-black text-deep-black hover:text-gold border-2 border-deep-black transition flex flex-col items-center justify-center gap-1.5 shadow-sm group cursor-pointer"
-                    >
-                      <CreditCard className="w-8 h-8 text-deep-black group-hover:text-gold transition" />
-                      <strong className="text-xs font-black uppercase tracking-wider">CARTÃO (CARD)</strong>
-                      <span className="text-[9px] uppercase tracking-wider opacity-75 font-mono">Débito ou Crédito</span>
-                    </button>
-
-                    {/* 4. VENMO */}
-                    <button
-                      type="button"
-                      onClick={() => handleExecuteCrediarioPayment(
-                        crediarioPayModal.order.order_id,
-                        'VENMO',
-                        crediarioPayModal.installmentNumber
-                      )}
-                      className="p-4 bg-blue-50 hover:bg-blue-600 text-blue-950 hover:text-white border-2 border-blue-400 hover:border-blue-700 transition flex flex-col items-center justify-center gap-1.5 shadow-sm group cursor-pointer"
-                    >
-                      <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-base group-hover:bg-white group-hover:text-blue-600 transition">
-                        V
-                      </div>
-                      <strong className="text-xs font-black uppercase tracking-wider">VENMO</strong>
-                      <span className="text-[9px] uppercase tracking-wider opacity-75 font-mono">App Venmo</span>
-                    </button>
-                  </div>
-
-                  <div className="pt-2 text-center">
+                    </div>
                     <button
                       type="button"
                       onClick={() => setCrediarioPayModal({ isOpen: false, order: null })}
-                      className="px-4 py-2 text-xs font-black uppercase text-deep-black/60 hover:text-deep-black transition cursor-pointer"
+                      className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 transition font-black cursor-pointer"
                     >
-                      CANCELAR
+                      <X className="w-5 h-5" />
                     </button>
+                  </div>
+
+                  {/* Conteúdo do Modal */}
+                  <div className="p-5 sm:p-6 space-y-4 text-deep-black max-h-[80vh] overflow-y-auto">
+                    {/* 3 Cartões de Resumo Financeiro */}
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-neutral-50 border border-neutral-200 p-2.5">
+                        <span className="text-[8.5px] font-bold uppercase text-deep-black/60 block">Total Compra</span>
+                        <strong className="text-xs sm:text-sm font-black font-mono text-deep-black block mt-0.5">
+                          ${gross.toFixed(2)}
+                        </strong>
+                      </div>
+                      <div className="bg-emerald-50 border border-emerald-200 p-2.5">
+                        <span className="text-[8.5px] font-bold uppercase text-emerald-800 block">Total Já Pago</span>
+                        <strong className="text-xs sm:text-sm font-black font-mono text-emerald-700 block mt-0.5">
+                          ${alreadyPaid.toFixed(2)}
+                        </strong>
+                      </div>
+                      <div className={`p-2.5 border ${remaining > 0 ? 'bg-amber-50 border-amber-300' : 'bg-green-50 border-green-300'}`}>
+                        <span className="text-[8.5px] font-bold uppercase block text-amber-950">Saldo Devedor</span>
+                        <strong className={`text-xs sm:text-sm font-black font-mono block mt-0.5 ${remaining > 0 ? 'text-amber-800' : 'text-green-700'}`}>
+                          ${remaining.toFixed(2)}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Campo de Entrada de Valor para Abater */}
+                    <div className="space-y-2 bg-neutral-50 border-2 border-deep-black p-4">
+                      <label className="text-xs font-black uppercase tracking-wider text-deep-black block">
+                        💰 QUANTO O CLIENTE ESTÁ PAGANDO / ABATENDO AGORA?
+                      </label>
+                      <div className="relative flex items-center">
+                        <span className="absolute left-3 text-lg font-black text-deep-black/60 font-mono">$</span>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0.01"
+                          autoFocus
+                          value={payAmountInput}
+                          onChange={(e) => setPayAmountInput(e.target.value)}
+                          placeholder="Ex: 20, 30, 50, 100..."
+                          className="w-full pl-8 pr-4 py-2.5 text-xl font-mono font-black border-2 border-deep-black bg-white focus:outline-none focus:border-gold shadow-inner"
+                        />
+                      </div>
+
+                      {/* Botões de Atalho Rápido */}
+                      <div className="pt-1">
+                        <span className="text-[9px] uppercase font-bold text-deep-black/60 block mb-1.5">
+                          Atalhos Rápidos de Abatimento:
+                        </span>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {[10, 20, 30, 50].map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => setPayAmountInput(String(preset))}
+                              className="px-2.5 py-1 text-xs font-mono font-black bg-white hover:bg-gold text-deep-black border border-deep-black transition cursor-pointer"
+                            >
+                              ${preset}
+                            </button>
+                          ))}
+                          {/* Botão de Quitar Tudo */}
+                          {remaining > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setPayAmountInput(remaining.toFixed(2))}
+                              className="px-2.5 py-1 text-xs font-mono font-black bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-950 transition cursor-pointer ml-auto"
+                              title="Preencher com o valor exato para quitar 100% da dívida"
+                            >
+                              QUITAR TUDO (${remaining.toFixed(2)})
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Simulação em Tempo Real do Saldo Após a Baixa */}
+                      {enteredAmt > 0 && (
+                        <div className={`p-2.5 border mt-2 text-xs flex items-center justify-between ${
+                          isFullPayoff
+                            ? 'bg-green-100 border-green-400 text-green-950 font-bold'
+                            : 'bg-amber-100 border-amber-400 text-amber-950'
+                        }`}>
+                          <div>
+                            <span className="block text-[9.5px] uppercase font-mono">
+                              Novo Saldo Restante: <strong>${simulatedRemaining.toFixed(2)} USD</strong>
+                            </span>
+                            <span className="text-[9px] uppercase font-black">
+                              {isFullPayoff ? '🟢 VENDA FICARÁ 100% QUITADA' : '🟡 VENDA CONTINUARÁ COM SALDO PENDENTE'}
+                            </span>
+                          </div>
+                          {enteredAmt > remaining && remaining > 0 && (
+                            <span className="text-[9px] text-amber-800 font-bold">
+                              (Troco: ${(enteredAmt - remaining).toFixed(2)})
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Seleção do Meio de Pagamento */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-black uppercase tracking-wider text-deep-black block">
+                        COMO O CLIENTE FEZ O PAGAMENTO?
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* ZELLE */}
+                        <button
+                          type="button"
+                          onClick={() => setPayMethodSelected('ZELLE')}
+                          className={`p-3 border-2 transition flex items-center gap-2 cursor-pointer ${
+                            payMethodSelected === 'ZELLE'
+                              ? 'bg-purple-700 text-white border-purple-950 shadow-md ring-2 ring-purple-400'
+                              : 'bg-purple-50 text-purple-950 border-purple-300 hover:bg-purple-100'
+                          }`}
+                        >
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs ${
+                            payMethodSelected === 'ZELLE' ? 'bg-white text-purple-700' : 'bg-purple-700 text-white'
+                          }`}>
+                            Z
+                          </div>
+                          <div className="text-left">
+                            <strong className="text-xs font-black uppercase block">ZELLE</strong>
+                            <span className="text-[8.5px] uppercase opacity-75 font-mono block">Transferência</span>
+                          </div>
+                        </button>
+
+                        {/* CASH */}
+                        <button
+                          type="button"
+                          onClick={() => setPayMethodSelected('CASH')}
+                          className={`p-3 border-2 transition flex items-center gap-2 cursor-pointer ${
+                            payMethodSelected === 'CASH'
+                              ? 'bg-green-700 text-white border-green-950 shadow-md ring-2 ring-green-400'
+                              : 'bg-green-50 text-green-950 border-green-300 hover:bg-green-100'
+                          }`}
+                        >
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs ${
+                            payMethodSelected === 'CASH' ? 'bg-white text-green-700' : 'bg-green-700 text-white'
+                          }`}>
+                            $
+                          </div>
+                          <div className="text-left">
+                            <strong className="text-xs font-black uppercase block">CASH (DINHEIRO)</strong>
+                            <span className="text-[8.5px] uppercase opacity-75 font-mono block">Em Espécie</span>
+                          </div>
+                        </button>
+
+                        {/* CARD */}
+                        <button
+                          type="button"
+                          onClick={() => setPayMethodSelected('CARD')}
+                          className={`p-3 border-2 transition flex items-center gap-2 cursor-pointer ${
+                            payMethodSelected === 'CARD'
+                              ? 'bg-deep-black text-gold border-black shadow-md ring-2 ring-gold'
+                              : 'bg-neutral-100 text-deep-black border-neutral-300 hover:bg-neutral-200'
+                          }`}
+                        >
+                          <CreditCard className={`w-7 h-7 ${payMethodSelected === 'CARD' ? 'text-gold' : 'text-deep-black'}`} />
+                          <div className="text-left">
+                            <strong className="text-xs font-black uppercase block">CARTÃO (CARD)</strong>
+                            <span className="text-[8.5px] uppercase opacity-75 font-mono block">Débito/Crédito</span>
+                          </div>
+                        </button>
+
+                        {/* VENMO */}
+                        <button
+                          type="button"
+                          onClick={() => setPayMethodSelected('VENMO')}
+                          className={`p-3 border-2 transition flex items-center gap-2 cursor-pointer ${
+                            payMethodSelected === 'VENMO'
+                              ? 'bg-blue-600 text-white border-blue-900 shadow-md ring-2 ring-blue-300'
+                              : 'bg-blue-50 text-blue-950 border-blue-300 hover:bg-blue-100'
+                          }`}
+                        >
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs ${
+                            payMethodSelected === 'VENMO' ? 'bg-white text-blue-600' : 'bg-blue-600 text-white'
+                          }`}>
+                            V
+                          </div>
+                          <div className="text-left">
+                            <strong className="text-xs font-black uppercase block">VENMO</strong>
+                            <span className="text-[8.5px] uppercase opacity-75 font-mono block">App Venmo</span>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Observação Opcional */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-deep-black/70 block">
+                        Observação / Anotação Interna (Opcional):
+                      </label>
+                      <input
+                        type="text"
+                        value={payNotesInput}
+                        onChange={(e) => setPayNotesInput(e.target.value)}
+                        placeholder="Ex: Pagou $30 adiantado no dinheiro e volta sexta para pagar o restante..."
+                        className="w-full p-2 text-xs border border-deep-black/30 font-medium focus:outline-none focus:border-deep-black"
+                      />
+                    </div>
+
+                    {/* Botão de Confirmação Principal */}
+                    <button
+                      type="button"
+                      disabled={enteredAmt <= 0 || submittingPayment}
+                      onClick={() => handleExecuteCrediarioPayment(
+                        sale.order_id,
+                        payMethodSelected,
+                        crediarioPayModal.installmentNumber,
+                        enteredAmt,
+                        payNotesInput
+                      )}
+                      className={`w-full py-3.5 text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-lg cursor-pointer ${
+                        enteredAmt > 0 && !submittingPayment
+                          ? 'bg-emerald-700 hover:bg-emerald-800 text-white border-2 border-emerald-950'
+                          : 'bg-gray-300 text-gray-500 border border-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {submittingPayment ? (
+                        <span>REGISTRANDO BAIXA NO SISTEMA...</span>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-gold" />
+                          <span>
+                            CONFIRMAR BAIXA DE ${enteredAmt > 0 ? enteredAmt.toFixed(2) : '0.00'} VIA {payMethodSelected}
+                          </span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Histórico de Pagamentos e Abatimentos já realizados */}
+                    {paymentsList.length > 0 && (
+                      <div className="pt-2 border-t border-deep-black/15 space-y-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-deep-black block">
+                          📜 EXTRATO DE BAIXAS JÁ REALIZADAS NESTA VENDA ({paymentsList.length}):
+                        </span>
+                        <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                          {paymentsList.map((p: any, pIdx: number) => (
+                            <div key={p.id || pIdx} className="p-2 bg-neutral-100 border border-neutral-300 text-[10.5px] flex items-center justify-between">
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono font-black text-emerald-800">
+                                    +${Number(p.amount || 0).toFixed(2)} USD
+                                  </span>
+                                  <span className="px-1 py-0.2 bg-white border border-neutral-400 text-[8.5px] font-black uppercase">
+                                    {p.payment_method || 'CASH'}
+                                  </span>
+                                </div>
+                                <span className="text-[9px] text-deep-black/60 font-mono block">
+                                  {p.paid_at ? new Date(p.paid_at).toLocaleString('pt-BR') : 'Data não informada'}
+                                  {p.notes && ` • "${p.notes}"`}
+                                </span>
+                              </div>
+                              {p.balance_after !== undefined && (
+                                <div className="text-right text-[9px] font-mono font-bold text-deep-black/70">
+                                  Restou: ${Number(p.balance_after).toFixed(2)}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="text-center pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setCrediarioPayModal({ isOpen: false, order: null })}
+                        className="px-4 py-1 text-xs font-black uppercase text-deep-black/60 hover:text-deep-black transition cursor-pointer"
+                      >
+                        CANCELAR E VOLTAR
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
         );
       })()}

@@ -14,6 +14,15 @@ function getBackupSalesFilePath(): string {
   return primary;
 }
 
+export interface PaymentRecord {
+  id: string;
+  amount: number;
+  payment_method: string;
+  paid_at: string;
+  notes?: string;
+  balance_after?: number;
+}
+
 export interface CrediarioInstallment {
   number: number;
   amount: number;
@@ -32,6 +41,7 @@ export interface CrediarioInfo {
   remaining_balance?: number;
   installments_count: number;
   installments: CrediarioInstallment[];
+  payments?: PaymentRecord[];
 }
 
 export interface SaleItemPayload {
@@ -77,6 +87,9 @@ export interface SaleRecord {
   fulfillment_status?: 'AWAITING_SEPARATION' | 'IN_PRODUCTION' | 'SHIPPED' | 'DELIVERED';
   payment_status?: 'WAITING_PAYMENT' | 'PARTIAL' | 'PAID' | 'COMPLETED' | 'CANCELLED';
   crediario?: CrediarioInfo;
+  payments?: PaymentRecord[];
+  amount_paid?: number;
+  remaining_balance?: number;
   tracking_code?: string;
   shipped_at?: string;
   confirmation_email_sent?: boolean;
@@ -194,90 +207,146 @@ export async function GET(req: NextRequest) {
             ? 'Ana Karina'
             : (rawSeller || (isOnline ? 'Loja Oficial Online' : 'Ana Karina'));
 
-          return {
-            id: ord.id,
-            order_id: orderNumber,
-            created_at: ord.created_at || new Date().toISOString(),
-            customer_name: ord.customer_name || 'Cliente Showroom',
-            customer_email: ord.customer_email || meta.customer_email || undefined,
-            customer_phone: ord.customer_phone || meta.customer_phone || undefined,
-            channel: isOnline ? 'ONLINE' : 'POS_COUNTER',
-            seller_name: sellerName,
-            coupon_code: ord.coupon_code || meta.coupon_code || undefined,
-            payment_method: pMethod,
-            subtotal_products: gross,
-            shipping_fee: shipFee,
-            shipping_cost: shipCost,
-            discount_amount: disc,
-            payment_fee: pFee,
-            commission_amount: Number(comm.toFixed(2)),
-            cost_of_goods: cogs,
-            net_profit: net,
-            profit_margin_pct: margin,
-            items,
-            status: ord.status || 'COMPLETED',
-            fulfillment_status: meta.fulfillment_status || (
-              ord.status === 'DELIVERED' || ord.status === 'SHIPPED' || ord.status === 'IN_PRODUCTION' || ord.status === 'AWAITING_SEPARATION'
-                ? ord.status
-                : (isOnline ? 'AWAITING_SEPARATION' : 'DELIVERED')
-            ),
-            payment_status: meta.payment_status || (
+          const rawPayments = Array.isArray(meta.payments)
+            ? meta.payments
+            : (Array.isArray(meta.crediario?.payments) ? meta.crediario.payments : []);
+
+            let alreadyPaid = 0;
+            if (rawPayments.length > 0) {
+              alreadyPaid = rawPayments.reduce((acc: number, p: any) => acc + (Number(p.amount) || 0), 0);
+            } else {
+              const down = Number(meta.crediario?.down_payment || 0);
+              const paidInsts = (meta.crediario?.installments || [])
+                .filter((i: any) => i.status === 'PAID')
+                .reduce((acc: number, i: any) => acc + (Number(i.amount) || 0), 0);
+              alreadyPaid = down + paidInsts;
+            }
+
+            const rawPayStatus = meta.payment_status || (
               ord.status === 'CANCELLED'
                 ? 'CANCELLED'
                 : (pMethod === 'CREDIARIO' || meta.crediario)
                   ? (
                       Array.isArray(meta.crediario?.installments) && meta.crediario.installments.every((i: any) => i.status === 'PAID')
                         ? 'PAID'
-                        : (Array.isArray(meta.crediario?.installments) && meta.crediario.installments.some((i: any) => i.status === 'PAID')) || Number(meta.crediario?.down_payment || 0) > 0
+                        : (Array.isArray(meta.crediario?.installments) && meta.crediario.installments.some((i: any) => i.status === 'PAID')) || Number(meta.crediario?.down_payment || 0) > 0 || rawPayments.length > 0
                           ? 'PARTIAL'
                           : 'WAITING_PAYMENT'
                     )
                   : (ord.status === 'WAITING_PAYMENT' ? 'WAITING_PAYMENT' : 'PAID')
-            ),
-            shipping_address: meta.address && typeof meta.address === 'object' ? meta.address : undefined,
-            crediario: meta.crediario || undefined,
-            tracking_code: meta.tracking_code || ord.tracking_code || undefined,
-            shipped_at: meta.shipped_at || undefined,
-            confirmation_email_sent: meta.confirmation_email_sent || undefined,
-            shipping_email_sent: meta.shipping_email_sent || undefined,
-          };
-        });
+            );
 
-        // Mescla garantindo que pedidos do Supabase substituam ou complementem sem duplicidade
-        const dbOrderIds = new Set(transformedDbSales.map((s) => s.order_id));
-        sales = [...transformedDbSales, ...sales.filter((s) => !dbOrderIds.has(s.order_id))];
+            if (rawPayStatus === 'PAID' && alreadyPaid === 0) {
+              alreadyPaid = grossTotal;
+            }
+
+            const remainingBal = meta.remaining_balance !== undefined
+              ? Number(meta.remaining_balance)
+              : (rawPayStatus === 'PAID' ? 0 : Math.max(0, Number((grossTotal - alreadyPaid).toFixed(2))));
+
+            return {
+              id: ord.id,
+              order_id: orderNumber,
+              created_at: ord.created_at || new Date().toISOString(),
+              customer_name: ord.customer_name || 'Cliente Showroom',
+              customer_email: ord.customer_email || meta.customer_email || undefined,
+              customer_phone: ord.customer_phone || meta.customer_phone || undefined,
+              channel: isOnline ? 'ONLINE' : 'POS_COUNTER',
+              seller_name: sellerName,
+              coupon_code: ord.coupon_code || meta.coupon_code || undefined,
+              payment_method: pMethod,
+              subtotal_products: gross,
+              shipping_fee: shipFee,
+              shipping_cost: shipCost,
+              discount_amount: disc,
+              payment_fee: pFee,
+              commission_amount: Number(comm.toFixed(2)),
+              cost_of_goods: cogs,
+              net_profit: net,
+              profit_margin_pct: margin,
+              items,
+              status: ord.status || 'COMPLETED',
+              fulfillment_status: meta.fulfillment_status || (
+                ord.status === 'DELIVERED' || ord.status === 'SHIPPED' || ord.status === 'IN_PRODUCTION' || ord.status === 'AWAITING_SEPARATION'
+                  ? ord.status
+                  : (isOnline ? 'AWAITING_SEPARATION' : 'DELIVERED')
+              ),
+              payment_status: rawPayStatus,
+              payments: rawPayments,
+              amount_paid: alreadyPaid,
+              remaining_balance: remainingBal,
+              shipping_address: meta.address && typeof meta.address === 'object' ? meta.address : undefined,
+              crediario: meta.crediario || undefined,
+              tracking_code: meta.tracking_code || ord.tracking_code || undefined,
+              shipped_at: meta.shipped_at || undefined,
+              confirmation_email_sent: meta.confirmation_email_sent || undefined,
+              shipping_email_sent: meta.shipping_email_sent || undefined,
+            };
+          });
+
+          // Mescla garantindo que pedidos do Supabase substituam ou complementem sem duplicidade
+          const dbOrderIds = new Set(transformedDbSales.map((s) => s.order_id));
+          sales = [...transformedDbSales, ...sales.filter((s) => !dbOrderIds.has(s.order_id))];
+        }
+      } catch (e) {
+        console.warn('Erro ao consultar Supabase orders:', e);
       }
-    } catch (e) {
-      console.warn('Erro ao consultar Supabase orders:', e);
-    }
 
-    // Normalização completa de status de entrega e financeiro para todas as vendas
-    sales = sales.map((s) => {
-      const isOnline = s.channel === 'ONLINE';
-      const fStatus = s.fulfillment_status || (
-        s.status === 'DELIVERED' || s.status === 'SHIPPED' || s.status === 'IN_PRODUCTION' || s.status === 'AWAITING_SEPARATION'
-          ? (s.status as any)
-          : (isOnline ? 'AWAITING_SEPARATION' : 'DELIVERED')
-      );
-      const pStatus = s.payment_status || (
-        s.status === 'CANCELLED'
-          ? 'CANCELLED'
-          : (s.payment_method === 'CREDIARIO' || s.crediario)
-            ? (
-                Array.isArray(s.crediario?.installments) && s.crediario.installments.every((i: any) => i.status === 'PAID')
-                  ? 'PAID'
-                  : (Array.isArray(s.crediario?.installments) && s.crediario.installments.some((i: any) => i.status === 'PAID')) || Number(s.crediario?.down_payment || 0) > 0
-                    ? 'PARTIAL'
-                    : 'WAITING_PAYMENT'
-              )
-            : (s.status === 'WAITING_PAYMENT' ? 'WAITING_PAYMENT' : 'PAID')
-      );
-      return {
-        ...s,
-        fulfillment_status: fStatus,
-        payment_status: pStatus,
-      };
-    });
+      // Normalização completa de status de entrega e financeiro para todas as vendas
+      sales = sales.map((s) => {
+        const isOnline = s.channel === 'ONLINE';
+        const grossTotal = Math.max(0, (s.subtotal_products || 0) - (s.discount_amount || 0) + (s.shipping_fee || 0));
+        const rawPayments = Array.isArray((s as any).payments)
+          ? (s as any).payments
+          : (Array.isArray(s.crediario?.payments) ? (s.crediario as any).payments : []);
+
+        let alreadyPaid = 0;
+        if (rawPayments.length > 0) {
+          alreadyPaid = rawPayments.reduce((acc: number, p: any) => acc + (Number(p.amount) || 0), 0);
+        } else {
+          const down = Number(s.crediario?.down_payment || 0);
+          const paidInsts = (s.crediario?.installments || [])
+            .filter((i: any) => i.status === 'PAID')
+            .reduce((acc: number, i: any) => acc + (Number(i.amount) || 0), 0);
+          alreadyPaid = down + paidInsts;
+        }
+
+        const fStatus = s.fulfillment_status || (
+          s.status === 'DELIVERED' || s.status === 'SHIPPED' || s.status === 'IN_PRODUCTION' || s.status === 'AWAITING_SEPARATION'
+            ? (s.status as any)
+            : (isOnline ? 'AWAITING_SEPARATION' : 'DELIVERED')
+        );
+        const pStatus = s.payment_status || (
+          s.status === 'CANCELLED'
+            ? 'CANCELLED'
+            : (s.payment_method === 'CREDIARIO' || s.crediario)
+              ? (
+                  Array.isArray(s.crediario?.installments) && s.crediario.installments.every((i: any) => i.status === 'PAID')
+                    ? 'PAID'
+                    : (Array.isArray(s.crediario?.installments) && s.crediario.installments.some((i: any) => i.status === 'PAID')) || Number(s.crediario?.down_payment || 0) > 0 || rawPayments.length > 0
+                      ? 'PARTIAL'
+                      : 'WAITING_PAYMENT'
+                )
+              : (s.status === 'WAITING_PAYMENT' ? 'WAITING_PAYMENT' : 'PAID')
+        );
+
+        if (pStatus === 'PAID' && alreadyPaid === 0) {
+          alreadyPaid = grossTotal;
+        }
+
+        const remainingBal = (s as any).remaining_balance !== undefined
+          ? Number((s as any).remaining_balance)
+          : (pStatus === 'PAID' ? 0 : Math.max(0, Number((grossTotal - alreadyPaid).toFixed(2))));
+
+        return {
+          ...s,
+          fulfillment_status: fStatus,
+          payment_status: pStatus,
+          payments: rawPayments,
+          amount_paid: alreadyPaid,
+          remaining_balance: remainingBal,
+        };
+      });
 
     // Vendas ativas (exclui pedidos cancelados dos totais financeiros)
     const activeSales = sales.filter((s) => s.status !== 'CANCELLED');
@@ -651,6 +720,8 @@ export async function PATCH(req: NextRequest) {
       installment_number,
       installment_payment_method,
       payment_method,
+      amount,
+      notes,
     } = body;
 
     const chosenPaymentMethod = (payment_method || installment_payment_method || 'CASH').toUpperCase();
@@ -971,29 +1042,133 @@ export async function PATCH(req: NextRequest) {
             }
           }
 
-          // Ações de Baixa Financeira no Crediário (Parcela individual ou Quitação total)
-          const isCrediarioPayAction = action === 'pay_installment' || action === 'pay_crediario_full' || action === 'pay_all_installments' || nextPayment === 'PAID';
-          if (isCrediarioPayAction && currentMeta.crediario && Array.isArray(currentMeta.crediario.installments)) {
-            const insts = currentMeta.crediario.installments.map((inst: any) => {
-              const shouldPay = action === 'pay_crediario_full' || action === 'pay_all_installments' || nextPayment === 'PAID' || inst.number === Number(installment_number);
-              if (shouldPay && inst.status !== 'PAID') {
-                return {
-                  ...inst,
-                  status: 'PAID',
-                  paid_at: new Date().toISOString(),
-                  payment_method: chosenPaymentMethod,
-                  paid_method: chosenPaymentMethod,
-                };
-              }
-              return inst;
-            });
+          // Ações de Baixa Financeira (Abatimento Parcial, Parcela Individual ou Quitação Total)
+          const isPayAction =
+            action === 'partial_payment' ||
+            action === 'pay_custom_amount' ||
+            action === 'pay_installment' ||
+            action === 'pay_crediario_full' ||
+            action === 'pay_all_installments' ||
+            amount !== undefined ||
+            nextPayment === 'PAID';
 
-            const allPaid = insts.every((i: any) => i.status === 'PAID');
-            nextPayment = allPaid ? 'PAID' : 'PARTIAL';
-            updatedCrediario = {
-              ...currentMeta.crediario,
-              installments: insts,
+          let updatedPaymentsList: any[] = Array.isArray(currentMeta.payments)
+            ? [...currentMeta.payments]
+            : (Array.isArray(currentMeta.crediario?.payments) ? [...currentMeta.crediario.payments] : []);
+
+          let updatedAmountPaid = currentMeta.amount_paid !== undefined ? Number(currentMeta.amount_paid) : 0;
+          let updatedRemainingBalance = currentMeta.remaining_balance !== undefined ? Number(currentMeta.remaining_balance) : 0;
+
+          if (isPayAction) {
+            const orderGross = Math.max(0,
+              Number((target as any).subtotal_amount ?? (target as any).subtotal_products ?? currentMeta.subtotal_products ?? 0) -
+              Number((target as any).discount_amount ?? currentMeta.discount_amount ?? 0) +
+              Number((target as any).shipping_amount ?? (target as any).shipping_fee ?? currentMeta.shipping_fee ?? 0)
+            );
+
+            let alreadyPaid = 0;
+            if (updatedPaymentsList.length > 0) {
+              alreadyPaid = updatedPaymentsList.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+            } else {
+              const down = Number(currentMeta.crediario?.down_payment || 0);
+              const paidInsts = (currentMeta.crediario?.installments || [])
+                .filter((i: any) => i.status === 'PAID')
+                .reduce((acc: number, i: any) => acc + (Number(i.amount) || 0), 0);
+              alreadyPaid = down + paidInsts;
+            }
+
+            const currentRemaining = Math.max(0, Number((orderGross - alreadyPaid).toFixed(2)));
+
+            let payAmt = 0;
+            let payNote = notes || body.notes || '';
+
+            if (action === 'pay_installment' && installment_number !== undefined) {
+              const targetInst = (currentMeta.crediario?.installments || []).find((i: any) => i.number === Number(installment_number));
+              payAmt = targetInst ? Number(targetInst.amount) : currentRemaining;
+              if (!payNote) payNote = `Pagamento da Parcela ${installment_number} via ${chosenPaymentMethod}`;
+            } else if (action === 'pay_crediario_full' || action === 'pay_all_installments' || (nextPayment === 'PAID' && amount === undefined)) {
+              payAmt = currentRemaining;
+              if (!payNote) payNote = `Quitação total via ${chosenPaymentMethod}`;
+            } else if (amount !== undefined && !isNaN(Number(amount))) {
+              payAmt = Math.max(0, Number(amount));
+              if (!payNote) {
+                payNote = payAmt >= currentRemaining
+                  ? `Quitação total via ${chosenPaymentMethod}`
+                  : `Abatimento parcial de $${payAmt.toFixed(2)} via ${chosenPaymentMethod}`;
+              }
+            } else {
+              payAmt = currentRemaining;
+              if (!payNote) payNote = `Pagamento recebido via ${chosenPaymentMethod}`;
+            }
+
+            payAmt = Number(payAmt.toFixed(2));
+            const newTotalPaid = Number((alreadyPaid + payAmt).toFixed(2));
+            const newRemaining = Math.max(0, Number((orderGross - newTotalPaid).toFixed(2)));
+
+            const newPaymentRecord = {
+              id: `pay-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+              amount: payAmt,
+              payment_method: chosenPaymentMethod,
+              paid_at: new Date().toISOString(),
+              notes: payNote,
+              balance_after: newRemaining,
             };
+
+            updatedPaymentsList.push(newPaymentRecord);
+            updatedAmountPaid = newTotalPaid;
+            updatedRemainingBalance = newRemaining;
+
+            // Atualiza parcelas se crediário existir
+            if (currentMeta.crediario && Array.isArray(currentMeta.crediario.installments)) {
+              let insts = [...currentMeta.crediario.installments];
+              if (newRemaining <= 0.001) {
+                insts = insts.map((i: any) => ({
+                  ...i,
+                  status: 'PAID',
+                  paid_at: i.paid_at || new Date().toISOString(),
+                  payment_method: i.payment_method || chosenPaymentMethod,
+                  paid_method: i.paid_method || chosenPaymentMethod,
+                }));
+              } else if (action === 'pay_installment' && installment_number !== undefined) {
+                insts = insts.map((i: any) => {
+                  if (i.number === Number(installment_number)) {
+                    return {
+                      ...i,
+                      status: 'PAID',
+                      paid_at: new Date().toISOString(),
+                      payment_method: chosenPaymentMethod,
+                      paid_method: chosenPaymentMethod,
+                    };
+                  }
+                  return i;
+                });
+              } else {
+                let remainingToCover = newTotalPaid - Number(currentMeta.crediario.down_payment || 0);
+                insts = insts.map((i: any) => {
+                  if (i.status === 'PAID') return i;
+                  if (remainingToCover >= Number(i.amount) - 0.01) {
+                    remainingToCover -= Number(i.amount);
+                    return {
+                      ...i,
+                      status: 'PAID',
+                      paid_at: new Date().toISOString(),
+                      payment_method: chosenPaymentMethod,
+                      paid_method: chosenPaymentMethod,
+                    };
+                  }
+                  return i;
+                });
+              }
+
+              updatedCrediario = {
+                ...currentMeta.crediario,
+                installments: insts,
+                remaining_balance: newRemaining,
+                payments: updatedPaymentsList,
+              };
+            }
+
+            nextPayment = newRemaining <= 0.001 ? 'PAID' : 'PARTIAL';
           }
 
           const isShipped = nextFulfillment === 'SHIPPED';
@@ -1001,6 +1176,9 @@ export async function PATCH(req: NextRequest) {
             ...currentMeta,
             ...(nextFulfillment ? { fulfillment_status: nextFulfillment } : {}),
             ...(nextPayment ? { payment_status: nextPayment } : {}),
+            payments: updatedPaymentsList,
+            amount_paid: updatedAmountPaid,
+            remaining_balance: updatedRemainingBalance,
             ...(tracking_code !== undefined ? { tracking_code } : {}),
             ...(isShipped ? { shipped_at: currentMeta.shipped_at || new Date().toISOString(), shipping_email_sent: true } : {}),
             ...(updatedCrediario ? { crediario: updatedCrediario } : {}),
@@ -1038,25 +1216,129 @@ export async function PATCH(req: NextRequest) {
           }
         }
 
-        // Ações de Baixa Financeira no Crediário no backup local
-        const isCrediarioPayAction = action === 'pay_installment' || action === 'pay_crediario_full' || action === 'pay_all_installments' || nextPayment === 'PAID';
-        if (isCrediarioPayAction && cred && Array.isArray(cred.installments)) {
-          const insts = cred.installments.map((inst: any) => {
-            const shouldPay = action === 'pay_crediario_full' || action === 'pay_all_installments' || nextPayment === 'PAID' || inst.number === Number(installment_number);
-            if (shouldPay && inst.status !== 'PAID') {
-              return {
-                ...inst,
-                status: 'PAID',
-                paid_at: new Date().toISOString(),
-                payment_method: chosenPaymentMethod,
-                paid_method: chosenPaymentMethod,
-              };
+        const isPayAction =
+          action === 'partial_payment' ||
+          action === 'pay_custom_amount' ||
+          action === 'pay_installment' ||
+          action === 'pay_crediario_full' ||
+          action === 'pay_all_installments' ||
+          amount !== undefined ||
+          nextPayment === 'PAID';
+
+        let localPayments: any[] = Array.isArray(s.payments)
+          ? [...s.payments]
+          : (Array.isArray(s.crediario?.payments) ? [...s.crediario.payments] : []);
+        let localAmountPaid = s.amount_paid !== undefined ? Number(s.amount_paid) : 0;
+        let localRemainingBalance = s.remaining_balance !== undefined ? Number(s.remaining_balance) : 0;
+
+        if (isPayAction) {
+          const orderGross = Math.max(0,
+            Number(s.subtotal_products || 0) -
+            Number(s.discount_amount || 0) +
+            Number(s.shipping_fee || 0)
+          );
+
+          let alreadyPaid = 0;
+          if (localPayments.length > 0) {
+            alreadyPaid = localPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+          } else {
+            const down = Number(s.crediario?.down_payment || 0);
+            const paidInsts = (s.crediario?.installments || [])
+              .filter((i: any) => i.status === 'PAID')
+              .reduce((acc: number, i: any) => acc + (Number(i.amount) || 0), 0);
+            alreadyPaid = down + paidInsts;
+          }
+
+          const currentRemaining = Math.max(0, Number((orderGross - alreadyPaid).toFixed(2)));
+
+          let payAmt = 0;
+          let payNote = notes || body.notes || '';
+
+          if (action === 'pay_installment' && installment_number !== undefined) {
+            const targetInst = (s.crediario?.installments || []).find((i: any) => i.number === Number(installment_number));
+            payAmt = targetInst ? Number(targetInst.amount) : currentRemaining;
+            if (!payNote) payNote = `Pagamento da Parcela ${installment_number} via ${chosenPaymentMethod}`;
+          } else if (action === 'pay_crediario_full' || action === 'pay_all_installments' || (nextPayment === 'PAID' && amount === undefined)) {
+            payAmt = currentRemaining;
+            if (!payNote) payNote = `Quitação total via ${chosenPaymentMethod}`;
+          } else if (amount !== undefined && !isNaN(Number(amount))) {
+            payAmt = Math.max(0, Number(amount));
+            if (!payNote) {
+              payNote = payAmt >= currentRemaining
+                ? `Quitação total via ${chosenPaymentMethod}`
+                : `Abatimento parcial de $${payAmt.toFixed(2)} via ${chosenPaymentMethod}`;
             }
-            return inst;
-          });
-          const allPaid = insts.every((i: any) => i.status === 'PAID');
-          nextPayment = allPaid ? 'PAID' : 'PARTIAL';
-          cred = { ...cred, installments: insts };
+          } else {
+            payAmt = currentRemaining;
+            if (!payNote) payNote = `Pagamento recebido via ${chosenPaymentMethod}`;
+          }
+
+          payAmt = Number(payAmt.toFixed(2));
+          const newTotalPaid = Number((alreadyPaid + payAmt).toFixed(2));
+          const newRemaining = Math.max(0, Number((orderGross - newTotalPaid).toFixed(2)));
+
+          const newPaymentRecord = {
+            id: `pay-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            amount: payAmt,
+            payment_method: chosenPaymentMethod,
+            paid_at: new Date().toISOString(),
+            notes: payNote,
+            balance_after: newRemaining,
+          };
+
+          localPayments.push(newPaymentRecord);
+          localAmountPaid = newTotalPaid;
+          localRemainingBalance = newRemaining;
+
+          if (cred && Array.isArray(cred.installments)) {
+            let insts = [...cred.installments];
+            if (newRemaining <= 0.001) {
+              insts = insts.map((i: any) => ({
+                ...i,
+                status: 'PAID',
+                paid_at: i.paid_at || new Date().toISOString(),
+                payment_method: i.payment_method || chosenPaymentMethod,
+                paid_method: i.paid_method || chosenPaymentMethod,
+              }));
+            } else if (action === 'pay_installment' && installment_number !== undefined) {
+              insts = insts.map((i: any) => {
+                if (i.number === Number(installment_number)) {
+                  return {
+                    ...i,
+                    status: 'PAID',
+                    paid_at: new Date().toISOString(),
+                    payment_method: chosenPaymentMethod,
+                    paid_method: chosenPaymentMethod,
+                  };
+                }
+                return i;
+              });
+            } else {
+              let remainingToCover = newTotalPaid - Number(cred.down_payment || 0);
+              insts = insts.map((i: any) => {
+                if (i.status === 'PAID') return i;
+                if (remainingToCover >= Number(i.amount) - 0.01) {
+                  remainingToCover -= Number(i.amount);
+                  return {
+                    ...i,
+                    status: 'PAID',
+                    paid_at: new Date().toISOString(),
+                    payment_method: chosenPaymentMethod,
+                    paid_method: chosenPaymentMethod,
+                  };
+                }
+                return i;
+              });
+            }
+            cred = {
+              ...cred,
+              installments: insts,
+              remaining_balance: newRemaining,
+              payments: localPayments,
+            };
+          }
+
+          nextPayment = newRemaining <= 0.001 ? 'PAID' : 'PARTIAL';
         }
 
         const isShipped = nextFulfillment === 'SHIPPED';
@@ -1067,7 +1349,10 @@ export async function PATCH(req: NextRequest) {
           ...s,
           status: nextPayment === 'PAID' ? (nextFulfillment === 'DELIVERED' ? 'DELIVERED' : 'COMPLETED') : (nextFulfillment || nextPayment || s.status),
           fulfillment_status: nextFulfillment || s.fulfillment_status,
-          payment_status: nextPayment || s.payment_status,
+          payment_status: nextPayment,
+          payments: localPayments,
+          amount_paid: localAmountPaid,
+          remaining_balance: localRemainingBalance,
           tracking_code: finalTracking,
           shipped_at: isShipped ? (s.shipped_at || new Date().toISOString()) : s.shipped_at,
           shipping_email_sent: isShipped ? true : s.shipping_email_sent,
