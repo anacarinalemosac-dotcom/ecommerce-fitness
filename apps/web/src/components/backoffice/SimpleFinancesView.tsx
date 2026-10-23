@@ -225,6 +225,30 @@ export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModa
     });
   }, [finances.expenses, selectedMonth, categoryFilter, statusFilter, currentYear, currentMonthIdx, prevYear, prevMonthIdx]);
 
+  // Filtra Compras de Mercadorias (Notas Fiscais de Entrada) por Período
+  const clothingPurchasesList = finances.clothingPurchases || [];
+  const filteredClothingPurchases = useMemo(() => {
+    return clothingPurchasesList.filter((p) => {
+      const d = new Date((p.date || '') + 'T12:00:00');
+      if (isNaN(d.getTime())) return true;
+      if (selectedMonth === 'CURRENT') {
+        return d.getFullYear() === currentYear && d.getMonth() === currentMonthIdx;
+      } else if (selectedMonth === 'PREVIOUS') {
+        return d.getFullYear() === prevYear && d.getMonth() === prevMonthIdx;
+      }
+      return true;
+    });
+  }, [clothingPurchasesList, selectedMonth, currentYear, currentMonthIdx, prevYear, prevMonthIdx]);
+
+  const totalMerchandisePurchasedUSD = filteredClothingPurchases.reduce(
+    (acc, p) => acc + (Number(p.totalPaid) || 0),
+    0
+  );
+  const totalMerchandisePieces = filteredClothingPurchases.reduce(
+    (acc, p) => acc + (Number(p.totalPieces) || 0),
+    0
+  );
+
   // CÁLCULOS DO FLUXO DE CAIXA E DRE
   // 1. Receitas de Vendas Realizadas (Entradas)
   let revenueOnline = 0;
@@ -512,9 +536,11 @@ export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModa
               : 'border-transparent text-deep-black/60 hover:text-deep-black'
           }`}
         >
-          <Calculator className="w-4 h-4 text-gold" />
-          <span>ENTRADA DE NOTA FISCAL, FRETE & FORMAÇÃO DE PREÇO</span>
-          <span className="px-1.5 py-0.5 bg-gold text-deep-black text-[9px] font-black">NOTA FISCAL</span>
+          <Receipt className="w-4 h-4 text-gold" />
+          <span>ENTRADA DE NOTA FISCAL & GASTO COM MERCADORIA</span>
+          <span className="px-2 py-0.5 bg-gold text-deep-black text-[9px] font-black">
+            {clothingPurchasesList.length} {clothingPurchasesList.length === 1 ? 'NOTA' : 'NOTAS'}
+          </span>
         </button>
 
         <button
@@ -628,8 +654,8 @@ export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModa
             -${totalOutflows.toFixed(2)}
           </div>
           <div className="text-[10px] text-deep-black/60 uppercase font-mono space-y-0.5">
-            <div>Peças: ${totalCostOfGoods.toFixed(2)} | Despesas: ${paidExpensesTotal.toFixed(2)}</div>
-            <div className="text-[9px] text-deep-black/40 font-bold">Comissões: ${totalCommissionsFromSales.toFixed(2)}</div>
+            <div>Mercadoria (Notas): ${totalMerchandisePurchasedUSD.toFixed(2)} | Despesas: ${paidExpensesTotal.toFixed(2)}</div>
+            <div className="text-[9px] text-deep-black/40 font-bold">Peças Vendidas: ${totalCostOfGoods.toFixed(2)} | Comissões: ${totalCommissionsFromSales.toFixed(2)}</div>
           </div>
         </div>
 
@@ -663,6 +689,39 @@ export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModa
           <div className="inline-flex items-center gap-1 bg-gold/20 px-2 py-0.5 text-[9px] font-black text-gold uppercase border border-gold/40">
             <span>{netMarginPct}% MARGEM LÍQUIDA REAL</span>
           </div>
+        </div>
+      </div>
+
+      {/* 3.5. DESTAQUE ESPECIAL: GASTOS COM AQUISIÇÃO DE MERCADORIA (NOTAS FISCAIS) */}
+      <div className="bg-gradient-to-r from-deep-black via-zinc-950 to-deep-black border-2 border-gold p-6 text-white shadow-luxury flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 bg-gold text-deep-black font-black text-[9px] uppercase tracking-widest shadow">
+            <Receipt className="w-3.5 h-3.5" />
+            <span>FINANCEIRO • GASTOS COM MERCADORIA / ESTOQUE</span>
+          </div>
+          <h3 className="text-base sm:text-lg font-black uppercase tracking-tight text-white flex items-center gap-2">
+            <span>NOTAS FISCAIS DE ENTRADA REGISTRADAS NO PERÍODO</span>
+          </h3>
+          <p className="text-xs uppercase tracking-wider text-white/70 max-w-2xl font-mono">
+            {filteredClothingPurchases.length} {filteredClothingPurchases.length === 1 ? 'nota fiscal cadastrada' : 'notas fiscais cadastradas'} • {totalMerchandisePieces} peças adicionadas ao estoque da loja
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="text-left sm:text-right font-mono">
+            <span className="text-[10px] text-gold uppercase block font-bold">Total Gasto em Mercadoria</span>
+            <span className="text-2xl sm:text-3xl font-black text-white">${totalMerchandisePurchasedUSD.toFixed(2)}</span>
+            <span className="text-[9px] text-white/50 uppercase block">Convertido em $ USD</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setFinanceSubTab('pricing')}
+            className="px-4 py-2.5 bg-gold hover:bg-white text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow"
+          >
+            <Receipt className="w-4 h-4" />
+            <span>Ver Notas Fiscais ({clothingPurchasesList.length})</span>
+          </button>
         </div>
       </div>
 
@@ -790,6 +849,17 @@ export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModa
             <span>(-) CUSTO DE CONFECÇÃO DAS PEÇAS VENDIDAS (COGS)</span>
             <span>-${totalCostOfGoods.toFixed(2)}</span>
           </div>
+          {totalMerchandisePurchasedUSD > 0 && (
+            <div className="pl-4 pr-2 flex justify-between text-[11px] text-stone-700 bg-stone-50 py-1.5 border-x border-stone-200">
+              <span className="flex items-center gap-1.5 font-bold">
+                <Receipt className="w-3.5 h-3.5 text-gold" />
+                <span>Total em Notas Fiscais de Entrada Registradas no Período (Estoque)</span>
+              </span>
+              <span className="font-mono font-bold text-deep-black">
+                ${totalMerchandisePurchasedUSD.toFixed(2)} ({filteredClothingPurchases.length} {filteredClothingPurchases.length === 1 ? 'nota' : 'notas'})
+              </span>
+            </div>
+          )}
 
           {/* 3. Margem Bruta */}
           <div className="flex justify-between p-2.5 bg-deep-black/5 border border-deep-black/10 font-bold text-deep-black">

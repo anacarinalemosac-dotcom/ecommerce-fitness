@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileText,
   DollarSign,
@@ -29,6 +29,10 @@ import {
   Download,
   ArrowRightLeft,
   Globe2,
+  ShieldAlert,
+  Search,
+  Check,
+  Edit3,
 } from 'lucide-react';
 import { ClothingPurchaseRecord, ClothingItemDetail, FinancesState } from '@/app/api/backoffice/finances/route';
 
@@ -43,15 +47,18 @@ export function ClothingPricingCalculator({
   onRefresh,
   onShowFeedback,
 }: ClothingPricingCalculatorProps) {
-  // Modo de Exibição: 'create' (Lançar Nova Nota) ou 'archive' (Arquivo de Notas Registradas)
-  const [activeTabMode, setActiveTabMode] = useState<'create' | 'archive'>('create');
+  // Modo de Exibição: Padrão 'archive' para que a usuária sempre veja todas as notas já registradas!
+  const [activeTabMode, setActiveTabMode] = useState<'create' | 'archive'>('archive');
+  const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [newlyCreatedInvoiceId, setNewlyCreatedInvoiceId] = useState<string | null>(null);
 
   // Modal para Visualizar o Espelho da Nota Fiscal Individual
   const [selectedInvoiceModal, setSelectedInvoiceModal] = useState<ClothingPurchaseRecord | null>(null);
 
   // 1. Cabeçalho da Nota Fiscal / Romaneio
-  const [invoiceNumber, setInvoiceNumber] = useState<string>('NF-2026/01');
-  const [supplier, setSupplier] = useState<string>('Confecção / Fábrica');
+  const [invoiceNumber, setInvoiceNumber] = useState<string>('');
+  const [supplier, setSupplier] = useState<string>('');
   const [purchaseDate, setPurchaseDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [defaultCommissionPct, setDefaultCommissionPct] = useState<number>(15); // 15% padrão
   const [notes, setNotes] = useState<string>('');
@@ -62,7 +69,7 @@ export function ClothingPricingCalculator({
 
   // 3. Frete da Nota Fiscal
   const [freightCurrency, setFreightCurrency] = useState<'USD' | 'BRL'>('USD');
-  const [freightAmount, setFreightAmount] = useState<string>('150.00');
+  const [freightAmount, setFreightAmount] = useState<string>('0.00');
 
   // 4. Fornecedores e Produtos do Catálogo para Autocomplete
   const [suppliersList, setSuppliersList] = useState<any[]>([]);
@@ -324,11 +331,58 @@ export function ClothingPricingCalculator({
     );
   };
 
+  const clothingPurchases = finances.clothingPurchases || [];
+
+  // Verificação de duplicidade de nota em tempo real
+  const duplicateInvoice = useMemo(() => {
+    if (!invoiceNumber || !invoiceNumber.trim() || invoiceNumber.trim().length < 2) return null;
+    return clothingPurchases.find(
+      (p) =>
+        p.id !== editingPurchaseId &&
+        (p.invoiceNumber || '').trim().toLowerCase() === invoiceNumber.trim().toLowerCase()
+    );
+  }, [clothingPurchases, invoiceNumber, editingPurchaseId]);
+
+  // Totais consolidados do histórico de notas
+  const totalPiecesAll = clothingPurchases.reduce((acc, p) => acc + (Number(p.totalPieces) || 0), 0);
+  const totalPaidAll = clothingPurchases.reduce((acc, p) => acc + (Number(p.totalPaid) || 0), 0);
+  const totalProfitAll = clothingPurchases.reduce((acc, p) => acc + (Number(p.totalProjectedProfit) || 0), 0);
+
+  // Lista filtrada por busca
+  const filteredPurchasesList = clothingPurchases.filter((p) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    const matchNum = (p.invoiceNumber || '').toLowerCase().includes(q);
+    const matchSup = (p.supplier || '').toLowerCase().includes(q);
+    const matchDate = (p.date || '').toLowerCase().includes(q);
+    return matchNum || matchSup || matchDate;
+  });
+
   // Salvar Nota Fiscal no Backend
   const handleSaveInvoice = async () => {
+    if (!invoiceNumber.trim()) {
+      alert('Por favor, informe o número da Nota Fiscal / Romaneio.');
+      return;
+    }
+    if (!supplier.trim()) {
+      alert('Por favor, informe o Fornecedor ou Confecção da mercadoria.');
+      return;
+    }
     if (items.length === 0 || totalPieces <= 0) {
       alert('Adicione pelo menos um item com quantidade válida na nota fiscal.');
       return;
+    }
+
+    // Alerta de duplicidade se a nota já foi lançada antes
+    if (duplicateInvoice && !editingPurchaseId) {
+      const confirmDup = confirm(
+        `⚠️ ATENÇÃO: A nota fiscal "${duplicateInvoice.invoiceNumber}" já consta cadastrada no sistema!\n\n` +
+        `• Data: ${duplicateInvoice.date}\n` +
+        `• Fornecedor: ${duplicateInvoice.supplier}\n` +
+        `• Total: $${duplicateInvoice.totalPaid.toFixed(2)} USD (${duplicateInvoice.totalPieces} peças)\n\n` +
+        `Deseja realmente cadastrar outra nota com este mesmo número?`
+      );
+      if (!confirmDup) return;
     }
 
     try {
@@ -339,12 +393,13 @@ export function ClothingPricingCalculator({
         body: JSON.stringify({
           action: 'save_clothing_purchase',
           purchase: {
-            invoiceNumber,
+            id: editingPurchaseId || undefined,
+            invoiceNumber: invoiceNumber.trim(),
             currency: purchaseCurrency,
             exchangeRate: rateNum,
             clothesAmountOriginal: totalClothesOriginal,
             date: purchaseDate,
-            supplier,
+            supplier: supplier.trim(),
             totalPieces,
             clothesAmount: totalClothesUSD,
             freightAmount: freightUSD,
@@ -365,15 +420,26 @@ export function ClothingPricingCalculator({
 
       const data = await res.json();
       if (data.success) {
+        const savedNumber = invoiceNumber.trim();
+        const savedSupplier = supplier.trim();
+        const savedId = editingPurchaseId || data.finances?.clothingPurchases?.[0]?.id;
+
         await onRefresh();
-        const msg = `Nota Fiscal "${invoiceNumber}" (${supplier}) gravada com sucesso! ${
-          purchaseCurrency === 'BRL'
-            ? `Total R$ ${totalClothesOriginal.toFixed(2)} convertido para $${totalClothesUSD.toFixed(2)} USD (Câmbio ${rateNum.toFixed(2)}).`
-            : `$${totalInvoiceUSD.toFixed(2)} USD gravado.`
-        }`;
+
+        // 1. Fecha o formulário e muda para a lista de notas registradas (ela NÃO precisa ficar aberta!)
+        setActiveTabMode('archive');
+        setEditingPurchaseId(null);
+
+        // 2. Destaca visualmente a nota recém-criada no topo da lista
+        if (savedId) {
+          setNewlyCreatedInvoiceId(savedId);
+          setTimeout(() => setNewlyCreatedInvoiceId(null), 12000);
+        }
+
+        const msg = `✓ Nota Fiscal "${savedNumber}" (${savedSupplier}) gravada com sucesso! Lançada no financeiro da loja como gasto com mercadoria.`;
         setSuccessBanner(msg);
         if (onShowFeedback) {
-          onShowFeedback(`Nota fiscal ${invoiceNumber} registrada com sucesso!`);
+          onShowFeedback(`Nota fiscal ${savedNumber} registrada e lançada no financeiro!`);
         }
         setTimeout(() => setSuccessBanner(null), 9000);
       } else {
@@ -386,8 +452,9 @@ export function ClothingPricingCalculator({
     }
   };
 
-  // Carregar Nota do Histórico na Tela
+  // Carregar Nota do Histórico na Tela para Edição
   const handleLoadPurchaseToInvoice = (p: ClothingPurchaseRecord) => {
+    setEditingPurchaseId(p.id);
     setInvoiceNumber(p.invoiceNumber || `NF-${p.id.substring(6, 12)}`);
     setSupplier(p.supplier || '');
     setPurchaseDate(p.date || new Date().toISOString().split('T')[0]);
@@ -422,7 +489,7 @@ export function ClothingPricingCalculator({
   };
 
   const handleDeletePurchase = async (purchaseId: string) => {
-    if (!confirm('Deseja excluir esta nota fiscal do histórico de compras?')) return;
+    if (!confirm('Deseja excluir esta nota fiscal do histórico de compras e do financeiro?')) return;
     try {
       const res = await fetch('/api/backoffice/finances', {
         method: 'POST',
@@ -445,14 +512,16 @@ export function ClothingPricingCalculator({
     }
   };
 
-  // Limpar para Nova Nota
+  // Limpar para Nova Nota (Começa em branco e sem mock fixo)
   const handleResetNewInvoice = () => {
-    setInvoiceNumber(`NF-${new Date().getFullYear()}/${String(Math.floor(Math.random() * 900 + 100))}`);
+    setEditingPurchaseId(null);
+    setInvoiceNumber('');
+    setSupplier(suppliersList[0]?.company_name || '');
     setPurchaseDate(new Date().toISOString().split('T')[0]);
     setPurchaseCurrency('BRL');
     setExchangeRate('5.50');
     setFreightCurrency('USD');
-    setFreightAmount('150.00');
+    setFreightAmount('0.00');
     setDefaultCommissionPct(15);
     setNotes('');
     setItems([
@@ -473,9 +542,8 @@ export function ClothingPricingCalculator({
       },
     ]);
     setActiveTabMode('create');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-  const clothingPurchases = finances.clothingPurchases || [];
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -561,6 +629,66 @@ export function ClothingPricingCalculator({
       {/* SEÇÃO 1: FORMULÁRIO ESTILO NOTA FISCAL (SELECIONADO: 'create') */}
       {activeTabMode === 'create' && (
         <div className="bg-white border-2 border-deep-black shadow-sm divide-y-2 divide-deep-black animate-fadeIn">
+          {/* BARRA SUPERIOR DE NAVEGAÇÃO & STATUS DE EDIÇÃO */}
+          <div className="p-4 bg-stone-100 border-b-2 border-deep-black flex flex-wrap items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setActiveTabMode('archive')}
+              className="px-3.5 py-2 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 shadow"
+            >
+              <span>← Voltar para Arquivo de Notas</span>
+            </button>
+
+            {editingPurchaseId ? (
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-1 bg-amber-500 text-deep-black font-black text-xs uppercase tracking-wider">
+                  ✏️ Editando Nota Salva: {invoiceNumber || editingPurchaseId}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResetNewInvoice}
+                  className="px-2.5 py-1 bg-stone-200 hover:bg-stone-300 text-deep-black font-bold text-xs uppercase transition"
+                >
+                  Cancelar Edição
+                </button>
+              </div>
+            ) : (
+              <span className="text-xs font-bold uppercase text-deep-black/60">
+                Preencha os dados abaixo para dar entrada em uma nova remessa de mercadoria.
+              </span>
+            )}
+          </div>
+
+          {/* BANNER DE ALERTA DE NOTA FISCAL DUPLICADA (PREVENÇÃO DE ENTRADA DUPLA) */}
+          {duplicateInvoice && !editingPurchaseId && (
+            <div className="p-4 bg-amber-500/15 border-b-2 border-amber-600 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+              <div className="flex items-start gap-3">
+                <ShieldAlert className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-black text-xs uppercase tracking-wider text-amber-900">
+                    ⚠️ ATENÇÃO: ESTA NOTA FISCAL JÁ FOI DADA ENTRADA NO SISTEMA!
+                  </div>
+                  <div className="text-xs text-amber-950/90 mt-0.5">
+                    A nota <strong>"{duplicateInvoice.invoiceNumber}"</strong> já consta cadastrada com o fornecedor <strong>{duplicateInvoice.supplier}</strong> em <strong>{duplicateInvoice.date}</strong> no valor de <strong>${duplicateInvoice.totalPaid.toFixed(2)} USD ({duplicateInvoice.totalPieces} peças)</strong>.
+                  </div>
+                  <div className="text-[11px] text-amber-800 font-bold mt-1">
+                    Você não precisa cadastrá-la novamente. Clique no botão ao lado para consultar o espelho da nota já salva.
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSelectedInvoiceModal(duplicateInvoice)}
+                  className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Ver Nota Já Cadastrada</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* CABEÇALHO DA NOTA (Moeda, Câmbio, Fornecedor, Data, Nº NF, Comissão) */}
           <div className="p-6 bg-stone-50 space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-deep-black/10 pb-3">
@@ -622,16 +750,28 @@ export function ClothingPricingCalculator({
 
               {/* Número da Nota Fiscal */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
-                  Nº DA NOTA / INVOICE:
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
+                  <span>Nº DA NOTA / INVOICE:</span>
+                  {duplicateInvoice && !editingPurchaseId && (
+                    <span className="text-[9px] text-amber-700 font-black uppercase">⚠️ Já Cadastrada</span>
+                  )}
                 </label>
                 <input
                   type="text"
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
                   placeholder="Ex: NF-1042 ou Pedido #88"
-                  className="w-full px-3 py-2 text-xs font-mono font-bold border-2 border-deep-black/30 focus:outline-none focus:border-deep-black bg-white"
+                  className={`w-full px-3 py-2 text-xs font-mono font-bold border-2 focus:outline-none bg-white ${
+                    duplicateInvoice && !editingPurchaseId
+                      ? 'border-amber-600 bg-amber-50 text-amber-950 focus:border-amber-700'
+                      : 'border-deep-black/30 focus:border-deep-black'
+                  }`}
                 />
+                {duplicateInvoice && !editingPurchaseId && (
+                  <p className="text-[10px] text-amber-800 font-bold leading-tight">
+                    Esta nota já existe no histórico.
+                  </p>
+                )}
               </div>
 
               {/* Data da Compra */}
@@ -1185,26 +1325,105 @@ export function ClothingPricingCalculator({
       {/* SEÇÃO 2: ARQUIVO DE NOTAS FISCAIS REGISTRADAS (SELECIONADO: 'archive') */}
       {activeTabMode === 'archive' && (
         <div className="space-y-6 animate-fadeIn">
+          {/* CARDS DE RESUMO GERAL DAS NOTAS FISCAIS REGISTRADAS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Total de Notas */}
+            <div className="bg-white border-2 border-deep-black p-4 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-wider text-deep-black/60 block">
+                NOTAS CADASTRADAS
+              </span>
+              <div className="text-2xl font-black text-deep-black font-mono">
+                {clothingPurchases.length}
+              </div>
+              <span className="text-[10px] text-deep-black/50 uppercase font-medium block">
+                Romaneios de compras
+              </span>
+            </div>
+
+            {/* Card 2: Total de Peças */}
+            <div className="bg-white border-2 border-deep-black p-4 space-y-1 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-wider text-deep-black/60 block">
+                TOTAL DE PEÇAS ADQUIRIDAS
+              </span>
+              <div className="text-2xl font-black text-deep-black font-mono">
+                {totalPiecesAll} peças
+              </div>
+              <span className="text-[10px] text-deep-black/50 uppercase font-medium block">
+                Estoque somado das notas
+              </span>
+            </div>
+
+            {/* Card 3: Total Gasto com Mercadoria */}
+            <div className="bg-deep-black text-white border-2 border-gold p-4 space-y-1 shadow-luxury">
+              <span className="text-[10px] font-black uppercase tracking-wider text-gold block">
+                GASTO TOTAL COM MERCADORIA
+              </span>
+              <div className="text-2xl font-black text-white font-mono">
+                ${totalPaidAll.toFixed(2)}
+              </div>
+              <span className="text-[10px] text-gold/80 uppercase font-bold block">
+                Lançado no financeiro da loja ($ USD)
+              </span>
+            </div>
+
+            {/* Card 4: Lucro Estimado no Bolso */}
+            <div className="bg-emerald-950 border-2 border-emerald-500 p-4 space-y-1 shadow-sm text-emerald-100">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 block">
+                LUCRO PROJETADO NO ESTOQUE
+              </span>
+              <div className="text-2xl font-black text-emerald-400 font-mono">
+                +${totalProfitAll.toFixed(2)}
+              </div>
+              <span className="text-[10px] text-emerald-200/80 uppercase font-bold block">
+                Livre de roupas, frete e comissão
+              </span>
+            </div>
+          </div>
+
           <div className="bg-white border-2 border-deep-black p-6 space-y-4 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-deep-black pb-3">
+            {/* TOPO DO ARQUIVO: TÍTULO, BUSCA E BOTÃO DE NOVA NOTA */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b-2 border-deep-black pb-4">
               <div>
                 <h3 className="text-sm font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
                   <Archive className="w-4 h-4 text-gold" />
-                  <span>ARQUIVO COMPLETO DE NOTAS FISCAIS ({clothingPurchases.length} REGISTRADAS)</span>
+                  <span>NOTAS FISCAIS REGISTRADAS NO SISTEMA ({clothingPurchases.length})</span>
                 </h3>
                 <p className="text-[10px] text-deep-black/60 uppercase mt-0.5 font-medium">
-                  Clique em qualquer nota fiscal para abrir o espelho individual com todos os modelos, custos, conversão cambial, comissões e margens.
+                  Suas notas ficam salvas e fechadas aqui. Clique em qualquer nota para abrir o espelho com custos, câmbio e margens.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setActiveTabMode('create')}
-                className="px-4 py-2 bg-deep-black text-gold hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 shadow"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Lançar Nova Nota</span>
-              </button>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                {/* Campo de Busca Rápida */}
+                <div className="relative min-w-[240px]">
+                  <Search className="w-4 h-4 text-deep-black/40 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Buscar nota, fornecedor ou data..."
+                    className="w-full pl-9 pr-7 py-2 text-xs border border-deep-black/30 font-bold focus:outline-none focus:border-deep-black bg-stone-50"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-2 text-deep-black/40 hover:text-deep-black text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleResetNewInvoice}
+                  className="px-5 py-2.5 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 shadow"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ DAR ENTRADA EM NOVA NOTA</span>
+                </button>
+              </div>
             </div>
 
             {clothingPurchases.length === 0 ? (
@@ -1212,32 +1431,49 @@ export function ClothingPricingCalculator({
                 <Receipt className="w-10 h-10 mx-auto text-gold mb-1" />
                 <p className="text-sm text-deep-black">Nenhuma nota fiscal registrada no arquivo ainda.</p>
                 <p className="text-[10px] text-deep-black/40">
-                  Clique em "LANÇAR NOTA FISCAL" para cadastrar seu primeiro romaneio de compra.
+                  Clique no botão acima para cadastrar sua primeira nota de compra de mercadoria.
                 </p>
                 <button
                   type="button"
-                  onClick={() => setActiveTabMode('create')}
+                  onClick={handleResetNewInvoice}
                   className="px-5 py-2.5 bg-deep-black text-gold text-xs font-black uppercase tracking-wider transition inline-flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Lançar Primeira Nota</span>
                 </button>
               </div>
+            ) : filteredPurchasesList.length === 0 ? (
+              <div className="p-8 text-center text-xs text-deep-black/50 font-bold uppercase space-y-2">
+                <Search className="w-6 h-6 mx-auto text-deep-black/30" />
+                <p>Nenhuma nota encontrada com o termo "{searchQuery}".</p>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="text-gold underline uppercase text-[11px] font-black"
+                >
+                  Limpar busca
+                </button>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {clothingPurchases.map((p) => {
+                {filteredPurchasesList.map((p) => {
                   const invNum = p.invoiceNumber || `NF-${p.id.substring(6, 12)}`;
                   const itemsCount = p.items?.length || 1;
                   const isBRL = p.currency === 'BRL';
+                  const isNewlyCreated = p.id === newlyCreatedInvoiceId;
 
                   return (
                     <div
                       key={p.id}
-                      className="p-5 border-2 border-deep-black bg-stone-50 hover:bg-white hover:border-gold transition space-y-4 shadow-sm group"
+                      className={`p-5 border-2 transition space-y-4 shadow-sm group ${
+                        isNewlyCreated
+                          ? 'border-gold bg-gold/10 ring-2 ring-gold/50'
+                          : 'border-deep-black bg-stone-50 hover:bg-white hover:border-gold'
+                      }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <span className="px-2 py-0.5 bg-deep-black text-gold text-[9px] font-black uppercase tracking-wider inline-block">
                               {invNum}
                             </span>
@@ -1248,6 +1484,12 @@ export function ClothingPricingCalculator({
                             >
                               {isBRL ? `🇧🇷 R$ (Câmbio ${p.exchangeRate?.toFixed(2)})` : '🇺🇸 $ USD'}
                             </span>
+                            {isNewlyCreated && (
+                              <span className="px-1.5 py-0.5 bg-emerald-700 text-white text-[8px] font-black uppercase tracking-wider animate-pulse flex items-center gap-0.5">
+                                <Check className="w-2.5 h-2.5" />
+                                <span>RECÉM SALVA</span>
+                              </span>
+                            )}
                           </div>
                           <h4 className="text-sm font-black uppercase text-deep-black line-clamp-1">
                             {p.supplier || 'Confecção Parceira'}
@@ -1265,13 +1507,13 @@ export function ClothingPricingCalculator({
                       <div className="grid grid-cols-2 gap-2 text-[11px] font-mono border-y border-deep-black/10 py-2.5">
                         <div>
                           <span className="text-[9px] text-deep-black/60 uppercase block">Total Pago ($)</span>
-                          <span className="font-black text-deep-black">${p.totalPaid.toFixed(2)}</span>
+                          <span className="font-black text-deep-black text-sm">${p.totalPaid.toFixed(2)}</span>
                           {isBRL && p.clothesAmountOriginal && (
                             <span className="text-[9px] text-deep-black/50 block font-sans">
                               (R$ {p.clothesAmountOriginal.toFixed(2)})
                             </span>
                           )}
-                          <span className="text-[9px] text-sky-700 block">(frete ${p.freightAmount.toFixed(2)})</span>
+                          <span className="text-[9px] text-sky-700 block font-sans">frete: ${p.freightAmount.toFixed(2)}</span>
                         </div>
                         <div className="text-right">
                           <span className="text-[9px] text-emerald-700 font-bold uppercase block">Lucro no Bolso</span>
@@ -1281,14 +1523,23 @@ export function ClothingPricingCalculator({
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2 pt-1">
+                      <div className="flex items-center justify-between gap-1.5 pt-1">
                         <button
                           type="button"
                           onClick={() => setSelectedInvoiceModal(p)}
                           className="flex-1 py-2 bg-deep-black group-hover:bg-gold group-hover:text-deep-black text-white text-[11px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 shadow"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          <span>Abrir Espelho da Nota</span>
+                          <span>Abrir Espelho</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleLoadPurchaseToInvoice(p)}
+                          className="p-2 bg-stone-200 hover:bg-gold text-deep-black transition border border-deep-black/20"
+                          title="Editar esta nota fiscal"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
                         </button>
 
                         <button

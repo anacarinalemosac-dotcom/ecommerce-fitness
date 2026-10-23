@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
         suggestedSalePriceCustom,
         items = [],
         notes = '',
-        register_as_expense = false,
+        register_as_expense = true,
       } = purchase;
 
       const pieces = Math.max(1, Number(totalPieces) || 1);
@@ -210,6 +210,39 @@ export async function POST(req: NextRequest) {
           }
           return p;
         });
+
+        // Se marcou para registrar no financeiro, atualiza as despesas vinculadas a este ID
+        if (register_as_expense !== false) {
+          finances.expenses = (finances.expenses || []).filter((e) => !e.notes?.includes(id));
+          if (clothes > 0) {
+            finances.expenses.unshift({
+              id: `exp-${Date.now()}-c`,
+              date: purchaseDate,
+              description: `Nota Fiscal ${invoiceNumber ? `"${invoiceNumber}"` : ''} - Compra de Mercadoria: ${supplier || 'Confecção'} (${pieces} peças)`,
+              category: 'SUPPLIERS',
+              amount: clothes,
+              payment_method: 'BANK',
+              status: 'PAID',
+              paid_at: new Date().toISOString(),
+              notes: `Gerado pela nota de compra ${id}`,
+              created_at: new Date().toISOString(),
+            });
+          }
+          if (freight > 0) {
+            finances.expenses.unshift({
+              id: `exp-${Date.now()}-f`,
+              date: purchaseDate,
+              description: `Nota Fiscal ${invoiceNumber ? `"${invoiceNumber}"` : ''} - Frete da Remessa (${pieces} peças)`,
+              category: 'SHIPPING',
+              amount: freight,
+              payment_method: 'CARD',
+              status: 'PAID',
+              paid_at: new Date().toISOString(),
+              notes: `Frete rateado para lote ${id}`,
+              created_at: new Date().toISOString(),
+            });
+          }
+        }
       } else {
         const newPurchaseId = `purch-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
         const newPurchase: ClothingPurchaseRecord = {
@@ -239,13 +272,13 @@ export async function POST(req: NextRequest) {
         };
         finances.clothingPurchases.unshift(newPurchase);
 
-        // Se marcou para registrar no fluxo de caixa / despesas
-        if (register_as_expense) {
+        // Se marcou para registrar no fluxo de caixa / despesas (padrão TRUE)
+        if (register_as_expense !== false) {
           if (clothes > 0) {
             finances.expenses.unshift({
               id: `exp-${Date.now()}-c`,
               date: purchaseDate,
-              description: `Compra de Roupas: ${supplier || 'Confecção'} (${pieces} peças)`,
+              description: `Nota Fiscal ${invoiceNumber ? `"${invoiceNumber}"` : ''} - Compra de Mercadoria: ${supplier || 'Confecção'} (${pieces} peças)`,
               category: 'SUPPLIERS',
               amount: clothes,
               payment_method: 'BANK',
@@ -259,7 +292,7 @@ export async function POST(req: NextRequest) {
             finances.expenses.unshift({
               id: `exp-${Date.now()}-f`,
               date: purchaseDate,
-              description: `Frete da Remessa de Roupas (${pieces} peças)`,
+              description: `Nota Fiscal ${invoiceNumber ? `"${invoiceNumber}"` : ''} - Frete da Remessa (${pieces} peças)`,
               category: 'SHIPPING',
               amount: freight,
               payment_method: 'CARD',
@@ -284,6 +317,9 @@ export async function POST(req: NextRequest) {
       }
       if (finances.clothingPurchases) {
         finances.clothingPurchases = finances.clothingPurchases.filter((p) => p.id !== purchase_id);
+      }
+      if (finances.expenses) {
+        finances.expenses = finances.expenses.filter((e) => !e.notes?.includes(purchase_id));
       }
       await writeFinances(finances);
       return NextResponse.json({ success: true, finances });
