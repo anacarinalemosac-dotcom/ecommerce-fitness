@@ -180,6 +180,14 @@ export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModa
 
   useEffect(() => {
     fetchFinances();
+
+    const handleRefreshFinances = () => {
+      fetchFinances();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('refresh-finances', handleRefreshFinances);
+      return () => window.removeEventListener('refresh-finances', handleRefreshFinances);
+    }
   }, []);
 
   // Datas de referência para filtro
@@ -193,9 +201,12 @@ export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModa
 
   const sales = salesData?.sales || [];
 
-  // Filtra Vendas por Período
+  // Filtra Vendas por Período (exclui saídas de estoque para evitar duplicidade com as despesas)
   const filteredSales = useMemo(() => {
     return sales.filter((s: any) => {
+      if (s.order_id?.startsWith('OUT-') || s.channel === 'WRITE_OFF' || (Number(s.subtotal_products) === 0 && Number(s.cost_of_goods) > 0)) {
+        return false;
+      }
       const d = new Date(s.created_at);
       if (selectedMonth === 'CURRENT') {
         return d.getFullYear() === currentYear && d.getMonth() === currentMonthIdx;
@@ -301,6 +312,10 @@ export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModa
 
   const pendingExpensesTotal = filteredExpenses
     .filter((e) => e.status === 'PENDING')
+    .reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+
+  const writeOffExpensesTotal = filteredExpenses
+    .filter((e) => e.status === 'PAID' && (e.description?.includes('Saída Estoque') || e.notes?.includes('OUT-') || e.category === 'WITHDRAWAL'))
     .reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
 
   // Total de Saídas Reais = Custos das Peças + Comissões Pagas + Taxas de Gateway + Despesas Pagas
@@ -882,6 +897,17 @@ export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModa
             <span>(-) DESPESAS OPERACIONAIS LANÇADAS DA LOJA</span>
             <span>-${paidExpensesTotal.toFixed(2)}</span>
           </div>
+          {writeOffExpensesTotal > 0 && (
+            <div className="pl-4 pr-2 flex justify-between text-[11px] text-amber-900 bg-amber-50/70 py-1.5 border-x border-amber-200">
+              <span className="flex items-center gap-1.5 font-bold">
+                <PackageMinus className="w-3.5 h-3.5 text-amber-700" />
+                <span>• Retiradas de Peças (Uso Próprio da Sócia, Brindes & Marketing)</span>
+              </span>
+              <span className="font-mono font-bold text-amber-950">
+                -${writeOffExpensesTotal.toFixed(2)}
+              </span>
+            </div>
+          )}
 
           {/* 6. Lucro Líquido Final */}
           <div className="flex justify-between p-3.5 bg-deep-black text-gold border-2 border-gold font-black text-sm sm:text-base">
@@ -903,7 +929,7 @@ export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModa
               <span>LANÇAMENTOS DE DESPESAS & SAÍDAS ({filteredExpenses.length})</span>
             </h3>
             <p className="text-[10px] text-deep-black/60 uppercase font-medium mt-0.5">
-              Aluguel, contas de luz, confecção, embalagens e despesas operacionais da empresa.
+              Aluguel, contas de luz, confecção, embalagens, despesas operacionais e retiradas de peças.
             </p>
           </div>
 
@@ -939,7 +965,7 @@ export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModa
               className="px-4 py-1.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 shadow"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>+ Nova</span>
+              <span>+ Nova Despesa</span>
             </button>
 
             {onOpenWriteOffModal && (
@@ -950,7 +976,7 @@ export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModa
                 title="Lançar ou ver histórico de mercadorias retiradas para uso próprio, mostruário ou marketing"
               >
                 <PackageMinus className="w-3.5 h-3.5" />
-                <span>Retiradas de Peças</span>
+                <span>- Retiradas de Peças</span>
               </button>
             )}
           </div>

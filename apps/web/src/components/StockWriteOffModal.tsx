@@ -20,6 +20,7 @@ import {
   AlertCircle,
   RefreshCw,
   Layers,
+  Calendar,
 } from 'lucide-react';
 
 interface WriteOffModalProps {
@@ -58,6 +59,8 @@ export function StockWriteOffModal({
   const [sellersList, setSellersList] = useState<any[]>([]);
   const [selectedSellerId, setSelectedSellerId] = useState('');
   const [notes, setNotes] = useState('');
+  const [withdrawalDate, setWithdrawalDate] = useState(new Date().toISOString().split('T')[0]);
+  const [skipStockDecrement, setSkipStockDecrement] = useState(false);
 
   // Busca e seleção de peças
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,6 +92,26 @@ export function StockWriteOffModal({
       console.warn('Erro ao carregar histórico de saídas:', err);
     } finally {
       setLoadingHistory(false);
+    }
+  };
+
+  const handleDeleteWriteOff = async (item: any) => {
+    const confirmDelete = window.confirm(
+      `Tem certeza que deseja cancelar a saída ${item.document_number} (${item.beneficiary_name} - $${(item.total_cost_value || 0).toFixed(2)})?\nA despesa correspondente também será removida do financeiro da loja.`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(
+        `/api/backoffice/inventory/write-off?id=${item.id}&document_number=${item.document_number}`,
+        { method: 'DELETE' }
+      );
+      if (res.ok) {
+        await fetchHistory();
+        onSuccess(null);
+      }
+    } catch (err) {
+      console.error('Erro ao excluir saída:', err);
     }
   };
 
@@ -238,6 +261,8 @@ export function StockWriteOffModal({
           beneficiary_name: beneficiary,
           seller_id: selectedSellerId || undefined,
           notes,
+          date: withdrawalDate,
+          skip_stock_decrement: skipStockDecrement,
           items: itemsToWithdraw.map((i) => ({
             variant_id: i.variant_id,
             product_id: i.product_id,
@@ -456,65 +481,100 @@ export function StockWriteOffModal({
               <span>2. QUEM ESTÁ RETIRANDO / RECEBENDO AS PEÇAS:</span>
             </h4>
 
-            {reason === 'SELLER_SAMPLE' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-deep-black/70">
-                    SELECIONE A VENDEDORA CADASTRADA:
-                  </label>
-                  <select
-                    value={selectedSellerId}
-                    onChange={handleSellerSelect}
-                    className="w-full px-3 py-2 text-xs uppercase border border-deep-black/30 bg-white font-bold"
-                  >
-                    {sellersList.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} (Cupom: {s.coupon_code})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-deep-black/70">
-                    NOME NO REGISTRO:
-                  </label>
-                  <input
-                    type="text"
-                    value={beneficiary}
-                    onChange={(e) => setBeneficiary(e.target.value)}
-                    className="w-full px-3 py-2 text-xs uppercase border border-deep-black/30 bg-white"
-                  />
-                </div>
+            {/* Data da Retirada e Campos Principais */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-deep-black/70 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-gold" />
+                  <span>DATA DA RETIRADA:</span>
+                </label>
+                <input
+                  type="date"
+                  value={withdrawalDate}
+                  onChange={(e) => setWithdrawalDate(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-bold border border-deep-black/30 bg-white"
+                  title="Permite lançar retiradas feitas em datas passadas"
+                />
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-deep-black/70">
-                    NOME / RESPONSÁVEL PELA RETIRADA:
-                  </label>
-                  <input
-                    type="text"
-                    value={beneficiary}
-                    onChange={(e) => setBeneficiary(e.target.value)}
-                    className="w-full px-3 py-2 text-xs uppercase border border-deep-black/30 bg-white font-bold"
-                  />
-                </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-deep-black/70">
-                    OBSERVAÇÃO / JUSTIFICATIVA (OPCIONAL):
-                  </label>
-                  <input
-                    type="text"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Ex: 2 peças para aula inaugural na academia"
-                    className="w-full px-3 py-2 text-xs uppercase border border-deep-black/30 bg-white"
-                  />
-                </div>
+              {reason === 'SELLER_SAMPLE' ? (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-deep-black/70">
+                      VENDEDORA CADASTRADA:
+                    </label>
+                    <select
+                      value={selectedSellerId}
+                      onChange={handleSellerSelect}
+                      className="w-full px-3 py-2 text-xs uppercase border border-deep-black/30 bg-white font-bold"
+                    >
+                      {sellersList.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} (Cupom: {s.coupon_code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-deep-black/70">
+                      NOME NO REGISTRO:
+                    </label>
+                    <input
+                      type="text"
+                      value={beneficiary}
+                      onChange={(e) => setBeneficiary(e.target.value)}
+                      className="w-full px-3 py-2 text-xs uppercase border border-deep-black/30 bg-white"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-deep-black/70">
+                      RESPONSÁVEL PELA RETIRADA:
+                    </label>
+                    <input
+                      type="text"
+                      value={beneficiary}
+                      onChange={(e) => setBeneficiary(e.target.value)}
+                      className="w-full px-3 py-2 text-xs uppercase border border-deep-black/30 bg-white font-bold"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-deep-black/70">
+                      OBSERVAÇÃO / JUSTIFICATIVA (OPCIONAL):
+                    </label>
+                    <input
+                      type="text"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Ex: 2 peças para aula inaugural / uso pessoal"
+                      className="w-full px-3 py-2 text-xs uppercase border border-deep-black/30 bg-white"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Caixa de Lançamento Retroativo */}
+            <label className="flex items-start gap-2.5 p-3 bg-amber-50 border-2 border-amber-300 cursor-pointer hover:bg-amber-100/60 transition">
+              <input
+                type="checkbox"
+                checked={skipStockDecrement}
+                onChange={(e) => setSkipStockDecrement(e.target.checked)}
+                className="w-4 h-4 mt-0.5 accent-deep-black text-white"
+              />
+              <div className="space-y-0.5">
+                <span className="text-[11px] font-black uppercase text-amber-950 block">
+                  Lançamento Retroativo: Peças já retiradas fisicamente no passado
+                </span>
+                <span className="text-[10px] text-amber-900/80 block leading-tight font-medium">
+                  Marque esta opção se você já baixou fisicamente essas peças antes da nova configuração. O sistema lançará a despesa financeira na data escolhida <strong>SEM debitar o estoque atual novamente</strong>.
+                </span>
               </div>
-            )}
+            </label>
           </div>
 
           {/* 3. SELEÇÃO DE PEÇAS NO ESTOQUE */}
@@ -745,12 +805,13 @@ export function StockWriteOffModal({
                   <th className="p-3">PEÇAS & GRADE</th>
                   <th className="p-3 text-center">TOTAL PEÇAS</th>
                   <th className="p-3 text-right">CUSTO ABSORVIDO</th>
+                  <th className="p-3 text-right">AÇÕES</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-deep-black/10">
                 {writeOffHistory.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-deep-black/50 font-bold">
+                    <td colSpan={7} className="p-8 text-center text-deep-black/50 font-bold">
                       Nenhuma saída de estoque registrada ainda.
                     </td>
                   </tr>
@@ -760,12 +821,10 @@ export function StockWriteOffModal({
                       <td className="p-3 font-mono font-bold text-deep-black">
                         <span className="block">{item.document_number}</span>
                         <span className="text-[9px] text-deep-black/50 font-normal">
-                          {new Date(item.created_at).toLocaleDateString('pt-BR', {
+                          {new Date(item.date ? item.date + 'T12:00:00' : item.created_at).toLocaleDateString('pt-BR', {
                             day: '2-digit',
                             month: '2-digit',
                             year: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
                           })}
                         </span>
                       </td>
@@ -773,6 +832,11 @@ export function StockWriteOffModal({
                         <span className="inline-block px-1.5 py-0.5 text-[8px] font-black border bg-gold/20 text-deep-black border-gold/40">
                           {item.reason_label || item.reason}
                         </span>
+                        {item.skip_stock_decrement && (
+                          <span className="inline-block ml-1 px-1 py-0.5 text-[7.5px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+                            RETROATIVO
+                          </span>
+                        )}
                         {item.notes && (
                           <span className="text-[9px] text-deep-black/60 block mt-0.5 italic">
                             "{item.notes}"
@@ -799,6 +863,16 @@ export function StockWriteOffModal({
                       </td>
                       <td className="p-3 text-right font-mono font-black text-gold">
                         ${(item.total_cost_value || 0).toFixed(2)}
+                      </td>
+                      <td className="p-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteWriteOff(item)}
+                          className="p-1.5 text-red-600 hover:text-white hover:bg-red-600 border border-red-200 transition"
+                          title="Cancelar saída de estoque e estornar despesa no financeiro"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </td>
                     </tr>
                   ))

@@ -6665,6 +6665,9 @@ export default function BackofficeDashboard() {
           fetchSupabaseProducts();
           fetchSalesData();
           fetchWriteOffs();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('refresh-finances'));
+          }
         }}
         catalogProducts={baseCatalogList}
         initialTab={writeOffModalTab}

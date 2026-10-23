@@ -82,14 +82,79 @@ export interface FinancesState {
   updatedAt: string;
 }
 
+import { readWriteOffs, WriteOffRecord } from '@/lib/writeOffsStore';
+
 let memoryFinances: FinancesState | null = null;
 let lastFinancesFetch = 0;
+
+export async function syncWriteOffsToFinances(finances: FinancesState): Promise<boolean> {
+  try {
+    const writeOffs = await readWriteOffs();
+    if (!writeOffs || writeOffs.length === 0) return false;
+
+    if (!Array.isArray(finances.expenses)) {
+      finances.expenses = [];
+    }
+
+    let modified = false;
+
+    for (const w of writeOffs) {
+      const doc = w.document_number;
+      const wId = w.id;
+
+      // Procura se já existe despesa lançada para esta retirada
+      const exists = finances.expenses.some(
+        (e) =>
+          e.id === `exp-${wId}` ||
+          e.id === `exp-${doc}` ||
+          (e.notes && (e.notes.includes(doc) || (wId && e.notes.includes(wId)))) ||
+          (e.description && e.description.includes(doc))
+      );
+
+      if (!exists) {
+        const expenseCat: ExpenseCategory =
+          w.reason === 'OWNER_PERSONAL_USE'
+            ? 'WITHDRAWAL'
+            : (w.reason === 'GIFT_MARKETING' || w.reason === 'SELLER_SAMPLE' ? 'MARKETING' : 'OTHER');
+
+        const itemsSummaryText = (w.items || [])
+          .map((p) => `${p.quantity}x ${p.title} (${p.color || ''} ${p.size || ''})`.trim())
+          .join(', ');
+
+        const dateStr = w.date || (w.created_at ? w.created_at.split('T')[0] : new Date().toISOString().split('T')[0]);
+
+        const newExpense: ExpenseRecord = {
+          id: `exp-${wId || doc}`,
+          date: dateStr,
+          description: `[Saída Estoque #${doc}] ${w.reason_label || 'Retirada'} (${w.beneficiary_name || 'Ana Carina'}): ${itemsSummaryText || 'Peças fitness'}`,
+          category: expenseCat,
+          amount: Number((w.total_cost_value || 0).toFixed(2)),
+          payment_method: 'OTHER',
+          status: 'PAID',
+          paid_at: w.created_at || new Date().toISOString(),
+          notes: `Documento: ${doc}. Retirada de ${w.total_items_count} peça(s) a preço de custo contábil. ${w.notes || ''}`.trim(),
+          created_at: w.created_at || new Date().toISOString(),
+        };
+
+        finances.expenses.unshift(newExpense);
+        modified = true;
+      }
+    }
+
+    return modified;
+  } catch (err) {
+    console.warn('Erro ao sincronizar writeOffs com finances:', err);
+    return false;
+  }
+}
 
 export async function readFinances(): Promise<FinancesState> {
   const now = Date.now();
   if (memoryFinances && now - lastFinancesFetch < 3000) {
     return memoryFinances;
   }
+
+  let loadedFinances: FinancesState | null = null;
 
   // 1. Tenta carregar do Supabase (Nuvem em produção / Vercel)
   try {
@@ -106,9 +171,7 @@ export async function readFinances(): Promise<FinancesState> {
           if (!Array.isArray(parsed.clothingPurchases)) {
             parsed.clothingPurchases = [];
           }
-          memoryFinances = parsed;
-          lastFinancesFetch = now;
-          return memoryFinances as FinancesState;
+          loadedFinances = parsed;
         }
       } catch (_) {}
     }
@@ -117,33 +180,41 @@ export async function readFinances(): Promise<FinancesState> {
   }
 
   // 2. Fallback para arquivo local
-  try {
-    if (fs.existsSync(FINANCES_FILE)) {
-      const raw = fs.readFileSync(FINANCES_FILE, 'utf8');
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.expenses)) {
-        if (!Array.isArray(parsed.clothingPurchases)) {
-          parsed.clothingPurchases = [];
+  if (!loadedFinances) {
+    try {
+      if (fs.existsSync(FINANCES_FILE)) {
+        const raw = fs.readFileSync(FINANCES_FILE, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.expenses)) {
+          if (!Array.isArray(parsed.clothingPurchases)) {
+            parsed.clothingPurchases = [];
+          }
+          loadedFinances = parsed;
         }
-        memoryFinances = parsed;
-        lastFinancesFetch = now;
-        return memoryFinances as FinancesState;
       }
+    } catch (e) {
+      console.warn('Erro ao ler finances_db.json:', e);
     }
-  } catch (e) {
-    console.warn('Erro ao ler finances_db.json:', e);
   }
 
-  const defaultState: FinancesState = {
-    expenses: [],
-    initialCashBalance: 0,
-    clothingPurchases: [],
-    updatedAt: new Date().toISOString(),
-  };
+  if (!loadedFinances) {
+    loadedFinances = {
+      expenses: [],
+      initialCashBalance: 0,
+      clothingPurchases: [],
+      updatedAt: new Date().toISOString(),
+    };
+  }
 
-  memoryFinances = defaultState;
+  // 3. Auto-reconciliação contínua: garante que todas as retiradas de estoque sejam lançadas como despesas
+  const writeOffsSynced = await syncWriteOffsToFinances(loadedFinances);
+  if (writeOffsSynced) {
+    await writeFinances(loadedFinances);
+  }
+
+  memoryFinances = loadedFinances;
   lastFinancesFetch = now;
-  return defaultState;
+  return loadedFinances;
 }
 
 export async function writeFinances(state: FinancesState): Promise<void> {

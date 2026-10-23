@@ -3,123 +3,49 @@ import { supabaseServer } from '@/lib/supabaseServer';
 import { recordOrderEvent } from '@/lib/liveStore';
 import fs from 'fs';
 import path from 'path';
-import { readFinances, writeFinances, ExpenseRecord, ExpenseCategory } from '@/lib/financesStore';
+import {
+  readWriteOffs,
+  saveWriteOffs,
+  deleteWriteOff,
+  WriteOffRecord,
+  WriteOffItemPayload,
+  REASON_LABELS,
+} from '@/lib/writeOffsStore';
+import {
+  readFinances,
+  writeFinances,
+  syncWriteOffsToFinances,
+  ExpenseRecord,
+  ExpenseCategory,
+} from '@/lib/financesStore';
 
-const WRITEOFFS_FILE = path.join(process.cwd(), 'inventory_writeoffs_db.json');
 const SALES_FILE = path.join(process.cwd(), 'sales_history_db.json');
 
-export interface WriteOffItemPayload {
-  variant_id?: string;
-  product_id?: string;
-  sku: string;
-  title: string;
-  color: string;
-  size: string;
-  quantity: number;
-  cost_price: number;
-}
-
-export interface WriteOffRecord {
-  id: string;
-  document_number: string;
-  created_at: string;
-  reason: 'OWNER_PERSONAL_USE' | 'SELLER_SAMPLE' | 'GIFT_MARKETING' | 'DEFECT_DAMAGE' | 'INVENTORY_ADJUSTMENT';
-  reason_label: string;
-  beneficiary_name: string;
-  seller_id?: string;
-  notes?: string;
-  total_items_count: number;
-  total_cost_value: number;
-  items: Array<{
-    sku: string;
-    title: string;
-    size: string;
-    color: string;
-    quantity: number;
-    cost_price: number;
-    total_cost: number;
-  }>;
-}
-
-const REASON_LABELS: Record<string, string> = {
-  OWNER_PERSONAL_USE: 'Uso Próprio da Proprietária (Ana Carina)',
-  SELLER_SAMPLE: 'Mostruário / Fornecimento para Vendedora Sem Custo',
-  GIFT_MARKETING: 'Brinde / Marketing / Parceria Influencer',
-  DEFECT_DAMAGE: 'Avaria / Defeito de Fábrica',
-  INVENTORY_ADJUSTMENT: 'Ajuste de Inventário / Perda',
-};
-
-const WRITEOFFS_ROW_ID = '00000000-0000-0000-0000-000000000097';
-const WRITEOFFS_SLUG = '__inventory_writeoffs_state__';
-
-async function readWriteOffs(): Promise<WriteOffRecord[]> {
-  // 1. Tenta carregar do Supabase (Nuvem em produção / Vercel)
-  try {
-    const { data: row, error } = await supabaseServer
-      .from('products')
-      .select('description')
-      .eq('id', WRITEOFFS_ROW_ID)
-      .maybeSingle();
-
-    if (!error && row?.description) {
-      try {
-        const parsed = JSON.parse(row.description);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (_) {}
-    }
-  } catch (err) {
-    console.warn('Erro ao ler writeOffs do Supabase:', err);
-  }
-
-  // 2. Fallback para arquivo local
-  try {
-    if (fs.existsSync(WRITEOFFS_FILE)) {
-      const raw = fs.readFileSync(WRITEOFFS_FILE, 'utf8');
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (e) {
-    console.warn('Erro ao ler inventory_writeoffs_db.json:', e);
-  }
-  return [];
-}
-
-async function saveWriteOffs(list: WriteOffRecord[]): Promise<void> {
-  const serialized = JSON.stringify(list, null, 2);
-
-  // 1. Salva no Supabase (Nuvem permanente para produção)
-  try {
-    await supabaseServer.from('products').upsert({
-      id: WRITEOFFS_ROW_ID,
-      title: '__INVENTORY_WRITEOFFS_STATE__',
-      slug: WRITEOFFS_SLUG,
-      description: serialized,
-    });
-  } catch (err) {
-    console.warn('Erro ao salvar writeOffs no Supabase:', err);
-  }
-
-  // 2. Salva no arquivo local
-  try {
-    fs.writeFileSync(WRITEOFFS_FILE, serialized, 'utf8');
-  } catch (e) {
-    console.error('Erro ao salvar inventory_writeoffs_db.json:', e);
-  }
-}
+export type { WriteOffRecord, WriteOffItemPayload };
 
 export async function GET() {
-  const writeOffs = await readWriteOffs();
-  const totalCost = writeOffs.reduce((acc, w) => acc + w.total_cost_value, 0);
-  const totalItems = writeOffs.reduce((acc, w) => acc + w.total_items_count, 0);
+  try {
+    const writeOffs = await readWriteOffs();
+    const totalCost = writeOffs.reduce((acc, w) => acc + (Number(w.total_cost_value) || 0), 0);
+    const totalItems = writeOffs.reduce((acc, w) => acc + (Number(w.total_items_count) || 0), 0);
 
-  return NextResponse.json({
-    writeOffs,
-    summary: {
-      totalDocuments: writeOffs.length,
-      totalItemsWithdrawn: totalItems,
-      totalCostValue: Number(totalCost.toFixed(2)),
-    },
-  });
+    // Garante que o financeiro esteja reconciliado
+    try {
+      const finances = await readFinances();
+      await syncWriteOffsToFinances(finances);
+    } catch (_) {}
+
+    return NextResponse.json({
+      writeOffs,
+      summary: {
+        totalDocuments: writeOffs.length,
+        totalItemsWithdrawn: totalItems,
+        totalCostValue: Number(totalCost.toFixed(2)),
+      },
+    });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -131,7 +57,13 @@ export async function POST(req: NextRequest) {
       seller_id,
       notes = '',
       items = [],
+      date,
+      created_at: customCreatedAt,
+      skip_stock_decrement = false,
+      skipStockDecrement = false,
     } = body;
+
+    const shouldSkipStock = Boolean(skip_stock_decrement || skipStockDecrement);
 
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -143,11 +75,15 @@ export async function POST(req: NextRequest) {
     const docNumber = `OUT-${Math.floor(100000 + Math.random() * 900000)}`;
     const reasonLabel = REASON_LABELS[reason] || 'Saída Sem Custo';
 
+    // Determina a data correta (permitindo lançamentos retroativos)
+    const recordDate = date || (customCreatedAt ? customCreatedAt.split('T')[0] : new Date().toISOString().split('T')[0]);
+    const finalCreatedAt = customCreatedAt || `${recordDate}T12:00:00.000Z`;
+
     let totalCost = 0;
     let totalQuantity = 0;
     const processedItems: any[] = [];
 
-    // 1. Itera sobre cada item para decrementar estoque no Supabase
+    // 1. Itera sobre cada item para decrementar estoque no Supabase (se não for retroativo com skip)
     for (const item of items) {
       const qty = Math.max(1, parseInt(item.quantity) || 1);
       const cost = parseFloat(item.cost_price) || 15.0;
@@ -166,42 +102,46 @@ export async function POST(req: NextRequest) {
         total_cost: Number((cost * qty).toFixed(2)),
       });
 
-      // 1.1 Decrementa o estoque no Supabase na tabela product_variants
-      try {
-        let variantQuery = supabaseServer.from('product_variants').select('id, stock_quantity');
+      // 1.1 Decrementa o estoque no Supabase na tabela product_variants apenas se não for marcado como skip
+      if (!shouldSkipStock) {
+        try {
+          let variantQuery = supabaseServer.from('product_variants').select('id, stock_quantity');
 
-        if (item.variant_id) {
-          variantQuery = variantQuery.eq('id', item.variant_id);
-        } else if (sku) {
-          variantQuery = variantQuery.eq('sku', sku);
+          if (item.variant_id) {
+            variantQuery = variantQuery.eq('id', item.variant_id);
+          } else if (sku) {
+            variantQuery = variantQuery.eq('sku', sku);
+          }
+
+          const { data: foundVariants } = await variantQuery;
+
+          if (foundVariants && foundVariants.length > 0) {
+            const v = foundVariants[0];
+            const currentStock = Number(v.stock_quantity) || 0;
+            const newStock = Math.max(0, currentStock - qty);
+
+            await supabaseServer
+              .from('product_variants')
+              .update({ stock_quantity: newStock })
+              .eq('id', v.id);
+          }
+        } catch (dbErr) {
+          console.warn(`Aviso ao atualizar estoque Supabase para SKU ${sku}:`, dbErr);
         }
-
-        const { data: foundVariants } = await variantQuery;
-
-        if (foundVariants && foundVariants.length > 0) {
-          const v = foundVariants[0];
-          const currentStock = Number(v.stock_quantity) || 0;
-          const newStock = Math.max(0, currentStock - qty);
-
-          await supabaseServer
-            .from('product_variants')
-            .update({ stock_quantity: newStock })
-            .eq('id', v.id);
-        }
-      } catch (dbErr) {
-        console.warn(`Aviso ao atualizar estoque Supabase para SKU ${sku}:`, dbErr);
       }
     }
 
     const newRecord: WriteOffRecord = {
       id: `writeoff-${Date.now()}`,
       document_number: docNumber,
-      created_at: new Date().toISOString(),
+      created_at: finalCreatedAt,
+      date: recordDate,
       reason,
       reason_label: reasonLabel,
       beneficiary_name: beneficiary_name.trim() || 'Ana Carina (Proprietária)',
       seller_id,
       notes: notes.trim(),
+      skip_stock_decrement: shouldSkipStock,
       total_items_count: totalQuantity,
       total_cost_value: Number(totalCost.toFixed(2)),
       items: processedItems,
@@ -257,16 +197,16 @@ export async function POST(req: NextRequest) {
       const itemsSummaryText = processedItems.map((p) => `${p.quantity}x ${p.title} (${p.color} - ${p.size})`).join(', ');
 
       const expenseRecord: ExpenseRecord = {
-        id: `exp-writeoff-${Date.now()}`,
-        date: new Date().toISOString().split('T')[0],
+        id: `exp-${newRecord.id || docNumber}`,
+        date: recordDate,
         description: `[Saída Estoque #${docNumber}] ${reasonLabel} (${newRecord.beneficiary_name}): ${itemsSummaryText}`,
         category: expenseCat,
         amount: Number(newRecord.total_cost_value.toFixed(2)),
         payment_method: 'OTHER',
         status: 'PAID',
-        paid_at: new Date().toISOString().split('T')[0],
+        paid_at: finalCreatedAt,
         notes: `Documento: ${docNumber}. Baixa de ${newRecord.total_items_count} peça(s) a preço de custo contábil. ${notes}`.trim(),
-        created_at: new Date().toISOString(),
+        created_at: finalCreatedAt,
       };
 
       if (!Array.isArray(finances.expenses)) {
@@ -299,5 +239,47 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error('Erro na baixa de estoque:', err);
     return NextResponse.json({ error: err.message || 'Erro interno no servidor' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    const docNumber = searchParams.get('document_number');
+
+    const targetKey = id || docNumber;
+    if (!targetKey) {
+      return NextResponse.json({ error: 'ID ou Document Number é obrigatório.' }, { status: 400 });
+    }
+
+    // 1. Remove do writeOffsStore
+    const removed = await deleteWriteOff(targetKey);
+
+    // 2. Remove a despesa correspondente no financeiro
+    try {
+      const finances = await readFinances();
+      if (Array.isArray(finances.expenses)) {
+        const initialCount = finances.expenses.length;
+        finances.expenses = finances.expenses.filter((e) => {
+          const matchId = id && (e.id === `exp-${id}` || (e.notes && e.notes.includes(id)));
+          const matchDoc = docNumber && (e.id === `exp-${docNumber}` || (e.notes && e.notes.includes(docNumber)) || (e.description && e.description.includes(docNumber)));
+          return !(matchId || matchDoc);
+        });
+        if (finances.expenses.length !== initialCount) {
+          await writeFinances(finances);
+        }
+      }
+    } catch (fErr) {
+      console.warn('Aviso ao remover despesa financeira vinculada:', fErr);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Saída de estoque cancelada/removida com sucesso.',
+      removed,
+    });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Erro ao cancelar saída.' }, { status: 500 });
   }
 }
