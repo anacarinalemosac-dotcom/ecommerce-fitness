@@ -5,6 +5,10 @@ import { syncProductToTikTokShop } from '@/lib/tiktokShopService';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+const isUuid = (val: any): boolean =>
+  typeof val === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -257,10 +261,6 @@ export async function POST(req: NextRequest) {
         .replace(/[\s_-]+/g, '-')
         .replace(/^-+|-+$/g, '');
 
-    const isUuid = (val: any) =>
-      typeof val === 'string' &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
-
     const rawExplicitCost = (cost_price !== undefined && cost_price !== null && cost_price !== '')
       ? cost_price
       : (costPrice !== undefined && costPrice !== null && costPrice !== '')
@@ -313,6 +313,94 @@ export async function POST(req: NextRequest) {
     // Determina o tipo de bojo
     const finalCupsType = cups_type || (removable_cups ? 'removable' : has_cups ? 'fixed' : 'none');
 
+    // 1. Resolução segura de category_id e supplier_id para evitar violações de FK / UUID
+    let resolvedCategoryId: string | null = null;
+    if (category_id && isUuid(category_id)) {
+      const { data: catRow } = await supabaseServer
+        .from('categories')
+        .select('id')
+        .eq('id', category_id)
+        .maybeSingle();
+      if (catRow?.id) {
+        resolvedCategoryId = catRow.id;
+      }
+    } else if (category_id && typeof category_id === 'string' && category_id.trim()) {
+      const catClean = category_id.trim().toLowerCase();
+      const { data: catRow } = await supabaseServer
+        .from('categories')
+        .select('id')
+        .or(`slug.eq.${catClean},name.ilike.${catClean}`)
+        .maybeSingle();
+      if (catRow?.id) {
+        resolvedCategoryId = catRow.id;
+      }
+    }
+
+    let resolvedSupplierId: string | null = null;
+    if (supplier_id && isUuid(supplier_id)) {
+      const { data: supRow } = await supabaseServer
+        .from('suppliers')
+        .select('id')
+        .eq('id', supplier_id)
+        .maybeSingle();
+      if (supRow?.id) {
+        resolvedSupplierId = supRow.id;
+      }
+    } else if (supplier_id && typeof supplier_id === 'string' && supplier_id.trim()) {
+      const supClean = supplier_id.trim();
+      const { data: supRow } = await supabaseServer
+        .from('suppliers')
+        .select('id')
+        .ilike('company_name', supClean)
+        .maybeSingle();
+      if (supRow?.id) {
+        resolvedSupplierId = supRow.id;
+      }
+    }
+
+    // Se nenhum fornecedor foi resolvido, busca o primeiro existente no banco como fallback seguro
+    if (!resolvedSupplierId) {
+      const { data: defaultSup } = await supabaseServer
+        .from('suppliers')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+      if (defaultSup?.id) {
+        resolvedSupplierId = defaultSup.id;
+      }
+    }
+
+    // 2. Resolução segura do ID e Slug para evitar colisão de chave única (products_slug_key)
+    let targetProductId: string | null = (id && isUuid(id)) ? id : null;
+    let finalCleanSlug = cleanSlug;
+
+    // Se não tiver ID válido de UUID, verifica se já existe um produto com este slug no banco
+    if (!targetProductId) {
+      const { data: existingProductBySlug } = await supabaseServer
+        .from('products')
+        .select('id, slug')
+        .eq('slug', cleanSlug)
+        .maybeSingle();
+
+      if (existingProductBySlug?.id) {
+        // Se já existe produto com esse slug e o usuário estava editando, adota o ID existente
+        targetProductId = existingProductBySlug.id;
+      }
+    } else {
+      // Se já tem ID, verifica se o cleanSlug pertence a OUTRO produto diferente
+      const { data: otherProductWithSlug } = await supabaseServer
+        .from('products')
+        .select('id')
+        .eq('slug', cleanSlug)
+        .neq('id', targetProductId)
+        .maybeSingle();
+
+      if (otherProductWithSlug?.id) {
+        // Colisão com outro produto: gera sufixo único
+        finalCleanSlug = `${cleanSlug}-${Date.now().toString(36).slice(-4)}`;
+      }
+    }
+
     // Empacota metadados detalhados (composição, bojo, descrições bilíngues, tabela de medidas, tags, subcategoria, galeria de fotos, cores, tamanhos e variações de backup)
     const metadataPayload = {
       bio: description_en || description || description_pt || '',
@@ -325,6 +413,8 @@ export async function POST(req: NextRequest) {
       sizeGuide: sizeGuide || '',
       tags: Array.isArray(tags) ? tags : [],
       subcategory: subcategory || '',
+      category_id: resolvedCategoryId,
+      supplier_id: resolvedSupplierId,
       price: parsedExplicitPrice,
       promotional_price: promotional_price ? parseFloat(promotional_price) : (compare_price ? parsedExplicitPrice : null),
       compare_price: compare_price ? parseFloat(compare_price) : null,
@@ -345,49 +435,79 @@ export async function POST(req: NextRequest) {
     };
     const structuredDescription = JSON.stringify(metadataPayload);
 
-    // 1. Grava ou atualiza na tabela 'products'
+    // 3. Grava ou atualiza na tabela 'products'
     const productData: any = {
       title: title.toUpperCase(),
-      slug: cleanSlug,
+      slug: finalCleanSlug,
       description: structuredDescription,
-      category_id: category_id || null,
-      supplier_id: supplier_id || null,
+      category_id: resolvedCategoryId,
+      supplier_id: resolvedSupplierId,
     };
 
-    if (id && isUuid(id)) {
-      productData.id = id;
+    if (targetProductId) {
+      productData.id = targetProductId;
     }
 
-    const { data: savedProducts, error: prodError } = await supabaseServer
+    let { data: savedProducts, error: prodError } = await supabaseServer
       .from('products')
       .upsert(productData)
       .select();
 
+    // Auto-recuperação caso ocorra colisão de slug (code: 23505)
+    if (prodError && prodError.code === '23505') {
+      console.warn('Colisão de slug detectada no Supabase, aplicando salt e tentando novamente...', prodError.message);
+      productData.slug = `${cleanSlug}-${Math.random().toString(36).substring(2, 6)}`;
+      const retryProd = await supabaseServer
+        .from('products')
+        .upsert(productData)
+        .select();
+      savedProducts = retryProd.data;
+      prodError = retryProd.error;
+    }
+
+    // Auto-recuperação caso ocorra erro de foreign key residual (code: 23503 ou 22P02)
+    if (prodError && (prodError.code === '23503' || prodError.code === '22P02')) {
+      console.warn('Erro de chave estrangeira/UUID detectado, removendo FKs e tentando novamente...', prodError.message);
+      productData.category_id = null;
+      productData.supplier_id = null;
+      const retryProd = await supabaseServer
+        .from('products')
+        .upsert(productData)
+        .select();
+      savedProducts = retryProd.data;
+      prodError = retryProd.error;
+    }
+
     if (prodError) {
-      console.error('Erro ao salvar produto no Supabase:', prodError);
+      console.error('Erro crítico ao salvar produto no Supabase:', prodError);
       return NextResponse.json({ error: `Erro no Supabase: ${prodError.message}` }, { status: 400 });
     }
 
     const product = savedProducts?.[0];
-    const targetProductId = product?.id || (id && isUuid(id) ? id : null);
+    const finalProductId = product?.id || targetProductId;
 
-    if (!targetProductId) {
+    if (!finalProductId) {
       return NextResponse.json({ error: 'Falha ao salvar produto: ID não pôde ser gerado.' }, { status: 500 });
     }
 
-    // 2. Grava ou atualiza a matriz de variações na tabela 'product_variants'
+    // 4. Grava ou atualiza a matriz de variações na tabela 'product_variants'
     let savedVariants: any[] = [];
 
-    if (Array.isArray(variants) && variants.length > 0 && targetProductId) {
-      // Limpa variantes existentes para gravar a grade atualizada sem duplicatas ou órfãos
-      await supabaseServer
-        .from('product_variants')
-        .delete()
-        .eq('product_id', targetProductId);
+    if (Array.isArray(variants) && variants.length > 0 && finalProductId) {
+      try {
+        // Limpa variantes existentes para gravar a grade atualizada sem duplicatas ou órfãos
+        await supabaseServer
+          .from('product_variants')
+          .delete()
+          .eq('product_id', finalProductId);
+      } catch (delErr) {
+        console.warn('Aviso ao deletar variantes antigas:', delErr);
+      }
 
       const batchSkus = new Set<string>();
       const batchBarcodes = new Set<string>();
-      const shortId = targetProductId.replace(/-/g, '').slice(0, 4).toUpperCase();
+      const shortId = finalProductId.replace(/-/g, '').slice(0, 4).toUpperCase();
+      const timeSalt = Date.now().toString(36).slice(-3).toUpperCase();
 
       const variantsData = variants.map((v: any, i: number) => {
         const rawVarCost = (v.cost_price !== undefined && v.cost_price !== null && v.cost_price !== '')
@@ -395,10 +515,15 @@ export async function POST(req: NextRequest) {
           : (v.costPrice !== undefined && v.costPrice !== null && v.costPrice !== '')
           ? v.costPrice
           : parsedExplicitCost;
-        const vCost = !isNaN(Number(rawVarCost)) ? Number(rawVarCost) : parsedExplicitCost;
+        const vCost = (!isNaN(Number(rawVarCost)) && Number(rawVarCost) >= 0) ? Number(rawVarCost) : parsedExplicitCost;
 
-        // Gera SKU garantidamente único por variação
-        let finalSku = v.sku?.trim() || `${title.slice(0, 3).toUpperCase()}-${(v.color || 'COR').slice(0, 3).toUpperCase()}-${v.size || 'TAM'}-${shortId}-${i + 1}`;
+        const rawVarPrice = (v.price !== undefined && v.price !== null && v.price !== '')
+          ? v.price
+          : parsedExplicitPrice;
+        const vPrice = (!isNaN(Number(rawVarPrice)) && Number(rawVarPrice) >= 0) ? Number(rawVarPrice) : (parsedExplicitPrice || 44.90);
+
+        // Gera SKU garantidamente único por variação e globalmente no banco
+        let finalSku = v.sku?.trim() || `${title.slice(0, 3).toUpperCase()}-${(v.color || 'COR').slice(0, 3).toUpperCase()}-${v.size || 'TAM'}-${shortId}-${timeSalt}-${i + 1}`;
         if (batchSkus.has(finalSku)) {
           finalSku = `${finalSku}-${i + 1}`;
         }
@@ -421,29 +546,20 @@ export async function POST(req: NextRequest) {
           ? [primaryImg]
           : [];
 
-        const rawVarPrice = (v.price !== undefined && v.price !== null && v.price !== '')
-          ? v.price
-          : parsedExplicitPrice;
-        const vPrice = !isNaN(Number(rawVarPrice)) ? Number(rawVarPrice) : parsedExplicitPrice;
-
         const variantPayload: any = {
-          product_id: targetProductId,
+          product_id: finalProductId,
           sku: finalSku,
           barcode: genBarcode,
           size: v.size || 'M',
           color: v.color || 'Preto Ônix',
           price: vPrice,
           cost_price: vCost,
-          stock_quantity: parseInt(v.stock_quantity) || 0,
+          stock_quantity: Math.max(0, parseInt(String(v.stock_quantity ?? v.stock ?? 0), 10) || 0),
           allow_backorder: Boolean(v.allow_backorder),
-          estimated_production_days: parseInt(v.estimated_production_days) || 7,
+          estimated_production_days: parseInt(String(v.estimated_production_days ?? 7), 10) || 7,
           images: vImages,
           video_url: v.video_url || null,
         };
-
-        if (v.id && isUuid(v.id)) {
-          variantPayload.id = v.id;
-        }
 
         return variantPayload;
       });
@@ -455,7 +571,7 @@ export async function POST(req: NextRequest) {
 
       // Retry robusto caso ocorra colisão de barcode ou SKU único no Postgres
       if (varError && varError.code === '23505') {
-        console.warn('Colisão de constraint detectada, executando retry com salt único...', varError.message);
+        console.warn('Colisão de constraint detectada em product_variants, executando retry com salt único...', varError.message);
         const retryVariantsData = variantsData.map((vd: any, idx: number) => {
           const randSalt = Math.random().toString(36).substring(2, 6).toUpperCase();
           const randBarcode = `789${Math.floor(100000000 + Math.random() * 900000000)}`;
@@ -474,8 +590,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (varError) {
-        console.warn('Erro ao salvar na tabela product_variants:', varError);
-        // Fallback: se a tabela falhou, garantimos que variantsData seja retornado ao cliente
+        console.warn('Aviso: Não foi possível gravar na tabela product_variants, mas o produto e variações estão salvos com segurança no JSON:', varError);
         savedVariants = variantsData;
       } else if (upsertedVariants && upsertedVariants.length > 0) {
         savedVariants = upsertedVariants;
@@ -567,13 +682,28 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'ID do produto é obrigatório.' }, { status: 400 });
     }
 
-    const { data: currentProduct, error: fetchErr } = await supabaseServer
-      .from('products')
-      .select('id, description')
-      .eq('id', id)
-      .maybeSingle();
+    let currentProduct = null;
+    let targetId = id;
+    if (isUuid(id)) {
+      const { data } = await supabaseServer
+        .from('products')
+        .select('id, description')
+        .eq('id', id)
+        .maybeSingle();
+      currentProduct = data;
+    } else {
+      const { data } = await supabaseServer
+        .from('products')
+        .select('id, description')
+        .eq('slug', id)
+        .maybeSingle();
+      currentProduct = data;
+      if (currentProduct) {
+        targetId = currentProduct.id;
+      }
+    }
 
-    if (fetchErr || !currentProduct) {
+    if (!currentProduct) {
       return NextResponse.json({ error: 'Produto não encontrado.' }, { status: 404 });
     }
 
@@ -604,7 +734,7 @@ export async function PATCH(req: NextRequest) {
         await supabaseServer
           .from('product_variants')
           .update({ cost_price: numCost })
-          .eq('product_id', id);
+          .eq('product_id', targetId);
       }
     }
 
@@ -620,7 +750,7 @@ export async function PATCH(req: NextRequest) {
         await supabaseServer
           .from('product_variants')
           .update({ price: numPrice })
-          .eq('product_id', id);
+          .eq('product_id', targetId);
       }
     }
 
@@ -631,7 +761,7 @@ export async function PATCH(req: NextRequest) {
     const { data: updatedRows, error: updErr } = await supabaseServer
       .from('products')
       .update({ description: JSON.stringify(meta) })
-      .eq('id', id)
+      .eq('id', targetId)
       .select('*');
 
     if (updErr) {

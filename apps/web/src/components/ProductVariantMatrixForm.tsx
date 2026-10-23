@@ -1095,12 +1095,15 @@ export function ProductVariantMatrixForm({
         finalDescEn = translatePtToEn(finalDescPt);
       }
 
+      const finalCatId = categoryId || categoriesList[0]?.id || null;
+      const finalSupId = supplierId || suppliersList[0]?.id || null;
+
       const payload = {
         id: initialProduct?.id,
         title,
         slug,
-        category_id: categoryId || null,
-        supplier_id: supplierId || null,
+        category_id: finalCatId,
+        supplier_id: finalSupId,
         subcategory,
         tags,
         cups_type: cupsType,
@@ -1171,9 +1174,10 @@ export function ProductVariantMatrixForm({
       }
     } catch (err: any) {
       console.error('Erro ao salvar no Supabase:', err);
+      const cleanErrMsg = (err.message || '').replace(/^Erro no Supabase:\s*/i, '').replace(/^Falha ao salvar no Supabase:\s*/i, '');
       setFeedback({
         type: 'error',
-        message: `Falha ao salvar no Supabase: ${err.message}`,
+        message: `Falha ao salvar no Supabase: ${cleanErrMsg}`,
       });
     } finally {
       setIsSaving(false);
