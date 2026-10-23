@@ -58,125 +58,13 @@ interface CartItem {
   itemDiscount?: number; // Desconto em dólar ($) específico por peça
 }
 
-// Gera mensagem formatada para cobrança/carnê no WhatsApp
-function generateCrediarioWhatsAppMessage(sale: any): string {
-  const customer = sale.customer_name || 'Cliente';
-  const orderId = sale.order_id;
-  const cred = sale.crediario;
-  const total = Number(sale.subtotal_products - (sale.discount_amount || 0)).toFixed(2);
-  const downPayment = Number(cred?.down_payment || 0).toFixed(2);
-  const remaining = Number(cred?.remaining_balance || total).toFixed(2);
-
-  let msg = `✨ *ANA FITNESS WEAR • CARNÊ DE CREDIÁRIO* ✨\n\n`;
-  msg += `Olá *${customer}*! Segue o comprovante e as datas de vencimento da sua compra em crediário:\n\n`;
-  msg += `🛍️ *Pedido:* #${orderId}\n`;
-  msg += `💰 *Valor Total:* $${total} USD\n`;
-  if (Number(downPayment) > 0) {
-    msg += `💵 *Entrada Paga:* $${downPayment} USD (${cred?.down_payment_method || 'CASH'})\n`;
-  }
-  msg += `📋 *Saldo Parcelado:* $${remaining} USD em *${cred?.installments_count || 1}x*\n\n`;
-  msg += `📅 *DATAS DE VENCIMENTO DAS PARCELAS:*\n`;
-
-  (cred?.installments || []).forEach((inst: any) => {
-    const [y, m, d] = (inst.due_date || '').split('-');
-    const dateFormatted = d && m && y ? `${d}/${m}/${y}` : inst.due_date;
-    msg += `▫️ *Parcela ${inst.number}/${cred?.installments_count}:* $${Number(inst.amount).toFixed(2)} USD • *Vence em ${dateFormatted}*\n`;
-  });
-
-  msg += `\n📍 *Showroom:* Leominster, Massachusetts\n`;
-  msg += `Muito obrigada pela preferência e confiança! Qualquer dúvida estamos à disposição. 💕`;
-  return msg;
-}
-
-// Abre janela de impressão com carnê e nota promissória oficial
-function printCrediarioCarnet(sale: any) {
-  if (typeof window === 'undefined') return;
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
-
-  const cred = sale.crediario;
-  const customer = sale.customer_name || 'Cliente';
-  const phone = sale.customer_phone || '';
-  const doc = cred?.customer_doc || 'Não informado';
-  const address = cred?.customer_address || 'Não informado';
-  const total = Number(sale.subtotal_products - (sale.discount_amount || 0)).toFixed(2);
-  const downPayment = Number(cred?.down_payment || 0).toFixed(2);
-  const remaining = Number(cred?.remaining_balance || total).toFixed(2);
-
-  const installmentsHtml = (cred?.installments || []).map((inst: any) => {
-    const [y, m, d] = (inst.due_date || '').split('-');
-    const dateFormatted = d && m && y ? `${d}/${m}/${y}` : inst.due_date;
-    return `
-      <div style="border: 2px dashed #000; padding: 12px; margin-bottom: 12px; font-family: monospace; page-break-inside: avoid;">
-        <div style="display: flex; justify-content: space-between; font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 4px;">
-          <span>CARNÊ / PROMISSÓRIA - PARCELA ${inst.number}/${cred?.installments_count}</span>
-          <span style="font-size: 15px;">VALOR: $${Number(inst.amount).toFixed(2)} USD</span>
-        </div>
-        <div style="margin-top: 8px; font-size: 11px; line-height: 1.5;">
-          <div><strong>PEDIDO:</strong> #${sale.order_id} | <strong>DATA COMPRA:</strong> ${new Date(sale.created_at || Date.now()).toLocaleDateString('pt-BR')}</div>
-          <div><strong>CLIENTE:</strong> ${customer} | <strong>DOC:</strong> ${doc}</div>
-          <div><strong>TELEFONE:</strong> ${phone}</div>
-          <div style="margin-top: 4px; font-size: 13px;"><strong>DATA DE VENCIMENTO:</strong> <span style="font-size: 15px; font-weight: bold; background-color: #fef08a; padding: 2px 6px;">${dateFormatted}</span></div>
-        </div>
-        <div style="margin-top: 14px; border-top: 1px solid #999; padding-top: 6px; font-size: 9px; display: flex; justify-content: space-between; color: #555;">
-          <span>Data Pgto: ___/___/______</span>
-          <span>Meio: [ ] Dinheiro  [ ] Zelle</span>
-          <span>Visto do Recebedor: ____________________</span>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Carnê de Crediário - ${sale.order_id}</title>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #000; }
-          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; }
-          .title { font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
-          .info { margin-bottom: 16px; font-size: 12px; line-height: 1.6; background: #f9f9f9; padding: 12px; border: 1px solid #ddd; }
-          .terms { font-size: 10px; border: 1px solid #000; padding: 10px; margin-top: 20px; line-height: 1.4; background: #fdfdfd; }
-          .sig { margin-top: 36px; text-align: center; border-top: 1px solid #000; width: 60%; margin-left: auto; margin-right: auto; padding-top: 8px; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="title">ANA FITNESS WEAR LLC</div>
-          <div style="font-size: 12px; margin-top: 2px;">Showroom & Loja Oficial • Leominster, Massachusetts</div>
-          <div style="font-weight: bold; margin-top: 6px; font-size: 14px; text-transform: uppercase;">CARNÊ DE CREDIÁRIO & NOTA PROMISSÓRIA DA LOJA</div>
-        </div>
-        <div class="info">
-          <div><strong>PEDIDO:</strong> #${sale.order_id} | <strong>VENDEDORA:</strong> ${sale.seller_name || 'Showroom Leominster'}</div>
-          <div><strong>CLIENTE:</strong> ${customer} | <strong>DOC:</strong> ${doc}</div>
-          <div><strong>TELEFONE:</strong> ${phone} | <strong>ENDEREÇO:</strong> ${address}</div>
-          <div style="margin-top: 4px; font-weight: bold;">
-            TOTAL: $${total} USD | ENTRADA: $${downPayment} USD | SALDO PARCELADO: $${remaining} USD em ${cred?.installments_count || 1}x
-          </div>
-        </div>
-
-        <h3 style="text-transform: uppercase; font-size: 13px; margin-bottom: 10px; font-weight: bold;">Lâminas / Canhotos das Parcelas:</h3>
-        ${installmentsHtml}
-
-        <div class="terms">
-          <strong>TERMO DE COMPROMISSO E CONFISSÃO DE DÍVIDA:</strong><br/>
-          Pelo presente instrumento, reconheço e declaro-me devedor(a) da quantia total mencionada acima perante a <strong>ANA FITNESS WEAR LLC</strong>, comprometendo-me irrevogavelmente a efetuar a liquidação das parcelas discriminadas nas suas respectivas datas de vencimento.
-        </div>
-
-        <div class="sig">
-          <strong>${customer}</strong><br/>
-          Assinatura da Devedora / Cliente
-        </div>
-
-        <script>
-          window.onload = function() { window.print(); }
-        </script>
-      </body>
-    </html>
-  `);
-  printWindow.document.close();
-}
+import {
+  generateReceiptWhatsAppMessage,
+  generateCrediarioWhatsAppMessage,
+  printSaleReceipt,
+  printCrediarioCarnet,
+  formatPaymentMethodLabel,
+} from '@/lib/whatsappMessages';
 
 export default function PosTerminalPage() {
   const { products, refreshProducts, adminUser, loginAdmin } = useStoreSettings();
@@ -274,6 +162,7 @@ export default function PosTerminalPage() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedSale, setCompletedSale] = useState<any | null>(null);
+  const [completedSalePhone, setCompletedSalePhone] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState('');
   const [showWriteOffModal, setShowWriteOffModal] = useState(false);
 
@@ -588,13 +477,15 @@ export default function PosTerminalPage() {
       }
 
       const data = await res.json();
-      setCompletedSale(data.sale || {
+      const saleObj = data.sale || {
         ...payload,
         total_paid: totalAfterDiscount,
         discount_amount: calculatedDiscountAmount,
         commission_amount: commission,
         discount_reason: discountReason.trim() || undefined,
-      });
+      };
+      setCompletedSale(saleObj);
+      setCompletedSalePhone(customerPhone.trim() || saleObj.customer_phone || '');
       setCart([]);
       setDiscountInput('');
       setDiscountValue(0);
@@ -860,8 +751,8 @@ export default function PosTerminalPage() {
               </div>
             </div>
 
-            {/* SEÇÃO ESPECIAL DE CARNÊ QUANDO FOR CREDIÁRIO */}
-            {completedSale.crediario && (
+            {/* SEÇÃO DE RECIBO / CARNÊ PARA WHATSAPP */}
+            {completedSale.crediario ? (
               <div className="bg-amber-50/80 border-2 border-amber-300 p-4 space-y-3">
                 <div className="flex items-center justify-between border-b border-amber-200 pb-2">
                   <div className="flex items-center gap-2 text-amber-900 font-black text-xs uppercase tracking-wider">
@@ -873,6 +764,18 @@ export default function PosTerminalPage() {
                       DOC: {completedSale.crediario.customer_doc}
                     </span>
                   )}
+                </div>
+
+                {/* Campo para confirmar/editar telefone do WhatsApp */}
+                <div className="bg-white p-2.5 border border-amber-300 flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-amber-700 shrink-0" />
+                  <input
+                    type="tel"
+                    placeholder="WhatsApp da Cliente (DDD + Número)"
+                    value={completedSalePhone}
+                    onChange={(e) => setCompletedSalePhone(e.target.value)}
+                    className="w-full text-xs font-bold text-deep-black placeholder:text-deep-black/40 focus:outline-none"
+                  />
                 </div>
 
                 <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
@@ -901,8 +804,12 @@ export default function PosTerminalPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      const msg = generateCrediarioWhatsAppMessage(completedSale);
-                      const cleanPhone = (completedSale.customer_phone || '').replace(/\D/g, '');
+                      const msg = generateCrediarioWhatsAppMessage({
+                        ...completedSale,
+                        customer_phone: completedSalePhone || completedSale.customer_phone,
+                      });
+                      let cleanPhone = (completedSalePhone || completedSale.customer_phone || '').replace(/\D/g, '');
+                      if (cleanPhone.length === 10) cleanPhone = `1${cleanPhone}`;
                       const url = cleanPhone
                         ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
                         : `https://wa.me/?text=${encodeURIComponent(msg)}`;
@@ -924,6 +831,65 @@ export default function PosTerminalPage() {
                   </button>
                 </div>
               </div>
+            ) : (
+              <div className="bg-emerald-50/80 border-2 border-emerald-300 p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
+                  <div className="flex items-center gap-2 text-emerald-900 font-black text-xs uppercase tracking-wider">
+                    <MessageCircle className="w-4 h-4 text-emerald-700" />
+                    <span>RECIBO & AGRADECIMENTO (WHATSAPP)</span>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
+                    {formatPaymentMethodLabel(completedSale.payment_method)}
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-emerald-900/80 leading-relaxed">
+                  Envie o comprovante detalhado com mensagem calorosa de agradecimento diretamente para o WhatsApp da cliente ou imprima o cupom oficial.
+                </p>
+
+                {/* Campo para confirmar/editar telefone do WhatsApp */}
+                <div className="bg-white p-2.5 border border-emerald-300 flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <input
+                    type="tel"
+                    placeholder="WhatsApp da Cliente (DDD + Número ou celular US)"
+                    value={completedSalePhone}
+                    onChange={(e) => setCompletedSalePhone(e.target.value)}
+                    className="w-full text-xs font-bold text-deep-black placeholder:text-deep-black/40 focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const msg = generateReceiptWhatsAppMessage({
+                        ...completedSale,
+                        customer_phone: completedSalePhone || completedSale.customer_phone,
+                      });
+                      let cleanPhone = (completedSalePhone || completedSale.customer_phone || '').replace(/\D/g, '');
+                      if (cleanPhone.length === 10) cleanPhone = `1${cleanPhone}`;
+                      const url = cleanPhone
+                        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
+                        : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+                      window.open(url, '_blank');
+                    }}
+                    className="py-2.5 px-3 bg-green-600 hover:bg-green-700 text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>ENVIAR NO WHATSAPP</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => printSaleReceipt(completedSale)}
+                    className="py-2.5 px-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>IMPRIMIR RECIBO</span>
+                  </button>
+                </div>
+              </div>
             )}
 
             <div className="flex flex-col sm:flex-row gap-3">
@@ -931,6 +897,7 @@ export default function PosTerminalPage() {
                 type="button"
                 onClick={() => {
                   setCompletedSale(null);
+                  setCompletedSalePhone('');
                   setCart([]);
                   setDiscountInput('');
                   setDiscountValue(0);

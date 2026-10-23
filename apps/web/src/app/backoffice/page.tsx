@@ -90,6 +90,12 @@ import { SimpleFinancesView } from '../../components/backoffice/SimpleFinancesVi
 import { SuppliersManagementView } from '../../components/backoffice/SuppliersManagementView';
 import { AccessReportsView } from '../../components/backoffice/AccessReportsView';
 import { SalesReportModal } from '../../components/backoffice/SalesReportModal';
+import {
+  generateReceiptWhatsAppMessage,
+  generateCrediarioWhatsAppMessage,
+  printSaleReceipt,
+  printCrediarioCarnet,
+} from '@/lib/whatsappMessages';
 
 interface ProductProfit {
   sku: string;
@@ -217,84 +223,7 @@ const INITIAL_CATALOG: CatalogProduct[] = [
   },
 ];
 
-// Abre janela de impressão com carnê e nota promissória oficial
-function printCrediarioCarnet(sale: any) {
-  if (typeof window === 'undefined') return;
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
 
-  const cred = sale.crediario;
-  const customer = sale.customer_name || 'Cliente';
-  const phone = sale.customer_phone || '';
-  const doc = cred?.customer_doc || 'Não informado';
-  const total = Number(sale.subtotal_products - (sale.discount_amount || 0)).toFixed(2);
-  const downPayment = Number(cred?.down_payment || 0).toFixed(2);
-  const remaining = Number(cred?.remaining_balance || total).toFixed(2);
-
-  const installmentsHtml = (cred?.installments || []).map((inst: any) => {
-    const [y, m, d] = (inst.due_date || '').split('-');
-    const dateFormatted = d && m && y ? `${d}/${m}/${y}` : inst.due_date;
-    const isPaid = inst.status === 'PAID';
-    return `
-      <div style="border: 2px dashed #000; padding: 12px; margin-bottom: 12px; font-family: monospace; page-break-inside: avoid; background: ${isPaid ? '#f0fdf4' : '#fff'};">
-        <div style="display: flex; justify-content: space-between; font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 4px;">
-          <span>CARNÊ / PROMISSÓRIA - PARCELA ${inst.number}/${cred?.installments_count || cred?.installments?.length}</span>
-          <span style="font-size: 15px;">VALOR: $${Number(inst.amount).toFixed(2)} USD ${isPaid ? '✓ PAGO' : ''}</span>
-        </div>
-        <div style="margin-top: 8px; font-size: 11px; line-height: 1.5;">
-          <div><strong>PEDIDO:</strong> #${sale.order_id} | <strong>DATA COMPRA:</strong> ${new Date(sale.created_at || Date.now()).toLocaleDateString('pt-BR')}</div>
-          <div><strong>CLIENTE:</strong> ${customer} | <strong>DOC:</strong> ${doc}</div>
-          <div><strong>TELEFONE:</strong> ${phone}</div>
-          <div style="margin-top: 4px; font-size: 13px;"><strong>DATA DE VENCIMENTO:</strong> <span style="font-size: 15px; font-weight: bold; background-color: #fef08a; padding: 2px 6px;">${dateFormatted}</span></div>
-        </div>
-        <div style="margin-top: 14px; border-top: 1px solid #999; padding-top: 6px; font-size: 9px; display: flex; justify-content: space-between; color: #555;">
-          <span>Data Pgto: ${isPaid && inst.paid_at ? new Date(inst.paid_at).toLocaleDateString('pt-BR') : '___/___/______'}</span>
-          <span>Meio: ${isPaid && inst.paid_method ? `[X] ${inst.paid_method}` : '[ ] Dinheiro  [ ] Zelle'}</span>
-          <span>Visto do Recebedor: ____________________</span>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Carnê de Crediário - ${sale.order_id}</title>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #000; }
-          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; }
-          .title { font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
-          .info { margin-bottom: 16px; font-size: 12px; line-height: 1.6; background: #f9f9f9; padding: 12px; border: 1px solid #ddd; }
-          .terms { font-size: 10px; border: 1px solid #000; padding: 10px; margin-top: 20px; line-height: 1.4; background: #fdfdfd; }
-          .sig { margin-top: 36px; text-align: center; border-top: 1px solid #000; width: 60%; margin-left: auto; margin-right: auto; padding-top: 8px; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="title">ANA FITNESS WEAR</div>
-          <div style="font-size: 11px; letter-spacing: 2px;">CARNÊ DE CREDIÁRIO & NOTA PROMISSÓRIA</div>
-          <div style="font-size: 10px; color: #555; margin-top: 4px;">SHOWROOM LEOMINSTER, MASSACHUSETTS • +1 (978) 313-9452</div>
-        </div>
-        <div class="info">
-          <div><strong>CLIENTE:</strong> ${customer}</div>
-          <div><strong>DOC (CPF / ID):</strong> ${doc}</div>
-          <div><strong>WHATSAPP:</strong> ${phone}</div>
-          <div><strong>TOTAL COMPRA:</strong> $${total} USD | <strong>ENTRADA:</strong> $${downPayment} USD | <strong>SALDO:</strong> $${remaining} USD</div>
-        </div>
-        ${installmentsHtml}
-        <div class="terms">
-          Reconheço a dívida referente às mercadorias adquiridas sob o Pedido #${sale.order_id} e comprometo-me a efetuar o pagamento das parcelas discriminadas acima nas respectivas datas de vencimento.
-        </div>
-        <div class="sig">
-          Assinatura da Cliente: __________________________________________________
-        </div>
-        <script>window.onload = function() { window.print(); };</script>
-      </body>
-    </html>
-  `);
-  printWindow.document.close();
-}
 
 export default function BackofficeDashboard() {
   const { adminUser, loginAdmin, logoutAdmin, refreshProducts, siteInfo } = useStoreSettings();
@@ -4087,6 +4016,28 @@ export default function BackofficeDashboard() {
                               <button
                                 type="button"
                                 onClick={() => {
+                                  const isCred = sale.payment_method === 'CREDIARIO' || !!sale.crediario;
+                                  const msg = isCred
+                                    ? generateCrediarioWhatsAppMessage(sale)
+                                    : generateReceiptWhatsAppMessage(sale);
+                                  const cleanPhone = String(sale.customer_phone || '').replace(/\D/g, '');
+                                  const fullPhone = cleanPhone.length === 10 ? `1${cleanPhone}` : cleanPhone;
+                                  if (fullPhone) {
+                                    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+                                  } else {
+                                    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                                  }
+                                }}
+                                className="px-2 py-1 bg-green-700 hover:bg-green-800 text-white text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border border-green-900 shadow-2xs cursor-pointer"
+                                title="Enviar Recibo de Pagamento & Agradecimento no WhatsApp da cliente"
+                              >
+                                <MessageCircle className="w-3 h-3 text-white" />
+                                <span>RECIBO WHATSAPP</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
                                   const cleanPhone = String(sale.customer_phone || '').replace(/\D/g, '');
                                   const fullPhone = cleanPhone.length === 10 ? `1${cleanPhone}` : cleanPhone;
                                   const firstItem = (sale.items && sale.items[0]) ? sale.items[0] : null;
@@ -4740,6 +4691,44 @@ export default function BackofficeDashboard() {
                 </div>
 
                 <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const isCred = selectedSaleDetail.payment_method === 'CREDIARIO' || !!selectedSaleDetail.crediario;
+                        const msg = isCred
+                          ? generateCrediarioWhatsAppMessage(selectedSaleDetail)
+                          : generateReceiptWhatsAppMessage(selectedSaleDetail);
+                        const cleanPhone = String(selectedSaleDetail.customer_phone || '').replace(/\D/g, '');
+                        const fullPhone = cleanPhone.length === 10 ? `1${cleanPhone}` : cleanPhone;
+                        if (fullPhone) {
+                          window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+                        } else {
+                          window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                        }
+                      }}
+                      className="py-2.5 px-3 bg-green-600 hover:bg-green-700 text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>RECIBO NO WHATSAPP</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const isCred = selectedSaleDetail.payment_method === 'CREDIARIO' || !!selectedSaleDetail.crediario;
+                        if (isCred) {
+                          printCrediarioCarnet(selectedSaleDetail);
+                        } else {
+                          printSaleReceipt(selectedSaleDetail);
+                        }
+                      }}
+                      className="py-2.5 px-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>IMPRIMIR RECIBO</span>
+                    </button>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => {
