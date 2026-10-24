@@ -311,6 +311,19 @@ export default function HomePage() {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [shareModalProduct, setShareModalProduct] = useState<any | null>(null);
   const [cardImageOverrides, setCardImageOverrides] = useState<Record<string, string>>({});
+  const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
+
+  const activeHeroSlides = (siteInfo.heroBanners && siteInfo.heroBanners.length > 0)
+    ? siteInfo.heroBanners.filter((b) => b.active !== false)
+    : [];
+
+  useEffect(() => {
+    if (activeHeroSlides.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentHeroSlide((prev) => (prev + 1) % activeHeroSlides.length);
+    }, 7000);
+    return () => clearInterval(timer);
+  }, [activeHeroSlides.length]);
 
   // Escuta filtros disparados pelo menu sem forçar salto brusco para o rodapé
   useEffect(() => {
@@ -408,97 +421,193 @@ export default function HomePage() {
   return (
     <div className="space-y-20 sm:space-y-28 bg-white selection:bg-deep-black selection:text-gold">
       {/* =========================================================================
-          1. HERO BANNER FULL-BLEED (GYMSHARK 80% AESTHETIC: HIGH IMPACT & CONTRAST)
+          1. HERO BANNER FULL-BLEED (CARROSSEL DINÂMICO & ALTO IMPACTO ATHLETIC LUXURY)
          ========================================================================= */}
-      <section className="relative min-h-[92vh] w-full overflow-hidden bg-deep-black flex items-center">
-        {/* Fundo de Vídeo / Fotografia Atlética Cinematográfica Dinâmica */}
-        <div className="absolute inset-0 z-0">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover opacity-65 scale-105 transition-transform duration-1000"
-            poster={siteImages.heroPoster || "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1800&q=80"}
-          >
-            <source
-              src={siteImages.heroVideo || "https://assets.mixkit.co/videos/preview/mixkit-woman-doing-squats-in-a-gym-40502-large.mp4"}
-              type="video/mp4"
-            />
-          </video>
-          {/* Gymshark Vignette & Dark Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-deep-black via-deep-black/35 to-deep-black/60" />
-          <div className="absolute inset-0 bg-gradient-to-r from-deep-black/80 via-deep-black/20 to-transparent" />
-        </div>
+      {(() => {
+        const slide = activeHeroSlides.length > 0
+          ? activeHeroSlides[currentHeroSlide % activeHeroSlides.length]
+          : null;
 
-        {/* Conteúdo Hero: Tipografia Condensada Pesada Gymshark */}
-        <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-12 w-full text-white py-20 space-y-6">
-          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 bg-white/10 backdrop-blur-md border border-gold/40 text-[10px] font-black uppercase tracking-widest text-gold shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-gold animate-pulse" />
-            <span>{t('hero.badge')} • {lang === 'pt' ? 'FRETE FIXO $' : 'FLAT $'}{siteInfo.flatShippingRate?.toFixed(2) || '9.99'}{lang === 'pt' ? ' P/ TODOS OS EUA' : ' US SHIPPING'}</span>
-          </div>
+        const isVideo = slide ? slide.mediaType === 'video' : true;
+        const videoSrc = slide?.videoUrl || siteImages.heroVideo || "https://assets.mixkit.co/videos/preview/mixkit-woman-doing-squats-in-a-gym-40502-large.mp4";
+        const posterSrc = slide?.imageUrl || siteImages.heroPoster || "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1800&q=80";
+        const mobilePosterSrc = slide?.mobileImageUrl || posterSrc;
 
-          <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black uppercase tracking-tighter leading-[0.9] max-w-5xl text-white">
-            {siteInfo.heroTitle1 || 'WEAR YOUR'}<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gold-light to-gold">
-              {siteInfo.heroTitle2 || 'STRENGTH.'}
-            </span>
-          </h1>
+        const badgeText = slide?.badge || `${t('hero.badge')} • ${lang === 'pt' ? 'FRETE FIXO $' : 'FLAT $'}${siteInfo.flatShippingRate?.toFixed(2) || '9.99'}${lang === 'pt' ? ' P/ TODOS OS EUA' : ' US SHIPPING'}`;
+        const title1Text = slide?.title1 || siteInfo.heroTitle1 || 'WEAR YOUR';
+        const title2Text = slide?.title2 || siteInfo.heroTitle2 || 'STRENGTH.';
+        const subtitleText = slide?.subtitle || (lang === 'pt'
+          ? 'Moda fitness de alta performance sediada em Massachusetts. Zero transparência testada em agachamentos, compressão anatômica 4-way e frete fixo de $9.99 para todos os 50 estados dos EUA.'
+          : (siteInfo.heroSubtitle || 'High-performance athletic luxury based in Massachusetts. Lab-verified zero see-through, 4-way anatomical sculpt compression, and flat $9.99 shipping across all 50 US States.'));
 
-          <p className="text-xs sm:text-sm md:text-base text-white/85 uppercase tracking-widest max-w-2xl font-bold leading-relaxed">
-            {lang === 'pt'
-              ? 'Moda fitness de alta performance sediada em Massachusetts. Zero transparência testada em agachamentos, compressão anatômica 4-way e frete fixo de $9.99 para todos os 50 estados dos EUA.'
-              : (siteInfo.heroSubtitle || 'High-performance athletic luxury based in Massachusetts. Lab-verified zero see-through, 4-way anatomical sculpt compression, and flat $9.99 shipping across all 50 US States.')}
-          </p>
+        const primaryBtnText = slide?.primaryCtaText || t('hero.cta');
+        const primaryBtnLink = slide?.primaryCtaLink || '#vitrine';
+        const secondaryBtnText = slide?.secondaryCtaText || t('hero.preorderCta');
+        const secondaryBtnLink = slide?.secondaryCtaLink || '/?cat=preorder';
 
-          {/* Botões Duplos Gymshark Action */}
-          <div className="pt-4 flex flex-col sm:flex-row gap-4 max-w-lg">
-            <button
-              onClick={() => {
-                const el = document.getElementById('vitrine');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="px-8 py-4 bg-white hover:bg-gold text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-3 shadow-xl group border border-white"
-            >
-              <span>{t('hero.cta')}</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition" />
-            </button>
+        const handleCtaClick = (link: string) => {
+          if (link.startsWith('#')) {
+            const id = link.replace('#', '');
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          } else if (link.startsWith('/?cat=')) {
+            const cat = link.split('=')[1];
+            if (cat) {
+              setActiveCategoryFilter(cat as any);
+              const el = document.getElementById('vitrine');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }
+          } else if (link.startsWith('http')) {
+            window.open(link, '_blank', 'noopener,noreferrer');
+          } else {
+            window.location.href = link;
+          }
+        };
 
-            <button
-              onClick={() => {
-                setActiveCategoryFilter('preorder');
-                const el = document.getElementById('vitrine');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="px-8 py-4 bg-deep-black/90 hover:bg-white hover:text-deep-black text-gold text-xs font-black uppercase tracking-widest border border-gold/70 transition flex items-center justify-center gap-2 backdrop-blur-sm shadow-xl"
-            >
-              <Sparkles className="w-4 h-4 text-gold" />
-              <span>{t('hero.preorderCta')}</span>
-            </button>
-          </div>
-        </div>
+        return (
+          <section className="relative min-h-[92vh] w-full overflow-hidden bg-deep-black flex items-center group/hero">
+            {/* Fundo de Vídeo ou Imagem Atlética Dinâmica */}
+            <div className="absolute inset-0 z-0">
+              {isVideo ? (
+                <video
+                  key={videoSrc}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover opacity-65 scale-105 transition-transform duration-1000"
+                  poster={posterSrc}
+                >
+                  <source src={videoSrc} type="video/mp4" />
+                </video>
+              ) : (
+                <picture className="w-full h-full">
+                  {mobilePosterSrc && (
+                    <source media="(max-width: 640px)" srcSet={mobilePosterSrc} />
+                  )}
+                  <img
+                    key={posterSrc}
+                    src={posterSrc}
+                    alt={title1Text}
+                    className="w-full h-full object-cover opacity-70 scale-105 transition-transform duration-1000 animate-fadeIn"
+                  />
+                </picture>
+              )}
+              {/* Gymshark Vignette & Dark Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-deep-black via-deep-black/35 to-deep-black/60" />
+              <div className="absolute inset-0 bg-gradient-to-r from-deep-black/85 via-deep-black/30 to-transparent" />
+            </div>
 
-        {/* Faixa de Pilares Gymshark no Rodapé do Hero */}
-        <div className="absolute bottom-0 left-0 right-0 z-10 bg-deep-black/90 backdrop-blur-md border-t border-white/10 py-3.5 px-6">
-          <div className="max-w-7xl mx-auto flex items-center justify-between overflow-x-auto gap-6 text-[10px] font-black uppercase tracking-widest text-white/80 scrollbar-none">
-            <span className="flex items-center gap-2 shrink-0 text-gold">
-              <ShieldCheck className="w-4 h-4 text-gold" /> {lang === 'pt' ? '100% ZERO TRANSPARÊNCIA (À PROVA DE AGACHAMENTO)' : '100% SQUAT-PROOF (ZERO SEE-THROUGH)'}
-            </span>
-            <span className="hidden sm:inline text-white/20">•</span>
-            <span className="flex items-center gap-2 shrink-0 text-white">
-              <Truck className="w-4 h-4 text-gold" /> {lang === 'pt' ? 'FRETE FIXO $9.99 (TODOS OS 50 ESTADOS DOS EUA)' : 'FLAT RATE $9.99 US SHIPPING (ALL 50 STATES)'}
-            </span>
-            <span className="hidden sm:inline text-white/20">•</span>
-            <span className="flex items-center gap-2 shrink-0 text-gold">
-              <RotateCcw className="w-4 h-4 text-gold" /> {lang === 'pt' ? '30 DIAS PARA TROCA OU DEVOLUÇÃO' : '30-DAY HASSLE-FREE RETURNS'}
-            </span>
-            <span className="hidden md:inline text-white/20">•</span>
-            <span className="hidden md:flex items-center gap-2 shrink-0 text-white">
-              <Sparkles className="w-4 h-4 text-gold" /> {lang === 'pt' ? 'ATELIER EM LEOMINSTER, MA' : 'CRAFTED IN LEOMINSTER, MA'}
-            </span>
-          </div>
-        </div>
-      </section>
+            {/* Conteúdo Hero: Tipografia Condensada Pesada Gymshark */}
+            <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-12 w-full text-white py-20 space-y-6 animate-fadeIn">
+              <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 bg-white/10 backdrop-blur-md border border-gold/40 text-[10px] font-black uppercase tracking-widest text-gold shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-gold animate-pulse" />
+                <span>{badgeText}</span>
+              </div>
+
+              <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black uppercase tracking-tighter leading-[0.9] max-w-5xl text-white">
+                {title1Text}<br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gold-light to-gold">
+                  {title2Text}
+                </span>
+              </h1>
+
+              <p className="text-xs sm:text-sm md:text-base text-white/85 uppercase tracking-widest max-w-2xl font-bold leading-relaxed">
+                {subtitleText}
+              </p>
+
+              {/* Botões Duplos Gymshark Action */}
+              <div className="pt-4 flex flex-col sm:flex-row gap-4 max-w-lg">
+                <button
+                  type="button"
+                  onClick={() => handleCtaClick(primaryBtnLink)}
+                  className="px-8 py-4 bg-white hover:bg-gold text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-3 shadow-xl group border border-white cursor-pointer"
+                >
+                  <span>{primaryBtnText}</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition" />
+                </button>
+
+                {secondaryBtnText && (
+                  <button
+                    type="button"
+                    onClick={() => handleCtaClick(secondaryBtnLink)}
+                    className="px-8 py-4 bg-deep-black/90 hover:bg-white hover:text-deep-black text-gold text-xs font-black uppercase tracking-widest border border-gold/70 transition flex items-center justify-center gap-2 backdrop-blur-sm shadow-xl cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4 text-gold" />
+                    <span>{secondaryBtnText}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Setas de Navegação do Carrossel (Se houver mais de 1 slide) */}
+            {activeHeroSlides.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentHeroSlide((prev) =>
+                      prev === 0 ? activeHeroSlides.length - 1 : prev - 1
+                    )
+                  }
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-3 bg-deep-black/60 hover:bg-gold hover:text-deep-black text-white border border-white/20 transition-all opacity-0 group-hover/hero:opacity-100 cursor-pointer backdrop-blur-sm"
+                  aria-label="Slide anterior"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentHeroSlide((prev) => (prev + 1) % activeHeroSlides.length)
+                  }
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-3 bg-deep-black/60 hover:bg-gold hover:text-deep-black text-white border border-white/20 transition-all opacity-0 group-hover/hero:opacity-100 cursor-pointer backdrop-blur-sm"
+                  aria-label="Próximo slide"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+
+                {/* Bolinhas Indicadoras */}
+                <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+                  {activeHeroSlides.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCurrentHeroSlide(idx)}
+                      className={`h-2 transition-all cursor-pointer ${
+                        idx === currentHeroSlide % activeHeroSlides.length
+                          ? 'w-8 bg-gold'
+                          : 'w-2 bg-white/40 hover:bg-white'
+                      }`}
+                      aria-label={`Slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Faixa de Pilares Gymshark no Rodapé do Hero */}
+            <div className="absolute bottom-0 left-0 right-0 z-10 bg-deep-black/90 backdrop-blur-md border-t border-white/10 py-3.5 px-6">
+              <div className="max-w-7xl mx-auto flex items-center justify-between overflow-x-auto gap-6 text-[10px] font-black uppercase tracking-widest text-white/80 scrollbar-none">
+                <span className="flex items-center gap-2 shrink-0 text-gold">
+                  <ShieldCheck className="w-4 h-4 text-gold" /> {lang === 'pt' ? '100% ZERO TRANSPARÊNCIA (À PROVA DE AGACHAMENTO)' : '100% SQUAT-PROOF (ZERO SEE-THROUGH)'}
+                </span>
+                <span className="hidden sm:inline text-white/20">•</span>
+                <span className="flex items-center gap-2 shrink-0 text-white">
+                  <Truck className="w-4 h-4 text-gold" /> {lang === 'pt' ? 'FRETE FIXO $9.99 (TODOS OS 50 ESTADOS DOS EUA)' : 'FLAT RATE $9.99 US SHIPPING (ALL 50 STATES)'}
+                </span>
+                <span className="hidden sm:inline text-white/20">•</span>
+                <span className="flex items-center gap-2 shrink-0 text-gold">
+                  <RotateCcw className="w-4 h-4 text-gold" /> {lang === 'pt' ? '30 DIAS PARA TROCA OU DEVOLUÇÃO' : '30-DAY HASSLE-FREE RETURNS'}
+                </span>
+                <span className="hidden md:inline text-white/20">•</span>
+                <span className="hidden md:flex items-center gap-2 shrink-0 text-white">
+                  <Sparkles className="w-4 h-4 text-gold" /> {lang === 'pt' ? 'ATELIER EM LEOMINSTER, MA' : 'CRAFTED IN LEOMINSTER, MA'}
+                </span>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* =========================================================================
           2. GYMSHARK CATEGORY VISUAL RAIL (TALL CARDS WITH GRADIENT & ATHLETIC POSE)
@@ -900,95 +1009,135 @@ export default function HomePage() {
       </section>
 
       {/* =========================================================================
+          BANNER PROMOCIONAL DE MEIO DE PÁGINA (CAMPAIGN BANNER EDITÁVEL)
+         ========================================================================= */}
+      {siteInfo.promoBanner?.active && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-8">
+          <div className="relative overflow-hidden border-2 border-gold/40 shadow-2xl min-h-[340px] flex items-center bg-deep-black">
+            {siteInfo.promoBanner.bgImage && (
+              <picture className="absolute inset-0 w-full h-full">
+                {siteInfo.promoBanner.mobileBgImage && (
+                  <source media="(max-width: 640px)" srcSet={siteInfo.promoBanner.mobileBgImage} />
+                )}
+                <img
+                  src={siteInfo.promoBanner.bgImage}
+                  alt={siteInfo.promoBanner.title}
+                  className="w-full h-full object-cover opacity-40 scale-105 transition-transform duration-1000"
+                />
+              </picture>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-r from-deep-black via-deep-black/85 to-transparent" />
+
+            <div className="relative z-10 p-6 sm:p-12 max-w-2xl text-white space-y-4">
+              {siteInfo.promoBanner.badge && (
+                <span className="inline-block px-3 py-1 bg-gold text-deep-black text-[10px] font-black uppercase tracking-widest">
+                  {siteInfo.promoBanner.badge}
+                </span>
+              )}
+
+              <h3 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-white leading-tight">
+                {siteInfo.promoBanner.title}
+              </h3>
+
+              {siteInfo.promoBanner.subtitle && (
+                <p className="text-xs sm:text-sm text-white/80 uppercase tracking-wider leading-relaxed font-medium">
+                  {siteInfo.promoBanner.subtitle}
+                </p>
+              )}
+
+              {siteInfo.promoBanner.ctaText && (
+                <div className="pt-2">
+                  <a
+                    href={siteInfo.promoBanner.ctaLink || '#vitrine'}
+                    target={siteInfo.promoBanner.ctaLink?.startsWith('http') ? '_blank' : '_self'}
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-widest transition shadow-lg group border border-gold"
+                  >
+                    <span>{siteInfo.promoBanner.ctaText}</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* =========================================================================
           4. GYMSHARK EDITORIAL TECH SPLIT ("CONDITIONING & FABRIC ENGINEERING")
          ========================================================================= */}
-      <section className="bg-deep-black text-white py-20 px-4 sm:px-8 border-y-2 border-gold/30">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          {/* Lado Esquerdo: Tipografia Editorial Gymshark */}
-          <div className="lg:col-span-6 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 border border-gold/40 text-[10px] font-black uppercase tracking-widest text-gold">
-              <Zap className="w-3.5 h-3.5 text-gold" />
-              <span>SQUAT-PROOF LAB CERTIFICATION</span>
-            </div>
-
-            <h2 className="text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight leading-[0.95] text-white">
-              ENGINEERED FOR SQUATS.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gold-light to-gold">
-                SCULPTED FOR STRENGTH.
-              </span>
-            </h2>
-
-            <p className="text-xs sm:text-sm text-white/80 uppercase tracking-widest leading-relaxed font-medium">
-              {lang === 'pt'
-                ? 'Confeccionado com poliamida brasileira de alta tenacidade e elastano premium. Não marca, não escorrega e garante cobertura 100% opaca mesmo sob iluminação direta e extensão máxima.'
-                : 'Crafted with premium high-tenacity polyamide and elastic compression. Glides with your motion, never slips down, and guarantees 100% opaque squat coverage even under harsh studio lighting.'}
-            </p>
-
-            {/* Grid 2x2 de Especificações Técnicas */}
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
-              <div className="space-y-1">
-                <span className="text-2xl sm:text-3xl font-black text-gold block">100%</span>
-                <h4 className="text-xs font-black uppercase tracking-wider text-white">ZERO SEE-THROUGH</h4>
-                <p className="text-[10px] text-white/60 uppercase font-medium">
-                  {lang === 'pt' ? 'Testado em agachamento profundo' : 'Deep squat tested & verified'}
-                </p>
+      {(siteInfo.techSection?.active ?? true) && (
+        <section className="bg-deep-black text-white py-20 px-4 sm:px-8 border-y-2 border-gold/30">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Lado Esquerdo: Tipografia Editorial Gymshark */}
+            <div className="lg:col-span-6 space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 border border-gold/40 text-[10px] font-black uppercase tracking-widest text-gold">
+                <Zap className="w-3.5 h-3.5 text-gold" />
+                <span>{siteInfo.techSection?.badge || 'SQUAT-PROOF LAB CERTIFICATION'}</span>
               </div>
 
-              <div className="space-y-1">
-                <span className="text-2xl sm:text-3xl font-black text-white block">4-WAY</span>
-                <h4 className="text-xs font-black uppercase tracking-wider text-white">MUSCLE COMPRESSION</h4>
-                <p className="text-[10px] text-white/60 uppercase font-medium">
-                  {lang === 'pt' ? 'Modela sem prender a circulação' : 'Contours without restricting'}
-                </p>
+              <h2 className="text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight leading-[0.95] text-white">
+                {siteInfo.techSection?.title1 || 'ENGINEERED FOR SQUATS.'}<br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gold-light to-gold">
+                  {siteInfo.techSection?.title2 || 'SCULPTED FOR STRENGTH.'}
+                </span>
+              </h2>
+
+              <p className="text-xs sm:text-sm text-white/80 uppercase tracking-widest leading-relaxed font-medium">
+                {lang === 'pt'
+                  ? (siteInfo.techSection?.descriptionPt || 'Confeccionado com poliamida brasileira de alta tenacidade e elastano premium. Não marca, não escorrega e garante cobertura 100% opaca mesmo sob iluminação direta e extensão máxima.')
+                  : (siteInfo.techSection?.descriptionEn || 'Crafted with premium high-tenacity polyamide and elastic compression. Glides with your motion, never slips down, and guarantees 100% opaque squat coverage even under harsh studio lighting.')}
+              </p>
+
+              {/* Grid 2x2 de Especificações Técnicas */}
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
+                {(siteInfo.techSection?.specs || [
+                  { value: '100%', title: 'ZERO SEE-THROUGH', subtitlePt: 'Testado em agachamento profundo', subtitleEn: 'Deep squat tested & verified' },
+                  { value: '4-WAY', title: 'MUSCLE COMPRESSION', subtitlePt: 'Modela sem prender a circulação', subtitleEn: 'Contours without restricting' },
+                  { value: 'REMOVABLE', title: 'MOLDED BRA CUPS', subtitlePt: 'Bojo anatômico com suporte', subtitleEn: 'Customizable shape & support' },
+                  { value: 'FLATLOCK', title: 'ANTI-CHAFING SEAMS', subtitlePt: 'Costura plana sem atrito', subtitleEn: 'Zero skin friction in training' },
+                ]).map((spec, sIdx) => (
+                  <div key={sIdx} className="space-y-1">
+                    <span className="text-2xl sm:text-3xl font-black text-gold block">{spec.value}</span>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-white">{spec.title}</h4>
+                    <p className="text-[10px] text-white/60 uppercase font-medium">
+                      {lang === 'pt' ? spec.subtitlePt : spec.subtitleEn}
+                    </p>
+                  </div>
+                ))}
               </div>
 
-              <div className="space-y-1">
-                <span className="text-2xl sm:text-3xl font-black text-gold block">REMOVABLE</span>
-                <h4 className="text-xs font-black uppercase tracking-wider text-white">MOLDED BRA CUPS</h4>
-                <p className="text-[10px] text-white/60 uppercase font-medium">
-                  {lang === 'pt' ? 'Bojo anatômico com suporte' : 'Customizable shape & support'}
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-2xl sm:text-3xl font-black text-white block">FLATLOCK</span>
-                <h4 className="text-xs font-black uppercase tracking-wider text-white">ANTI-CHAFING SEAMS</h4>
-                <p className="text-[10px] text-white/60 uppercase font-medium">
-                  {lang === 'pt' ? 'Costura plana sem atrito' : 'Zero skin friction in training'}
-                </p>
+              <div className="pt-2">
+                <a
+                  href={siteInfo.techSection?.ctaLink || '#vitrine'}
+                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-widest transition shadow-lg"
+                >
+                  <span>{siteInfo.techSection?.ctaText || 'EXPLORE TECHNICAL SPECS'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </a>
               </div>
             </div>
 
-            <div className="pt-2">
-              <Link
-                href="/produto/samanta-romper"
-                className="inline-flex items-center gap-2 px-6 py-3.5 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-widest transition shadow-lg"
-              >
-                <span>EXPLORE TECHNICAL SPECS</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </div>
-
-          {/* Lado Direito: Imagem Atlética com Selo Oficial ANA FITNESS WEAR */}
-          <div className="lg:col-span-6 relative aspect-[4/5] overflow-hidden border-2 border-gold/30 shadow-2xl">
-            <img
-              src={siteImages.techSectionImage || "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&q=80"}
-              alt="Tecnologia Têxtil Ana Fitness"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-deep-black via-transparent to-transparent" />
-            
-            <div className="absolute bottom-6 left-6 right-6 p-4 bg-deep-black/95 backdrop-blur-md border border-gold/40 flex items-center justify-between text-xs font-black uppercase tracking-widest">
-              <span className="flex items-center gap-2.5">
-                <img src={siteImages.symbolUrl || "/symbol-ana-fitness.png"} alt="Selo Oficial" className="w-6 h-6 object-contain" />
-                <span className="text-white">{siteInfo.storeName || 'ANA FITNESS ATELIER'} • {siteInfo.address ? siteInfo.address.split('•')[0].trim() : 'LEOMINSTER, MA'}</span>
-              </span>
-              <span className="text-gold">✨WEAR YOUR STRENGTH✨</span>
+            {/* Lado Direito: Imagem Atlética com Selo Oficial ANA FITNESS WEAR */}
+            <div className="lg:col-span-6 relative aspect-[4/5] overflow-hidden border-2 border-gold/30 shadow-2xl">
+              <img
+                src={siteInfo.techSection?.image || siteImages.techSectionImage || "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&q=80"}
+                alt="Tecnologia Têxtil Ana Fitness"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-deep-black via-transparent to-transparent" />
+              
+              <div className="absolute bottom-6 left-6 right-6 p-4 bg-deep-black/95 backdrop-blur-md border border-gold/40 flex items-center justify-between text-xs font-black uppercase tracking-widest">
+                <span className="flex items-center gap-2.5">
+                  <img src={siteImages.symbolUrl || "/symbol-ana-fitness.png"} alt="Selo Oficial" className="w-6 h-6 object-contain" />
+                  <span className="text-white">{siteInfo.storeName || 'ANA FITNESS ATELIER'} • {siteInfo.address ? siteInfo.address.split('•')[0].trim() : 'LEOMINSTER, MA'}</span>
+                </span>
+                <span className="text-gold">✨WEAR YOUR STRENGTH✨</span>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* =========================================================================
           5. GYMSHARK COMMUNITY ATHLETES GRID ("#ANAFITNESSWEAR")
@@ -1076,55 +1225,67 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Card do Depoimento com Contraste Gymshark */}
-        <div className="bg-white border-2 border-deep-black p-8 sm:p-12 relative shadow-luxury">
-          <p className="text-base sm:text-xl font-bold uppercase tracking-wide text-deep-black leading-relaxed text-center italic">
-            "{lang === 'pt' ? TESTIMONIALS[activeTestimonial].textPt : TESTIMONIALS[activeTestimonial].textEn}"
-          </p>
+        {/* Card do Depoimento com Contraste Gymshark Dinâmico */}
+        {(() => {
+          const testimonialsList = (siteInfo.testimonialsList && siteInfo.testimonialsList.length > 0)
+            ? siteInfo.testimonialsList
+            : TESTIMONIALS;
+          const currentT = testimonialsList[activeTestimonial % testimonialsList.length] || testimonialsList[0];
 
-          <div className="mt-8 text-center space-y-1 border-t border-deep-black/10 pt-6">
-            <h4 className="text-xs font-black uppercase tracking-widest text-deep-black">
-              {TESTIMONIALS[activeTestimonial].author}
-            </h4>
-            <p className="text-[10px] font-black uppercase tracking-widest text-gold">
-              {TESTIMONIALS[activeTestimonial].location} • VERIFIED US BUYER
-            </p>
-          </div>
+          return (
+            <div className="bg-white border-2 border-deep-black p-8 sm:p-12 relative shadow-luxury">
+              <p className="text-base sm:text-xl font-bold uppercase tracking-wide text-deep-black leading-relaxed text-center italic">
+                "{lang === 'pt' ? currentT.textPt : (currentT.textEn || currentT.textPt)}"
+              </p>
 
-          {/* Navegação do Carrossel */}
-          <div className="flex items-center justify-center gap-4 mt-6">
-            <button
-              onClick={() =>
-                setActiveTestimonial((prev) => (prev === 0 ? TESTIMONIALS.length - 1 : prev - 1))
-              }
-              className="p-2 border border-deep-black text-deep-black hover:bg-deep-black hover:text-white transition"
-              aria-label="Previous Testimonial"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <div className="flex gap-2">
-              {TESTIMONIALS.map((_, i) => (
+              <div className="mt-8 text-center space-y-1 border-t border-deep-black/10 pt-6">
+                <h4 className="text-xs font-black uppercase tracking-widest text-deep-black">
+                  {currentT.author}
+                </h4>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gold">
+                  {currentT.location} • VERIFIED US BUYER
+                </p>
+              </div>
+
+              {/* Navegação do Carrossel */}
+              <div className="flex items-center justify-center gap-4 mt-6">
                 <button
-                  key={i}
-                  onClick={() => setActiveTestimonial(i)}
-                  className={`h-2 transition-all ${
-                    i === activeTestimonial ? 'bg-gold w-6' : 'bg-deep-black/20 w-2'
-                  }`}
-                  aria-label={`Go to testimonial ${i + 1}`}
-                />
-              ))}
+                  type="button"
+                  onClick={() =>
+                    setActiveTestimonial((prev) => (prev === 0 ? testimonialsList.length - 1 : prev - 1))
+                  }
+                  className="p-2 border border-deep-black text-deep-black hover:bg-deep-black hover:text-white transition cursor-pointer"
+                  aria-label="Previous Testimonial"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <div className="flex gap-2">
+                  {testimonialsList.map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setActiveTestimonial(i)}
+                      className={`h-2 transition-all cursor-pointer ${
+                        i === activeTestimonial % testimonialsList.length ? 'bg-gold w-6' : 'bg-deep-black/20 w-2'
+                      }`}
+                      aria-label={`Go to testimonial ${i + 1}`}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveTestimonial((prev) => (prev === testimonialsList.length - 1 ? 0 : prev + 1))
+                  }
+                  className="p-2 border border-deep-black text-deep-black hover:bg-deep-black hover:text-white transition cursor-pointer"
+                  aria-label="Next Testimonial"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() =>
-                setActiveTestimonial((prev) => (prev === TESTIMONIALS.length - 1 ? 0 : prev + 1))
-              }
-              className="p-2 border border-deep-black text-deep-black hover:bg-deep-black hover:text-white transition"
-              aria-label="Next Testimonial"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+          );
+        })()}
       </section>
 
       {/* =========================================================================

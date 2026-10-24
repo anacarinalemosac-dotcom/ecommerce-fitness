@@ -82,7 +82,7 @@ import { EditSaleModal } from '../../components/EditSaleModal';
 import { CancelSaleModal } from '../../components/CancelSaleModal';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 import { DashboardMetricsView } from '../../components/backoffice/DashboardMetricsView';
-import { AppearanceCmsView } from '../../components/backoffice/AppearanceCmsView';
+import { AppearanceCmsView, CmsSubTab } from '../../components/backoffice/AppearanceCmsView';
 import { CustomersReviewsView } from '../../components/backoffice/CustomersReviewsView';
 import { TechnicalSettingsView } from '../../components/backoffice/TechnicalSettingsView';
 import { InstagramDirectView } from '../../components/backoffice/InstagramDirectView';
@@ -235,7 +235,7 @@ export default function BackofficeDashboard() {
   const [activeTab, setActiveTab] = useState<
     'dashboard' | 'catalog' | 'sales' | 'commissions' | 'finances' | 'invoices' | 'coupons' | 'reports' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
   >('dashboard');
-  const [cmsSubTab, setCmsSubTab] = useState<'media' | 'categories' | 'colors' | 'typography' | 'pages'>('categories');
+  const [cmsSubTab, setCmsSubTab] = useState<CmsSubTab>('categories');
   const [onlineCount, setOnlineCount] = useState(0);
 
   // Catálogo de produtos
@@ -2130,6 +2130,15 @@ export default function BackofficeDashboard() {
         {/* Segunda Linha de Ferramentas / Ações Secundárias */}
         <div className="flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-white/10 text-xs">
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setActiveTab('cms')}
+              className="px-3 py-1.5 bg-gold/15 hover:bg-gold hover:text-deep-black text-gold font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-gold/40 cursor-pointer shadow-xs"
+            >
+              <Palette className="w-3 h-3 text-gold" />
+              <span>Banners & Vitrine (CMS)</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setShowCategoryModal(true)}

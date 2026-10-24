@@ -35,6 +35,78 @@ export const DEFAULT_ADMIN_PROFILES: AdminProfile[] = [
   },
 ];
 
+export interface HeroBannerSlide {
+  id: string;
+  active: boolean;
+  mediaType: 'video' | 'image';
+  videoUrl?: string;
+  imageUrl: string;
+  mobileImageUrl?: string;
+  badge: string;
+  title1: string;
+  title2: string;
+  subtitle: string;
+  primaryCtaText: string;
+  primaryCtaLink: string;
+  secondaryCtaText?: string;
+  secondaryCtaLink?: string;
+}
+
+export interface AnnouncementBarConfig {
+  active: boolean;
+  textPt: string;
+  textEn: string;
+  link?: string;
+  badgeText?: string;
+  bgColor: string;
+  textColor: string;
+}
+
+export interface PromoBannerConfig {
+  active: boolean;
+  badge: string;
+  title: string;
+  subtitle: string;
+  ctaText: string;
+  ctaLink: string;
+  bgImage: string;
+  mobileBgImage?: string;
+  bgColor: string;
+}
+
+export interface TechSectionConfig {
+  active: boolean;
+  badge: string;
+  title1: string;
+  title2: string;
+  descriptionPt: string;
+  descriptionEn: string;
+  image: string;
+  ctaText: string;
+  ctaLink: string;
+  specs: Array<{
+    value: string;
+    title: string;
+    subtitlePt: string;
+    subtitleEn: string;
+  }>;
+}
+
+export interface CommunityPostItem {
+  image: string;
+  user: string;
+  piece: string;
+}
+
+export interface TestimonialItem {
+  id: string;
+  author: string;
+  location: string;
+  rating: number;
+  textPt: string;
+  textEn: string;
+}
+
 export interface SiteInfo {
   storeName: string;
   phone: string;
@@ -50,6 +122,13 @@ export interface SiteInfo {
   heroTitle1: string;
   heroTitle2: string;
   heroSubtitle: string;
+  // CMS Vitrine: Banners Hero, Faixa de Topo, Promocional, Tecnologia e Depoimentos
+  heroBanners?: HeroBannerSlide[];
+  announcementBar?: AnnouncementBarConfig;
+  promoBanner?: PromoBannerConfig;
+  techSection?: TechSectionConfig;
+  communityImages?: CommunityPostItem[];
+  testimonialsList?: TestimonialItem[];
   // CMS Visual: Paleta de cores, tipografia e páginas institucionais
   primaryColor?: string;
   secondaryColor?: string;
@@ -161,6 +240,107 @@ interface StoreSettingsContextType {
   refreshProducts: () => Promise<void>;
 }
 
+export const DEFAULT_HERO_BANNERS: HeroBannerSlide[] = [
+  {
+    id: 'hero-1',
+    active: true,
+    mediaType: 'video',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-woman-doing-squats-in-a-gym-40502-large.mp4',
+    imageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1800&q=80',
+    mobileImageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80',
+    badge: 'ESTOQUE EUA • FRETE FIXO $9.99 P/ TODOS OS ESTADOS',
+    title1: 'WEAR YOUR',
+    title2: 'STRENGTH.',
+    subtitle: 'Moda fitness de alta performance sediada em Massachusetts. Zero transparência testada em agachamentos, compressão anatômica 4-way e frete fixo de $9.99.',
+    primaryCtaText: 'COMPRAR COLEÇÃO',
+    primaryCtaLink: '#vitrine',
+    secondaryCtaText: 'PRÉ-ORDER ATELIER',
+    secondaryCtaLink: '/?cat=preorder',
+  },
+  {
+    id: 'hero-2',
+    active: true,
+    mediaType: 'image',
+    imageUrl: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=1800&q=80',
+    mobileImageUrl: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&q=80',
+    badge: 'NOVA COLEÇÃO ATELIER 2026',
+    title1: 'HIGH PERFORMANCE',
+    title2: 'FIT LUXURY.',
+    subtitle: 'Peças exclusivas desenvolvidas com poliamida brasileira de alta tenacidade. Modelagem anatômica que valoriza suas curvas.',
+    primaryCtaText: 'VER LANÇAMENTOS',
+    primaryCtaLink: '#vitrine',
+    secondaryCtaText: 'CONJUNTOS & SETS',
+    secondaryCtaLink: '/?cat=sets',
+  },
+];
+
+export const DEFAULT_ANNOUNCEMENT_BAR: AnnouncementBarConfig = {
+  active: true,
+  textPt: '✨ FRETE FIXO DE $9.99 PARA TODOS OS 50 ESTADOS DOS EUA • FRETE GRÁTIS EM COMPRAS ACIMA DE $75 COM CUPOM FRETEGRATIS ✨',
+  textEn: '✨ FLAT RATE $9.99 SHIPPING ACROSS ALL 50 US STATES • FREE SHIPPING OVER $75 WITH CODE FRETEGRATIS ✨',
+  link: '#vitrine',
+  badgeText: 'PROMOÇÃO',
+  bgColor: '#0A0A0A',
+  textColor: '#D4AF37',
+};
+
+export const DEFAULT_PROMO_BANNER: PromoBannerConfig = {
+  active: true,
+  badge: 'DESTAQUE EXCLUSIVO • ATELIER LEOMINSTER',
+  title: 'ENCOMENDAS SOB MEDIDA & PEÇAS PRONTA ENTREGA',
+  subtitle: 'Não encontrou o seu tamanho disponível? Confeccionamos sob medida especialmente para você em nosso ateliê com entrega em todo território americano.',
+  ctaText: 'ENCOMENDAR VIA WHATSAPP',
+  ctaLink: 'https://wa.me/19783139452',
+  bgImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1600&q=80',
+  mobileBgImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80',
+  bgColor: '#0A0A0A',
+};
+
+export const DEFAULT_TECH_SECTION: TechSectionConfig = {
+  active: true,
+  badge: 'SQUAT-PROOF LAB CERTIFICATION',
+  title1: 'ENGINEERED FOR SQUATS.',
+  title2: 'SCULPTED FOR STRENGTH.',
+  descriptionPt: 'Confeccionado com poliamida brasileira de alta tenacidade e elastano premium. Não marca, não escorrega e garante cobertura 100% opaca mesmo sob iluminação direta e extensão máxima.',
+  descriptionEn: 'Crafted with premium high-tenacity polyamide and elastic compression. Glides with your motion, never slips down, and guarantees 100% opaque squat coverage even under harsh studio lighting.',
+  image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&q=80',
+  ctaText: 'CONHECER MODELAGENS',
+  ctaLink: '#vitrine',
+  specs: [
+    { value: '100%', title: 'ZERO SEE-THROUGH', subtitlePt: 'Testado em agachamento profundo', subtitleEn: 'Deep squat tested & verified' },
+    { value: '4-WAY', title: 'MUSCLE COMPRESSION', subtitlePt: 'Modela sem prender a circulação', subtitleEn: 'Contours without restricting' },
+    { value: 'REMOVABLE', title: 'MOLDED BRA CUPS', subtitlePt: 'Bojo anatômico com suporte', subtitleEn: 'Customizable shape & support' },
+    { value: 'FLATLOCK', title: 'ANTI-CHAFING SEAMS', subtitlePt: 'Costura plana sem atrito', subtitleEn: 'Zero skin friction in training' },
+  ],
+};
+
+export const DEFAULT_TESTIMONIALS: TestimonialItem[] = [
+  {
+    id: 't-1',
+    author: 'MARIANA SALLES',
+    location: 'Boston, MA',
+    rating: 5,
+    textPt: 'A qualidade das peças da Ana Fitness Wear é surreal! O macaquinho Samanta veste perfeitamente sem ficar nada transparente no agachamento. Comprei aqui em Massachusetts e chegou em 2 dias com o frete de $9.99.',
+    textEn: 'The quality of Ana Fitness Wear pieces is surreal! The Samanta romper fits like a dream with zero see-through during deep squats. Ordered here in Massachusetts and arrived in 2 days with the flat $9.99 shipping.',
+  },
+  {
+    id: 't-2',
+    author: 'BEATRIZ FIGUEIREDO',
+    location: 'Miami, FL',
+    rating: 5,
+    textPt: 'Fiz a encomenda do conjunto Kely sob medida porque meu tamanho estava esgotado. A confecção cumpriu o prazo certinho e o bojo removível dá uma sustentação maravilhosa. Vale cada centavo.',
+    textEn: 'I pre-ordered the Kely pants set because my size was out of stock. Production was on time and the removable cups provide wonderful support. Worth every penny.',
+  },
+  {
+    id: 't-3',
+    author: 'CAROLINA ALMEIDA',
+    location: 'Orlando, FL',
+    rating: 5,
+    textPt: 'O top Bailarina é o melhor top que já usei na vida. Não machuca os ombros e segura perfeitamente na corrida. A equipe pelo WhatsApp me ajudou com as medidas exatas.',
+    textEn: 'The Bailarina Top is hands-down the best top I have ever owned. Doesn’t dig into shoulders and provides high support for running. Concierge on WhatsApp helped me pick the right size.',
+  },
+];
+
 const DEFAULT_SITE_INFO: SiteInfo = {
   storeName: 'ANA FITNESS WEAR',
   phone: '+1 (978) 313-9452',
@@ -176,6 +356,11 @@ const DEFAULT_SITE_INFO: SiteInfo = {
   heroTitle1: 'WEAR YOUR',
   heroTitle2: 'STRENGTH.',
   heroSubtitle: 'High-performance athletic luxury based in Massachusetts. Lab-verified zero see-through, 4-way anatomical sculpt compression, and flat $9.99 shipping across all 50 US States.',
+  heroBanners: DEFAULT_HERO_BANNERS,
+  announcementBar: DEFAULT_ANNOUNCEMENT_BAR,
+  promoBanner: DEFAULT_PROMO_BANNER,
+  techSection: DEFAULT_TECH_SECTION,
+  testimonialsList: DEFAULT_TESTIMONIALS,
   primaryColor: '#0A0A0A',
   secondaryColor: '#D4AF37',
   backgroundColor: '#FFFFFF',
@@ -897,18 +1082,46 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     // Busca do Supabase em tempo real
     syncProductsFromApi();
 
-    // Sincroniza configurações globais e pixels de rastreamento do Supabase
+    // Sincroniza configurações globais, CMS e imagens do Supabase
     fetch(`/api/site-settings?t=${Date.now()}`)
       .then((res) => res.json())
       .then((data) => {
         if (data?.settings && typeof data.settings === 'object' && Object.keys(data.settings).length > 0) {
-          setSiteInfoState((prev) => {
-            const updated = { ...prev, ...data.settings };
-            try {
-              localStorage.setItem('ana_site_info', JSON.stringify(updated));
-            } catch (_) {}
-            return updated;
-          });
+          const { siteImages: savedImages, ...savedInfo } = data.settings;
+          if (savedInfo && Object.keys(savedInfo).length > 0) {
+            setSiteInfoState((prev) => {
+              const updated = {
+                ...prev,
+                ...savedInfo,
+                heroBanners: savedInfo.heroBanners || prev.heroBanners || DEFAULT_HERO_BANNERS,
+                announcementBar: savedInfo.announcementBar || prev.announcementBar || DEFAULT_ANNOUNCEMENT_BAR,
+                promoBanner: savedInfo.promoBanner || prev.promoBanner || DEFAULT_PROMO_BANNER,
+                techSection: savedInfo.techSection || prev.techSection || DEFAULT_TECH_SECTION,
+                testimonialsList: savedInfo.testimonialsList || prev.testimonialsList || DEFAULT_TESTIMONIALS,
+              };
+              try {
+                localStorage.setItem('ana_site_info', JSON.stringify(updated));
+              } catch (_) {}
+              return updated;
+            });
+          }
+
+          if (savedImages && typeof savedImages === 'object' && Object.keys(savedImages).length > 0) {
+            setSiteImagesState((prev) => {
+              const updated = {
+                ...prev,
+                ...savedImages,
+                categoryImages: {
+                  ...(prev.categoryImages || {}),
+                  ...(savedImages.categoryImages || {}),
+                },
+              };
+              try {
+                localStorage.setItem('ana_site_images', JSON.stringify(updated));
+              } catch (_) {}
+              return updated;
+            });
+          }
         }
       })
       .catch(() => {});
@@ -1039,7 +1252,12 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       fetch('/api/site-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings: updated }),
+        body: JSON.stringify({
+          settings: {
+            ...updated,
+            siteImages: siteImages,
+          },
+        }),
       }).catch((err) => console.warn('Erro ao sincronizar site-settings:', err));
 
       return updated;
@@ -1060,6 +1278,18 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
           body: JSON.stringify({ categoryImages: images.categoryImages }),
         }).catch((err) => console.warn('Erro ao salvar categoryImages na API:', err));
       }
+
+      // Sincroniza imagens no Supabase
+      fetch('/api/site-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: {
+            ...siteInfo,
+            siteImages: updated,
+          },
+        }),
+      }).catch((err) => console.warn('Erro ao salvar siteImages no Supabase:', err));
 
       return updated;
     });

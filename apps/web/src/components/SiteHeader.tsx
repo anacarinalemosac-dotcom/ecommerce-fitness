@@ -67,53 +67,125 @@ export function SiteHeader() {
 
   return (
     <>
-      {/* Ticker Superior de Luxo (Preto e Dourado) */}
-      <div className="bg-deep-black text-white text-[11px] font-bold tracking-widest uppercase py-2 px-4 border-b border-gold/20">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          {/* Slogan & Frete Fixo Dinâmico */}
-          <div className="flex items-center gap-4 text-center sm:text-left flex-wrap justify-center">
-            <span className="flex items-center gap-1.5 text-gold font-black">
-              <Sparkles className="w-3.5 h-3.5 text-gold" /> {lang === 'pt' ? t('ticker.slogan') : (siteInfo.tickerSlogan || t('ticker.slogan'))}
-            </span>
-            <span className="hidden md:inline text-white/30">•</span>
-            <span className="text-white/90 font-medium">
-              {lang === 'pt' ? t('ticker.shipping') : (siteInfo.tickerShipping || t('ticker.shipping'))}
-            </span>
-            <span className="hidden lg:inline text-white/30">•</span>
-            <span className="hidden lg:inline text-gold font-black">
-              {t('ticker.delivery')}
-            </span>
-          </div>
+      {/* Faixa de Topo / Anúncio Especial ou Ticker de Luxo */}
+      {siteInfo.announcementBar?.active ? (
+        <div
+          className="text-[11px] font-bold tracking-widest uppercase py-2 px-4 border-b border-white/10 transition-colors"
+          style={{
+            backgroundColor: siteInfo.announcementBar.bgColor || '#0A0A0A',
+            color: siteInfo.announcementBar.textColor || '#D4AF37',
+          }}
+        >
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-center sm:text-left flex-wrap justify-center font-black">
+              {siteInfo.announcementBar.badgeText && (
+                <span className="px-2 py-0.5 bg-white/20 text-current text-[9px] font-black uppercase tracking-wider rounded-xs">
+                  {siteInfo.announcementBar.badgeText}
+                </span>
+              )}
+              {siteInfo.announcementBar.link ? (
+                <Link
+                  href={siteInfo.announcementBar.link}
+                  className="hover:underline flex items-center gap-1.5 transition"
+                >
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    {lang === 'pt'
+                      ? siteInfo.announcementBar.textPt
+                      : siteInfo.announcementBar.textEn || siteInfo.announcementBar.textPt}
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+                </Link>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    {lang === 'pt'
+                      ? siteInfo.announcementBar.textPt
+                      : siteInfo.announcementBar.textEn || siteInfo.announcementBar.textPt}
+                  </span>
+                </span>
+              )}
+            </div>
 
-          {/* Chaveador de Idioma: Inglês (Principal) / Português */}
-          <div className="flex items-center gap-1 shrink-0 bg-white/10 px-2 py-0.5 border border-gold/30">
-            <Globe className="w-3 h-3 text-gold mr-1" />
-            <button
-              onClick={() => setLang('en')}
-              className={`px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider transition ${
-                lang === 'en'
-                  ? 'bg-gold text-deep-black shadow-sm'
-                  : 'text-white/70 hover:text-white'
-              }`}
-              title="Switch language to English (US)"
-            >
-              🇺🇸 EN
-            </button>
-            <span className="text-white/30 text-[9px]">|</span>
-            <button
-              onClick={() => setLang('pt')}
-              className={`px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider transition ${
-                lang === 'pt'
-                  ? 'bg-gold text-deep-black shadow-sm'
-                  : 'text-white/70 hover:text-white'
-              }`}
-              title="Mudar idioma para Português"
-            >
-              🇧🇷 PT
-            </button>
+            {/* Chaveador de Idioma */}
+            <div className="flex items-center gap-1 shrink-0 bg-white/10 px-2 py-0.5 border border-current/30">
+              <Globe className="w-3 h-3 mr-1" />
+              <button
+                onClick={() => setLang('en')}
+                className={`px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider transition ${
+                  lang === 'en'
+                    ? 'bg-gold text-deep-black shadow-sm'
+                    : 'text-white/70 hover:text-white'
+                }`}
+                title="Switch language to English (US)"
+              >
+                🇺🇸 EN
+              </button>
+              <span className="text-white/30 text-[9px]">|</span>
+              <button
+                onClick={() => setLang('pt')}
+                className={`px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider transition ${
+                  lang === 'pt'
+                    ? 'bg-gold text-deep-black shadow-sm'
+                    : 'text-white/70 hover:text-white'
+                }`}
+                title="Mudar idioma para Português"
+              >
+                🇧🇷 PT
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-deep-black text-white text-[11px] font-bold tracking-widest uppercase py-2 px-4 border-b border-gold/20">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            {/* Slogan & Frete Fixo Dinâmico */}
+            <div className="flex items-center gap-4 text-center sm:text-left flex-wrap justify-center">
+              <span className="flex items-center gap-1.5 text-gold font-black">
+                <Sparkles className="w-3.5 h-3.5 text-gold" />{' '}
+                {siteInfo.tickerSlogan || (lang === 'pt' ? t('ticker.slogan') : t('ticker.slogan'))}
+              </span>
+              <span className="hidden md:inline text-white/30">•</span>
+              <span className="text-white/90 font-medium">
+                {siteInfo.tickerShipping || (lang === 'pt' ? t('ticker.shipping') : t('ticker.shipping'))}
+              </span>
+              <span className="hidden lg:inline text-white/30">•</span>
+              <span className="hidden lg:inline text-gold font-black">
+                {t('ticker.delivery')}
+              </span>
+            </div>
+
+            {/* Chaveador de Idioma */}
+            <div className="flex items-center gap-1 shrink-0 bg-white/10 px-2 py-0.5 border border-gold/30">
+              <Globe className="w-3 h-3 text-gold mr-1" />
+              <button
+                onClick={() => setLang('en')}
+                className={`px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider transition ${
+                  lang === 'en'
+                    ? 'bg-gold text-deep-black shadow-sm'
+                    : 'text-white/70 hover:text-white'
+                }`}
+                title="Switch language to English (US)"
+              >
+                🇺🇸 EN
+              </button>
+              <span className="text-white/30 text-[9px]">|</span>
+              <button
+                onClick={() => setLang('pt')}
+                className={`px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider transition ${
+                  lang === 'pt'
+                    ? 'bg-gold text-deep-black shadow-sm'
+                    : 'text-white/70 hover:text-white'
+                }`}
+                title="Mudar idioma para Português"
+              >
+                🇧🇷 PT
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header Fixo/Colado no Topo (100% focado no cliente final) */}
       <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-deep-black/10 transition-all">
