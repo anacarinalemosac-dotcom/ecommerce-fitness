@@ -196,10 +196,13 @@ export default function CheckoutPage() {
   // Pagamento Online
   const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'APPLE_PAY' | 'ZELLE' | 'VENMO'>('CARD');
 
-  // Cupom de Vendedora (Comissão Oculta para o Cliente)
+  // Cupom de Desconto & Promoções / Vendedora
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
-  const [discountPercent, setDiscountPercent] = useState(0); // Desconto dinâmico do cupom
+  const [discountPercent, setDiscountPercent] = useState(0); // Desconto dinâmico do cupom (%)
+  const [fixedDiscountAmount, setFixedDiscountAmount] = useState(0); // Desconto fixo em dólar ($)
+  const [isFreeShipping, setIsFreeShipping] = useState(false); // Frete grátis via cupom
+  const [couponType, setCouponType] = useState<'PERCENTAGE' | 'FIXED' | 'FREE_SHIPPING'>('PERCENTAGE');
   const [couponSellerInfo, setCouponSellerInfo] = useState<{
     name: string;
     discount_pct: number;
@@ -213,9 +216,13 @@ export default function CheckoutPage() {
 
   // Cálculos Financeiros
   const subtotal = cartItem ? cartItem.price * cartItem.quantity : 0;
-  const discountAmount = appliedCoupon ? (subtotal * discountPercent) / 100 : 0;
-  const shippingRate = 9.99; // Taxa fixa de frete para todos os EUA
-  const total = subtotal > 0 ? subtotal - discountAmount + shippingRate : 0;
+  const discountAmount = appliedCoupon
+    ? (couponType === 'FIXED'
+        ? Math.min(subtotal, fixedDiscountAmount)
+        : (subtotal * discountPercent) / 100)
+    : 0;
+  const shippingRate = isFreeShipping ? 0 : 9.99; // Taxa fixa de frete para todos os EUA (ou Grátis via cupom)
+  const total = subtotal > 0 ? Math.max(0, subtotal - discountAmount) + shippingRate : 0;
 
   const handleRemoveCartItem = () => {
     localStorage.removeItem('ana_cart_item');
@@ -223,44 +230,46 @@ export default function CheckoutPage() {
     setCartItem(null);
   };
 
-  // Auto-aplica cupom vindo de link de indicação / vendedora
+  // Auto-aplica cupom vindo de link de indicação / vendedora ou promoção
   useEffect(() => {
     try {
       const savedCoupon = localStorage.getItem('ana_applied_coupon');
       if (savedCoupon && !appliedCoupon) {
         const clean = savedCoupon.trim().toUpperCase();
         setCouponInput(clean);
-        fetch(`/api/backoffice/sellers?coupon=${encodeURIComponent(clean)}`)
+        fetch(
+          `/api/backoffice/coupons?code=${encodeURIComponent(clean)}&subtotal=${encodeURIComponent(
+            subtotal
+          )}&channel=ONLINE`
+        )
           .then((res) => (res.ok ? res.json() : null))
           .then((data) => {
-            const seller = data?.coupon;
-            if (seller && seller.code) {
-              setAppliedCoupon(seller.code);
-              setDiscountPercent(seller.customer_discount_pct || 0);
-              setCouponSellerInfo({
-                name: seller.seller_name,
-                discount_pct: seller.customer_discount_pct || 0,
-                commission_pct: seller.commission_pct || 10,
-              });
-              if (seller.customer_discount_pct > 0) {
-                setCouponFeedback(
-                  lang === 'pt'
-                    ? `✓ CUPOM ${seller.code} APLICADO • ${seller.customer_discount_pct}% DE DESCONTO`
-                    : `✓ CODE ${seller.code} APPLIED • ${seller.customer_discount_pct}% OFF DISCOUNT`
-                );
+            if (data?.valid) {
+              setAppliedCoupon(data.code || clean);
+              setCouponFeedback(data.message);
+              if (data.discount_type === 'FREE_SHIPPING') {
+                setIsFreeShipping(true);
+                setCouponType('FREE_SHIPPING');
+              } else if (data.discount_type === 'FIXED') {
+                setFixedDiscountAmount(Number(data.discount_value) || 0);
+                setCouponType('FIXED');
               } else {
-                setCouponFeedback(
-                  lang === 'pt'
-                    ? `✓ CUPOM ${seller.code} ATIVADO (Vendedora: ${seller.seller_name})`
-                    : `✓ CODE ${seller.code} ACTIVATED (Seller: ${seller.seller_name})`
-                );
+                setDiscountPercent(Number(data.discount_value) || 0);
+                setCouponType('PERCENTAGE');
+              }
+              if (data.seller_name) {
+                setCouponSellerInfo({
+                  name: data.seller_name,
+                  discount_pct: data.discount_value || 0,
+                  commission_pct: data.commission_pct || 0,
+                });
               }
             }
           })
           .catch(() => {});
       }
     } catch (_) {}
-  }, [lang, appliedCoupon]);
+  }, [lang, appliedCoupon, subtotal]);
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,33 +277,45 @@ export default function CheckoutPage() {
     if (!clean) return;
 
     try {
-      const res = await fetch(`/api/backoffice/sellers?coupon=${encodeURIComponent(clean)}`);
-      if (res.ok) {
-        const data = await res.json();
-        const seller = data.coupon;
-        if (seller && seller.code) {
-          setAppliedCoupon(seller.code);
-          setDiscountPercent(seller.customer_discount_pct || 0);
-          setCouponSellerInfo({
-            name: seller.seller_name,
-            discount_pct: seller.customer_discount_pct || 0,
-            commission_pct: seller.commission_pct || 10,
-          });
-          if (seller.customer_discount_pct > 0) {
-            setCouponFeedback(
-              lang === 'pt'
-                ? `✓ CUPOM ${seller.code} APLICADO • ${seller.customer_discount_pct}% DE DESCONTO`
-                : `✓ CODE ${seller.code} APPLIED • ${seller.customer_discount_pct}% OFF DISCOUNT`
-            );
-          } else {
-            setCouponFeedback(
-              lang === 'pt'
-                ? `✓ CUPOM ${seller.code} ATIVADO (Vendedora: ${seller.seller_name})`
-                : `✓ CODE ${seller.code} ACTIVATED (Seller: ${seller.seller_name})`
-            );
-          }
-          return;
+      const res = await fetch(
+        `/api/backoffice/coupons?code=${encodeURIComponent(clean)}&subtotal=${encodeURIComponent(
+          subtotal
+        )}&channel=ONLINE`
+      );
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        setAppliedCoupon(data.code || clean);
+        setCouponFeedback(data.message);
+
+        if (data.discount_type === 'FREE_SHIPPING') {
+          setIsFreeShipping(true);
+          setDiscountPercent(0);
+          setFixedDiscountAmount(0);
+          setCouponType('FREE_SHIPPING');
+        } else if (data.discount_type === 'FIXED') {
+          setIsFreeShipping(false);
+          setDiscountPercent(0);
+          setFixedDiscountAmount(Number(data.discount_value) || 0);
+          setCouponType('FIXED');
+        } else {
+          setIsFreeShipping(false);
+          setDiscountPercent(Number(data.discount_value) || 0);
+          setFixedDiscountAmount(0);
+          setCouponType('PERCENTAGE');
         }
+
+        if (data.seller_name) {
+          setCouponSellerInfo({
+            name: data.seller_name,
+            discount_pct: data.discount_value || 0,
+            commission_pct: data.commission_pct || 0,
+          });
+        }
+        return;
+      } else if (data.message) {
+        alert(data.message);
+        setCouponFeedback('');
+        return;
       }
     } catch (err) {
       console.warn('Erro ao consultar cupom:', err);
@@ -439,6 +460,17 @@ export default function CheckoutPage() {
       });
     } catch (err) {
       console.warn('Erro ao registrar venda na API:', err);
+    }
+
+    // Incrementa contador de uso do cupom no Supabase
+    if (appliedCoupon) {
+      try {
+        fetch('/api/backoffice/coupons', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'increment_usage', code: appliedCoupon }),
+        }).catch(() => {});
+      } catch (_) {}
     }
 
     // Dispara evento de Purchase nos Pixels de Rastreamento
@@ -1234,9 +1266,17 @@ export default function CheckoutPage() {
               <span className="font-mono font-bold">${subtotal.toFixed(2)}</span>
             </div>
 
-            {appliedCoupon && discountPercent > 0 && (
+            {appliedCoupon && discountAmount > 0 && (
               <div className="flex justify-between text-gold font-bold">
-                <span>{lang === 'pt' ? `DESCONTO (${discountPercent}%):` : `DISCOUNT (${discountPercent}%):`}</span>
+                <span>
+                  {couponType === 'PERCENTAGE'
+                    ? lang === 'pt'
+                      ? `DESCONTO (${discountPercent}%):`
+                      : `DISCOUNT (${discountPercent}%):`
+                    : lang === 'pt'
+                    ? 'DESCONTO (CUPOM):'
+                    : 'DISCOUNT (PROMO):'}
+                </span>
                 <span className="font-mono">-${discountAmount.toFixed(2)}</span>
               </div>
             )}
@@ -1245,7 +1285,9 @@ export default function CheckoutPage() {
               <span className="flex items-center gap-1">
                 <span>{lang === 'pt' ? 'FRETE DOMÉSTICO (EUA):' : 'DOMESTIC US SHIPPING:'}</span>
               </span>
-              <span className="font-mono font-bold">${shippingRate.toFixed(2)}</span>
+              <span className={`font-mono font-bold ${isFreeShipping ? 'text-green-700' : ''}`}>
+                {isFreeShipping ? (lang === 'pt' ? 'GRÁTIS (CUPOM)' : 'FREE (PROMO)') : `$${shippingRate.toFixed(2)}`}
+              </span>
             </div>
 
             <div className="flex justify-between text-lg sm:text-xl font-black text-deep-black pt-3 border-t-2 border-deep-black">

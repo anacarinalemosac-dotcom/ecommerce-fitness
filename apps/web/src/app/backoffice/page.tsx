@@ -90,6 +90,7 @@ import { SimpleFinancesView } from '../../components/backoffice/SimpleFinancesVi
 import { SuppliersManagementView } from '../../components/backoffice/SuppliersManagementView';
 import { AccessReportsView } from '../../components/backoffice/AccessReportsView';
 import { SalesReportModal } from '../../components/backoffice/SalesReportModal';
+import CouponsManagerView from '../../components/backoffice/CouponsManagerView';
 import {
   generateReceiptWhatsAppMessage,
   generateCrediarioWhatsAppMessage,
@@ -232,7 +233,7 @@ export default function BackofficeDashboard() {
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'finances' | 'invoices' | 'reports' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
+    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'finances' | 'invoices' | 'coupons' | 'reports' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
   >('dashboard');
   const [cmsSubTab, setCmsSubTab] = useState<'media' | 'categories' | 'colors' | 'typography' | 'pages'>('categories');
   const [onlineCount, setOnlineCount] = useState(0);
@@ -1975,7 +1976,7 @@ export default function BackofficeDashboard() {
         </div>
 
         {/* Grade de Ações Rápidas de Alta Prioridade */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-2">
           {/* 1. Cadastrar Novo Produto */}
           <button
             type="button"
@@ -2089,7 +2090,25 @@ export default function BackofficeDashboard() {
             <span className="text-[8px] opacity-75 font-bold">Arquivo de NF</span>
           </button>
 
-          {/* 8. Vendedoras & Cupons */}
+          {/* 8. Cupons de Desconto & Promoções */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('coupons')}
+            className={`p-3 transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm border cursor-pointer ${
+              activeTab === 'coupons'
+                ? 'bg-gold/20 border-gold text-gold font-black'
+                : 'bg-white/5 hover:bg-white/15 text-white/90 border-white/15 hover:border-gold/40'
+            }`}
+            title="Gerenciar cupons de desconto (% ou $ fixo), frete grátis e promoções da loja"
+          >
+            <Tag className="w-5 h-5 text-gold" />
+            <span className="leading-tight text-[11px] font-black">CUPONS</span>
+            <span className="text-[8px] bg-gold/20 text-gold px-1.5 py-0.5 border border-gold/40 font-bold uppercase font-mono">
+              PROMOÇÕES
+            </span>
+          </button>
+
+          {/* 9. Vendedoras & Afiliadas */}
           <button
             type="button"
             onClick={() => setActiveTab('commissions')}
@@ -2098,7 +2117,7 @@ export default function BackofficeDashboard() {
                 ? 'bg-gold/20 border-gold text-gold font-black'
                 : 'bg-white/5 hover:bg-white/15 text-white/90 border-white/15 hover:border-gold/40'
             }`}
-            title="Gerenciar vendedoras, cupons e comissões"
+            title="Gerenciar vendedoras e comissões"
           >
             <Users className="w-5 h-5 text-gold" />
             <span className="leading-tight text-[11px] font-black">VENDEDORAS</span>
@@ -2252,6 +2271,22 @@ export default function BackofficeDashboard() {
           <span>ENTRADA DE NOTAS (NF)</span>
           <span className="bg-emerald-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">
             ARQUIVO
+          </span>
+        </button>
+
+        {/* Cupons de Desconto & Promoções */}
+        <button
+          onClick={() => setActiveTab('coupons')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'coupons'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Tag className="w-4 h-4 text-gold" />
+          <span>CUPONS DE DESCONTO</span>
+          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
+            PROMOÇÕES
           </span>
         </button>
 
@@ -6576,6 +6611,13 @@ export default function BackofficeDashboard() {
             setShowWriteOffModal(true);
           }}
         />
+      )}
+
+      {/* =========================================================================
+          TAB: CUPONS DE DESCONTO & PROMOÇÕES DA LOJA
+         ========================================================================= */}
+      {activeTab === 'coupons' && (
+        <CouponsManagerView />
       )}
 
       {/* =========================================================================

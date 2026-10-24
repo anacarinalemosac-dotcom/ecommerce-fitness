@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { recordLiveEvent } from '@/lib/liveStore';
 import { supabaseServer } from '@/lib/supabaseServer';
+import { readCoupons } from '@/lib/couponsStore';
 
 const SELLERS_ROW_ID = '00000000-0000-0000-0000-000000000092';
 const SELLERS_SLUG = '__sellers_db_state__';
@@ -221,21 +222,41 @@ export async function GET(req: NextRequest) {
     const couponQuery = searchParams.get('coupon');
     const sellers = await readSellers();
 
-    // Se a busca for por um cupom específico (ex: pelo checkout)
+    // Se a busca for por um cupom específico (ex: pelo checkout ou tracker de URL)
     if (couponQuery) {
       const cleanCoupon = couponQuery.trim().toUpperCase();
       const matched = sellers.find((s) => s.coupon_code.toUpperCase() === cleanCoupon && s.active);
-      if (!matched) {
-        return NextResponse.json({ error: 'Cupom inválido ou inativo.' }, { status: 404 });
+      if (matched) {
+        return NextResponse.json({
+          coupon: {
+            code: matched.coupon_code,
+            seller_name: matched.name,
+            customer_discount_pct: matched.customer_discount_pct,
+            commission_pct: matched.commission_pct,
+          },
+        });
       }
-      return NextResponse.json({
-        coupon: {
-          code: matched.coupon_code,
-          seller_name: matched.name,
-          customer_discount_pct: matched.customer_discount_pct,
-          commission_pct: matched.commission_pct,
-        },
-      });
+
+      // Se não for de vendedora, verifica nos cupons oficiais da loja
+      try {
+        const storeCoupons = await readCoupons();
+        const storeMatched = storeCoupons.find(
+          (c) => c.code.toUpperCase() === cleanCoupon && c.active
+        );
+        if (storeMatched) {
+          return NextResponse.json({
+            coupon: {
+              code: storeMatched.code,
+              seller_name: storeMatched.seller_name || 'Loja Oficial Ana Fitness Wear',
+              customer_discount_pct:
+                storeMatched.discount_type === 'PERCENTAGE' ? storeMatched.discount_value : 0,
+              commission_pct: 0,
+            },
+          });
+        }
+      } catch (_) {}
+
+      return NextResponse.json({ error: 'Cupom inválido ou inativo.' }, { status: 404 });
     }
 
     return NextResponse.json({ success: true, sellers, data: sellers });
