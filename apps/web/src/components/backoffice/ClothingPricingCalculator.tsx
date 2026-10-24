@@ -1389,20 +1389,43 @@ export function ClothingPricingCalculator({
                   <span>NOTAS FISCAIS REGISTRADAS NO SISTEMA ({clothingPurchases.length})</span>
                 </h3>
                 <p className="text-[10px] text-deep-black/60 uppercase mt-0.5 font-medium">
-                  Suas notas ficam salvas e fechadas aqui. Clique em qualquer nota para abrir o espelho com custos, câmbio e margens.
+                  Suas notas de fábrica ficam salvas e recolhidas aqui. Clique em qualquer nota para abrir o espelho com custos, câmbio e margens.
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                {/* Campo de Busca Rápida */}
-                <div className="relative min-w-[240px]">
+                <button
+                  type="button"
+                  onClick={handleResetNewInvoice}
+                  className="px-5 py-2.5 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 shadow border-2 border-deep-black cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ DAR ENTRADA EM NOVA NOTA</span>
+                </button>
+              </div>
+            </div>
+
+            {/* VERIFICADOR RÁPIDO DE NOTA / CONSULTOR INTELIGENTE */}
+            <div className="bg-stone-100 border-2 border-deep-black/20 p-4 space-y-2">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-deep-black">
+                    <Search className="w-4 h-4 text-gold" />
+                    <span>CONSULTAR OU VERIFICAR SE UMA NOTA JÁ FOI CADASTRADA:</span>
+                  </div>
+                  <p className="text-[10px] text-deep-black/60 uppercase font-medium">
+                    Digite o número da nota fiscal ou o nome da confecção para checar na hora se ela já está registrada.
+                  </p>
+                </div>
+
+                <div className="relative min-w-[280px]">
                   <Search className="w-4 h-4 text-deep-black/40 absolute left-3 top-2.5" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar nota, fornecedor ou data..."
-                    className="w-full pl-9 pr-7 py-2 text-xs border border-deep-black/30 font-bold focus:outline-none focus:border-deep-black bg-stone-50"
+                    placeholder="Ex: 1042, Confecção Delux, 2024..."
+                    className="w-full pl-9 pr-7 py-2 text-xs border-2 border-deep-black/30 font-bold focus:outline-none focus:border-deep-black bg-white"
                   />
                   {searchQuery && (
                     <button
@@ -1414,16 +1437,49 @@ export function ClothingPricingCalculator({
                     </button>
                   )}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleResetNewInvoice}
-                  className="px-5 py-2.5 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 shadow"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>+ DAR ENTRADA EM NOVA NOTA</span>
-                </button>
               </div>
+
+              {/* FEEDBACK DA BUSCA EM TEMPO REAL */}
+              {searchQuery.trim().length >= 2 && (
+                <div className="pt-2 border-t border-deep-black/10 animate-fadeIn">
+                  {filteredPurchasesList.length > 0 ? (
+                    <div className="p-3 bg-amber-50 border-2 border-amber-500 text-amber-950 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">⚠️</span>
+                        <span>
+                          <strong>NOTA ENCONTRADA:</strong> Encontramos <strong>{filteredPurchasesList.length}</strong> registro(s) correspondente(s) a "<strong>{searchQuery}</strong>". Veja o cartão abaixo e clique em "ABRIR ESPELHO DA NOTA" para não cadastrar duplicada.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="text-amber-900 underline text-[10px] font-black uppercase flex-shrink-0"
+                      >
+                        Limpar Busca
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-emerald-50 border-2 border-emerald-500 text-emerald-950 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">✅</span>
+                        <span>
+                          <strong>NOTA NÃO CADASTRADA:</strong> Nenhuma nota encontrada com o número/termo "<strong>{searchQuery}</strong>". Você pode dar entrada nela agora mesmo!
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleResetNewInvoice();
+                          setInvoiceNumber(searchQuery.trim());
+                        }}
+                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-[10px] uppercase tracking-wider shadow flex-shrink-0"
+                      >
+                        + Cadastrar Nota {searchQuery.trim()} Agora
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {clothingPurchases.length === 0 ? (
@@ -1465,7 +1521,7 @@ export function ClothingPricingCalculator({
                   return (
                     <div
                       key={p.id}
-                      className={`p-5 border-2 transition space-y-4 shadow-sm group ${
+                      className={`p-5 border-2 transition space-y-3.5 shadow-sm group ${
                         isNewlyCreated
                           ? 'border-gold bg-gold/10 ring-2 ring-gold/50'
                           : 'border-deep-black bg-stone-50 hover:bg-white hover:border-gold'
@@ -1523,20 +1579,26 @@ export function ClothingPricingCalculator({
                         </div>
                       </div>
 
+                      {/* Badge Lançado no Financeiro */}
+                      <div className="bg-emerald-50 border border-emerald-300 p-2 flex items-center gap-1.5 text-[10px] font-bold text-emerald-900">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                        <span>Financeiro: <strong>Gasto com Mercadoria Lançado</strong></span>
+                      </div>
+
                       <div className="flex items-center justify-between gap-1.5 pt-1">
                         <button
                           type="button"
                           onClick={() => setSelectedInvoiceModal(p)}
-                          className="flex-1 py-2 bg-deep-black group-hover:bg-gold group-hover:text-deep-black text-white text-[11px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 shadow"
+                          className="flex-1 py-2.5 bg-deep-black group-hover:bg-gold group-hover:text-deep-black text-white text-[11px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 shadow cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          <span>Abrir Espelho</span>
+                          <span>ABRIR ESPELHO DA NOTA</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => handleLoadPurchaseToInvoice(p)}
-                          className="p-2 bg-stone-200 hover:bg-gold text-deep-black transition border border-deep-black/20"
+                          className="p-2.5 bg-stone-200 hover:bg-gold text-deep-black transition border border-deep-black/20 cursor-pointer"
                           title="Editar esta nota fiscal"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
@@ -1545,7 +1607,7 @@ export function ClothingPricingCalculator({
                         <button
                           type="button"
                           onClick={() => handleDeletePurchase(p.id)}
-                          className="p-2 text-deep-black/40 hover:text-red-600 hover:bg-red-50 transition border border-deep-black/10"
+                          className="p-2.5 text-deep-black/40 hover:text-red-600 hover:bg-red-50 transition border border-deep-black/10 cursor-pointer"
                           title="Excluir nota fiscal"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

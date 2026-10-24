@@ -231,7 +231,7 @@ export default function BackofficeDashboard() {
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'finances' | 'reports' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
+    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'finances' | 'invoices' | 'reports' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
   >('dashboard');
   const [cmsSubTab, setCmsSubTab] = useState<'media' | 'categories' | 'colors' | 'typography' | 'pages'>('categories');
   const [onlineCount, setOnlineCount] = useState(0);
@@ -2051,20 +2051,20 @@ export default function BackofficeDashboard() {
             <span className="text-[8px] opacity-80 font-bold">WhatsApp</span>
           </button>
 
-          {/* 7. Entrada de Notas / Precificação */}
+          {/* 7. Entrada de Notas Fiscais */}
           <button
             type="button"
-            onClick={() => setActiveTab('finances')}
+            onClick={() => setActiveTab('invoices')}
             className={`p-3 transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm border cursor-pointer ${
-              activeTab === 'finances'
+              activeTab === 'invoices'
                 ? 'bg-gold/20 border-gold text-gold font-black'
                 : 'bg-white/5 hover:bg-white/15 text-white/90 border-white/15 hover:border-gold/40'
             }`}
-            title="Lançar notas de confecção, despesas e calculadora de precificação"
+            title="Lançar notas fiscais de confecção, verificar notas já salvas e calcular custos"
           >
-            <DollarSign className="w-5 h-5 text-gold" />
-            <span className="leading-tight text-[11px] font-black">NOTAS & FINANÇAS</span>
-            <span className="text-[8px] opacity-75 font-bold">DRE & Custos</span>
+            <Receipt className="w-5 h-5 text-gold" />
+            <span className="leading-tight text-[11px] font-black">ENTRADA DE NOTAS</span>
+            <span className="text-[8px] opacity-75 font-bold">Arquivo de NF</span>
           </button>
 
           {/* 8. Vendedoras & Cupons */}
@@ -2217,6 +2217,22 @@ export default function BackofficeDashboard() {
           )}
         </button>
 
+        {/* Entrada de Notas Fiscais de Fábrica */}
+        <button
+          onClick={() => setActiveTab('invoices')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'invoices'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Receipt className="w-4 h-4 text-gold" />
+          <span>ENTRADA DE NOTAS (NF)</span>
+          <span className="bg-emerald-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">
+            ARQUIVO
+          </span>
+        </button>
+
         {/* 5. Financeiro da Loja */}
         <button
           onClick={() => setActiveTab('finances')}
@@ -2229,7 +2245,7 @@ export default function BackofficeDashboard() {
           <Wallet className="w-4 h-4 text-gold" />
           <span>5. FINANCEIRO DA LOJA</span>
           <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
-            COMPRAS & PREÇO
+            DRE & CAIXA
           </span>
         </button>
 
@@ -6520,6 +6536,19 @@ export default function BackofficeDashboard() {
         <SimpleFinancesView
           salesData={salesData}
           sellers={sellers}
+          initialSubTab="cashflow"
+          onOpenWriteOffModal={() => {
+            setWriteOffModalTab('NEW');
+            setShowWriteOffModal(true);
+          }}
+        />
+      )}
+
+      {activeTab === 'invoices' && (
+        <SimpleFinancesView
+          salesData={salesData}
+          sellers={sellers}
+          initialSubTab="pricing"
           onOpenWriteOffModal={() => {
             setWriteOffModalTab('NEW');
             setShowWriteOffModal(true);

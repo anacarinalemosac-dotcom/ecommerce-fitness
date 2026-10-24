@@ -43,6 +43,7 @@ import { ClothingPricingCalculator } from './ClothingPricingCalculator';
 interface SimpleFinancesViewProps {
   salesData: any;
   sellers?: any[];
+  initialSubTab?: 'pricing' | 'cashflow';
   onOpenWriteOffModal?: () => void;
 }
 
@@ -65,7 +66,7 @@ const CATEGORY_MAP: Record<
     border: 'border-amber-200',
   },
   SUPPLIERS: {
-    label: 'Confecção, Tecidos & Costura',
+    label: 'Confecção, Tecidos & Mercadoria (Notas)',
     icon: Scissors,
     color: 'text-purple-800',
     bg: 'bg-purple-50',
@@ -115,7 +116,12 @@ const CATEGORY_MAP: Record<
   },
 };
 
-export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModal }: SimpleFinancesViewProps) {
+export function SimpleFinancesView({
+  salesData,
+  sellers = [],
+  initialSubTab = 'pricing',
+  onOpenWriteOffModal,
+}: SimpleFinancesViewProps) {
   const [loading, setLoading] = useState(true);
   const [finances, setFinances] = useState<FinancesState>({
     expenses: [],
@@ -123,8 +129,14 @@ export function SimpleFinancesView({ salesData, sellers = [], onOpenWriteOffModa
     updatedAt: new Date().toISOString(),
   });
 
-  // Sub-abas do Financeiro (Default: Compras & Precificação das Roupas)
-  const [financeSubTab, setFinanceSubTab] = useState<'pricing' | 'cashflow'>('pricing');
+  // Sub-abas do Financeiro (Default: Compras & Precificação das Roupas / Notas)
+  const [financeSubTab, setFinanceSubTab] = useState<'pricing' | 'cashflow'>(initialSubTab || 'pricing');
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setFinanceSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
 
   // Filtros
   const [selectedMonth, setSelectedMonth] = useState<string>('CURRENT'); // 'CURRENT', 'PREVIOUS', 'ALL'
