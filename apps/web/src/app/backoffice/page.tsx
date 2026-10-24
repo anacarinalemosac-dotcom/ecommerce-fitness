@@ -98,6 +98,7 @@ import {
 } from '@/lib/whatsappMessages';
 
 interface ProductProfit {
+  id?: string;
   sku: string;
   title: string;
   costPrice: number;
@@ -1139,17 +1140,23 @@ export default function BackofficeDashboard() {
 
   const updateCost = async (idOrSku: string, newCost: number) => {
     setProductsMargin((prev) =>
-      prev.map((p) => (p.sku === idOrSku ? { ...p, costPrice: newCost } : p))
+      prev.map((p) => (p.sku === idOrSku || p.id === idOrSku ? { ...p, costPrice: newCost } : p))
     );
 
     setSupabaseProducts((prev) =>
       prev.map((p) => {
-        const match = p.id === idOrSku || p.sku === idOrSku || p.meta?.general_sku === idOrSku || p.variants?.[0]?.sku === idOrSku;
+        const match =
+          p.id === idOrSku ||
+          p.sku === idOrSku ||
+          p.slug === idOrSku ||
+          p.meta?.general_sku === idOrSku ||
+          p.variants?.some((v: any) => v.id === idOrSku || v.sku === idOrSku);
         if (match) {
           return {
             ...p,
             cost_price: newCost,
             costPrice: newCost,
+            meta: { ...(p.meta || {}), cost_price: newCost },
             variants: (p.variants || []).map((v: any) => ({ ...v, cost_price: newCost, costPrice: newCost })),
           };
         }
@@ -1159,7 +1166,7 @@ export default function BackofficeDashboard() {
 
     setProducts((prev) =>
       prev.map((p) => {
-        const match = p.id === idOrSku || p.sku === idOrSku;
+        const match = p.id === idOrSku || p.sku === idOrSku || p.slug === idOrSku;
         if (match) {
           return {
             ...p,
@@ -1171,12 +1178,17 @@ export default function BackofficeDashboard() {
     );
 
     const targetProduct = supabaseProducts.find(
-      (p) => p.id === idOrSku || p.sku === idOrSku || p.meta?.general_sku === idOrSku || p.variants?.[0]?.sku === idOrSku
+      (p) =>
+        p.id === idOrSku ||
+        p.sku === idOrSku ||
+        p.slug === idOrSku ||
+        p.meta?.general_sku === idOrSku ||
+        p.variants?.some((v: any) => v.id === idOrSku || v.sku === idOrSku)
     );
     const targetId = targetProduct?.id || idOrSku;
 
-    if (targetId && !targetId.startsWith('p') && typeof targetId === 'string' && targetId.length > 10) {
-      setSavingCostId(targetId);
+    if (targetId) {
+      setSavingCostId(idOrSku);
       try {
         await fetch('/api/backoffice/products', {
           method: 'PATCH',
@@ -1186,7 +1198,7 @@ export default function BackofficeDashboard() {
       } catch (err) {
         console.warn('Erro ao salvar custo no Supabase:', err);
       } finally {
-        setTimeout(() => setSavingCostId(null), 1200);
+        setTimeout(() => setSavingCostId(null), 1500);
       }
     }
   };
@@ -1195,17 +1207,22 @@ export default function BackofficeDashboard() {
 
   const updatePrice = async (idOrSku: string, newPrice: number) => {
     setProductsMargin((prev) =>
-      prev.map((p) => (p.sku === idOrSku ? { ...p, salePrice: newPrice } : p))
+      prev.map((p) => (p.sku === idOrSku || p.id === idOrSku ? { ...p, salePrice: newPrice } : p))
     );
 
     setSupabaseProducts((prev) =>
       prev.map((p) => {
-        const match = p.id === idOrSku || p.sku === idOrSku || p.meta?.general_sku === idOrSku || p.variants?.[0]?.sku === idOrSku;
+        const match =
+          p.id === idOrSku ||
+          p.sku === idOrSku ||
+          p.slug === idOrSku ||
+          p.meta?.general_sku === idOrSku ||
+          p.variants?.some((v: any) => v.id === idOrSku || v.sku === idOrSku);
         if (match) {
           const updatedMeta = {
             ...(p.meta || {}),
             price: newPrice,
-            ...(p.meta?.promotional_price !== undefined ? { promotional_price: newPrice } : {}),
+            promotional_price: newPrice,
           };
           return {
             ...p,
@@ -1220,7 +1237,7 @@ export default function BackofficeDashboard() {
 
     setProducts((prev) =>
       prev.map((p) => {
-        const match = p.id === idOrSku || p.sku === idOrSku;
+        const match = p.id === idOrSku || p.sku === idOrSku || p.slug === idOrSku;
         if (match) {
           return {
             ...p,
@@ -1232,12 +1249,17 @@ export default function BackofficeDashboard() {
     );
 
     const targetProduct = supabaseProducts.find(
-      (p) => p.id === idOrSku || p.sku === idOrSku || p.meta?.general_sku === idOrSku || p.variants?.[0]?.sku === idOrSku
+      (p) =>
+        p.id === idOrSku ||
+        p.sku === idOrSku ||
+        p.slug === idOrSku ||
+        p.meta?.general_sku === idOrSku ||
+        p.variants?.some((v: any) => v.id === idOrSku || v.sku === idOrSku)
     );
     const targetId = targetProduct?.id || idOrSku;
 
-    if (targetId && !targetId.startsWith('p') && typeof targetId === 'string' && targetId.length > 10) {
-      setSavingPriceId(targetId);
+    if (targetId) {
+      setSavingPriceId(idOrSku);
       try {
         await fetch('/api/backoffice/products', {
           method: 'PATCH',
@@ -1250,7 +1272,7 @@ export default function BackofficeDashboard() {
       } catch (err) {
         console.warn('Erro ao salvar preço no Supabase:', err);
       } finally {
-        setTimeout(() => setSavingPriceId(null), 1200);
+        setTimeout(() => setSavingPriceId(null), 1500);
       }
     }
   };
@@ -2938,8 +2960,8 @@ export default function BackofficeDashboard() {
                               className="w-16 p-1 border border-deep-black/20 hover:border-deep-black text-xs font-mono font-bold bg-white focus:outline-none focus:border-gold"
                               title="Preço de Venda (atualiza automaticamente no Supabase e na Loja Virtual)"
                             />
-                            {savingPriceId === item.id && (
-                              <span className="text-[8px] text-green-700 font-black animate-pulse">✓</span>
+                            {(savingPriceId === item.id || savingPriceId === item.sku || (item.slug && savingPriceId === item.slug)) && (
+                              <span className="text-[8px] bg-green-100 text-green-800 px-1 py-0.5 border border-green-400 font-black animate-pulse">✓ SALVO</span>
                             )}
                           </div>
                           {item.meta?.compare_price && Number(item.meta.compare_price) > Number(basePrice) && (
@@ -2966,8 +2988,8 @@ export default function BackofficeDashboard() {
                             className="w-16 p-1 border border-deep-black/20 hover:border-deep-black text-xs font-mono font-bold bg-white focus:outline-none focus:border-gold"
                             title="Preço de Custo (atualiza automaticamente no Supabase)"
                           />
-                          {savingCostId === item.id && (
-                            <span className="text-[8px] text-green-700 font-black animate-pulse">✓</span>
+                          {(savingCostId === item.id || savingCostId === item.sku || (item.slug && savingCostId === item.slug)) && (
+                            <span className="text-[8px] bg-green-100 text-green-800 px-1 py-0.5 border border-green-400 font-black animate-pulse">✓ SALVO</span>
                           )}
                         </div>
                       </td>

@@ -161,8 +161,58 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const { products: storeProducts } = useStoreSettings();
   const slug = params.slug || 'samanta-romper';
 
-  // Localiza produto cadastrado ou editado no Backoffice/Supabase
-  const dynamicProduct = storeProducts.find((p) => p.slug === slug || p.id === slug);
+  const [liveProduct, setLiveProduct] = useState<any>(null);
+
+  useEffect(() => {
+    if (!slug) return;
+    let isCancelled = false;
+    fetch(`/api/backoffice/products?id=${encodeURIComponent(slug)}`, { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!isCancelled && data?.product) {
+          const p = data.product;
+          const meta = p.meta || {};
+          const pPrice = Number(p.price) || 44.9;
+          const pCompare = meta.compare_price ? Number(meta.compare_price) : undefined;
+
+          setLiveProduct({
+            id: p.id,
+            title: p.title,
+            slug: p.slug,
+            description: meta.bio || p.description || '',
+            descriptionPt: meta.description_pt || '',
+            descriptionEn: meta.description_en || '',
+            categoryPt: p.categories?.name || 'CONJUNTOS',
+            categoryEn: p.categories?.name || 'SETS',
+            price: pPrice,
+            originalPrice: pCompare && pCompare > pPrice ? pCompare : undefined,
+            costPrice: Number(p.cost_price) || 16.0,
+            primaryImage: p.primaryImage || p.primary_image || '',
+            secondaryImage: p.galleryImages?.[1] || p.images?.[1] || '',
+            galleryImages: p.galleryImages || p.images || [],
+            colors: p.colors || [],
+            sizes: p.sizes || [],
+            stock: (p.variants || []).reduce((acc: number, v: any) => acc + (v.stock_quantity || 0), 0),
+            allowBackorder: Boolean(meta.allow_backorder || p.allow_backorder || true),
+            productionDays: p.variants?.[0]?.estimated_production_days || 7,
+            cupsType: meta.cups_type || 'removable',
+            ribbon: meta.ribbon || '',
+            badgePt: meta.ribbon || 'BEST SELLER',
+            badgeEn: meta.ribbon || 'BEST SELLER',
+            badgeStyle: 'bg-gold text-deep-black',
+            variants: p.variants || [],
+          });
+        }
+      })
+      .catch((err) => console.warn('Erro ao carregar produto em tempo real:', err));
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [slug]);
+
+  // Localiza produto cadastrado ou editado no Backoffice/Supabase (prioriza dados frescos em tempo real)
+  const dynamicProduct = liveProduct || storeProducts.find((p) => p.slug === slug || p.id === slug);
 
   let productData = CATALOG_ITEMS[slug] || CATALOG_ITEMS['samanta-romper'];
 

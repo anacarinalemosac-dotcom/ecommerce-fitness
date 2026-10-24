@@ -15,12 +15,18 @@ export async function GET(req: NextRequest) {
     const id = searchParams.get('id');
 
     if (id) {
-      // Busca produto específico
-      const { data: product, error: prodErr } = await supabaseServer
+      // Busca produto específico por UUID ou Slug
+      let prodQuery = supabaseServer
         .from('products')
-        .select('*, categories(*), suppliers(*)')
-        .eq('id', id)
-        .maybeSingle();
+        .select('*, categories(*), suppliers(*)');
+
+      if (isUuid(id)) {
+        prodQuery = prodQuery.eq('id', id);
+      } else {
+        prodQuery = prodQuery.eq('slug', id);
+      }
+
+      const { data: product, error: prodErr } = await prodQuery.maybeSingle();
 
       if (prodErr || !product) {
         return NextResponse.json({ error: 'Produto não encontrado.' }, { status: 404 });
@@ -29,7 +35,7 @@ export async function GET(req: NextRequest) {
       const { data: variants } = await supabaseServer
         .from('product_variants')
         .select('*')
-        .eq('product_id', id)
+        .eq('product_id', product.id)
         .order('created_at', { ascending: true });
 
       let meta: any = {};
@@ -64,9 +70,19 @@ export async function GET(req: NextRequest) {
             ...effectiveVariants.flatMap((v: any) => Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []))
           ].filter(Boolean)));
 
-      const resolvedCost = (effectiveVariants?.[0]?.cost_price !== undefined && effectiveVariants?.[0]?.cost_price !== null)
+      const resolvedCost = (effectiveVariants?.[0]?.cost_price !== undefined && effectiveVariants?.[0]?.cost_price !== null && !isNaN(Number(effectiveVariants[0].cost_price)))
         ? Number(effectiveVariants[0].cost_price)
-        : (meta.cost_price !== undefined ? Number(meta.cost_price) : 16.0);
+        : (meta.cost_price !== undefined && meta.cost_price !== null && !isNaN(Number(meta.cost_price)))
+        ? Number(meta.cost_price)
+        : 16.0;
+
+      const resolvedPrice = (meta.price !== undefined && meta.price !== null && !isNaN(Number(meta.price)))
+        ? Number(meta.price)
+        : (meta.promotional_price !== undefined && meta.promotional_price !== null && !isNaN(Number(meta.promotional_price)))
+        ? Number(meta.promotional_price)
+        : (effectiveVariants?.[0]?.price !== undefined && effectiveVariants?.[0]?.price !== null && !isNaN(Number(effectiveVariants[0].price)))
+        ? Number(effectiveVariants[0].price)
+        : 44.90;
 
       const enrichedProduct = {
         ...product,
@@ -78,12 +94,14 @@ export async function GET(req: NextRequest) {
         media_list: meta.media_list || [],
         colors: meta.colors || [],
         sizes: meta.sizes || [],
+        price: resolvedPrice,
         cost_price: resolvedCost,
         costPrice: resolvedCost,
         visible_online: meta.visible_online === true,
         visible_pos: meta.visible_pos !== false,
         variants: (effectiveVariants || []).map((v: any) => ({
           ...v,
+          price: (v.price !== undefined && v.price !== null && !isNaN(Number(v.price))) ? Number(v.price) : resolvedPrice,
           images: Array.isArray(v.images) && v.images.length > 0 ? v.images : (v.image ? [v.image] : galleryImages),
           cost_price: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
           costPrice: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
@@ -160,10 +178,10 @@ export async function GET(req: NextRequest) {
         ? Number(effectiveVariants[0].cost_price)
         : (meta.cost_price !== undefined ? Number(meta.cost_price) : 16.0);
 
-      const resolvedPrice = (meta.promotional_price !== undefined && meta.promotional_price !== null && !isNaN(Number(meta.promotional_price)))
-        ? Number(meta.promotional_price)
-        : (meta.price !== undefined && meta.price !== null && !isNaN(Number(meta.price)))
+      const resolvedPrice = (meta.price !== undefined && meta.price !== null && !isNaN(Number(meta.price)))
         ? Number(meta.price)
+        : (meta.promotional_price !== undefined && meta.promotional_price !== null && !isNaN(Number(meta.promotional_price)))
+        ? Number(meta.promotional_price)
         : (effectiveVariants[0]?.price !== undefined && effectiveVariants[0]?.price !== null && !isNaN(Number(effectiveVariants[0].price)))
         ? Number(effectiveVariants[0].price)
         : 44.90;
@@ -494,14 +512,16 @@ export async function POST(req: NextRequest) {
     let savedVariants: any[] = [];
 
     if (Array.isArray(variants) && variants.length > 0 && finalProductId) {
+      // 1. Busca variantes existentes no Supabase para preservar IDs e evitar violação de FK (ON DELETE RESTRICT)
+      let existingDbVariants: any[] = [];
       try {
-        // Limpa variantes existentes para gravar a grade atualizada sem duplicatas ou órfãos
-        await supabaseServer
+        const { data: dbVars } = await supabaseServer
           .from('product_variants')
-          .delete()
+          .select('id, sku, barcode, size, color')
           .eq('product_id', finalProductId);
-      } catch (delErr) {
-        console.warn('Aviso ao deletar variantes antigas:', delErr);
+        if (dbVars) existingDbVariants = dbVars;
+      } catch (e) {
+        console.warn('Aviso ao consultar variantes existentes:', e);
       }
 
       const batchSkus = new Set<string>();
@@ -522,15 +542,27 @@ export async function POST(req: NextRequest) {
           : parsedExplicitPrice;
         const vPrice = (!isNaN(Number(rawVarPrice)) && Number(rawVarPrice) >= 0) ? Number(rawVarPrice) : (parsedExplicitPrice || 44.90);
 
+        // Identifica correspondência com variante existente no banco para preservar ID e Barcode
+        const matchInDb = (existingDbVariants || []).find((edv: any) =>
+          (v.id && edv.id === v.id) ||
+          (v.sku && edv.sku === v.sku) ||
+          (v.barcode && edv.barcode === v.barcode) ||
+          (edv.size?.toLowerCase() === (v.size || 'M').toLowerCase() && edv.color?.toLowerCase() === (v.color || 'Preto Ônix').toLowerCase())
+        );
+
+        const assignedId = (isUuid(v.id) ? v.id : matchInDb?.id) || undefined;
+
         // Gera SKU garantidamente único por variação e globalmente no banco
-        let finalSku = v.sku?.trim() || `${title.slice(0, 3).toUpperCase()}-${(v.color || 'COR').slice(0, 3).toUpperCase()}-${v.size || 'TAM'}-${shortId}-${timeSalt}-${i + 1}`;
+        let finalSku = v.sku?.trim() || matchInDb?.sku || `${title.slice(0, 3).toUpperCase()}-${(v.color || 'COR').slice(0, 3).toUpperCase()}-${v.size || 'TAM'}-${shortId}-${timeSalt}-${i + 1}`;
         if (batchSkus.has(finalSku)) {
           finalSku = `${finalSku}-${i + 1}`;
         }
         batchSkus.add(finalSku);
 
         // Gera Código de Barras garantidamente único por variação
-        let genBarcode = v.barcode && String(v.barcode).trim() ? String(v.barcode).trim() : `789${Math.floor(100000000 + Math.random() * 900000000)}`;
+        let genBarcode = v.barcode && String(v.barcode).trim()
+          ? String(v.barcode).trim()
+          : (matchInDb?.barcode || `789${Math.floor(100000000 + Math.random() * 900000000)}`);
         while (batchBarcodes.has(genBarcode)) {
           genBarcode = `789${Math.floor(100000000 + Math.random() * 900000000)}`;
         }
@@ -547,6 +579,7 @@ export async function POST(req: NextRequest) {
           : [];
 
         const variantPayload: any = {
+          ...(assignedId ? { id: assignedId } : {}),
           product_id: finalProductId,
           sku: finalSku,
           barcode: genBarcode,
@@ -563,6 +596,20 @@ export async function POST(req: NextRequest) {
 
         return variantPayload;
       });
+
+      // 2. Remove com segurança variantes órfãs que deixaram de existir no formulário
+      const retainedVariantIds = new Set(variantsData.map((vd: any) => vd.id).filter(Boolean));
+      const orphanedVariants = (existingDbVariants || []).filter((edv: any) => !retainedVariantIds.has(edv.id));
+      if (orphanedVariants.length > 0) {
+        try {
+          await supabaseServer
+            .from('product_variants')
+            .delete()
+            .in('id', orphanedVariants.map((o: any) => o.id));
+        } catch (delErr) {
+          console.warn('Variantes antigas não puderam ser excluídas (preservadas para histórico de pedidos):', delErr);
+        }
+      }
 
       let { data: upsertedVariants, error: varError } = await supabaseServer
         .from('product_variants')
@@ -676,7 +723,20 @@ export async function DELETE(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, visible_online, visible_pos, cost_price, costPrice, price, promotional_price, compare_price } = body;
+    const {
+      id,
+      visible_online,
+      visible_pos,
+      cost_price,
+      costPrice,
+      price,
+      promotional_price,
+      compare_price,
+      stock_quantity,
+      stock,
+      variant_id,
+      sku,
+    } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'ID do produto é obrigatório.' }, { status: 400 });
@@ -684,27 +744,59 @@ export async function PATCH(req: NextRequest) {
 
     let currentProduct = null;
     let targetId = id;
+
+    // 1. Tenta por UUID
     if (isUuid(id)) {
       const { data } = await supabaseServer
         .from('products')
-        .select('id, description')
+        .select('id, description, title, slug')
         .eq('id', id)
         .maybeSingle();
       currentProduct = data;
-    } else {
+    }
+
+    // 2. Tenta por slug
+    if (!currentProduct) {
       const { data } = await supabaseServer
         .from('products')
-        .select('id, description')
+        .select('id, description, title, slug')
         .eq('slug', id)
         .maybeSingle();
       currentProduct = data;
-      if (currentProduct) {
-        targetId = currentProduct.id;
+      if (currentProduct) targetId = currentProduct.id;
+    }
+
+    // 3. Tenta por título
+    if (!currentProduct) {
+      const { data } = await supabaseServer
+        .from('products')
+        .select('id, description, title, slug')
+        .ilike('title', id)
+        .maybeSingle();
+      currentProduct = data;
+      if (currentProduct) targetId = currentProduct.id;
+    }
+
+    // 4. Tenta por variação (ID da variação, SKU ou código de barras)
+    if (!currentProduct) {
+      const { data: vRow } = await supabaseServer
+        .from('product_variants')
+        .select('product_id')
+        .or(`id.eq.${id},sku.eq.${id},barcode.eq.${id}`)
+        .maybeSingle();
+      if (vRow?.product_id) {
+        targetId = vRow.product_id;
+        const { data } = await supabaseServer
+          .from('products')
+          .select('id, description, title, slug')
+          .eq('id', targetId)
+          .maybeSingle();
+        currentProduct = data;
       }
     }
 
     if (!currentProduct) {
-      return NextResponse.json({ error: 'Produto não encontrado.' }, { status: 404 });
+      return NextResponse.json({ error: 'Produto não encontrado no Supabase.' }, { status: 404 });
     }
 
     let meta: any = {};
@@ -725,12 +817,15 @@ export async function PATCH(req: NextRequest) {
       meta.visible_pos = Boolean(visible_pos);
     }
 
+    // Atualização atômica de Preço de Custo
     const inputCost = cost_price !== undefined ? cost_price : costPrice;
     if (inputCost !== undefined && inputCost !== null && inputCost !== '') {
       const numCost = parseFloat(inputCost);
       if (!isNaN(numCost)) {
         meta.cost_price = numCost;
-        // Atualiza o custo em todas as variações do produto na tabela product_variants
+        if (Array.isArray(meta.variants)) {
+          meta.variants = meta.variants.map((v: any) => ({ ...v, cost_price: numCost, costPrice: numCost }));
+        }
         await supabaseServer
           .from('product_variants')
           .update({ cost_price: numCost })
@@ -738,15 +833,16 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
+    // Atualização atômica de Preço de Venda
     const inputPrice = price !== undefined ? price : promotional_price;
     if (inputPrice !== undefined && inputPrice !== null && inputPrice !== '') {
       const numPrice = parseFloat(inputPrice);
       if (!isNaN(numPrice)) {
         meta.price = numPrice;
-        if (meta.promotional_price !== undefined && meta.promotional_price !== null) {
-          meta.promotional_price = numPrice;
+        meta.promotional_price = numPrice; // Garante que não haja preço promocional antigo sobrescrevendo
+        if (Array.isArray(meta.variants)) {
+          meta.variants = meta.variants.map((v: any) => ({ ...v, price: numPrice }));
         }
-        // Atualiza o preço em todas as variações do produto na tabela product_variants
         await supabaseServer
           .from('product_variants')
           .update({ price: numPrice })
@@ -756,6 +852,30 @@ export async function PATCH(req: NextRequest) {
 
     if (compare_price !== undefined) {
       meta.compare_price = compare_price ? parseFloat(compare_price) : null;
+    }
+
+    // Atualização de estoque se fornecido
+    const inputStock = stock_quantity !== undefined ? stock_quantity : stock;
+    if (inputStock !== undefined && inputStock !== null && inputStock !== '') {
+      const numStock = parseInt(String(inputStock), 10);
+      if (!isNaN(numStock)) {
+        if (variant_id) {
+          await supabaseServer
+            .from('product_variants')
+            .update({ stock_quantity: numStock })
+            .eq('id', variant_id);
+        } else if (sku) {
+          await supabaseServer
+            .from('product_variants')
+            .update({ stock_quantity: numStock })
+            .eq('sku', sku);
+        } else {
+          await supabaseServer
+            .from('product_variants')
+            .update({ stock_quantity: numStock })
+            .eq('product_id', targetId);
+        }
+      }
     }
 
     const { data: updatedRows, error: updErr } = await supabaseServer
@@ -768,15 +888,25 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: updErr.message }, { status: 500 });
     }
 
-    return NextResponse.json({
-      success: true,
-      product: updatedRows?.[0] || null,
-      visible_online: meta.visible_online,
-      visible_pos: meta.visible_pos,
-      price: meta.price,
-      cost_price: meta.cost_price,
-      costPrice: meta.cost_price,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        productId: targetId,
+        product: updatedRows?.[0] || null,
+        visible_online: meta.visible_online,
+        visible_pos: meta.visible_pos,
+        price: meta.price,
+        cost_price: meta.cost_price,
+        costPrice: meta.cost_price,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'CDN-Cache-Control': 'no-store',
+          'Vercel-CDN-Cache-Control': 'no-store',
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

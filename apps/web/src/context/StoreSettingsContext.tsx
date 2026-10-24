@@ -730,10 +730,10 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             categoryKey = 'preorder';
           }
 
-          const baseExplicitPrice = meta.promotional_price
-            ? Number(meta.promotional_price)
-            : meta.price
+          const baseExplicitPrice = meta.price
             ? Number(meta.price)
+            : meta.promotional_price
+            ? Number(meta.promotional_price)
             : p.price
             ? Number(p.price)
             : Number(firstVar.price) || 44.9;
@@ -743,23 +743,16 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
           const pCompare = meta.compare_price ? Number(meta.compare_price) : undefined;
           const pPromo = meta.promotional_price ? Number(meta.promotional_price) : undefined;
+          const pPrice = meta.price ? Number(meta.price) : undefined;
 
-          if (pCompare && pPromo) {
-            const higher = Math.max(pCompare, pPromo);
-            const lower = Math.min(pCompare, pPromo);
-            if (higher > lower) {
-              sellingPrice = lower;
-              regularPrice = higher;
-            } else {
-              sellingPrice = lower;
-            }
-          } else if (pPromo) {
-            sellingPrice = pPromo;
-            if (pCompare && pCompare > pPromo) {
-              regularPrice = pCompare;
-            }
-          } else if (pCompare && pCompare > sellingPrice) {
+          if (pCompare && pPrice && pCompare > pPrice) {
+            sellingPrice = pPrice;
             regularPrice = pCompare;
+          } else if (pCompare && pPromo && pCompare > pPromo) {
+            sellingPrice = pPromo;
+            regularPrice = pCompare;
+          } else {
+            sellingPrice = pPrice ?? pPromo ?? baseExplicitPrice;
           }
 
           const rawBio = meta.bio || (typeof p.description === 'string' && !p.description.startsWith('{') ? p.description : '') || '';
@@ -859,9 +852,6 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             DEFAULT_PRODUCTS.forEach((prod) => map.set(prod.slug, { ...prod, visibleOnline: true, visiblePos: true }));
           }
           const merged = Array.from(map.values());
-          try {
-            localStorage.setItem('ana_products_list', JSON.stringify(merged));
-          } catch (e) {}
           return merged;
         });
       }
@@ -870,7 +860,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Carregar do localStorage e sincronizar imediatamente com Supabase API
+  // Carregar configurações locais e sincronizar imediatamente com Supabase API
   useEffect(() => {
     try {
       const savedUser = localStorage.getItem('ana_admin_session');
@@ -896,10 +886,10 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         setSiteImagesState((prev) => ({ ...prev, ...JSON.parse(savedImages) }));
       }
 
-      const savedProducts = localStorage.getItem('ana_products_list');
-      if (savedProducts) {
-        setProductsState(JSON.parse(savedProducts));
-      }
+      // Limpa cache antigo de produtos locais para que o catálogo reflita sempre o Supabase
+      try {
+        localStorage.removeItem('ana_products_list');
+      } catch (_) {}
     } catch (e) {
       console.warn('Erro ao carregar dados locais:', e);
     }
@@ -1082,9 +1072,6 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     };
     setProductsState((prev) => {
       const updated = [newProd, ...prev];
-      try {
-        localStorage.setItem('ana_products_list', JSON.stringify(updated));
-      } catch (e) {}
       return updated;
     });
     return newProd;
@@ -1093,7 +1080,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   const updateProduct = (id: string, updatedFields: Partial<ProductItem>) => {
     setProductsState((prev) => {
       const updated = prev.map((p) => {
-        if (p.id !== id) return p;
+        if (p.id !== id && p.slug !== id) return p;
         const merged = { ...p, ...updatedFields };
         const newStock = merged.stock !== undefined ? merged.stock : p.stock;
         const newAllowBackorder = merged.allowBackorder !== undefined ? merged.allowBackorder : p.allowBackorder;
@@ -1105,21 +1092,29 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         }
         return merged;
       });
-      try {
-        localStorage.setItem('ana_products_list', JSON.stringify(updated));
-      } catch (e) {}
       return updated;
     });
+
+    // Sincronização atômica imediata com a API do Supabase
+    const patchPayload: any = { id };
+    if (updatedFields.price !== undefined) patchPayload.price = updatedFields.price;
+    if (updatedFields.costPrice !== undefined) patchPayload.cost_price = updatedFields.costPrice;
+    if (updatedFields.visibleOnline !== undefined) patchPayload.visible_online = updatedFields.visibleOnline;
+    if (updatedFields.visiblePos !== undefined) patchPayload.visible_pos = updatedFields.visiblePos;
+    if (updatedFields.stock !== undefined) patchPayload.stock_quantity = updatedFields.stock;
+
+    fetch('/api/backoffice/products', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patchPayload),
+    }).catch((err) => console.warn('Erro ao atualizar produto no Supabase:', err));
   };
 
   const deleteProduct = (id: string) => {
-    setProductsState((prev) => {
-      const updated = prev.filter((p) => p.id !== id);
-      try {
-        localStorage.setItem('ana_products_list', JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
+    setProductsState((prev) => prev.filter((p) => p.id !== id && p.slug !== id));
+    fetch(`/api/backoffice/products?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }).catch((err) => console.warn('Erro ao deletar produto no Supabase:', err));
   };
 
   const resetToDefaults = () => {
