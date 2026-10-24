@@ -3,11 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
-import { MessageSquare, Phone, MapPin, Mail, Clock, Send, CheckCircle2, ArrowRight, Instagram } from 'lucide-react';
+import { useStoreSettings } from '../../context/StoreSettingsContext';
+import { MessageSquare, Phone, MapPin, Mail, Clock, Send, CheckCircle2, ArrowRight, Instagram, Sparkles } from 'lucide-react';
 
 export default function ContatoPage() {
   const { lang, t } = useLanguage();
+  const { siteInfo } = useStoreSettings();
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -16,13 +19,38 @@ export default function ContatoPage() {
     message: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const storePhone = siteInfo.phone || '+1 (978) 313-9452';
+  const cleanPhone = (siteInfo.whatsapp || siteInfo.phone || '19783139452').replace(/\D/g, '');
+  const storeAddress = siteInfo.address || 'Leominster, MA 01453 • United States';
+  const storeInstagram = siteInfo.instagram || '@anafitnessweareua';
+  const storeInstagramUrl = siteInfo.instagramUrl || 'https://www.instagram.com/anafitnessweareua';
+  const customContactText = siteInfo.contactText;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Salva no banco de e-mails/atendimento do backoffice
+      await fetch('/api/backoffice/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          name: formData.name,
+          phone: formData.phone,
+          source: 'contact_form',
+          notes: `[${formData.subject}] ${formData.message}`,
+        }),
+      });
+    } catch (_) {}
+
+    setIsSubmitting(false);
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);
       setFormData({ name: '', email: '', phone: '', subject: 'Dúvida sobre Tamanho / Medidas', message: '' });
-    }, 4000);
+    }, 5000);
   };
 
   return (
@@ -30,7 +58,7 @@ export default function ContatoPage() {
       {/* Header Institucional */}
       <div className="text-center space-y-3 max-w-2xl mx-auto">
         <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
-          ANA FITNESS WEAR • CUSTOMER CARE
+          {siteInfo.storeName || 'ANA FITNESS WEAR'} • CUSTOMER CARE
         </span>
         <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-wider text-deep-black">
           {t('contact.title')}
@@ -48,7 +76,7 @@ export default function ContatoPage() {
               {lang === 'pt' ? 'ENVIE UMA MENSAGEM' : 'SEND A MESSAGE'}
             </h2>
             <p className="text-xs uppercase tracking-wider text-deep-black/60">
-              {lang === 'pt' ? 'Retorno garantido em até 2 horas úteis.' : 'Fast response within 2 business hours.'}
+              {lang === 'pt' ? 'Retorno garantido em até 2 horas úteis pelo WhatsApp ou E-mail.' : 'Fast response within 2 business hours via WhatsApp or Email.'}
             </p>
           </div>
 
@@ -112,11 +140,11 @@ export default function ContatoPage() {
                 <option value="Status de Pedido / Pré-Venda">
                   {lang === 'pt' ? 'STATUS DE PEDIDO OU PRÉ-VENDA' : 'ORDER STATUS & PRE-ORDER'}
                 </option>
-                <option value="Troca ou Devolução (30 Dias)">
-                  {lang === 'pt' ? 'SOLICITAÇÃO DE TROCA OU DEVOLUÇÃO (30 DIAS)' : 'RETURN & EXCHANGE REQUEST (30 DAYS)'}
+                <option value="Troca ou Devolução">
+                  {lang === 'pt' ? 'SOLICITAÇÃO DE TROCA OU DEVOLUÇÃO' : 'RETURN & EXCHANGE REQUEST'}
                 </option>
-                <option value="Modelos com Bojo Removível">
-                  {lang === 'pt' ? 'DÚVIDA SOBRE BOJO REMOVÍVEL' : 'REMOVABLE BRA CUPS QUESTIONS'}
+                <option value="Dúvida sobre Bojos ou Tecidos">
+                  {lang === 'pt' ? 'DÚVIDA SOBRE BOJOS OU TECIDOS' : 'FABRIC & REMOVABLE CUPS QUESTIONS'}
                 </option>
               </select>
             </div>
@@ -137,15 +165,16 @@ export default function ContatoPage() {
 
             <button
               type="submit"
-              className="w-full py-4 bg-deep-black hover:bg-gold text-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2"
+              disabled={isSubmitting}
+              className="w-full py-4 bg-deep-black hover:bg-gold text-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>{lang === 'pt' ? 'ENVIAR MENSAGEM' : 'SUBMIT MESSAGE'}</span>
+              <span>{isSubmitting ? (lang === 'pt' ? 'ENVIANDO...' : 'SENDING...') : (lang === 'pt' ? 'ENVIAR MENSAGEM' : 'SUBMIT MESSAGE')}</span>
             </button>
 
             {submitted && (
-              <div className="p-3 bg-deep-black text-gold text-xs font-bold uppercase tracking-wider flex items-center gap-2 border border-gold">
-                <CheckCircle2 className="w-4 h-4 text-gold" />
+              <div className="p-3 bg-green-50 border-2 border-green-600 text-green-900 text-xs font-bold uppercase tracking-wider flex items-center gap-2 animate-fadeIn">
+                <CheckCircle2 className="w-4 h-4 text-green-700" />
                 <span>
                   {lang === 'pt'
                     ? 'Mensagem enviada com sucesso! Nossa consultora responderá em breve.'
@@ -172,10 +201,10 @@ export default function ContatoPage() {
                 : 'Chat directly with our styling concierge for measurements, fabric close-ups, and order assistance.'}
             </p>
             <a
-              href="https://wa.me/19783139452?text=Hello%2C%20I%20would%20like%20to%20get%20more%20information%20about%20ANA%20Fitness%20Wear."
+              href={`https://wa.me/${cleanPhone}?text=Hello%2C%20I%20would%20like%20to%20get%20more%20information%20about%20ANA%20Fitness%20Wear.`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3.5 bg-gold text-deep-black hover:bg-white text-xs font-black uppercase tracking-widest transition shadow"
+              className="inline-flex items-center gap-2 px-6 py-3.5 bg-gold text-deep-black hover:bg-white text-xs font-black uppercase tracking-widest transition shadow cursor-pointer border border-gold"
             >
               <Phone className="w-4 h-4 text-deep-black" />
               <span>{t('contact.chatWhatsApp')}</span>
@@ -192,27 +221,32 @@ export default function ContatoPage() {
 
             <div className="space-y-3 text-xs uppercase tracking-wider text-deep-black/80 font-medium">
               <p>
-                <strong className="text-deep-black font-black">ANA FITNESS WEAR LLC</strong><br />
-                Leominster, MA 01453<br />
-                United States
+                <strong className="text-deep-black font-black">{siteInfo.storeName || 'ANA FITNESS WEAR LLC'}</strong><br />
+                {storeAddress}
               </p>
 
               <div className="flex items-center gap-2 pt-2 border-t border-deep-black/10 text-deep-black font-bold">
                 <Phone className="w-4 h-4 text-gold shrink-0" />
-                <span>+1 (978) 313-9452</span>
+                <span>{storePhone}</span>
               </div>
 
               <div className="flex items-center gap-2 text-deep-black font-bold">
                 <Instagram className="w-4 h-4 text-gold shrink-0" />
                 <a
-                  href="https://www.instagram.com/anafitnessweareua"
+                  href={storeInstagramUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="hover:text-gold transition"
                 >
-                  @anafitnessweareua
+                  {storeInstagram}
                 </a>
               </div>
+
+              {customContactText && (
+                <div className="p-3 bg-gray-50 border border-gray-200 text-[11px] text-deep-black/80 uppercase font-medium leading-relaxed">
+                  {customContactText}
+                </div>
+              )}
 
               <div className="flex items-start gap-2 pt-2 border-t border-deep-black/10 text-[11px]">
                 <Clock className="w-4 h-4 text-deep-black/50 shrink-0 mt-0.5" />

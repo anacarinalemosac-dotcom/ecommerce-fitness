@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getEmailOutbox, sendOrderConfirmationEmail, sendShippingNotificationEmail } from '@/lib/emailService';
+import { getEmailOutbox, saveEmailRecord, sendOrderConfirmationEmail, sendShippingNotificationEmail } from '@/lib/emailService';
 import fs from 'fs';
 import path from 'path';
 
@@ -28,10 +28,26 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { order_id, type = 'ORDER_CONFIRMATION', tracking_code } = body;
+    const { order_id, type = 'ORDER_CONFIRMATION', tracking_code, email, name, phone, source, notes } = body;
+
+    // Se for lead institucional, formulário de contato ou inscrição VIP da newsletter
+    if (!order_id && email) {
+      const emailRecord = {
+        id: `lead_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        order_id: source || 'CONTACT_LEAD',
+        to: email,
+        subject: source === 'footer_newsletter' ? 'Inscrição VIP Newsletter' : (notes?.split(']')[0]?.replace('[', '') || 'Mensagem do Site'),
+        type: 'GENERAL' as const,
+        status: 'SIMULATED_SENT' as const,
+        created_at: new Date().toISOString(),
+        html_preview: `<p><strong>Nome:</strong> ${name || 'N/A'}</p><p><strong>Telefone:</strong> ${phone || 'N/A'}</p><p><strong>E-mail:</strong> ${email}</p><p><strong>Mensagem:</strong> ${notes || 'Inscrição VIP na Newsletter confirmada.'}</p>`,
+      };
+      saveEmailRecord(emailRecord as any);
+      return NextResponse.json({ success: true, lead: true, id: emailRecord.id });
+    }
 
     if (!order_id) {
-      return NextResponse.json({ error: 'order_id é obrigatório' }, { status: 400 });
+      return NextResponse.json({ error: 'order_id ou email é obrigatório' }, { status: 400 });
     }
 
     // Busca o pedido no arquivo local de vendas

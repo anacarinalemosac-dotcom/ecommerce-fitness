@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
+import { useStoreSettings } from '../../context/StoreSettingsContext';
 import { Truck, Clock, MapPin, Search, CheckCircle2, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function PoliticaDeEnvioPage() {
   const { lang, t } = useLanguage();
+  const { siteInfo } = useStoreSettings();
   const [zip, setZip] = useState('');
   const [shippingResult, setShippingResult] = useState<null | {
     standard: { days: string; price: number };
@@ -14,12 +16,16 @@ export default function PoliticaDeEnvioPage() {
     pickup: { days: string; price: number };
   }>(null);
 
+  const flatRate = siteInfo.flatShippingRate || 9.99;
+  const storeAddress = siteInfo.address || 'Leominster, MA 01453 • United States';
+  const customShippingText = siteInfo.shippingPolicyText;
+
   const handleCalculateZip = (e: React.FormEvent) => {
     e.preventDefault();
     if (zip.length >= 5) {
       setShippingResult({
-        standard: { days: '1 - 5', price: 9.99 },
-        priority: { days: '1 - 2', price: 19.99 },
+        standard: { days: '1 - 5', price: flatRate },
+        priority: { days: '1 - 2', price: Number((flatRate * 2).toFixed(2)) },
         pickup: { days: '0 (Same day)', price: 0.0 },
       });
     }
@@ -30,7 +36,7 @@ export default function PoliticaDeEnvioPage() {
       {/* Header Institucional */}
       <div className="text-center space-y-3">
         <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
-          ANA FITNESS WEAR • US SHIPPING
+          {siteInfo.storeName || 'ANA FITNESS WEAR'} • US SHIPPING
         </span>
         <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-wider text-deep-black">
           {t('ship.title')}
@@ -40,7 +46,7 @@ export default function PoliticaDeEnvioPage() {
         </p>
       </div>
 
-      {/* Destaque da Taxa Fixa de $9.99 */}
+      {/* Destaque da Taxa Fixa de Envio */}
       <div className="bg-deep-black text-white p-8 border border-gold/40 space-y-4 shadow-luxury">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
           <div>
@@ -48,15 +54,17 @@ export default function PoliticaDeEnvioPage() {
               STANDARD US DELIVERY
             </span>
             <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-white mt-1">
-              {t('ship.flatRateTitle')}
+              {lang === 'pt' ? `FRETE FIXO DE $${flatRate.toFixed(2)}` : `FLAT RATE $${flatRate.toFixed(2)}`}
             </h2>
           </div>
           <span className="text-4xl sm:text-5xl font-black text-gold font-mono">
-            $9.99
+            ${flatRate.toFixed(2)}
           </span>
         </div>
-        <p className="text-xs sm:text-sm text-white/80 uppercase tracking-wider leading-relaxed">
-          {t('ship.flatRateDesc')}
+        <p className="text-xs sm:text-sm text-white/80 uppercase tracking-wider leading-relaxed font-medium">
+          {lang === 'pt'
+            ? `Taxa única de envio para qualquer endereço nos Estados Unidos via USPS Priority Mail. Não importa a quantidade de peças do pedido, o valor do frete é sempre fixo.`
+            : `One flat shipping fee for any delivery address across the United States via USPS Priority Mail. No matter how many pieces are in your order, the shipping rate remains flat.`}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-[11px] font-bold uppercase tracking-wider text-white/90">
           <div className="flex items-center gap-2">
@@ -69,6 +77,19 @@ export default function PoliticaDeEnvioPage() {
           </div>
         </div>
       </div>
+
+      {/* Diretrizes Oficiais Salvas no CMS */}
+      {customShippingText && (
+        <div className="p-6 bg-gold/10 border-2 border-gold text-deep-black space-y-2">
+          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-deep-black">
+            <Sparkles className="w-4 h-4 text-gold" />
+            <span>DIRETRIZES OFICIAIS DE ENVIO E LOGÍSTICA</span>
+          </div>
+          <p className="text-xs leading-relaxed uppercase font-medium">
+            {customShippingText}
+          </p>
+        </div>
+      )}
 
       {/* Simulador Interativo por ZIP Code Americano */}
       <div className="bg-white border-2 border-deep-black p-6 sm:p-8 space-y-6 shadow-sm">
@@ -95,7 +116,7 @@ export default function PoliticaDeEnvioPage() {
           </div>
           <button
             type="submit"
-            className="px-8 py-3 bg-deep-black hover:bg-gold text-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2"
+            className="px-8 py-3 bg-deep-black hover:bg-gold text-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <Search className="w-3.5 h-3.5" />
             <span>{lang === 'pt' ? 'CALCULAR' : 'CALCULATE'}</span>
@@ -131,11 +152,11 @@ export default function PoliticaDeEnvioPage() {
 
               <div className="p-4 border border-deep-black/20 bg-white space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-wider text-gold block">
-                  PICKUP (LEOMINSTER, MA)
+                  PICKUP SHOWROOM
                 </span>
                 <p className="text-xl font-black text-deep-black font-mono">FREE ($0.00)</p>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-deep-black/70">
-                  {lang === 'pt' ? 'Retirada no mesmo dia' : 'Same day showroom pickup'}
+                  {storeAddress.split('•')[0].trim()}
                 </p>
               </div>
             </div>
@@ -162,7 +183,7 @@ export default function PoliticaDeEnvioPage() {
           </h3>
           <p className="text-xs text-deep-black/70 font-medium uppercase tracking-wide leading-relaxed">
             {lang === 'pt'
-              ? 'Modelos sob encomenda (pré-venda) possuem prazo de até 30 dias para entrega. Nossa equipe entra em contato com o cliente para esclarecer e confirmar todas as informações com relação ao prazo.'
+              ? 'Modelos sob encomenda (pré-venda) possuem prazo de até 30 dias para confecção. Nossa equipe entra em contato com o cliente para esclarecer e confirmar todas as informações com relação ao prazo.'
               : 'Made-to-order silhouettes (pre-orders) have an estimated delivery timeframe of ~30 days. Our team contacts each customer directly to confirm and clarify all details regarding the timeframe.'}
           </p>
         </div>
