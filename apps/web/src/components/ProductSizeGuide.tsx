@@ -352,10 +352,10 @@ export function ProductSizeGuide({
                       className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-widest border shrink-0 ${
                         hasStock
                           ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
-                          : 'border-gold bg-amber-50 text-amber-900'
+                          : 'border-neutral-300 bg-neutral-100 text-neutral-500'
                       }`}
                     >
-                      {hasStock ? `${stock} EM ESTOQUE` : 'PRÉ-VENDA (30D)'}
+                      {hasStock ? `${stock} EM ESTOQUE` : (lang === 'pt' ? 'ESGOTADO' : 'OUT OF STOCK')}
                     </span>
                   )}
                 </div>

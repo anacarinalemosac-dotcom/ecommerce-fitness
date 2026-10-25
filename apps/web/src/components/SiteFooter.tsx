@@ -143,7 +143,7 @@ export function SiteFooter() {
               <li><Link href="/?cat=sets" className="hover:text-gold transition">{t('nav.sets')}</Link></li>
               <li><Link href="/?cat=jumpsuits" className="hover:text-gold transition">{t('nav.jumpsuits')}</Link></li>
               <li><Link href="/?cat=tops" className="hover:text-gold transition">{t('nav.tops')}</Link></li>
-              <li><Link href="/?cat=preorder" className="hover:text-gold transition text-gold font-bold">{t('nav.preorder')}</Link></li>
+              <li><Link href="/?cat=spoiler" className="hover:text-gold transition text-gold font-bold">{lang === 'pt' ? '👀 Spoilers (Em Breve)' : '👀 Spoilers (Coming Soon)'}</Link></li>
             </ul>
           </div>
 

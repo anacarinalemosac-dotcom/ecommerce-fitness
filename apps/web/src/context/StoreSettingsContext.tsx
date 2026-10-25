@@ -181,14 +181,14 @@ export interface ProductItem {
   slug: string;
   categoryPt: string;
   categoryEn: string;
-  categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder';
+  categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' | 'spoiler';
   fitPt: string;
   fitEn: string;
   price: number;
   originalPrice?: number;
   costPrice: number;
-  badgePt: 'BEST SELLER' | 'PRÉ-VENDA' | 'LANÇAMENTO';
-  badgeEn: 'BEST SELLER' | 'PRE-ORDER' | 'NEW ARRIVAL';
+  badgePt: 'BEST SELLER' | 'PRÉ-VENDA' | 'LANÇAMENTO' | 'SPOILER';
+  badgeEn: 'BEST SELLER' | 'PRE-ORDER' | 'NEW ARRIVAL' | 'SPOILER';
   badgeStyle: string;
   rating: number;
   reviewsCount: number;
@@ -539,14 +539,14 @@ const DEFAULT_PRODUCTS: ProductItem[] = [
     slug: 'conjunto-calca-kely',
     categoryPt: 'CONJUNTOS',
     categoryEn: 'SETS',
-    categoryKey: 'preorder',
-    fitPt: 'CONFECCIONADO SOB MEDIDA (PRAZO 30 DIAS)',
-    fitEn: 'MADE-TO-ORDER ATELIER (~30 DAYS DELIVERY)',
+    categoryKey: 'spoiler',
+    fitPt: 'SPOILER EXCLUSIVO • PRÓXIMO LANÇAMENTO',
+    fitEn: 'EXCLUSIVE SPOILER • COMING SOON',
     price: 39.9,
     originalPrice: 49.9,
     costPrice: 16.0,
-    badgePt: 'PRÉ-VENDA',
-    badgeEn: 'PRE-ORDER',
+    badgePt: 'SPOILER',
+    badgeEn: 'SPOILER',
     badgeStyle: 'bg-deep-black text-gold border border-gold font-black',
     rating: 5.0,
     reviewsCount: 39,
@@ -565,8 +565,8 @@ const DEFAULT_PRODUCTS: ProductItem[] = [
       XL: 0,
     },
     stock: 0,
-    allowBackorder: true,
-    productionDays: 7,
+    allowBackorder: false,
+    productionDays: 0,
     zeroTransparency: true,
     removableCups: true,
     sku: 'KEL-BLK-M',
@@ -578,13 +578,13 @@ const DEFAULT_PRODUCTS: ProductItem[] = [
     slug: 'macaquinho-deluxe',
     categoryPt: 'MACAQUINHOS',
     categoryEn: 'ROMPERS',
-    categoryKey: 'preorder',
-    fitPt: 'RECORTES ANATÔMICOS • ULTRA COMPRESSÃO',
-    fitEn: 'ANATOMICAL CONTOUR • ULTRA COMPRESSION',
+    categoryKey: 'spoiler',
+    fitPt: 'RECORTES ANATÔMICOS • SPOILER ATELIER',
+    fitEn: 'ANATOMICAL CONTOUR • ATELIER SPOILER',
     price: 49.9,
     costPrice: 18.0,
-    badgePt: 'PRÉ-VENDA',
-    badgeEn: 'PRE-ORDER',
+    badgePt: 'SPOILER',
+    badgeEn: 'SPOILER',
     badgeStyle: 'bg-deep-black text-gold border border-gold font-black',
     rating: 4.9,
     reviewsCount: 61,
@@ -604,8 +604,8 @@ const DEFAULT_PRODUCTS: ProductItem[] = [
       XL: 0,
     },
     stock: 0,
-    allowBackorder: true,
-    productionDays: 6,
+    allowBackorder: false,
+    productionDays: 0,
     zeroTransparency: true,
     removableCups: true,
     sku: 'DEL-BLK-M',
@@ -868,7 +868,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
               productTitle.includes('blusa')
             );
 
-          let categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' = 'sets';
+          let categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' | 'spoiler' = 'sets';
           if (isRomper) {
             categoryKey = 'rompers';
           } else if (isJumpsuit) {
@@ -880,7 +880,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
           } else if (isTop) {
             categoryKey = 'tops';
           } else if (isPreorder) {
-            categoryKey = 'preorder';
+            categoryKey = 'spoiler';
           }
 
           const colors = Array.from(colorsMap.entries()).map(([name, hex]) => ({ name, hex }));
@@ -910,9 +910,9 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             p.allow_backorder === true ||
             isPreorder;
 
-          // Se zerar o estoque e for pré-order (ou categoria pré-venda), a peça vai automaticamente para preorder!
-          if ((totalStock <= 0 && isAllowBackorder) || isPreorder) {
-            categoryKey = 'preorder';
+          // Se zerar o estoque ou for pré-venda/spoiler, a peça vai automaticamente para spoiler!
+          if (totalStock <= 0 || isPreorder) {
+            categoryKey = 'spoiler';
           }
 
           const baseExplicitPrice = meta.price
@@ -978,20 +978,20 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
                         categoryKey === 'jumpsuits' ? 'MACACÕES' :
                         categoryKey === 'rompers' ? 'MACAQUINHOS' :
                         categoryKey === 'jackets' ? 'CASACOS & JAQUETAS' :
-                        categoryKey === 'preorder' ? 'PRÉ-VENDA' : 'CONJUNTOS',
+                        categoryKey === 'spoiler' ? 'SPOILERS (EM BREVE)' : 'CONJUNTOS',
             categoryEn: categoryKey === 'tops' ? 'TOPS' :
                         categoryKey === 'jumpsuits' ? 'JUMPSUITS' :
                         categoryKey === 'rompers' ? 'ROMPERS' :
                         categoryKey === 'jackets' ? 'JACKETS' :
-                        categoryKey === 'preorder' ? 'PRE-ORDER' : 'SETS',
+                        categoryKey === 'spoiler' ? 'SPOILERS (COMING SOON)' : 'SETS',
             categoryKey,
             fitPt: 'ALTA SUSTENTAÇÃO • SEAMLESS SCULPT',
             fitEn: 'HIGH SUPPORT • SEAMLESS SCULPT',
             price: sellingPrice,
             originalPrice: regularPrice,
             costPrice: Number(firstVar.cost_price) || 15.0,
-            badgePt: (meta.ribbon || (totalStock > 0 ? 'LANÇAMENTO' : 'PRÉ-VENDA')) as any,
-            badgeEn: (meta.ribbon || (totalStock > 0 ? 'NEW ARRIVAL' : 'PRE-ORDER')) as any,
+            badgePt: (meta.ribbon || (totalStock > 0 ? 'LANÇAMENTO' : 'SPOILER')) as any,
+            badgeEn: (meta.ribbon || (totalStock > 0 ? 'NEW ARRIVAL' : 'SPOILER')) as any,
             badgeStyle: meta.ribbon
               ? (meta.ribbon.toLowerCase().includes('ofert') || meta.ribbon.toLowerCase().includes('sale')
                   ? 'bg-red-600 text-white font-black'

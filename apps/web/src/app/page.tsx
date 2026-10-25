@@ -36,13 +36,13 @@ interface ProductItem {
   slug: string;
   categoryPt: string;
   categoryEn: string;
-  categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder';
+  categoryKey: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' | 'spoiler';
   fitPt: string;
   fitEn: string;
   price: number;
   originalPrice?: number;
-  badgePt: 'BEST SELLER' | 'PRÉ-VENDA' | 'LANÇAMENTO';
-  badgeEn: 'BEST SELLER' | 'PRE-ORDER' | 'NEW ARRIVAL';
+  badgePt: 'BEST SELLER' | 'PRÉ-VENDA' | 'LANÇAMENTO' | 'SPOILER';
+  badgeEn: 'BEST SELLER' | 'PRE-ORDER' | 'NEW ARRIVAL' | 'SPOILER';
   badgeStyle: string;
   rating: number;
   reviewsCount: number;
@@ -141,13 +141,13 @@ const FEATURED_PRODUCTS: ProductItem[] = [
     slug: 'conjunto-calca-kely',
     categoryPt: 'CONJUNTOS',
     categoryEn: 'SETS',
-    categoryKey: 'preorder',
-    fitPt: 'CONFECCIONADO SOB MEDIDA (PRAZO 30 DIAS)',
-    fitEn: 'MADE-TO-ORDER ATELIER (~30 DAYS DELIVERY)',
+    categoryKey: 'spoiler',
+    fitPt: 'SPOILER EXCLUSIVO • PRÓXIMO LANÇAMENTO',
+    fitEn: 'EXCLUSIVE SPOILER • COMING SOON',
     price: 39.9,
     originalPrice: 49.9,
-    badgePt: 'PRÉ-VENDA',
-    badgeEn: 'PRE-ORDER',
+    badgePt: 'SPOILER',
+    badgeEn: 'SPOILER',
     badgeStyle: 'bg-deep-black text-gold border border-gold font-black',
     rating: 5.0,
     reviewsCount: 39,
@@ -158,7 +158,7 @@ const FEATURED_PRODUCTS: ProductItem[] = [
     ],
     sizes: ['S', 'M', 'L', 'XL'],
     stock: 0,
-    allowBackorder: true,
+    allowBackorder: false,
   },
   {
     id: 'p5',
@@ -166,12 +166,12 @@ const FEATURED_PRODUCTS: ProductItem[] = [
     slug: 'macaquinho-deluxe',
     categoryPt: 'MACAQUINHOS',
     categoryEn: 'ROMPERS',
-    categoryKey: 'preorder',
-    fitPt: 'RECORTES ANATÔMICOS • ULTRA COMPRESSÃO',
-    fitEn: 'ANATOMICAL CONTOUR • ULTRA COMPRESSION',
+    categoryKey: 'spoiler',
+    fitPt: 'RECORTES ANATÔMICOS • SPOILER ATELIER',
+    fitEn: 'ANATOMICAL CONTOUR • ATELIER SPOILER',
     price: 49.9,
-    badgePt: 'PRÉ-VENDA',
-    badgeEn: 'PRE-ORDER',
+    badgePt: 'SPOILER',
+    badgeEn: 'SPOILER',
     badgeStyle: 'bg-deep-black text-gold border border-gold font-black',
     rating: 4.9,
     reviewsCount: 61,
@@ -183,7 +183,7 @@ const FEATURED_PRODUCTS: ProductItem[] = [
     ],
     sizes: ['S', 'M', 'L'],
     stock: 0,
-    allowBackorder: true,
+    allowBackorder: false,
   },
   {
     id: 'p6',
@@ -305,7 +305,7 @@ export default function HomePage() {
   const { lang, t } = useLanguage();
   const { products: storeProducts, siteInfo, siteImages } = useStoreSettings();
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder'>('all');
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' | 'spoiler'>('all');
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
   const [quickAddedItem, setQuickAddedItem] = useState<{ id: string; size: string } | null>(null);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -329,7 +329,7 @@ export default function HomePage() {
   useEffect(() => {
     const handleCategoryEvent = (e: any) => {
       if (e.detail) {
-        const cat = e.detail === 'new' ? 'all' : e.detail;
+        const cat = e.detail === 'new' ? 'all' : (e.detail === 'preorder' ? 'spoiler' : e.detail);
         setActiveCategoryFilter(cat);
         const el = document.getElementById('vitrine');
         if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -341,7 +341,8 @@ export default function HomePage() {
       const params = new URLSearchParams(window.location.search);
       const cat = params.get('cat');
       if (cat) {
-        setActiveCategoryFilter(cat === 'new' ? 'all' : (cat as any));
+        const mappedCat = cat === 'new' ? 'all' : (cat === 'preorder' ? 'spoiler' : (cat as any));
+        setActiveCategoryFilter(mappedCat);
         setTimeout(() => {
           const el = document.getElementById('vitrine');
           if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -373,35 +374,39 @@ export default function HomePage() {
     : FEATURED_PRODUCTS;
   const activeProducts = onlineProducts;
 
-  // Função auxiliar: identifica se a peça é Pré-Order (se zerou o estoque e aceita encomenda, ou categoria pré-venda)
-  const isProductPreOrder = (p: ProductItem) => {
+  // Função auxiliar: identifica se a peça é SPOILER (se zerou o estoque, categoria spoiler/preorder ou badge spoiler)
+  const isProductSpoiler = (p: ProductItem) => {
     return (
-      (p.stock <= 0 && p.allowBackorder) ||
+      p.categoryKey === 'spoiler' ||
       p.categoryKey === 'preorder' ||
+      p.badgePt === 'SPOILER' ||
       p.badgePt === 'PRÉ-VENDA' ||
-      p.badgeEn === 'PRE-ORDER'
+      p.badgeEn === 'SPOILER' ||
+      p.badgeEn === 'PRE-ORDER' ||
+      Number(p.stock) <= 0
     );
   };
 
-  const preorderItemsCount = activeProducts.filter(isProductPreOrder).length;
+  const spoilerItemsCount = activeProducts.filter(isProductSpoiler).length;
 
+  // FILTRAGEM RIGOROSA DA VITRINE:
+  // "Não vamos deixar ele aparecendo no meio dos produtos. Vamos deixar uma aba só para o spoiler."
   const filteredProducts = activeProducts.filter((p) => {
-    const isPreOrder = isProductPreOrder(p);
+    const isSpoiler = isProductSpoiler(p);
 
-    // 1. Aba "TODAS AS PEÇAS": exibe o catálogo completo (pronta entrega e pré-venda)
+    // 1. Aba "SPOILER": exibe EXCLUSIVAMENTE as peças spoiler (sem estoque / prévia)
+    if (activeCategoryFilter === 'spoiler' || activeCategoryFilter === 'preorder') {
+      return isSpoiler;
+    }
+
+    // 2. QUALQUER OUTRA ABA (incluindo "TODAS AS PEÇAS" e categorias específicas):
+    // Peças spoiler NUNCA aparecem aqui no meio dos produtos com pronta entrega!
+    if (isSpoiler) {
+      return false;
+    }
+
     if (activeCategoryFilter === 'all') {
       return true;
-    }
-
-    // 2. Aba "PRÉ-ORDER": exibe todos os itens que zeraram o estoque e aceitam encomenda/pré-venda
-    if (activeCategoryFilter === 'preorder') {
-      return isPreOrder;
-    }
-
-    // 3. Abas de categorias regulares (Conjuntos, Macaquinhos, Macacões, Tops, Casacos):
-    // Se o item zerou o estoque e for pré-order, ele vai para a aba de pré-order
-    if (isPreOrder) {
-      return false;
     }
 
     return p.categoryKey === activeCategoryFilter;
@@ -443,7 +448,7 @@ export default function HomePage() {
         const primaryBtnText = slide?.primaryCtaText || t('hero.cta');
         const primaryBtnLink = slide?.primaryCtaLink || '#vitrine';
         const secondaryBtnText = slide?.secondaryCtaText || t('hero.preorderCta');
-        const secondaryBtnLink = slide?.secondaryCtaLink || '/?cat=preorder';
+        const secondaryBtnLink = slide?.secondaryCtaLink || '/?cat=spoiler';
 
         const handleCtaClick = (link: string) => {
           if (link.startsWith('#')) {
@@ -697,33 +702,33 @@ export default function HomePage() {
               { id: 'jumpsuits', labelPt: 'MACACÕES', labelEn: 'JUMPSUITS' },
               { id: 'tops', labelPt: 'TOPS', labelEn: 'TOPS' },
               { id: 'jackets', labelPt: 'CASACOS & JAQUETAS', labelEn: 'JACKETS' },
-              { id: 'preorder', labelPt: 'PRÉ-ORDER (SOB ENCOMENDA)', labelEn: 'PRE-ORDER' },
+              { id: 'spoiler', labelPt: '👀 SPOILERS (EM BREVE)', labelEn: '👀 SPOILERS' },
             ].map((filter) => {
-              const isActive = activeCategoryFilter === filter.id;
-              const isPreorderPill = filter.id === 'preorder';
+              const isActive = activeCategoryFilter === filter.id || (filter.id === 'spoiler' && activeCategoryFilter === 'preorder');
+              const isSpoilerPill = filter.id === 'spoiler';
               return (
                 <button
                   key={filter.id}
                   onClick={() => setActiveCategoryFilter(filter.id as any)}
-                  className={`px-4 py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all shrink-0 border flex items-center gap-1.5 ${
+                  className={`px-4 py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all shrink-0 border flex items-center gap-1.5 cursor-pointer ${
                     isActive
-                      ? isPreorderPill
+                      ? isSpoilerPill
                         ? 'bg-gold text-deep-black border-gold shadow-md'
                         : 'bg-deep-black text-white border-deep-black shadow-md'
-                      : isPreorderPill
+                      : isSpoilerPill
                       ? 'bg-gold/10 text-gold border-gold/60 hover:bg-gold hover:text-deep-black'
                       : 'bg-white text-deep-black/80 border-deep-black/20 hover:border-deep-black hover:text-deep-black'
                   }`}
                 >
-                  {isPreorderPill && <Sparkles className="w-3.5 h-3.5 text-gold shrink-0" />}
+                  {isSpoilerPill && <Sparkles className="w-3.5 h-3.5 text-gold shrink-0" />}
                   <span>{lang === 'pt' ? filter.labelPt : filter.labelEn}</span>
-                  {isPreorderPill && preorderItemsCount > 0 && (
+                  {isSpoilerPill && spoilerItemsCount > 0 && (
                     <span
                       className={`text-[9px] px-1.5 py-0.5 rounded-full font-black ${
                         isActive ? 'bg-deep-black text-gold' : 'bg-gold text-deep-black'
                       }`}
                     >
-                      {preorderItemsCount}
+                      {spoilerItemsCount}
                     </span>
                   )}
                 </button>
@@ -732,29 +737,29 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Banner Informativo Exclusivo da Aba Pré-Order */}
-        {activeCategoryFilter === 'preorder' && (
-          <div className="p-4 bg-deep-black text-white border-2 border-gold flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn shadow-md">
+        {/* Banner Informativo Exclusivo da Aba Spoiler (Sem Reserva) */}
+        {(activeCategoryFilter === 'spoiler' || activeCategoryFilter === 'preorder') && (
+          <div className="p-5 bg-deep-black text-white border-2 border-gold flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn shadow-md">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gold text-deep-black shrink-0">
+              <div className="p-3 bg-gold text-deep-black shrink-0">
                 <Sparkles className="w-5 h-5" />
               </div>
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-black uppercase tracking-wider text-gold flex items-center gap-2">
-                  <span>{lang === 'pt' ? 'PEÇAS SOB ENCOMENDA • ATELIER (PRÉ-ORDER)' : 'EXCLUSIVE MADE-TO-ORDER • ATELIER'}</span>
+              <div className="space-y-1">
+                <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-gold flex items-center gap-2">
+                  <span>{lang === 'pt' ? '👀 SPOILER EXCLUSIVO • PRÓXIMAS PEÇAS DO ATELIER' : '👀 EXCLUSIVE SPOILERS • UPCOMING ATELIER STYLES'}</span>
                   <span className="text-[9px] px-2 py-0.5 bg-gold/20 text-gold border border-gold/40">
-                    {lang === 'pt' ? 'PRAZO DE CONFECÇÃO: ~30 DIAS' : 'PRODUCTION: ~30 DAYS'}
+                    {lang === 'pt' ? 'PRÉVIA • SEM RESERVA' : 'PREVIEW ONLY'}
                   </span>
                 </h4>
                 <p className="text-[11px] text-white/80 uppercase">
                   {lang === 'pt'
-                    ? 'Peças cujo estoque imediato esgotou mas que confeccionamos sob medida no ateliê especialmente para você.'
-                    : 'Styles currently out of immediate inventory, tailored to order in our atelier for your sculpt fit.'}
+                    ? 'Confira em primeira mão as próximas peças que estão chegando. As peças abaixo são spoilers para você conhecer as fotos, modelagens e detalhes (não disponíveis para reserva no momento).'
+                    : 'Get a first look at what is arriving next in our atelier. These styles are previews for you to see photos, fit and details (not available for reservation at this time).'}
                 </p>
               </div>
             </div>
-            <span className="self-start sm:self-auto px-3 py-1.5 bg-gold text-deep-black text-[10px] font-black uppercase tracking-widest shrink-0">
-              {filteredProducts.length} {lang === 'pt' ? (filteredProducts.length === 1 ? 'PEÇA DISPONÍVEL' : 'PEÇAS DISPONÍVEIS') : 'PIECES AVAILABLE'}
+            <span className="self-start sm:self-auto px-3.5 py-1.5 bg-gold text-deep-black text-[10px] font-black uppercase tracking-widest shrink-0 border border-gold">
+              {filteredProducts.length} {lang === 'pt' ? (filteredProducts.length === 1 ? 'SPOILER DISPONÍVEL' : 'SPOILERS DISPONÍVEIS') : 'SPOILERS AVAILABLE'}
             </span>
           </div>
         )}
@@ -764,31 +769,43 @@ export default function HomePage() {
           <div className="py-20 text-center border-2 border-dashed border-deep-black/20 p-12 bg-deep-black/5 space-y-4">
             <ShoppingBag className="w-12 h-12 text-gold mx-auto" />
             <h3 className="text-base font-black uppercase tracking-wider text-deep-black">
-              {activeCategoryFilter === 'preorder'
-                ? (lang === 'pt' ? 'Nenhuma peça em pré-order no momento' : 'No pre-order pieces at the moment')
-                : (lang === 'pt' ? 'Nenhuma peça publicada nesta categoria' : 'No pieces published in this category')}
+              {activeCategoryFilter === 'spoiler' || activeCategoryFilter === 'preorder'
+                ? (lang === 'pt' ? 'Nenhum spoiler publicado no momento' : 'No spoilers at the moment')
+                : (lang === 'pt' ? 'Nenhuma peça com pronta entrega nesta categoria' : 'No in-stock pieces in this category')}
             </h3>
             <p className="text-xs text-deep-black/60 max-w-md mx-auto uppercase">
-              {activeCategoryFilter === 'preorder'
+              {activeCategoryFilter === 'spoiler' || activeCategoryFilter === 'preorder'
                 ? (lang === 'pt'
-                    ? 'Todas as nossas peças estão com estoque disponível para envio imediato!'
-                    : 'All styles currently have ready-to-ship inventory in stock!')
+                    ? 'Fique atenta ao nosso Instagram @anafitnessweareua para saber dos novos drops antes de todos!'
+                    : 'Stay tuned to our Instagram @anafitnessweareua for upcoming drop announcements!')
                 : (lang === 'pt'
-                    ? 'As peças estão sendo revisadas no ateliê. Acesse o Painel Backoffice para conferir dados, fotos e ativar os produtos na vitrine.'
-                    : 'Pieces are being prepared in the atelier. Open Backoffice to review photos and activate products for the showcase.')}
+                    ? 'Todas as nossas peças à pronta entrega contam com envio expresso via USPS para todos os EUA.'
+                    : 'All ready-to-ship styles include flat $9.99 USPS shipping across all 50 US states.')}
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7">
           {filteredProducts.map((product) => {
             const isHovered = hoveredProduct === product.id;
-            const isBackorder = (product.stock === 0) || product.categoryKey === 'preorder' || Boolean(product.allowBackorder && product.stock === 0);
+            const isSpoiler = isProductSpoiler(product);
             const isFavorited = !!wishlist[product.id];
             const wasJustAdded = quickAddedItem?.id === product.id;
 
-            // Flag de pré-venda: nunca exibe badges em cima do rosto da modelo / topo da imagem
-            const isPreOrder = isBackorder || product.badgeEn === 'PRE-ORDER' || product.badgePt === 'PRÉ-VENDA';
-            const showTopPromoBadge = !isPreOrder && Boolean(product.badgeEn && product.badgeEn !== 'PRE-ORDER' && product.badgePt !== 'PRÉ-VENDA');
+            // Badges promocionais: nunca exibe sobre spoiler
+            const showTopPromoBadge = !isSpoiler && Boolean(product.badgeEn && product.badgeEn !== 'PRE-ORDER' && product.badgePt !== 'PRÉ-VENDA' && product.badgePt !== 'SPOILER');
+
+            // Filtra estritamente os tamanhos com estoque disponível (> 0)
+            const inStockSizes = (product.sizes || []).filter((sz) => {
+              if (Array.isArray(product.variants) && product.variants.length > 0) {
+                const upper = sz.toUpperCase();
+                return product.variants.some((v: any) => {
+                  const vSz = (v.size || '').toUpperCase();
+                  const isMatch = vSz === upper || (upper === 'P' && vSz === 'S') || (upper === 'G' && vSz === 'L') || (upper === 'GG' && vSz === 'XL');
+                  return isMatch && Number(v.stock) > 0;
+                });
+              }
+              return Number(product.stock) > 0;
+            });
 
             return (
               <div
@@ -869,7 +886,17 @@ export default function HomePage() {
                         : 'translate-y-full opacity-0 pointer-events-none'
                     }`}
                   >
-                    {wasJustAdded ? (
+                    {isSpoiler ? (
+                      <div className="text-center py-1">
+                        <Link
+                          href={`/produto/${product.slug}`}
+                          className="py-2.5 px-3 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition text-center cursor-pointer shadow-xs"
+                        >
+                          <span>{lang === 'pt' ? '👀 VER SPOILER DA PEÇA' : '👀 VIEW SPOILER'}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                      </div>
+                    ) : wasJustAdded ? (
                       <div className="text-center py-1 space-y-1">
                         <div className="flex items-center justify-center gap-1.5 text-gold text-xs font-black uppercase tracking-wider">
                           <Check className="w-4 h-4 text-gold stroke-[3]" />
@@ -888,12 +915,12 @@ export default function HomePage() {
                           <span className="text-gold flex items-center gap-1">
                             <Zap className="w-3 h-3 text-gold" /> {t('gymshark.quickAdd')}
                           </span>
-                          <span>{lang === 'pt' ? 'GRADE BR / US' : 'US SIZING'}</span>
+                          <span>{lang === 'pt' ? 'GRADE EM ESTOQUE' : 'IN STOCK SIZES'}</span>
                         </div>
 
-                        {/* Botões de Tamanhos Rápidos Gymshark */}
+                        {/* Botões de Tamanhos Rápidos: SOMENTE TAMANHOS COM ESTOQUE */}
                         <div className="grid grid-cols-3 gap-1.5">
-                          {product.sizes.map((size) => {
+                          {inStockSizes.map((size) => {
                             const upperSz = size.toUpperCase();
                             const displaySz = lang === 'pt'
                               ? (upperSz === 'S' || upperSz === 'P' ? 'P' : upperSz === 'M' ? 'M' : upperSz === 'L' || upperSz === 'G' ? 'G' : upperSz === 'XL' || upperSz === 'GG' ? 'GG' : size)
@@ -996,13 +1023,13 @@ export default function HomePage() {
 
                     <span
                       className={`text-[10px] font-bold tracking-wide px-2.5 py-1 border shrink-0 ${
-                        isPreOrder
-                          ? 'bg-deep-black text-gold border-gold shadow-sm'
+                        isSpoiler
+                          ? 'bg-deep-black text-gold border-gold shadow-sm font-black'
                           : 'bg-white text-deep-black border-deep-black'
                       }`}
                     >
-                      {isPreOrder
-                        ? (lang === 'pt' ? 'Pré-venda: 30 dias' : 'Pre-order: 30 days')
+                      {isSpoiler
+                        ? (lang === 'pt' ? '👀 Spoiler • Em breve' : '👀 Spoiler • Coming soon')
                         : (lang === 'pt' ? 'Em estoque' : 'In stock')}
                     </span>
                   </div>

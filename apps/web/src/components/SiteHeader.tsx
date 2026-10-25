@@ -269,15 +269,15 @@ export function SiteHeader() {
               {t('nav.tops')}
             </Link>
             <Link
-              href="/?cat=preorder"
+              href="/?cat=spoiler"
               onClick={() => {
                 if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'preorder' }));
+                  window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'spoiler' }));
                 }
               }}
               className="text-gold font-black hover:text-deep-black transition py-1 border-b-2 border-transparent hover:border-gold flex items-center gap-1.5"
             >
-              <span>{t('nav.preorder')}</span>
+              <span>{lang === 'pt' ? '👀 SPOILER' : '👀 SPOILER'}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-gold animate-ping"></span>
             </Link>
           </nav>
@@ -406,17 +406,17 @@ export function SiteHeader() {
                 <ChevronRight className="w-4 h-4 text-gold" />
               </Link>
               <Link
-                href="/?cat=preorder"
+                href="/?cat=spoiler"
                 onClick={() => {
                   closeMobileMenu();
                   if (typeof window !== 'undefined') {
-                    window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'preorder' }));
+                    window.dispatchEvent(new CustomEvent('ana_filter_category', { detail: 'spoiler' }));
                   }
                 }}
                 className="flex items-center justify-between py-2 border-b border-deep-black/5 text-gold font-black transition"
               >
                 <span className="flex items-center gap-2">
-                  <span>{t('nav.preorder')}</span>
+                  <span>{lang === 'pt' ? '👀 SPOILER (EM BREVE)' : '👀 SPOILER (COMING SOON)'}</span>
                   <span className="w-2 h-2 rounded-full bg-gold animate-ping"></span>
                 </span>
                 <ChevronRight className="w-4 h-4 text-gold" />
