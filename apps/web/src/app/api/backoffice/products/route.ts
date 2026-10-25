@@ -9,6 +9,33 @@ const isUuid = (val: any): boolean =>
   typeof val === 'string' &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
+function reconcileProductVariants(dbVariants: any[], metaVariants: any[]) {
+  const dbList = Array.isArray(dbVariants) ? dbVariants : [];
+  const metaList = Array.isArray(metaVariants) ? metaVariants : [];
+
+  if (metaList.length === 0) return dbList;
+  if (dbList.length === 0) return metaList;
+
+  // Mapa de variantes por combinação (cor, tamanho)
+  const map = new Map<string, any>();
+  // 1. Base com as variantes salvas no JSON de descrição
+  metaList.forEach((mv: any) => {
+    const key = `${String(mv.color || '').trim().toLowerCase()}__${String(mv.size || '').trim().toLowerCase()}`;
+    map.set(key, mv);
+  });
+  // 2. Sobrepõe com dados da tabela product_variants (têm IDs reais do Postgres, barcodes, etc.)
+  dbList.forEach((dv: any) => {
+    const key = `${String(dv.color || '').trim().toLowerCase()}__${String(dv.size || '').trim().toLowerCase()}`;
+    if (map.has(key)) {
+      map.set(key, { ...map.get(key), ...dv });
+    } else {
+      map.set(key, dv);
+    }
+  });
+
+  return Array.from(map.values());
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -47,9 +74,7 @@ export async function GET(req: NextRequest) {
         }
       } catch (e) {}
 
-      const effectiveVariants = (variants && variants.length > 0)
-        ? variants
-        : (Array.isArray(meta.variants) && meta.variants.length > 0 ? meta.variants : []);
+      const effectiveVariants = reconcileProductVariants(variants || [], meta.variants || []);
 
       const inStockVariant = effectiveVariants.find((v: any) => {
         const stockQty = Number(v.stock_quantity ?? v.stock ?? 0);
@@ -84,6 +109,17 @@ export async function GET(req: NextRequest) {
         ? Number(effectiveVariants[0].price)
         : 44.90;
 
+      const resolvedColors = Array.isArray(meta.colors) && meta.colors.length > 0
+        ? meta.colors
+        : Array.from(new Set(effectiveVariants.map((v: any) => v.color).filter(Boolean))).map((cName: any) => {
+            const match = effectiveVariants.find((v: any) => v.color === cName);
+            return { name: cName, hex: match?.colorHex || '#0A0A0A' };
+          });
+
+      const resolvedSizes = Array.isArray(meta.sizes) && meta.sizes.length > 0
+        ? meta.sizes
+        : Array.from(new Set(effectiveVariants.map((v: any) => v.size).filter(Boolean)));
+
       const enrichedProduct = {
         ...product,
         meta,
@@ -92,8 +128,8 @@ export async function GET(req: NextRequest) {
         images: galleryImages,
         galleryImages: galleryImages,
         media_list: meta.media_list || [],
-        colors: meta.colors || [],
-        sizes: meta.sizes || [],
+        colors: resolvedColors,
+        sizes: resolvedSizes,
         price: resolvedPrice,
         cost_price: resolvedCost,
         costPrice: resolvedCost,
@@ -151,9 +187,7 @@ export async function GET(req: NextRequest) {
       } catch (e) {}
 
       const pVariants = (allVariants || []).filter((v) => v.product_id === p.id);
-      const effectiveVariants = (pVariants && pVariants.length > 0)
-        ? pVariants
-        : (Array.isArray(meta.variants) && meta.variants.length > 0 ? meta.variants : []);
+      const effectiveVariants = reconcileProductVariants(pVariants, meta.variants || []);
 
       const inStockVariant = effectiveVariants.find((v: any) => {
         const stockQty = Number(v.stock_quantity ?? v.stock ?? 0);
@@ -186,6 +220,17 @@ export async function GET(req: NextRequest) {
         ? Number(effectiveVariants[0].price)
         : 44.90;
 
+      const resolvedColors = Array.isArray(meta.colors) && meta.colors.length > 0
+        ? meta.colors
+        : Array.from(new Set(effectiveVariants.map((v: any) => v.color).filter(Boolean))).map((cName: any) => {
+            const match = effectiveVariants.find((v: any) => v.color === cName);
+            return { name: cName, hex: match?.colorHex || '#0A0A0A' };
+          });
+
+      const resolvedSizes = Array.isArray(meta.sizes) && meta.sizes.length > 0
+        ? meta.sizes
+        : Array.from(new Set(effectiveVariants.map((v: any) => v.size).filter(Boolean)));
+
       return {
         ...p,
         meta,
@@ -194,8 +239,8 @@ export async function GET(req: NextRequest) {
         images: galleryImages,
         galleryImages: galleryImages,
         media_list: meta.media_list || [],
-        colors: meta.colors || [],
-        sizes: meta.sizes || [],
+        colors: resolvedColors,
+        sizes: resolvedSizes,
         price: resolvedPrice,
         cost_price: resolvedCost,
         costPrice: resolvedCost,
@@ -611,39 +656,104 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      let { data: upsertedVariants, error: varError } = await supabaseServer
-        .from('product_variants')
-        .upsert(variantsData)
-        .select();
+      // 3. Persistência individual e segura de cada variação (sem falha em lote ou colisão de chave única)
+      const savedVariantsList: any[] = [];
 
-      // Retry robusto caso ocorra colisão de barcode ou SKU único no Postgres
-      if (varError && varError.code === '23505') {
-        console.warn('Colisão de constraint detectada em product_variants, executando retry com salt único...', varError.message);
-        const retryVariantsData = variantsData.map((vd: any, idx: number) => {
-          const randSalt = Math.random().toString(36).substring(2, 6).toUpperCase();
-          const randBarcode = `789${Math.floor(100000000 + Math.random() * 900000000)}`;
-          return {
-            ...vd,
-            sku: `${vd.sku}-${randSalt}-${idx + 1}`,
-            barcode: randBarcode,
-          };
-        });
-        const retry = await supabaseServer
-          .from('product_variants')
-          .upsert(retryVariantsData)
-          .select();
-        upsertedVariants = retry.data;
-        varError = retry.error;
+      for (let idx = 0; idx < variantsData.length; idx++) {
+        const vd = { ...variantsData[idx] };
+        const hasDbId = isUuid(vd.id);
+
+        let savedRow: any = null;
+
+        if (hasDbId) {
+          // 3.1 Atualiza variante existente pelo ID único
+          const { id: vId, ...updateFields } = vd;
+          let { data: updated, error: upErr } = await supabaseServer
+            .from('product_variants')
+            .update(updateFields)
+            .eq('id', vId)
+            .select()
+            .maybeSingle();
+
+          if (upErr && (upErr.code === '23505' || upErr.message?.includes('duplicate key'))) {
+            // Colisão de SKU ou Barcode único no update: aplica salt e re-tenta
+            const randSalt = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const randBarcode = `789${Math.floor(100000000 + Math.random() * 900000000)}`;
+            const retryFields = {
+              ...updateFields,
+              sku: `${updateFields.sku}-${randSalt}`,
+              barcode: randBarcode,
+            };
+            const retryUp = await supabaseServer
+              .from('product_variants')
+              .update(retryFields)
+              .eq('id', vId)
+              .select()
+              .maybeSingle();
+
+            if (!retryUp.error && retryUp.data) {
+              updated = retryUp.data;
+              upErr = null;
+            }
+          }
+
+          if (!upErr && updated) {
+            savedRow = updated;
+          } else {
+            console.warn(`Aviso ao atualizar variante ${vId}:`, upErr?.message);
+            // Se o ID não existia mais no banco, tenta como nova inserção
+            const { data: insertedFresh, error: freshErr } = await supabaseServer
+              .from('product_variants')
+              .insert(updateFields)
+              .select()
+              .maybeSingle();
+            if (!freshErr && insertedFresh) {
+              savedRow = insertedFresh;
+            }
+          }
+        } else {
+          // 3.2 Nova variação: insere sem ID (Postgres gera UUID automaticamente)
+          const { id: _, ...insertFields } = vd;
+          let { data: inserted, error: inErr } = await supabaseServer
+            .from('product_variants')
+            .insert(insertFields)
+            .select()
+            .maybeSingle();
+
+          if (inErr && (inErr.code === '23505' || inErr.message?.includes('duplicate key'))) {
+            // Colisão de SKU ou Barcode único na inserção: aplica salt e re-tenta
+            const randSalt = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const randBarcode = `789${Math.floor(100000000 + Math.random() * 900000000)}`;
+            const retryInsertFields = {
+              ...insertFields,
+              sku: `${insertFields.sku}-${randSalt}`,
+              barcode: randBarcode,
+            };
+            const retryIn = await supabaseServer
+              .from('product_variants')
+              .insert(retryInsertFields)
+              .select()
+              .maybeSingle();
+
+            if (!retryIn.error && retryIn.data) {
+              inserted = retryIn.data;
+              inErr = null;
+            } else {
+              console.warn(`Falha no retry de inserção da variante ${vd.color}/${vd.size}:`, retryIn.error?.message);
+            }
+          }
+
+          if (!inErr && inserted) {
+            savedRow = inserted;
+          } else if (inErr) {
+            console.warn(`Aviso: não foi possível inserir variante ${vd.color}/${vd.size}:`, inErr?.message);
+          }
+        }
+
+        savedVariantsList.push(savedRow || vd);
       }
 
-      if (varError) {
-        console.warn('Aviso: Não foi possível gravar na tabela product_variants, mas o produto e variações estão salvos com segurança no JSON:', varError);
-        savedVariants = variantsData;
-      } else if (upsertedVariants && upsertedVariants.length > 0) {
-        savedVariants = upsertedVariants;
-      } else {
-        savedVariants = variantsData;
-      }
+      savedVariants = savedVariantsList;
     }
 
     // Auto-sincronização com TikTok Shop em segundo plano (se ativada nas configurações)

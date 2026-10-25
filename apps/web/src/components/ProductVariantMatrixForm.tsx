@@ -403,12 +403,31 @@ export function ProductVariantMatrixForm({
 
       setDefaultCostPrice(String(resolvedInitialCost));
 
-      // 3. Carrega variantes (do array direto ou do backup no JSON da descrição)
-      const rawVariants = (Array.isArray(initialProduct.variants) && initialProduct.variants.length > 0)
-        ? initialProduct.variants
-        : (Array.isArray(parsedMeta.variants) && parsedMeta.variants.length > 0)
-        ? parsedMeta.variants
-        : [];
+      // 3. Carrega variantes (reconciliando da tabela product_variants e do JSON meta.variants para nunca perder variações)
+      let rawVariants: any[] = [];
+      const directVariants = Array.isArray(initialProduct.variants) ? initialProduct.variants : [];
+      const metaVariants = Array.isArray(parsedMeta.variants) ? parsedMeta.variants : [];
+
+      if (metaVariants.length > 0 && directVariants.length > 0) {
+        const vMap = new Map<string, any>();
+        metaVariants.forEach((mv: any) => {
+          const key = `${String(mv.color || '').trim().toLowerCase()}__${String(mv.size || '').trim().toLowerCase()}`;
+          vMap.set(key, mv);
+        });
+        directVariants.forEach((dv: any) => {
+          const key = `${String(dv.color || '').trim().toLowerCase()}__${String(dv.size || '').trim().toLowerCase()}`;
+          if (vMap.has(key)) {
+            vMap.set(key, { ...vMap.get(key), ...dv });
+          } else {
+            vMap.set(key, dv);
+          }
+        });
+        rawVariants = Array.from(vMap.values());
+      } else if (directVariants.length > 0) {
+        rawVariants = directVariants;
+      } else if (metaVariants.length > 0) {
+        rawVariants = metaVariants;
+      }
 
       if (rawVariants.length > 0) {
         const loadedVariants: VariantRow[] = rawVariants.map((v: any) => ({
@@ -427,6 +446,72 @@ export function ProductVariantMatrixForm({
           image: (Array.isArray(v.images) && v.images[0] && !v.images[0].startsWith('data:')) ? v.images[0] : (v.image && !v.image.startsWith('data:') ? v.image : ''),
           video_url: v.video_url || '',
         }));
+
+        // Atualiza cores e tamanhos detectados (mesclando meta, produto e variantes carregadas)
+        const candidateColors = Array.isArray(parsedMeta.colors) && parsedMeta.colors.length > 0
+          ? parsedMeta.colors
+          : Array.isArray(initialProduct.colors) && initialProduct.colors.length > 0
+          ? initialProduct.colors
+          : [];
+
+        const colorMap = new Map<string, { name: string; hex: string }>();
+        candidateColors.forEach((c: any) => {
+          if (c?.name) colorMap.set(c.name.trim().toLowerCase(), { name: c.name.trim(), hex: c.hex || '#0A0A0A' });
+        });
+        loadedVariants.forEach((v) => {
+          if (v?.color && !colorMap.has(v.color.trim().toLowerCase())) {
+            colorMap.set(v.color.trim().toLowerCase(), { name: v.color.trim(), hex: v.colorHex || '#0A0A0A' });
+          }
+        });
+        const finalColorList = Array.from(colorMap.values());
+        if (finalColorList.length > 0) {
+          setColors(finalColorList);
+        }
+
+        const candidateSizes = Array.isArray(parsedMeta.sizes) && parsedMeta.sizes.length > 0
+          ? parsedMeta.sizes
+          : Array.isArray(initialProduct.sizes) && initialProduct.sizes.length > 0
+          ? initialProduct.sizes
+          : [];
+
+        const sizeSet = new Set<string>();
+        candidateSizes.forEach((s: any) => {
+          if (s) sizeSet.add(String(s).trim().toUpperCase());
+        });
+        loadedVariants.forEach((v) => {
+          if (v?.size) sizeSet.add(String(v.size).trim().toUpperCase());
+        });
+        const finalSizeList = Array.from(sizeSet);
+        if (finalSizeList.length > 0) {
+          setSelectedSizes(finalSizeList);
+        }
+
+        // Garante que toda combinação de (cor, tamanho) possua sua linha correspondente na matriz
+        const existingKeys = new Set(loadedVariants.map((v) => `${(v.color || '').trim().toLowerCase()}___${(v.size || '').trim().toUpperCase()}`));
+        finalColorList.forEach((c) => {
+          finalSizeList.forEach((s) => {
+            const k = `${c.name.trim().toLowerCase()}___${s.trim().toUpperCase()}`;
+            if (!existingKeys.has(k)) {
+              loadedVariants.push({
+                color: c.name,
+                colorHex: c.hex,
+                size: s,
+                sku: `${initialProduct.sku || 'PROD'}-${c.name.slice(0, 3).toUpperCase().replace(/[^\w]/g, '')}-${s}`,
+                barcode: `789${Math.floor(100000000 + Math.random() * 900000000)}`,
+                stock_quantity: 0,
+                price: parseFloat(defaultPrice) || 44.9,
+                cost_price: Number(resolvedInitialCost) || 16.0,
+                allow_backorder: true,
+                estimated_production_days: 7,
+                images: [],
+                image: '',
+                video_url: '',
+              });
+              existingKeys.add(k);
+            }
+          });
+        });
+
         setVariants(loadedVariants);
 
         // Preço padrão das variantes
@@ -437,41 +522,6 @@ export function ProductVariantMatrixForm({
           }
           if (loadedVariants[0].cost_price !== undefined && loadedVariants[0].cost_price !== null) {
             setDefaultCostPrice(String(loadedVariants[0].cost_price));
-          }
-        }
-
-        // Atualiza cores e tamanhos detectados
-        const savedColors = Array.isArray(parsedMeta.colors) && parsedMeta.colors.length > 0
-          ? parsedMeta.colors
-          : Array.isArray(initialProduct.colors) && initialProduct.colors.length > 0
-          ? initialProduct.colors
-          : null;
-
-        if (savedColors) {
-          setColors(savedColors);
-        } else {
-          const uniqueColors = Array.from(new Set(loadedVariants.map((v) => v.color)));
-          const colorObjs = uniqueColors.map((cName) => {
-            const found = loadedVariants.find((v) => v.color === cName);
-            return { name: cName, hex: found?.colorHex || '#0A0A0A' };
-          });
-          if (colorObjs.length > 0) {
-            setColors(colorObjs);
-          }
-        }
-
-        const savedSizes = Array.isArray(parsedMeta.sizes) && parsedMeta.sizes.length > 0
-          ? parsedMeta.sizes
-          : Array.isArray(initialProduct.sizes) && initialProduct.sizes.length > 0
-          ? initialProduct.sizes
-          : null;
-
-        if (savedSizes) {
-          setSelectedSizes(savedSizes);
-        } else {
-          const uniqueSizes = Array.from(new Set(loadedVariants.map((v) => v.size)));
-          if (uniqueSizes.length > 0) {
-            setSelectedSizes(uniqueSizes);
           }
         }
 
@@ -2196,7 +2246,9 @@ export function ProductVariantMatrixForm({
                         type="button"
                         onClick={() => {
                           if (!colors.some((c) => c.name.toLowerCase() === sug.name.toLowerCase())) {
-                            setColors([...colors, sug]);
+                            const updatedColors = [...colors, sug];
+                            setColors(updatedColors);
+                            syncMatrixWithColorsAndSizes(updatedColors, selectedSizes, variants);
                           }
                         }}
                         className="px-2 py-0.5 bg-white border border-deep-black/30 hover:border-gold text-[8.5px] font-bold uppercase inline-flex items-center gap-1 transition"

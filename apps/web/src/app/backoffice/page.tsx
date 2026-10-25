@@ -569,8 +569,12 @@ export default function BackofficeDashboard() {
     const rows: string[] = [headers.join(',')];
 
     listToExport.forEach((p: any) => {
-      if (p.product_variants && p.product_variants.length > 0) {
-        p.product_variants.forEach((v: any) => {
+      const pVars = (Array.isArray(p.variants) && p.variants.length > 0)
+        ? p.variants
+        : (Array.isArray(p.product_variants) && p.product_variants.length > 0 ? p.product_variants : []);
+
+      if (pVars.length > 0) {
+        pVars.forEach((v: any) => {
           rows.push([
             `"${v.sku || p.sku || ''}"`,
             `"${(p.title || '').replace(/"/g, '""')}"`,
