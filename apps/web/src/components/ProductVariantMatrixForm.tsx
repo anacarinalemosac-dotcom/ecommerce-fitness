@@ -45,6 +45,7 @@ import {
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import { supabase } from '../lib/supabase';
 import { translateEnToPt, translatePtToEn, isPortugueseText } from '../lib/translateFitness';
+import { FormattedDescription } from './FormattedDescription';
 
 export interface VariantRow {
   id?: string;
@@ -1980,35 +1981,61 @@ export function ProductVariantMatrixForm({
               </div>
 
               {descTab === 'en' ? (
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex justify-between items-center text-[9px] font-bold text-deep-black/60 uppercase">
                     <span>English Description (Displayed on US storefront by default):</span>
                     <span>{descriptionEn.length} caracteres</span>
                   </div>
                   <textarea
-                    rows={4}
+                    rows={8}
                     placeholder="Enter piece description in English (e.g., Crafted with buttery-soft high-compression fabric, 100% squat-proof, removable cups...)"
                     value={descriptionEn}
                     onChange={(e) => {
                       setDescriptionEn(e.target.value);
                       setDescription(e.target.value);
                     }}
-                    className="w-full p-3 border-2 border-deep-black font-medium text-xs bg-white focus:outline-none focus:border-gold"
+                    className="w-full p-3 border-2 border-deep-black font-medium text-xs bg-white focus:outline-none focus:border-gold leading-relaxed"
                   />
+                  <p className="text-[9.5px] text-deep-black/60 font-medium">
+                    ✨ Parágrafos (duplo Enter), quebras de linha (-), marcadores de lista e negrito (**palavra**) são preservados e formatados com elegância no site.
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex justify-between items-center text-[9px] font-bold text-deep-black/60 uppercase">
                     <span>Descrição em Português (Exibida quando o cliente clica no botão PT):</span>
                     <span>{descriptionPt.length} caracteres</span>
                   </div>
                   <textarea
-                    rows={4}
+                    rows={8}
                     placeholder="Descreva a peça em Português (ex: Confeccionado em malha nobre de poliamida com toque amanteigado, zero transparência, bojo removível...)"
                     value={descriptionPt}
                     onChange={(e) => setDescriptionPt(e.target.value)}
-                    className="w-full p-3 border-2 border-deep-black font-medium text-xs bg-white focus:outline-none focus:border-gold"
+                    className="w-full p-3 border-2 border-deep-black font-medium text-xs bg-white focus:outline-none focus:border-gold leading-relaxed"
                   />
+                  <p className="text-[9.5px] text-deep-black/60 font-medium">
+                    ✨ Parágrafos (duplo Enter), quebras de linha (-), marcadores de lista e negrito (**palavra**) são preservados e formatados com elegância no site.
+                  </p>
+                </div>
+              )}
+
+              {/* Pré-visualização ao Vivo da Descrição Formatada */}
+              {Boolean((descTab === 'en' ? descriptionEn : descriptionPt)?.trim()) && (
+                <div className="mt-3 p-4 border border-deep-black/20 bg-warm-light/20 space-y-2">
+                  <div className="flex items-center justify-between border-b border-deep-black/10 pb-1.5">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-deep-black flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-gold" />
+                      <span>Pré-visualização da Descrição no Site ({descTab === 'en' ? 'Inglês' : 'Português'})</span>
+                    </span>
+                    <span className="text-[8.5px] font-bold text-deep-black/50 uppercase">
+                      Parágrafos e Espaços Preservados
+                    </span>
+                  </div>
+                  <div className="bg-white p-3.5 border border-deep-black/10 shadow-xs">
+                    <FormattedDescription
+                      text={descTab === 'en' ? descriptionEn : descriptionPt}
+                    />
+                  </div>
                 </div>
               )}
             </div>

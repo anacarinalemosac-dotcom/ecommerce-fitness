@@ -7,6 +7,7 @@ import { useStoreSettings } from '../../../context/StoreSettingsContext';
 import { trackEvent } from '../../../lib/tracking';
 import ProductShareModal from '../../../components/ProductShareModal';
 import { ProductSizeGuide } from '../../../components/ProductSizeGuide';
+import { FormattedDescription } from '../../../components/FormattedDescription';
 import { translateEnToPt, translatePtToEn, isPortugueseText } from '../../../lib/translateFitness';
 import {
   Star,
@@ -904,9 +905,11 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   {lang === 'pt' ? '100% ZERO TRANSPARÊNCIA' : '100% SQUAT-PROOF'}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-deep-black/85 font-medium leading-relaxed uppercase tracking-wide">
-                {lang === 'pt' ? productData.descriptionPt : productData.descriptionEn}
-              </p>
+              <div className="pt-1">
+                <FormattedDescription
+                  text={lang === 'pt' ? productData.descriptionPt : productData.descriptionEn}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -1369,9 +1372,11 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   </h3>
                 </div>
 
-                <p className="text-sm text-deep-black/80 font-medium uppercase tracking-wide leading-relaxed">
-                  {lang === 'pt' ? productData.descriptionPt : productData.descriptionEn}
-                </p>
+                <div className="pt-1">
+                  <FormattedDescription
+                    text={lang === 'pt' ? productData.descriptionPt : productData.descriptionEn}
+                  />
+                </div>
 
                 <div className="p-5 border border-deep-black/10 bg-white space-y-3">
                   <h4 className="text-xs font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
