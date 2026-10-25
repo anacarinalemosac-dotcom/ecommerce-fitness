@@ -888,21 +888,27 @@ export default function HomePage() {
                           <span className="text-gold flex items-center gap-1">
                             <Zap className="w-3 h-3 text-gold" /> {t('gymshark.quickAdd')}
                           </span>
-                          <span>US SIZING</span>
+                          <span>{lang === 'pt' ? 'GRADE BR / US' : 'US SIZING'}</span>
                         </div>
 
                         {/* Botões de Tamanhos Rápidos Gymshark */}
                         <div className="grid grid-cols-3 gap-1.5">
-                          {product.sizes.map((size) => (
-                            <button
-                              key={size}
-                              onClick={(e) => handleQuickAdd(product.id, size, e)}
-                              className="py-1.5 text-xs font-black uppercase bg-white/10 hover:bg-gold hover:text-deep-black text-white border border-white/20 transition-all active:scale-95 flex items-center justify-center"
-                              title={`Add size ${size} directly to bag`}
-                            >
-                              {size}
-                            </button>
-                          ))}
+                          {product.sizes.map((size) => {
+                            const upperSz = size.toUpperCase();
+                            const displaySz = lang === 'pt'
+                              ? (upperSz === 'S' || upperSz === 'P' ? 'P' : upperSz === 'M' ? 'M' : upperSz === 'L' || upperSz === 'G' ? 'G' : upperSz === 'XL' || upperSz === 'GG' ? 'GG' : size)
+                              : size;
+                            return (
+                              <button
+                                key={size}
+                                onClick={(e) => handleQuickAdd(product.id, size, e)}
+                                className="py-1.5 text-xs font-black uppercase bg-white/10 hover:bg-gold hover:text-deep-black text-white border border-white/20 transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+                                title={`Add size ${size} directly to bag`}
+                              >
+                                {displaySz}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

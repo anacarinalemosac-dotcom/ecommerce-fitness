@@ -57,7 +57,7 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
 
     // PDP Tabs
     'tab.desc': 'DESCRIPTION & PERFORMANCE',
-    'tab.sizing': 'SIZE GUIDE & MEASUREMENTS',
+    'tab.sizing': 'SIZE & MEASUREMENTS GUIDE (S • M • L • XL)',
     'tab.care': 'CARE & WASHING',
     'tab.preorder': 'PRE-ORDER PRODUCTION (30 DAYS)',
 
@@ -155,7 +155,7 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
 
     // PDP Tabs
     'tab.desc': 'DESCRIÇÃO & PERFORMANCE',
-    'tab.sizing': 'TABELA DE MEDIDAS (US)',
+    'tab.sizing': 'TABELA DE MEDIDAS (P • M • G • GG)',
     'tab.care': 'CUIDADOS & LAVAGEM',
     'tab.preorder': 'PRODUÇÃO SOB ENCOMENDA (PRAZO 30 DIAS)',
 

@@ -6,6 +6,7 @@ import { useLanguage } from '../../../context/LanguageContext';
 import { useStoreSettings } from '../../../context/StoreSettingsContext';
 import { trackEvent } from '../../../lib/tracking';
 import ProductShareModal from '../../../components/ProductShareModal';
+import { ProductSizeGuide } from '../../../components/ProductSizeGuide';
 import { translateEnToPt, translatePtToEn, isPortugueseText } from '../../../lib/translateFitness';
 import {
   Star,
@@ -395,6 +396,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [copySuccess, setCopySuccess] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isSizeGuideModalOpen, setIsSizeGuideModalOpen] = useState(false);
 
   useEffect(() => {
     async function loadReviews() {
@@ -943,13 +945,12 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               </span>
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab('sizing');
-                  document.getElementById('product-tabs')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="text-[10px] text-deep-black/60 underline hover:text-gold transition cursor-pointer font-bold"
+                onClick={() => setIsSizeGuideModalOpen(true)}
+                className="flex items-center gap-1.5 text-[10.5px] font-black text-deep-black hover:text-gold uppercase tracking-wider underline cursor-pointer transition py-0.5"
+                title={lang === 'pt' ? 'Abrir Tabela de Medidas Oficial' : 'Open Official Size Guide'}
               >
-                {t('tab.sizing')}
+                <Ruler className="w-3.5 h-3.5 text-gold shrink-0" />
+                <span>{lang === 'pt' ? 'Tabela de Medidas (P • M • G • GG)' : 'Size Guide (S • M • L • XL)'}</span>
               </button>
             </div>
 
@@ -964,11 +965,20 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 const stockQty = matchedVariant ? Number(matchedVariant.stock) : 0;
                 const hasStock = stockQty > 0;
 
+                const upperSz = sz.toUpperCase();
                 const sizeLabel = lang === 'pt'
-                  ? (sz === 'S' ? 'P (S)' : sz === 'M' ? 'M' : sz === 'L' ? 'G (L)' : sz === 'XL' ? 'GG (XL)' : sz)
-                  : sz;
+                  ? (upperSz === 'S' || upperSz === 'P' ? 'P' : upperSz === 'M' ? 'M' : upperSz === 'L' || upperSz === 'G' ? 'G' : upperSz === 'XL' || upperSz === 'GG' ? 'GG' : sz)
+                  : (upperSz === 'P' || upperSz === 'S' ? 'S' : upperSz === 'M' ? 'M' : upperSz === 'G' || upperSz === 'L' ? 'L' : upperSz === 'GG' || upperSz === 'XL' ? 'XL' : sz);
 
-                const subLabel = sz === 'S' ? 'US 2-4' : sz === 'M' ? 'US 6-8' : sz === 'L' ? 'US 10-12' : sz === 'XL' ? 'US 14-16' : '';
+                const subLabel = (upperSz === 'S' || upperSz === 'P')
+                  ? 'BR 36-38 • US 2-4'
+                  : upperSz === 'M'
+                  ? 'BR 40-42 • US 6-8'
+                  : (upperSz === 'L' || upperSz === 'G')
+                  ? 'BR 44 • US 10-12'
+                  : (upperSz === 'XL' || upperSz === 'GG')
+                  ? 'BR 46-48 • US 14-16'
+                  : '';
 
                 return (
                   <button
@@ -985,7 +995,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   >
                     <span className="text-xs font-black">{sizeLabel}</span>
                     {subLabel && (
-                      <span className={`text-[8.5px] font-mono ${isSelected ? 'text-white/60' : 'text-deep-black/50'}`}>
+                      <span className={`text-[8.5px] font-mono ${isSelected ? 'text-white/70' : 'text-deep-black/60'}`}>
                         {subLabel}
                       </span>
                     )}
@@ -1320,54 +1330,16 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             </div>
           )}
 
-          {/* ABA 2: TABELA DE MEDIDAS (US SIZES) */}
+          {/* ABA 2: TABELA DE MEDIDAS SEPARADA (P, M, G, GG) */}
           {activeTab === 'sizing' && (
-            <div className="space-y-8">
-              <div className="max-w-3xl space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
-                  {lang === 'pt' ? 'GUIA DE TAMANHOS OFICIAL' : 'OFFICIAL SIZING GUIDE'}
-                </span>
-                <h3 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-deep-black">
-                  {lang === 'pt' ? 'ENCONTRE O SEU CAIMENTO IDEAL' : 'FIND YOUR PERFECT FIT'}
-                </h3>
-                <p className="text-xs text-deep-black/70 font-medium uppercase tracking-wide leading-relaxed">
-                  {lang === 'pt'
-                    ? 'Nossas peças possuem bastante elasticidade e se adaptam perfeitamente ao corpo. Se tiver qualquer dúvida, fale conosco pelo WhatsApp (+1 978 313-9452)!'
-                    : 'Our fabrics offer generous elasticity and mold seamlessly to your silhouette. Reach out via WhatsApp (+1 978 313-9452) for concierge sizing guidance!'}
-                </p>
-              </div>
-
-              <div className="overflow-x-auto border border-deep-black/15">
-                <table className="w-full text-left border-collapse text-xs uppercase tracking-wider">
-                  <thead>
-                    <tr className="bg-deep-black text-white text-[11px] font-black">
-                      <th className="py-3 px-4 border-b border-deep-black/20">SIZE</th>
-                      <th className="py-3 px-4 border-b border-deep-black/20">US SIZING</th>
-                      <th className="py-3 px-4 border-b border-deep-black/20">BUST (INCHES)</th>
-                      <th className="py-3 px-4 border-b border-deep-black/20">WAIST (INCHES)</th>
-                      <th className="py-3 px-4 border-b border-deep-black/20">HIPS (INCHES)</th>
-                      <th className="py-3 px-4 border-b border-deep-black/20 text-gold">AVAILABILITY</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-deep-black/10 font-bold">
-                    {[
-                      { size: 'P (S)', us: 'US 2 - 4', bust: '32 - 34"', waist: '25 - 27"', hip: '35 - 37"', stock: 'IN STOCK' },
-                      { size: 'M (M)', us: 'US 6 - 8', bust: '35 - 37"', waist: '28 - 30"', hip: '38 - 40"', stock: 'IN STOCK' },
-                      { size: 'G (L)', us: 'US 10 - 12', bust: '38 - 40"', waist: '31 - 33"', hip: '41 - 43"', stock: 'PRE-ORDER (30 DAYS)' },
-                      { size: 'GG (XL)', us: 'US 14 - 16', bust: '41 - 43"', waist: '34 - 36"', hip: '44 - 46"', stock: 'PRE-ORDER (30 DAYS)' },
-                    ].map((row, idx) => (
-                      <tr key={idx} className="hover:bg-deep-black/5 transition">
-                        <td className="py-3.5 px-4 font-black text-deep-black">{row.size}</td>
-                        <td className="py-3.5 px-4 text-deep-black/80">{row.us}</td>
-                        <td className="py-3.5 px-4 text-deep-black/80">{row.bust}</td>
-                        <td className="py-3.5 px-4 text-deep-black/80">{row.waist}</td>
-                        <td className="py-3.5 px-4 text-deep-black/80">{row.hip}</td>
-                        <td className="py-3.5 px-4 text-[10px] font-black text-gold">{row.stock}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="pt-2">
+              <ProductSizeGuide
+                selectedSize={selectedSize}
+                onSelectSize={handleSelectSize}
+                availableSizes={availableSizes}
+                variants={productData.variants}
+                selectedColor={selectedColor}
+              />
             </div>
           )}
 
@@ -1809,6 +1781,19 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         }}
         lang={lang}
       />
+
+      {/* Modal Interativo de Tabela de Medidas (P • M • G • GG) */}
+      {isSizeGuideModalOpen && (
+        <ProductSizeGuide
+          isModal
+          onClose={() => setIsSizeGuideModalOpen(false)}
+          selectedSize={selectedSize}
+          onSelectSize={handleSelectSize}
+          availableSizes={availableSizes}
+          variants={productData.variants}
+          selectedColor={selectedColor}
+        />
+      )}
     </div>
   );
 }
