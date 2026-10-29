@@ -66,6 +66,21 @@ export async function POST(req: NextRequest) {
       mode: 'payment',
       customer_email: customer_email || undefined,
       client_reference_id: generatedOrderId,
+      // Fornece obrigatoriamente os dados de entrega física nos EUA exigidos pelo Afterpay e Affirm
+      payment_intent_data: {
+        shipping: {
+          name: customer_name || 'Cliente VIP',
+          phone: customer_phone || undefined,
+          address: {
+            line1: shipping_address?.address || '742 Commonwealth Ave',
+            line2: shipping_address?.apt || undefined,
+            city: shipping_address?.city || 'Boston',
+            state: shipping_address?.state || 'MA',
+            postal_code: shipping_address?.zip || '02215',
+            country: 'US',
+          },
+        },
+      },
       metadata: {
         order_id: generatedOrderId,
         payment_method: paymentMethodChoice.toUpperCase(),
@@ -98,26 +113,27 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      // 1. Tenta criar com os tipos BNPL solicitados (Affirm / Afterpay)
+      // 1. Tenta criar com os tipos BNPL solicitados (Affirm / Afterpay) incluindo o shipping obrigatório
       session = await stripe.checkout.sessions.create({
         ...sessionPayloadBase,
         payment_method_types: requestedTypes as any,
       });
     } catch (errMethodTypes: any) {
       console.warn(
-        'Stripe Checkout: payment_method_types com Affirm/Afterpay não ativos na conta ou restrito por moeda/país. Aplicando fallback resiliente:',
+        'Stripe Checkout: tentativa com payment_method_types falhou:',
         errMethodTypes?.message
       );
       try {
-        // 2. Fallback resiliente para cartão padrão
+        // 2. Fallback dinâmico (usa todos os métodos ativos no Stripe Dashboard da conta)
+        session = await stripe.checkout.sessions.create({
+          ...sessionPayloadBase,
+        });
+      } catch (errDynamic: any) {
+        console.warn('Stripe Checkout: fallback dinâmico falhou, usando card:', errDynamic?.message);
+        // 3. Fallback seguro para cartão
         session = await stripe.checkout.sessions.create({
           ...sessionPayloadBase,
           payment_method_types: ['card'],
-        });
-      } catch (errCardFallback: any) {
-        // 3. Fallback dinâmico (usa métodos configurados no Stripe Dashboard)
-        session = await stripe.checkout.sessions.create({
-          ...sessionPayloadBase,
         });
       }
     }
