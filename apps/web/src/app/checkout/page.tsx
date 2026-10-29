@@ -204,6 +204,18 @@ export default function CheckoutPage() {
     }
   }, []);
 
+  // Notificação caso o cliente volte do Stripe sem pagar
+  const [isCanceledNotice, setIsCanceledNotice] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('canceled') === 'true') {
+        setIsCanceledNotice(true);
+      }
+    }
+  }, []);
+
   // Pagamento Online
   const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'APPLE_PAY' | 'AFFIRM' | 'AFTERPAY' | 'ZELLE' | 'VENMO'>('CARD');
 
@@ -860,6 +872,27 @@ export default function CheckoutPage() {
           <ArrowRight className="w-3.5 h-3.5 text-deep-black" />
         </a>
       </div>
+
+      {/* Aviso Amigável caso a cliente tenha voltado do Stripe sem concluir */}
+      {isCanceledNotice && (
+        <div className="p-4 bg-amber-50 border-2 border-amber-400 text-amber-950 text-xs font-bold flex items-center justify-between gap-3 animate-fadeIn shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+            <span>
+              {lang === 'pt'
+                ? 'Você retornou da tela de pagamento do Stripe. Não se preocupe: seus itens continuam 100% salvos na sua sacola de compras para você finalizar quando quiser!'
+                : 'You returned from the Stripe payment screen. Your items remain safely in your shopping bag so you can complete your purchase whenever you are ready!'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsCanceledNotice(false)}
+            className="text-amber-800 hover:text-deep-black font-black uppercase text-[10px] shrink-0 underline cursor-pointer"
+          >
+            {lang === 'pt' ? 'Fechar' : 'Dismiss'}
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handlePlaceOrder} className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
         {/* =========================================================================
