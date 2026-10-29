@@ -736,6 +736,7 @@ export default function BackofficeDashboard() {
   const [payoutMethod, setPayoutMethod] = useState<'ZELLE' | 'VENMO' | 'CASHAPP' | 'PIX' | 'CASH'>('ZELLE');
   const [copiedCouponLink, setCopiedCouponLink] = useState<string | null>(null);
   const [copiedPayoutKey, setCopiedPayoutKey] = useState<string | null>(null);
+  const [copiedClientCatalogLink, setCopiedClientCatalogLink] = useState<boolean>(false);
 
   // Aprovação e Reprovação de Vendedoras (Novos Cadastros)
   const [approvingSeller, setApprovingSeller] = useState<any | null>(null);
@@ -7085,21 +7086,44 @@ export default function BackofficeDashboard() {
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <button
+                type="button"
+                onClick={() => {
+                  const clientUrl = `${window.location.origin}/catalogo`;
+                  navigator.clipboard.writeText(clientUrl).then(() => {
+                    setCopiedClientCatalogLink(true);
+                    setTimeout(() => setCopiedClientCatalogLink(false), 3000);
+                  });
+                }}
+                className="px-4 py-2.5 border-2 border-emerald-600 bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-950 font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                title="Copiar link oculto do catálogo para enviar à cliente no WhatsApp"
+              >
+                {copiedClientCatalogLink ? <Check className="w-4 h-4 text-emerald-400 stroke-[3]" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedClientCatalogLink ? 'LINK COPIADO!' : 'COPIAR LINK P/ CLIENTE'}</span>
+              </button>
+              <Link
+                href="/catalogo"
+                target="_blank"
+                className="px-4 py-2.5 border-2 border-deep-black bg-white hover:bg-gray-100 text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Ver Catálogo do Cliente</span>
+              </Link>
               <Link
                 href="/backoffice/catalogo-pdf"
                 target="_blank"
                 className="px-4 py-2.5 border-2 border-deep-black bg-white hover:bg-gray-100 text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Abrir em Nova Aba (PDF)</span>
+                <Printer className="w-3.5 h-3.5" />
+                <span>Modo Impressão PDF</span>
               </Link>
               <button
                 type="button"
                 onClick={() => setShowWhatsAppCatalogModal(true)}
                 className="px-5 py-2.5 bg-gold hover:bg-deep-black hover:text-gold text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 border-2 border-deep-black shadow-sm cursor-pointer"
               >
-                <Printer className="w-4 h-4 stroke-[3]" />
-                <span>CONFIGURAR & BAIXAR PDF</span>
+                <Smartphone className="w-4 h-4 stroke-[2]" />
+                <span>CONFIGURAR MODAL</span>
               </button>
             </div>
           </div>
@@ -7111,7 +7135,7 @@ export default function BackofficeDashboard() {
                 {siteInfo?.storeName || 'ANA FITNESS WEAR'}
               </h2>
               <p className="text-xs font-black uppercase tracking-widest text-white/80 mt-1">
-                CATÁLOGO DE PRODUTOS & PRONTA ENTREGA • GRUPOS WHATSAPP
+                CATÁLOGO DE PRODUTOS & PRONTA ENTREGA • GRUPOS WHATSAPP (FOTO POR VARIAÇÃO)
               </p>
             </div>
             <div className="text-left md:text-right space-y-1">
@@ -7126,24 +7150,38 @@ export default function BackofficeDashboard() {
 
           <div className="text-center p-8 bg-white border-2 border-deep-black space-y-4">
             <p className="text-sm font-black uppercase text-deep-black">
-              Clique abaixo para abrir a janela com os filtros ou abrir a página direta para salvar o PDF:
+              Você pode enviar o link exclusivo diretamente para a cliente ou baixar o catálogo completo em PDF:
             </p>
             <div className="flex justify-center gap-3 flex-wrap">
               <button
                 type="button"
-                onClick={() => setShowWhatsAppCatalogModal(true)}
-                className="px-6 py-3 bg-[#25d366] hover:bg-green-600 text-black font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shadow-md border-2 border-deep-black cursor-pointer"
+                onClick={() => {
+                  const clientUrl = `${window.location.origin}/catalogo`;
+                  navigator.clipboard.writeText(clientUrl).then(() => {
+                    setCopiedClientCatalogLink(true);
+                    setTimeout(() => setCopiedClientCatalogLink(false), 3000);
+                  });
+                }}
+                className="px-6 py-3 bg-[#25d366] hover:bg-emerald-600 text-black font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shadow-md border-2 border-deep-black cursor-pointer"
               >
-                <Printer className="w-4 h-4 stroke-[3]" />
-                <span>ABRIR CATÁLOGO & GERAR PDF</span>
+                {copiedClientCatalogLink ? <Check className="w-4 h-4 stroke-[3]" /> : <Copy className="w-4 h-4 stroke-[2]" />}
+                <span>{copiedClientCatalogLink ? 'LINK COPIADO P/ WHATSAPP!' : 'COPIAR LINK DO CATÁLOGO P/ CLIENTE'}</span>
               </button>
+              <Link
+                href="/catalogo"
+                target="_blank"
+                className="px-6 py-3 bg-gold hover:bg-white text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center gap-2 border-2 border-deep-black shadow-md"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>ABRIR CATÁLOGO DO CLIENTE (/catalogo)</span>
+              </Link>
               <Link
                 href="/backoffice/catalogo-pdf"
                 target="_blank"
                 className="px-6 py-3 bg-white hover:bg-gray-100 text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center gap-2 border-2 border-deep-black shadow-md"
               >
-                <ExternalLink className="w-4 h-4" />
-                <span>VER EM PÁGINA CHEIA (PRONTO P/ SALVAR)</span>
+                <Printer className="w-4 h-4" />
+                <span>IMPRIMIR / GERAR PDF</span>
               </Link>
             </div>
           </div>

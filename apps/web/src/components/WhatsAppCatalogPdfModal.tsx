@@ -14,6 +14,8 @@ import {
   Eye,
   Tag,
   Share2,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useStoreSettings } from '@/context/StoreSettingsContext';
 
@@ -74,6 +76,7 @@ export function WhatsAppCatalogPdfModal({
   const [onlyInStock, setOnlyInStock] = useState<boolean>(true);
   const [onlyOnline, setOnlyOnline] = useState<boolean>(true); // REGRA: Apenas peças que estão no ar
   const [hideOutOfStockSizes, setHideOutOfStockSizes] = useState<boolean>(false);
+  const [copiedClientLink, setCopiedClientLink] = useState<boolean>(false);
 
   // Extrai todas as categorias disponíveis (apenas de produtos no ar)
   const availableCategories = useMemo(() => {
@@ -192,7 +195,7 @@ export function WhatsAppCatalogPdfModal({
     return 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
   };
 
-  // Filtra e agrupa produtos por categoria
+  // Filtra e agrupa produtos por categoria, expandindo cada variação de cor disponível
   const groupedProducts = useMemo(() => {
     const groups: Record<string, any[]> = {};
 
@@ -202,7 +205,7 @@ export function WhatsAppCatalogPdfModal({
         return;
       }
 
-      const cat = (product.categories?.name || product.category || product.subcategory || 'OUTROS')
+      const cat = (product.categories?.name || product.category || product.subcategory || 'CONJUNTOS')
         .toString()
         .trim()
         .toUpperCase();
@@ -211,15 +214,103 @@ export function WhatsAppCatalogPdfModal({
         return;
       }
 
-      const { totalStock } = getProductStockBySize(product);
-      if (onlyInStock && totalStock <= 0) {
-        return;
-      }
+      const variants = Array.isArray(product.variants) ? product.variants : [];
+      const meta = product.meta || {};
+      const pricing = getProductPricing(product);
+      const sizeOrder = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG', '1', '2', '3', 'UN'];
 
-      if (!groups[cat]) {
-        groups[cat] = [];
+      if (variants.length > 0) {
+        const colorGroups = new Map<string, any[]>();
+        variants.forEach((v: any) => {
+          const cName = (v.color || 'Padrão').trim();
+          const list = colorGroups.get(cName) || [];
+          list.push(v);
+          colorGroups.set(cName, list);
+        });
+
+        colorGroups.forEach((cVariants, colorName) => {
+          const stockMap: Record<string, number> = {};
+          let colorStockTotal = 0;
+
+          cVariants.forEach((v: any) => {
+            const sz = (v.size || 'M').trim().toUpperCase();
+            const qty = Number(v.stock_quantity ?? v.stock ?? 0);
+            stockMap[sz] = (stockMap[sz] || 0) + qty;
+            colorStockTotal += qty;
+          });
+
+          if (onlyInStock && colorStockTotal <= 0) return;
+
+          let varImage = '';
+          const withImg = cVariants.find((v: any) => (Array.isArray(v.images) && v.images.length > 0) || v.image);
+          if (withImg) {
+            varImage = Array.isArray(withImg.images) && withImg.images.length > 0 ? withImg.images[0] : withImg.image;
+          }
+
+          if (!varImage && Array.isArray(meta.media_list)) {
+            const match = meta.media_list.find((m: any) => m.associatedColor && m.associatedColor.trim().toLowerCase() === colorName.toLowerCase());
+            if (match?.url) varImage = match.url;
+          }
+
+          if (!varImage) {
+            varImage = getProductImage(product);
+          }
+
+          const defaultHex =
+            colorName.toLowerCase().includes('ouro') || colorName.toLowerCase().includes('gold') ? '#D4AF37' :
+            colorName.toLowerCase().includes('amarel') ? '#FBBF24' :
+            colorName.toLowerCase().includes('branc') || colorName.toLowerCase().includes('white') ? '#FFFFFF' :
+            colorName.toLowerCase().includes('vinho') || colorName.toLowerCase().includes('marsala') ? '#800020' :
+            colorName.toLowerCase().includes('verd') ? '#2E4F4F' : '#0A0A0A';
+
+          const colorHex = cVariants[0]?.color_hex || cVariants[0]?.colorHex || defaultHex;
+
+          const sortedSizes = Object.keys(stockMap).sort((a, b) => {
+            const idxA = sizeOrder.indexOf(a);
+            const idxB = sizeOrder.indexOf(b);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            return a.localeCompare(b);
+          });
+
+          const varPrice = cVariants[0]?.price && !isNaN(Number(cVariants[0].price)) ? Number(cVariants[0].price) : pricing.promoPrice;
+
+          if (!groups[cat]) groups[cat] = [];
+          groups[cat].push({
+            ...product,
+            id: `${product.id}__${colorName.replace(/\s+/g, '_')}`,
+            colorName,
+            colorHex,
+            primaryImage: varImage,
+            image: varImage,
+            price: varPrice,
+            pricingOverride: {
+              ...pricing,
+              promoPrice: varPrice,
+            },
+            stockDataOverride: {
+              stockMap,
+              sortedSizes,
+              totalStock: colorStockTotal,
+            },
+          });
+        });
+      } else {
+        const { totalStock, stockMap, sortedSizes } = getProductStockBySize(product);
+        if (onlyInStock && totalStock <= 0) return;
+
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push({
+          ...product,
+          colorName: product.colors?.[0]?.name || 'Padrão',
+          colorHex: product.colors?.[0]?.hex || '#0A0A0A',
+          pricingOverride: pricing,
+          stockDataOverride: {
+            stockMap,
+            sortedSizes,
+            totalStock,
+          },
+        });
       }
-      groups[cat].push(product);
     });
 
     return groups;
@@ -262,9 +353,9 @@ export function WhatsAppCatalogPdfModal({
       let itemsHtml = '';
 
       productsList.forEach((product) => {
-        const pricing = getProductPricing(product);
-        const { stockMap, sortedSizes } = getProductStockBySize(product);
-        const imgUrl = getProductImage(product);
+        const pricing = product.pricingOverride || getProductPricing(product);
+        const { stockMap, sortedSizes } = product.stockDataOverride || getProductStockBySize(product);
+        const imgUrl = product.primaryImage || getProductImage(product);
 
         const discountBadgeHtml = pricing.hasDiscount
           ? `<span class="discount-badge">-${pricing.discountPercent}% OFF</span>`
@@ -293,6 +384,10 @@ export function WhatsAppCatalogPdfModal({
           `;
         });
 
+        const colorBadgeHtml = product.colorName
+          ? `<span style="font-size:9.5px; background:#0a0a0a; color:#d4af37; padding:1px 6px; border-radius:2px; font-weight:900; margin-left:4px;">${product.colorName}</span>`
+          : '';
+
         itemsHtml += `
           <div class="product-card">
             <div class="img-wrapper">
@@ -300,7 +395,7 @@ export function WhatsAppCatalogPdfModal({
               ${discountBadgeHtml}
             </div>
             <div class="card-body">
-              <h3 class="product-title">${product.title || 'PEÇA FITNESS'}</h3>
+              <h3 class="product-title">${product.title || 'PEÇA FITNESS'}${colorBadgeHtml}</h3>
               ${priceHtml}
               <div class="stock-section">
                 <div class="stock-title">ESTOQUE POR TAMANHO:</div>
@@ -629,6 +724,32 @@ export function WhatsAppCatalogPdfModal({
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                const clientUrl = `${window.location.origin}/catalogo`;
+                navigator.clipboard.writeText(clientUrl).then(() => {
+                  setCopiedClientLink(true);
+                  setTimeout(() => setCopiedClientLink(false), 3000);
+                });
+              }}
+              className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+              title="Copiar link do catálogo limpo para a cliente no WhatsApp"
+            >
+              {copiedClientLink ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedClientLink ? 'Link Copiado!' : 'Copiar Link p/ Cliente'}</span>
+            </button>
+
+            <a
+              href="/catalogo"
+              target="_blank"
+              className="px-3.5 py-2.5 bg-white/10 hover:bg-white hover:text-deep-black text-white font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 border border-white/30 cursor-pointer"
+              title="Abrir o catálogo que o cliente visualiza"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Catálogo Cliente</span>
+            </a>
+
             <a
               href="/backoffice/catalogo-pdf"
               target="_blank"
@@ -636,8 +757,8 @@ export function WhatsAppCatalogPdfModal({
               className="px-3.5 py-2.5 bg-white/10 hover:bg-white hover:text-deep-black text-white font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 border border-white/30 cursor-pointer"
               title="Abrir diretamente em página dedicada para salvar como PDF"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Página Cheia</span>
+              <Printer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Página PDF</span>
             </a>
 
             <button
@@ -811,9 +932,9 @@ export function WhatsAppCatalogPdfModal({
                     }`}
                   >
                     {productsList.map((product) => {
-                      const pricing = getProductPricing(product);
-                      const { stockMap, sortedSizes, totalStock } = getProductStockBySize(product);
-                      const imgUrl = getProductImage(product);
+                      const pricing = product.pricingOverride || getProductPricing(product);
+                      const { stockMap, sortedSizes, totalStock } = product.stockDataOverride || getProductStockBySize(product);
+                      const imgUrl = product.primaryImage || getProductImage(product);
 
                       return (
                         <div
@@ -832,6 +953,15 @@ export function WhatsAppCatalogPdfModal({
                               <span className="absolute top-2 right-2 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 uppercase shadow-xs">
                                 -{pricing.discountPercent}% OFF
                               </span>
+                            )}
+                            {product.colorName && (
+                              <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-deep-black/85 text-white px-2 py-0.5 text-[9px] font-black uppercase border border-white/20">
+                                <span
+                                  className="w-2 h-2 rounded-full border border-white/40 shrink-0"
+                                  style={{ backgroundColor: product.colorHex || '#0A0A0A' }}
+                                />
+                                <span>{product.colorName}</span>
+                              </div>
                             )}
                           </div>
 

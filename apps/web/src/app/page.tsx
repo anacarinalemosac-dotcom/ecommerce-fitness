@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
@@ -50,11 +50,9 @@ interface ProductItem {
   secondaryImage: string;
   colors: ColorOption[];
   sizes: string[];
-  sizeStock?: Record<string, number>;
   stock: number;
   allowBackorder: boolean;
   galleryImages?: string[];
-  media_list?: any[];
   variants?: any[];
   visibleOnline?: boolean;
 }
@@ -303,15 +301,6 @@ const TESTIMONIALS = [
   },
 ];
 
-export interface CatalogTileItem extends ProductItem {
-  tileId: string;
-  variationColor?: string;
-  variationColorHex?: string;
-  variationInStockSizes?: string[];
-  variationImage?: string;
-  isExpandedVariation?: boolean;
-}
-
 export default function HomePage() {
   const { lang, t } = useLanguage();
   const { products: storeProducts, siteInfo, siteImages } = useStoreSettings();
@@ -370,30 +359,10 @@ export default function HomePage() {
     setWishlist((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleQuickAdd = (product: CatalogTileItem, size: string, e: React.MouseEvent) => {
+  const handleQuickAdd = (id: string, size: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    const colorToAdd = product.variationColor || product.colors?.[0]?.name || 'Preto Ônix';
-    const cartItemToSave = {
-      title: product.variationColor ? `${product.title} - ${product.variationColor}` : product.title,
-      slug: product.slug,
-      size: size,
-      color: colorToAdd,
-      sku: `${product.slug}-${colorToAdd.slice(0, 3)}-${size}`.toUpperCase(),
-      price: product.price,
-      quantity: 1,
-      image: product.primaryImage,
-      isBackorder: false,
-      productionDays: 0,
-    };
-
-    try {
-      localStorage.setItem('ana_cart_item', JSON.stringify(cartItemToSave));
-      window.dispatchEvent(new Event('ana_cart_updated'));
-    } catch (_) {}
-
-    setQuickAddedItem({ id: product.tileId, size });
+    setQuickAddedItem({ id, size });
     setTimeout(() => {
       setQuickAddedItem(null);
     }, 3000);
@@ -420,112 +389,9 @@ export default function HomePage() {
 
   const spoilerItemsCount = activeProducts.filter(isProductSpoiler).length;
 
-  // Expande produtos em variações individuais com foto de cada uma disponível em estoque
-  const expandedActiveProducts = useMemo<CatalogTileItem[]>(() => {
-    const list: CatalogTileItem[] = [];
-
-    activeProducts.forEach((product) => {
-      const isSpoiler = isProductSpoiler(product);
-
-      // Se for spoiler (sem estoque, categoria spoiler ou pré-venda), mantém 1 card na aba SPOILER
-      if (isSpoiler) {
-        list.push({
-          ...product,
-          tileId: product.id,
-          isExpandedVariation: false,
-        });
-        return;
-      }
-
-      // Para produtos com pronta entrega, analisa as variações com estoque real
-      const variants = Array.isArray(product.variants) ? product.variants : [];
-      const inStockVars = variants.filter(
-        (v: any) => Number(v.stock_quantity ?? v.stock ?? 0) > 0
-      );
-
-      // Se não tiver variantes registradas no array variants, mantém como card único
-      if (inStockVars.length === 0) {
-        list.push({
-          ...product,
-          tileId: product.id,
-          isExpandedVariation: false,
-          variationInStockSizes: (product.sizes || []).filter((sz) => {
-            if (product.sizeStock) return (product.sizeStock[sz] || 0) > 0;
-            return Number(product.stock) > 0;
-          }),
-        });
-        return;
-      }
-
-      // Agrupa variantes com estoque por cor
-      const colorGroups = new Map<string, any[]>();
-      inStockVars.forEach((v: any) => {
-        const cName = (v.color || 'Padrão').trim();
-        const existing = colorGroups.get(cName) || [];
-        existing.push(v);
-        colorGroups.set(cName, existing);
-      });
-
-      // Gera um card de catálogo para CADA variação de cor que tem estoque disponível (foto de um por um)
-      colorGroups.forEach((cVariants, colorName) => {
-        const colorSizesSet = new Set<string>();
-        cVariants.forEach((v: any) => {
-          if (v.size) colorSizesSet.add(v.size);
-        });
-        const colorSizes = Array.from(colorSizesSet);
-
-        // Localiza a foto específica desta variação
-        let varImage = '';
-        const vWithImg = cVariants.find(
-          (v: any) => (Array.isArray(v.images) && v.images.length > 0) || v.image
-        );
-        if (vWithImg) {
-          varImage = Array.isArray(vWithImg.images) && vWithImg.images.length > 0 ? vWithImg.images[0] : vWithImg.image;
-        }
-
-        // Fallback: procura na lista de mídia do produto correspondente a esta cor
-        if (!varImage && Array.isArray(product.media_list)) {
-          const mMatch = product.media_list.find(
-            (m: any) => m.associatedColor && m.associatedColor.trim().toLowerCase() === colorName.toLowerCase()
-          );
-          if (mMatch?.url) varImage = mMatch.url;
-        }
-
-        // Fallback: imagem principal do produto
-        if (!varImage) {
-          varImage = product.primaryImage;
-        }
-
-        // Cor hex para o marcador/badge
-        const colorHex =
-          cVariants[0]?.color_hex ||
-          cVariants[0]?.colorHex ||
-          product.colors.find((c) => c.name.toLowerCase() === colorName.toLowerCase())?.hex ||
-          '#0A0A0A';
-
-        const varPrice = cVariants[0]?.price ? Number(cVariants[0].price) : product.price;
-        const tileId = `${product.id}__${colorName.replace(/\s+/g, '_')}`;
-
-        list.push({
-          ...product,
-          tileId,
-          price: varPrice,
-          primaryImage: varImage,
-          secondaryImage: cVariants[1]?.image || product.secondaryImage || varImage,
-          variationColor: colorName,
-          variationColorHex: colorHex,
-          variationInStockSizes: colorSizes,
-          isExpandedVariation: true,
-        });
-      });
-    });
-
-    return list;
-  }, [activeProducts]);
-
   // FILTRAGEM RIGOROSA DA VITRINE:
   // "Não vamos deixar ele aparecendo no meio dos produtos. Vamos deixar uma aba só para o spoiler."
-  const filteredProducts = expandedActiveProducts.filter((p) => {
+  const filteredProducts = activeProducts.filter((p) => {
     const isSpoiler = isProductSpoiler(p);
 
     // 1. Aba "SPOILER": exibe EXCLUSIVAMENTE as peças spoiler (sem estoque / prévia)
@@ -920,47 +786,37 @@ export default function HomePage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7">
           {filteredProducts.map((product) => {
-            const isHovered = hoveredProduct === product.tileId;
+            const isHovered = hoveredProduct === product.id;
             const isSpoiler = isProductSpoiler(product);
-            const isFavorited = !!wishlist[product.tileId] || !!wishlist[product.id];
-            const wasJustAdded = quickAddedItem?.id === product.tileId;
-            const productHref = product.variationColor
-              ? `/produto/${product.slug}?cor=${encodeURIComponent(product.variationColor)}`
-              : `/produto/${product.slug}`;
+            const isFavorited = !!wishlist[product.id];
+            const wasJustAdded = quickAddedItem?.id === product.id;
 
             // Badges promocionais: nunca exibe sobre spoiler
             const showTopPromoBadge = !isSpoiler && Boolean(product.badgeEn && product.badgeEn !== 'PRE-ORDER' && product.badgePt !== 'PRÉ-VENDA' && product.badgePt !== 'SPOILER');
 
             // Filtra estritamente os tamanhos com estoque disponível (> 0)
-            const inStockSizes = product.variationInStockSizes && product.variationInStockSizes.length > 0
-              ? product.variationInStockSizes
-              : (product.sizes || []).filter((sz) => {
-                  if (Array.isArray(product.variants) && product.variants.length > 0) {
-                    const upper = sz.toUpperCase();
-                    return product.variants.some((v: any) => {
-                      const vSz = (v.size || '').toUpperCase();
-                      const isMatch = vSz === upper || (upper === 'P' && vSz === 'S') || (upper === 'G' && vSz === 'L') || (upper === 'GG' && vSz === 'XL');
-                      return isMatch && Number(v.stock_quantity ?? v.stock ?? 0) > 0;
-                    });
-                  }
-                  return Number(product.stock) > 0;
+            const inStockSizes = (product.sizes || []).filter((sz) => {
+              if (Array.isArray(product.variants) && product.variants.length > 0) {
+                const upper = sz.toUpperCase();
+                return product.variants.some((v: any) => {
+                  const vSz = (v.size || '').toUpperCase();
+                  const isMatch = vSz === upper || (upper === 'P' && vSz === 'S') || (upper === 'G' && vSz === 'L') || (upper === 'GG' && vSz === 'XL');
+                  return isMatch && Number(v.stock) > 0;
                 });
-
-            const sizeOrder: Record<string, number> = { S: 1, P: 1, M: 2, L: 3, G: 3, XL: 4, GG: 4 };
-            const sortedInStockSizes = [...inStockSizes].sort(
-              (a, b) => (sizeOrder[a.toUpperCase()] || 99) - (sizeOrder[b.toUpperCase()] || 99)
-            );
+              }
+              return Number(product.stock) > 0;
+            });
 
             return (
               <div
-                key={product.tileId}
-                onMouseEnter={() => setHoveredProduct(product.tileId)}
+                key={product.id}
+                onMouseEnter={() => setHoveredProduct(product.id)}
                 onMouseLeave={() => {
                   setHoveredProduct(null);
                   setCardImageOverrides((prev) => {
-                    if (!prev[product.tileId]) return prev;
+                    if (!prev[product.id]) return prev;
                     const next = { ...prev };
-                    delete next[product.tileId];
+                    delete next[product.id];
                     return next;
                   });
                 }}
@@ -968,16 +824,16 @@ export default function HomePage() {
               >
                 {/* 1. Imagem do Produto em Proporção Atlética 4:5 */}
                 <div className="relative aspect-[4/5] bg-deep-black/5 overflow-hidden">
-                  <Link href={productHref} className="block w-full h-full">
+                  <Link href={`/produto/${product.slug}`} className="block w-full h-full">
                     {/* Imagem Frontal com Crossfade para Pose de Ação */}
                     <img
-                      src={cardImageOverrides[product.tileId] || (isHovered ? product.secondaryImage : product.primaryImage)}
-                      alt={product.variationColor ? `${product.title} - ${product.variationColor}` : product.title}
+                      src={cardImageOverrides[product.id] || (isHovered ? product.secondaryImage : product.primaryImage)}
+                      alt={product.title}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
                   </Link>
 
-                  {/* Badges Promocionais no Topo Esquerdo */}
+                  {/* Badges Promocionais no Topo Esquerdo (Apenas se NÃO for pré-venda, para não tampar o rosto) */}
                   {showTopPromoBadge && (
                     <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10 pointer-events-none">
                       <span
@@ -997,7 +853,7 @@ export default function HomePage() {
                         e.stopPropagation();
                         setShareModalProduct(product);
                       }}
-                      className="p-2 bg-white/90 hover:bg-gold hover:text-deep-black text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110 cursor-pointer"
+                      className="p-2 bg-white/90 hover:bg-gold hover:text-deep-black text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
                       title={lang === 'pt' ? 'Compartilhar produto' : 'Share product'}
                       aria-label={lang === 'pt' ? 'Compartilhar produto' : 'Share product'}
                     >
@@ -1007,9 +863,9 @@ export default function HomePage() {
                     <button
                       onClick={(e) => {
                         e.preventDefault();
-                        toggleWishlist(product.tileId);
+                        toggleWishlist(product.id);
                       }}
-                      className="p-2 bg-white/90 hover:bg-white text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110 cursor-pointer"
+                      className="p-2 bg-white/90 hover:bg-white text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
                       aria-label="Save to Wishlist"
                     >
                       <Heart
@@ -1033,7 +889,7 @@ export default function HomePage() {
                     {isSpoiler ? (
                       <div className="text-center py-1">
                         <Link
-                          href={productHref}
+                          href={`/produto/${product.slug}`}
                           className="py-2.5 px-3 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition text-center cursor-pointer shadow-xs"
                         >
                           <span>{lang === 'pt' ? '👀 VER SPOILER DA PEÇA' : '👀 VIEW SPOILER'}</span>
@@ -1059,22 +915,22 @@ export default function HomePage() {
                           <span className="text-gold flex items-center gap-1">
                             <Zap className="w-3 h-3 text-gold" /> {t('gymshark.quickAdd')}
                           </span>
-                          <span>{lang === 'pt' ? 'GRADE DISPONÍVEL' : 'IN STOCK SIZES'}</span>
+                          <span>{lang === 'pt' ? 'GRADE EM ESTOQUE' : 'IN STOCK SIZES'}</span>
                         </div>
 
-                        {/* Botões de Tamanhos Rápidos: SOMENTE TAMANHOS COM ESTOQUE DESTA VARIAÇÃO */}
+                        {/* Botões de Tamanhos Rápidos: SOMENTE TAMANHOS COM ESTOQUE */}
                         <div className="grid grid-cols-3 gap-1.5">
-                          {sortedInStockSizes.map((size) => {
+                          {inStockSizes.map((size) => {
                             const upperSz = size.toUpperCase();
                             const displaySz = lang === 'pt'
                               ? (upperSz === 'S' || upperSz === 'P' ? 'P' : upperSz === 'M' ? 'M' : upperSz === 'L' || upperSz === 'G' ? 'G' : upperSz === 'XL' || upperSz === 'GG' ? 'GG' : size)
-                              : (upperSz === 'P' || upperSz === 'S' ? 'S' : upperSz === 'G' || upperSz === 'L' ? 'L' : upperSz === 'GG' || upperSz === 'XL' ? 'XL' : size);
+                              : size;
                             return (
                               <button
                                 key={size}
-                                onClick={(e) => handleQuickAdd(product, size, e)}
+                                onClick={(e) => handleQuickAdd(product.id, size, e)}
                                 className="py-1.5 text-xs font-black uppercase bg-white/10 hover:bg-gold hover:text-deep-black text-white border border-white/20 transition-all active:scale-95 flex items-center justify-center cursor-pointer"
-                                title={`Adicionar tamanho ${displaySz} direto à sacola`}
+                                title={`Add size ${size} directly to bag`}
                               >
                                 {displaySz}
                               </button>
@@ -1089,58 +945,45 @@ export default function HomePage() {
                 {/* 2. Informações do Produto (Estilo Gymshark) */}
                 <div className="p-4 flex-1 flex flex-col justify-between space-y-3 bg-white">
                   <div>
-                    {/* Swatch de Cor da Variação ou Bolinhas */}
+                    {/* Swatches de Cores (Bolinhas) */}
                     <div className="flex items-center justify-between mb-2">
-                      {product.variationColor ? (
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className="w-3.5 h-3.5 rounded-full border border-deep-black/30 shadow-xs shrink-0"
-                            style={{ backgroundColor: product.variationColorHex || '#0A0A0A' }}
-                            title={product.variationColor}
-                          />
-                          <span className="text-[11px] font-black uppercase tracking-wider text-deep-black line-clamp-1">
-                            {product.variationColor}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5">
-                          {product.colors.map((color, cIdx) => {
-                            const matchingVar = Array.isArray(product.variants)
-                              ? product.variants.find(
-                                  (v: any) =>
-                                    v.color?.toLowerCase() === color.name.toLowerCase() &&
-                                    (v.image || (Array.isArray(v.images) && v.images.length > 0))
-                                )
-                              : null;
-                            const colorImg = matchingVar
-                              ? (Array.isArray(matchingVar.images) && matchingVar.images.length > 0 ? matchingVar.images[0] : matchingVar.image)
-                              : null;
+                      <div className="flex items-center gap-1.5">
+                        {product.colors.map((color, cIdx) => {
+                          const matchingVar = Array.isArray(product.variants)
+                            ? product.variants.find(
+                                (v: any) =>
+                                  v.color?.toLowerCase() === color.name.toLowerCase() &&
+                                  (v.image || (Array.isArray(v.images) && v.images.length > 0))
+                              )
+                            : null;
+                          const colorImg = matchingVar
+                            ? (Array.isArray(matchingVar.images) && matchingVar.images.length > 0 ? matchingVar.images[0] : matchingVar.image)
+                            : null;
 
-                            return (
-                              <span
-                                key={cIdx}
-                                onMouseEnter={() => {
-                                  if (colorImg) {
-                                    setCardImageOverrides((prev) => ({ ...prev, [product.tileId]: colorImg }));
-                                  }
-                                }}
-                                onClick={(e) => {
-                                  if (colorImg) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setCardImageOverrides((prev) => ({ ...prev, [product.tileId]: colorImg }));
-                                  }
-                                }}
-                                className="w-3.5 h-3.5 rounded-full border border-deep-black/30 shadow-xs cursor-pointer transition hover:scale-125"
-                                style={{ backgroundColor: color.hex }}
-                                title={color.name}
-                              />
-                            );
-                          })}
-                        </div>
-                      )}
+                          return (
+                            <span
+                              key={cIdx}
+                              onMouseEnter={() => {
+                                if (colorImg) {
+                                  setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
+                                }
+                              }}
+                              onClick={(e) => {
+                                if (colorImg) {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
+                                }
+                              }}
+                              className="w-3.5 h-3.5 rounded-full border border-deep-black/30 shadow-xs cursor-pointer transition hover:scale-125"
+                              style={{ backgroundColor: color.hex }}
+                              title={color.name}
+                            />
+                          );
+                        })}
+                      </div>
 
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-deep-black/60 shrink-0">
+                      <div className="flex items-center gap-1 text-[11px] font-bold text-deep-black/60">
                         <Star className="w-3 h-3 fill-gold text-gold" />
                         <span className="text-deep-black font-black">{product.rating.toFixed(1)}</span>
                         <span>({product.reviewsCount})</span>
@@ -1148,7 +991,7 @@ export default function HomePage() {
                     </div>
 
                     {/* Título do Produto */}
-                    <Link href={productHref}>
+                    <Link href={`/produto/${product.slug}`}>
                       <h3 className="text-sm font-black uppercase tracking-wider text-deep-black group-hover:text-gold transition line-clamp-1 mt-1">
                         {product.title}
                       </h3>
