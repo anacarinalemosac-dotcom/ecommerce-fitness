@@ -46,6 +46,7 @@ function StripeSuccessContent() {
         });
       }
       localStorage.removeItem('ana_cart_item');
+      localStorage.removeItem('ana_cart_item_backup');
     } catch (e) {}
   }, [searchParams]);
 

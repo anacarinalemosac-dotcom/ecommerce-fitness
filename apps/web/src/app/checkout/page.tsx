@@ -141,7 +141,18 @@ export default function CheckoutPage() {
   // Carrega o item real selecionado e a sessão do cliente
   useEffect(() => {
     try {
-      const savedCart = localStorage.getItem('ana_cart_item');
+      let savedCart = localStorage.getItem('ana_cart_item');
+      if (!savedCart) {
+        // Se a sacola foi esvaziada acidentalmente por navegação, recupera do backup
+        const backupCart = localStorage.getItem('ana_cart_item_backup');
+        if (backupCart) {
+          savedCart = backupCart;
+          localStorage.setItem('ana_cart_item', backupCart);
+        }
+      } else {
+        localStorage.setItem('ana_cart_item_backup', savedCart);
+      }
+
       if (savedCart) {
         const parsed = JSON.parse(savedCart);
         setCartItem(parsed);
@@ -226,6 +237,7 @@ export default function CheckoutPage() {
 
   const handleRemoveCartItem = () => {
     localStorage.removeItem('ana_cart_item');
+    localStorage.removeItem('ana_cart_item_backup');
     window.dispatchEvent(new Event('ana_cart_updated'));
     setCartItem(null);
   };
@@ -413,9 +425,8 @@ export default function CheckoutPage() {
         if (stripeRes.ok) {
           const stripeData = await stripeRes.json();
           if (stripeData.configured && stripeData.url) {
-            // Esvazia o carrinho antes de redirecionar para a Stripe
-            localStorage.removeItem('ana_cart_item');
-            window.dispatchEvent(new Event('ana_cart_updated'));
+            // Mantém os dados da sacola para o caso da cliente voltar da Stripe ou navegar
+            // A limpeza final só ocorre quando o pagamento for confirmado em /checkout/success
             window.location.href = stripeData.url;
             return;
           }

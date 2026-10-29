@@ -201,16 +201,18 @@ export function SiteFooter() {
           </div>
         </div>
 
-        {/* Rodapé - Seção Interna / Colaboradores */}
-        <div className="pt-8 mt-8 border-t border-neutral-800 text-xs text-neutral-400 flex flex-wrap gap-4 items-center justify-between">
-          <p>© {new Date().getFullYear()} {siteInfo.storeName || 'Ana Fitness Wear'} LLC • {siteInfo.address ? siteInfo.address.split('•')[0].trim() : 'Leominster, MA'}. All rights reserved.</p>
-          <div className="flex flex-wrap gap-4 text-[11px]">
-            <Link href="/backoffice?tab=sales" className="text-gold font-black hover:text-white transition-colors">📦 Pedidos dos Clientes (ERP)</Link>
-            <Link href="/admin" className="hover:text-gold transition-colors">Personalizar Loja</Link>
-            <Link href="/pos" className="hover:text-gold transition-colors">PDV Balcão</Link>
-            <Link href="/vendedora" className="hover:text-gold transition-colors">Portal da Vendedora</Link>
+        {/* Rodapé - Seção Interna / Colaboradores (Oculto no checkout para não desviar a compra) */}
+        {pathname !== '/checkout' && (
+          <div className="pt-8 mt-8 border-t border-neutral-800 text-xs text-neutral-400 flex flex-wrap gap-4 items-center justify-between">
+            <p>© {new Date().getFullYear()} {siteInfo.storeName || 'Ana Fitness Wear'} LLC • {siteInfo.address ? siteInfo.address.split('•')[0].trim() : 'Leominster, MA'}. All rights reserved.</p>
+            <div className="flex flex-wrap gap-4 text-[11px]">
+              <Link href="/backoffice?tab=sales" target="_blank" className="text-gold font-black hover:text-white transition-colors">📦 Pedidos dos Clientes (ERP)</Link>
+              <Link href="/admin" target="_blank" className="hover:text-gold transition-colors">Personalizar Loja</Link>
+              <Link href="/pos" target="_blank" className="hover:text-gold transition-colors">PDV Balcão</Link>
+              <Link href="/vendedora" target="_blank" className="hover:text-gold transition-colors">Portal da Vendedora</Link>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </footer>
   );
