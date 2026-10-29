@@ -207,6 +207,127 @@ export default function CheckoutPage() {
   // Pagamento Online
   const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'APPLE_PAY' | 'AFFIRM' | 'AFTERPAY' | 'ZELLE' | 'VENMO'>('CARD');
 
+  // Autenticação Obrigatória no Checkout (Cadastro ou Login prévio para histórico)
+  const [checkoutAuthMode, setCheckoutAuthMode] = useState<'register' | 'login'>('register');
+  const [authName, setAuthName] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPhone, setAuthPhone] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [authSuccess, setAuthSuccess] = useState('');
+
+  const handleCheckoutAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError('');
+    setAuthSuccess('');
+
+    try {
+      if (checkoutAuthMode === 'login') {
+        const res = await fetch('/api/customer/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'login',
+            email: authEmail.trim(),
+            password: authPassword.trim(),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          setAuthError(data.error || (lang === 'pt' ? 'E-mail ou senha incorretos.' : 'Incorrect email or password.'));
+          setAuthLoading(false);
+          return;
+        }
+
+        setCustomerUser(data.customer);
+        localStorage.setItem('ana_customer_session', JSON.stringify(data.customer));
+        window.dispatchEvent(new Event('ana_customer_updated'));
+
+        const nameParts = (data.customer.name || '').trim().split(' ');
+        const fName = nameParts[0] || '';
+        const lName = nameParts.slice(1).join(' ') || '';
+        setShippingForm((prev) => ({
+          ...prev,
+          email: data.customer.email || prev.email,
+          phone: data.customer.phone || prev.phone,
+          firstName: fName || prev.firstName,
+          lastName: lName || prev.lastName,
+          address: data.customer.shipping_address?.address || prev.address,
+          apt: data.customer.shipping_address?.apt || prev.apt,
+          city: data.customer.shipping_address?.city || prev.city,
+          state: data.customer.shipping_address?.state || prev.state,
+          zip: data.customer.shipping_address?.zip || prev.zip,
+        }));
+        setAuthSuccess(lang === 'pt' ? '✓ Login realizado com sucesso! Compra liberada.' : '✓ Logged in successfully! Purchase unlocked.');
+      } else {
+        if (!authName.trim() || !authEmail.trim() || !authPassword.trim()) {
+          setAuthError(lang === 'pt' ? 'Por favor, informe seu nome completo, e-mail e crie uma senha.' : 'Please enter your full name, email and create a password.');
+          setAuthLoading(false);
+          return;
+        }
+
+        const res = await fetch('/api/customer/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'register',
+            name: authName.trim(),
+            email: authEmail.trim(),
+            phone: authPhone.trim(),
+            password: authPassword.trim(),
+            shipping_address: {
+              address: shippingForm.address,
+              apt: shippingForm.apt,
+              city: shippingForm.city,
+              state: shippingForm.state,
+              zip: shippingForm.zip,
+            },
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          if (res.status === 409) {
+            setAuthError(lang === 'pt' ? 'Este e-mail já possui cadastro. Clique na aba "Já Tenho Conta" para entrar.' : 'Email already registered. Click "Already Have Account" to sign in.');
+          } else {
+            setAuthError(data.error || (lang === 'pt' ? 'Erro ao criar conta.' : 'Error creating account.'));
+          }
+          setAuthLoading(false);
+          return;
+        }
+
+        setCustomerUser(data.customer);
+        localStorage.setItem('ana_customer_session', JSON.stringify(data.customer));
+        window.dispatchEvent(new Event('ana_customer_updated'));
+
+        const nameParts = (authName || '').trim().split(' ');
+        const fName = nameParts[0] || '';
+        const lName = nameParts.slice(1).join(' ') || '';
+        setShippingForm((prev) => ({
+          ...prev,
+          email: authEmail.trim(),
+          phone: authPhone.trim() || prev.phone,
+          firstName: fName || prev.firstName,
+          lastName: lName || prev.lastName,
+        }));
+        setAuthSuccess(lang === 'pt' ? '✓ Cadastro criado com sucesso! Compra vinculada ao seu histórico.' : '✓ Account registered! Purchase linked to your history.');
+      }
+    } catch (err: any) {
+      setAuthError(lang === 'pt' ? 'Falha ao conectar ao servidor. Tente novamente.' : 'Failed to connect. Please try again.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogoutCustomer = () => {
+    localStorage.removeItem('ana_customer_session');
+    window.dispatchEvent(new Event('ana_customer_updated'));
+    setCustomerUser(null);
+    setAuthSuccess('');
+    setAuthError('');
+  };
+
   // Cupom de Desconto & Promoções / Vendedora
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
@@ -340,6 +461,19 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cartItem) return;
+
+    // Garante que o cliente esteja cadastrado/logado para salvar no histórico
+    if (!customerUser) {
+      alert(
+        lang === 'pt'
+          ? 'Por favor, realize seu cadastro ou faça login na Etapa 1 acima para que sua compra fique salva no seu histórico.'
+          : 'Please sign up or log in in Step 1 above so your order is saved to your account history.'
+      );
+      setIsSubmitting(false);
+      const authBox = document.getElementById('checkout-auth-box');
+      if (authBox) authBox.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
 
     setIsSubmitting(true);
     setAddressErrors([]);
@@ -692,42 +826,6 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* Banner de Identificação do Cliente: Logado vs Guest Checkout */}
-      {customerUser ? (
-        <div className="bg-gold/10 border border-gold/40 px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-deep-black">
-            <User className="w-4 h-4 text-gold shrink-0" />
-            <span className="font-bold uppercase tracking-wider">
-              {lang === 'pt' ? 'CONECTADO COMO:' : 'LOGGED IN AS:'}{' '}
-              <strong className="text-deep-black font-black">{customerUser.name}</strong> ({customerUser.email})
-            </span>
-          </div>
-          <Link
-            href="/conta"
-            className="text-[10px] font-black uppercase tracking-widest text-deep-black hover:text-gold underline"
-          >
-            {lang === 'pt' ? 'GERENCIAR MINHA CONTA / ENDEREÇOS' : 'MANAGE MY ACCOUNT / ADDRESSES'}
-          </Link>
-        </div>
-      ) : (
-        <div className="bg-gray-50 border border-deep-black/10 px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-deep-black/80">
-            <User className="w-4 h-4 text-gold shrink-0" />
-            <span className="font-medium">
-              {lang === 'pt'
-                ? 'Já possui uma conta na Ana Fitness Wear? Entre para preencher seu endereço em 1 clique.'
-                : 'Already have an account? Sign in for 1-click address autofill.'}
-            </span>
-          </div>
-          <Link
-            href="/conta"
-            className="text-[10px] font-black uppercase tracking-widest bg-deep-black text-white hover:bg-gold hover:text-deep-black px-3 py-1.5 transition"
-          >
-            {lang === 'pt' ? 'ENTRAR / CRIAR CONTA' : 'SIGN IN / REGISTER'}
-          </Link>
-        </div>
-      )}
-
       {/* Banner de Atendimento & Dúvidas no WhatsApp com a Ana Carina */}
       <div className="bg-gradient-to-r from-emerald-50 via-white to-gold/10 border-2 border-[#25D366]/40 p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-3">
@@ -768,17 +866,235 @@ export default function CheckoutPage() {
             COLUNA ESQUERDA: DADOS DE ENVIO & FORMAS DE PAGAMENTO DO CLIENTE
            ========================================================================= */}
         <div className="lg:col-span-7 space-y-8">
-          {/* 1. Endereço de Envio nos EUA com Validação USPS */}
-          <div id="shipping-address-box" className="bg-white border-2 border-deep-black p-6 sm:p-8 space-y-5">
+          {/* =========================================================================
+              ETAPA 1: CADASTRO OU LOGIN OBRIGATÓRIO (PARA REGISTRO NO HISTÓRICO)
+             ========================================================================= */}
+          {customerUser ? (
+            <div className="bg-emerald-50 border-2 border-emerald-500 p-5 space-y-2 animate-fadeIn shadow-xs">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 text-emerald-950 font-black uppercase text-xs">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <span>1. IDENTIFICAÇÃO CONFIRMADA: COMPRA VINCULADA AO SEU HISTÓRICO</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLogoutCustomer}
+                  className="text-[10px] font-black uppercase text-deep-black/60 hover:text-red-600 underline cursor-pointer"
+                >
+                  [SAIR / TROCAR DE CONTA]
+                </button>
+              </div>
+              <div className="text-xs text-emerald-900 font-medium">
+                {lang === 'pt' ? 'Cliente VIP:' : 'Customer:'} <strong className="text-deep-black font-black">{customerUser.name}</strong> &bull; E-mail: <strong className="text-deep-black font-bold">{customerUser.email}</strong> {customerUser.phone && `• Tel: ${customerUser.phone}`}
+              </div>
+              <p className="text-[10px] text-emerald-800 uppercase font-mono pt-1">
+                {lang === 'pt'
+                  ? '✓ Seus dados de envio foram carregados. Este pedido será salvo na sua conta com histórico e rastreio USPS.'
+                  : '✓ Shipping details loaded. This order will be recorded in your customer account history.'}
+              </p>
+            </div>
+          ) : (
+            <div id="checkout-auth-box" className="bg-white border-2 border-deep-black p-6 sm:p-8 space-y-5 shadow-luxury animate-fadeIn">
+              <div className="border-b border-deep-black/10 pb-3 flex items-center justify-between flex-wrap gap-2">
+                <h2 className="text-sm font-black uppercase tracking-wider text-deep-black flex items-center gap-2">
+                  <User className="w-4 h-4 text-gold" />
+                  <span>1. CADASTRO DA CLIENTE (OBRIGATÓRIO PARA HISTÓRICO)</span>
+                </h2>
+                <span className="px-2 py-0.5 bg-gold/20 text-deep-black text-[9px] font-black uppercase border border-gold/40">
+                  PASSO 1 DE 3
+                </span>
+              </div>
+
+              <p className="text-xs text-deep-black/80 font-medium leading-relaxed">
+                {lang === 'pt'
+                  ? 'Para que o seu pedido fique gravado no seu histórico de compras e você possa acompanhar o rastreio dos Correios (USPS) a qualquer momento, realize seu cadastro rápido abaixo (ou entre com sua conta existente):'
+                  : 'To record your order in your customer history and track USPS shipping updates, please create a quick account below or sign in:'}
+              </p>
+
+              {/* Seletor: Novo Cadastro vs Já Tenho Conta */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setCheckoutAuthMode('register'); setAuthError(''); setAuthSuccess(''); }}
+                  className={`py-3 px-3 text-[11px] font-black uppercase tracking-wider border transition text-center cursor-pointer ${
+                    checkoutAuthMode === 'register'
+                      ? 'border-deep-black bg-deep-black text-white shadow-sm'
+                      : 'border-deep-black/20 text-deep-black hover:border-gold bg-white'
+                  }`}
+                >
+                  {lang === 'pt' ? 'NOVO CADASTRO (1ª COMPRA)' : 'NEW ACCOUNT (REGISTER)'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setCheckoutAuthMode('login'); setAuthError(''); setAuthSuccess(''); }}
+                  className={`py-3 px-3 text-[11px] font-black uppercase tracking-wider border transition text-center cursor-pointer ${
+                    checkoutAuthMode === 'login'
+                      ? 'border-deep-black bg-deep-black text-white shadow-sm'
+                      : 'border-deep-black/20 text-deep-black hover:border-gold bg-white'
+                  }`}
+                >
+                  {lang === 'pt' ? 'JÁ TENHO CONTA (ENTRAR)' : 'ALREADY HAVE ACCOUNT'}
+                </button>
+              </div>
+
+              {authError && (
+                <div className="p-3 bg-red-50 border border-red-300 text-red-900 text-xs font-bold flex items-center gap-2 animate-fadeIn">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>{authError}</span>
+                </div>
+              )}
+
+              {authSuccess && (
+                <div className="p-3 bg-green-50 border border-green-300 text-green-900 text-xs font-bold flex items-center gap-2 animate-fadeIn">
+                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                  <span>{authSuccess}</span>
+                </div>
+              )}
+
+              {/* Formulário In-Checkout */}
+              <div className="space-y-4 pt-1">
+                {checkoutAuthMode === 'register' ? (
+                  <>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                        {lang === 'pt' ? 'NOME COMPLETO:' : 'FULL NAME:'}
+                      </label>
+                      <input
+                        type="text"
+                        value={authName}
+                        onChange={(e) => setAuthName(e.target.value)}
+                        placeholder="Ex: Mariana Silva"
+                        className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                          {lang === 'pt' ? 'E-MAIL (PARA RASTREIO E CONTA):' : 'EMAIL ADDRESS:'}
+                        </label>
+                        <input
+                          type="email"
+                          value={authEmail}
+                          onChange={(e) => setAuthEmail(e.target.value)}
+                          placeholder="mariana@gmail.com"
+                          className="w-full px-3.5 py-2.5 text-xs border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                          {lang === 'pt' ? 'TELEFONE / WHATSAPP:' : 'PHONE NUMBER:'}
+                        </label>
+                        <input
+                          type="tel"
+                          value={authPhone}
+                          onChange={(e) => setAuthPhone(e.target.value)}
+                          placeholder="+1 (978) 000-0000"
+                          className="w-full px-3.5 py-2.5 text-xs border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                        {lang === 'pt' ? 'CRIE UMA SENHA PARA SUA CONTA:' : 'CREATE A PASSWORD:'}
+                      </label>
+                      <input
+                        type="password"
+                        value={authPassword}
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                        placeholder="Mínimo 4 caracteres"
+                        className="w-full px-3.5 py-2.5 text-xs border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleCheckoutAuth}
+                      disabled={authLoading}
+                      className="w-full py-4 bg-deep-black hover:bg-gold text-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-luxury cursor-pointer disabled:opacity-50"
+                    >
+                      {authLoading ? (
+                        <span>{lang === 'pt' ? 'CRIANDO CONTA...' : 'CREATING ACCOUNT...'}</span>
+                      ) : (
+                        <>
+                          <ShieldCheck className="w-4 h-4 text-gold" />
+                          <span>{lang === 'pt' ? 'CRIAR CONTA & LIBERAR COMPRA →' : 'REGISTER & UNLOCK CHECKOUT →'}</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                          {lang === 'pt' ? 'SEU E-MAIL CADASTRADO:' : 'YOUR REGISTERED EMAIL:'}
+                        </label>
+                        <input
+                          type="email"
+                          value={authEmail}
+                          onChange={(e) => setAuthEmail(e.target.value)}
+                          placeholder="mariana@gmail.com"
+                          className="w-full px-3.5 py-2.5 text-xs border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                          {lang === 'pt' ? 'SUA SENHA:' : 'YOUR PASSWORD:'}
+                        </label>
+                        <input
+                          type="password"
+                          value={authPassword}
+                          onChange={(e) => setAuthPassword(e.target.value)}
+                          placeholder="Sua senha"
+                          className="w-full px-3.5 py-2.5 text-xs border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleCheckoutAuth}
+                        disabled={authLoading}
+                        className="w-full py-4 bg-deep-black hover:bg-gold text-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-luxury cursor-pointer disabled:opacity-50"
+                      >
+                        {authLoading ? (
+                          <span>{lang === 'pt' ? 'ENTRANDO...' : 'SIGNING IN...'}</span>
+                        ) : (
+                          <>
+                            <Lock className="w-4 h-4 text-gold" />
+                            <span>{lang === 'pt' ? 'ENTRAR NA MINHA CONTA & LIBERAR COMPRA →' : 'SIGN IN & UNLOCK CHECKOUT →'}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 2. Endereço de Envio nos EUA com Validação USPS */}
+          <div id="shipping-address-box" className={`bg-white border-2 border-deep-black p-6 sm:p-8 space-y-5 transition ${!customerUser ? 'opacity-60 pointer-events-none' : ''}`}>
             <div className="flex items-center justify-between border-b border-deep-black/10 pb-3">
               <h2 className="text-sm font-black uppercase tracking-wider text-deep-black flex items-center gap-2">
                 <Truck className="w-4 h-4 text-gold" />
-                <span>{lang === 'pt' ? '1. ENDEREÇO DE ENTREGA NOS ESTADOS UNIDOS' : '1. DOMESTIC US SHIPPING ADDRESS'}</span>
+                <span>{lang === 'pt' ? '2. ENDEREÇO DE ENTREGA NOS ESTADOS UNIDOS' : '2. DOMESTIC US SHIPPING ADDRESS'}</span>
               </h2>
               <span className="text-[10px] font-black uppercase tracking-wider text-gold">
                 FLAT RATE $9.99
               </span>
             </div>
+
+            {!customerUser && (
+              <div className="p-3 bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold flex items-center gap-2">
+                <Lock className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>{lang === 'pt' ? '🔒 Cadastre-se ou faça login na Etapa 1 acima para liberar este formulário.' : '🔒 Register or sign in in Step 1 above to unlock this form.'}</span>
+              </div>
+            )}
 
             {/* Mensagens de Erro de Validação de Endereço */}
             {addressErrors.length > 0 && (
@@ -974,14 +1290,21 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          {/* 2. Formas de Pagamento Online */}
-          <div className="bg-white border-2 border-deep-black p-6 sm:p-8 space-y-5">
+          {/* 3. Formas de Pagamento Online */}
+          <div className={`bg-white border-2 border-deep-black p-6 sm:p-8 space-y-5 transition ${!customerUser ? 'opacity-60 pointer-events-none' : ''}`}>
             <div className="border-b border-deep-black/10 pb-3">
               <h2 className="text-sm font-black uppercase tracking-wider text-deep-black flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-gold" />
-                <span>{lang === 'pt' ? '2. FORMA DE PAGAMENTO' : '2. PAYMENT METHOD'}</span>
+                <span>{lang === 'pt' ? '3. FORMA DE PAGAMENTO' : '3. PAYMENT METHOD'}</span>
               </h2>
             </div>
+
+            {!customerUser && (
+              <div className="p-3 bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold flex items-center gap-2">
+                <Lock className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>{lang === 'pt' ? '🔒 Formas de pagamento liberadas após o cadastro ou login na Etapa 1.' : '🔒 Payment methods unlocked after registration in Step 1.'}</span>
+              </div>
+            )}
 
             {/* Abas de Seleção de Pagamento */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -1496,31 +1819,47 @@ export default function CheckoutPage() {
 
           {/* BOTÃO OFICIAL DE COMPRA ONLINE */}
           <div className="space-y-3 pt-2">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-4 bg-deep-black hover:bg-gold text-white hover:text-deep-black disabled:opacity-50 text-xs sm:text-sm font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-luxury cursor-pointer"
-            >
-              {isSubmitting ? (
+            {!customerUser ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const box = document.getElementById('checkout-auth-box');
+                  if (box) box.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="w-full py-4 bg-gray-200 hover:bg-gold text-deep-black text-xs sm:text-sm font-black uppercase tracking-widest transition flex items-center justify-center gap-2 border-2 border-deep-black cursor-pointer shadow-luxury"
+              >
+                <Lock className="w-4 h-4 text-gold" />
                 <span>
-                  {paymentMethod === 'CARD' || paymentMethod === 'APPLE_PAY' || paymentMethod === 'AFFIRM' || paymentMethod === 'AFTERPAY'
-                    ? (lang === 'pt' ? 'REDIRECIONANDO PARA O STRIPE...' : 'REDIRECTING TO STRIPE...')
-                    : (lang === 'pt' ? 'PROCESSANDO PEDIDO...' : 'PROCESSING ORDER...')}
+                  {lang === 'pt' ? '🔒 REQUER CADASTRO NA ETAPA 1 ACIMA' : '🔒 PLEASE REGISTER IN STEP 1 ABOVE'}
                 </span>
-              ) : (
-                <>
-                  <Lock className="w-4 h-4 text-gold" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-4 bg-deep-black hover:bg-gold text-white hover:text-deep-black disabled:opacity-50 text-xs sm:text-sm font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-luxury cursor-pointer"
+              >
+                {isSubmitting ? (
                   <span>
-                    {paymentMethod === 'CARD' && (lang === 'pt' ? `PAGAR COM CARTÃO (STRIPE) • $${total.toFixed(2)}` : `PAY WITH CARD (STRIPE) • $${total.toFixed(2)}`)}
-                    {paymentMethod === 'APPLE_PAY' && (lang === 'pt' ? `PAGAR COM APPLE PAY • $${total.toFixed(2)}` : `PAY WITH APPLE PAY • $${total.toFixed(2)}`)}
-                    {paymentMethod === 'AFFIRM' && (lang === 'pt' ? `PAGAR COM AFFIRM • 4x DE $${(total / 4).toFixed(2)}` : `PAY WITH AFFIRM • 4x OF $${(total / 4).toFixed(2)}`)}
-                    {paymentMethod === 'AFTERPAY' && (lang === 'pt' ? `PAGAR COM AFTERPAY • 4x DE $${(total / 4).toFixed(2)}` : `PAY WITH AFTERPAY • 4x OF $${(total / 4).toFixed(2)}`)}
-                    {paymentMethod === 'ZELLE' && (lang === 'pt' ? `FINALIZAR PEDIDO (ZELLE) • $${total.toFixed(2)}` : `CONFIRM ORDER (ZELLE) • $${total.toFixed(2)}`)}
-                    {paymentMethod === 'VENMO' && (lang === 'pt' ? `FINALIZAR PEDIDO (VENMO) • $${total.toFixed(2)}` : `CONFIRM ORDER (VENMO) • $${total.toFixed(2)}`)}
+                    {paymentMethod === 'CARD' || paymentMethod === 'APPLE_PAY' || paymentMethod === 'AFFIRM' || paymentMethod === 'AFTERPAY'
+                      ? (lang === 'pt' ? 'REDIRECIONANDO PARA O STRIPE...' : 'REDIRECTING TO STRIPE...')
+                      : (lang === 'pt' ? 'PROCESSANDO PEDIDO...' : 'PROCESSING ORDER...')}
                   </span>
-                </>
-              )}
-            </button>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 text-gold" />
+                    <span>
+                      {paymentMethod === 'CARD' && (lang === 'pt' ? `PAGAR COM CARTÃO (STRIPE) • $${total.toFixed(2)}` : `PAY WITH CARD (STRIPE) • $${total.toFixed(2)}`)}
+                      {paymentMethod === 'APPLE_PAY' && (lang === 'pt' ? `PAGAR COM APPLE PAY • $${total.toFixed(2)}` : `PAY WITH APPLE PAY • $${total.toFixed(2)}`)}
+                      {paymentMethod === 'AFFIRM' && (lang === 'pt' ? `PAGAR COM AFFIRM • 4x DE $${(total / 4).toFixed(2)}` : `PAY WITH AFFIRM • 4x OF $${(total / 4).toFixed(2)}`)}
+                      {paymentMethod === 'AFTERPAY' && (lang === 'pt' ? `PAGAR COM AFTERPAY • 4x DE $${(total / 4).toFixed(2)}` : `PAY WITH AFTERPAY • 4x OF $${(total / 4).toFixed(2)}`)}
+                      {paymentMethod === 'ZELLE' && (lang === 'pt' ? `FINALIZAR PEDIDO (ZELLE) • $${total.toFixed(2)}` : `CONFIRM ORDER (ZELLE) • $${total.toFixed(2)}`)}
+                      {paymentMethod === 'VENMO' && (lang === 'pt' ? `FINALIZAR PEDIDO (VENMO) • $${total.toFixed(2)}` : `CONFIRM ORDER (VENMO) • $${total.toFixed(2)}`)}
+                    </span>
+                  </>
+                )}
+              </button>
+            )}
 
             <div className="flex items-center justify-center gap-2 text-[10px] text-deep-black/60 font-bold uppercase tracking-wider pt-2">
               <ShieldCheck className="w-4 h-4 text-gold" />
