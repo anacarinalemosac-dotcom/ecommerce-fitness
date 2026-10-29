@@ -19,7 +19,9 @@ import {
   Clock,
   ShieldCheck,
   Building2,
+  Wallet,
 } from 'lucide-react';
+import { computeSaleFinancials } from '@/lib/salesFinancials';
 
 interface SaleItem {
   title: string;
@@ -64,6 +66,7 @@ interface SalesReportModalProps {
     totalSalesGross: number;
     totalCogs: number;
     totalDiscounts: number;
+    totalAfterDiscount?: number;
     totalFees: number;
     totalCommissions: number;
     totalShippingCollected: number;
@@ -136,92 +139,106 @@ export function SalesReportModal({
         </div>
 
         {/* =========================================================================
-            CARDS DOS TOTAIS: SOMA DE CADA ITEM SOLICITADO
-            1. Total de Venda | 2. Total de Juro/Taxas | 3. Total de Lucro | 4. Total de Comissão | 5. Total de Tudo
+            CARDS DOS TOTAIS: OS 7 VALORES OFICIAIS DO PAINEL DE CONTROLE
+            1. Total Venda | 2. Desconto | 3. Após Desconto | 4. Custo | 5. Comissões | 6. Taxas | 7. Valor Final
            ========================================================================= */}
         <div className="p-4 sm:p-6 bg-deep-black/5 border-b border-deep-black/10 shrink-0">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5">
             {/* 1. TOTAL DE VENDA */}
             <div className="p-3 bg-white border-2 border-deep-black space-y-1 shadow-2xs">
               <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/60 flex items-center gap-1">
                 <DollarSign className="w-3.5 h-3.5 text-gold" />
-                <span>TOTAL DE VENDA</span>
+                <span>1. TOTAL BRUTO</span>
               </span>
-              <p className="text-lg sm:text-xl font-black text-deep-black font-mono">
+              <p className="text-base sm:text-lg font-black text-deep-black font-mono">
                 ${totals.totalSalesGross.toFixed(2)}
               </p>
-              <span className="text-[8px] text-deep-black/50 uppercase font-bold block">
-                Faturamento Bruto
+              <span className="text-[8px] text-deep-black/50 uppercase font-bold block truncate">
+                Subtotal + Frete
               </span>
             </div>
 
-            {/* TOTAL DE CUSTO */}
-            <div className="p-3 bg-white border border-deep-black/20 space-y-1 shadow-2xs">
-              <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/60 flex items-center gap-1">
-                <Package className="w-3.5 h-3.5 text-deep-black/60" />
-                <span>TOTAL DE CUSTO</span>
-              </span>
-              <p className="text-lg sm:text-xl font-black text-deep-black font-mono">
-                -${totals.totalCogs.toFixed(2)}
-              </p>
-              <span className="text-[8px] text-deep-black/50 uppercase font-bold block">
-                Custo de Confecção
-              </span>
-            </div>
-
-            {/* TOTAL DE DESCONTO */}
-            <div className="p-3 bg-white border border-deep-black/20 space-y-1 shadow-2xs">
-              <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/60 flex items-center gap-1">
+            {/* 2. TOTAL DE DESCONTO */}
+            <div className="p-3 bg-white border border-amber-300 space-y-1 shadow-2xs">
+              <span className="text-[9px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1">
                 <Tag className="w-3.5 h-3.5 text-amber-600" />
-                <span>TOTAL DESCONTOS</span>
+                <span>2. DESCONTOS</span>
               </span>
-              <p className="text-lg sm:text-xl font-black text-amber-700 font-mono">
+              <p className="text-base sm:text-lg font-black text-amber-700 font-mono">
                 -${totals.totalDiscounts.toFixed(2)}
               </p>
-              <span className="text-[8px] text-deep-black/50 uppercase font-bold block">
+              <span className="text-[8px] text-amber-700/70 uppercase font-bold block truncate">
                 Cupons & Balcão
               </span>
             </div>
 
-            {/* 2. TOTAL DE JURO / TAXAS */}
-            <div className="p-3 bg-white border-2 border-red-500/30 space-y-1 shadow-2xs">
-              <span className="text-[9px] font-black uppercase tracking-wider text-red-600 flex items-center gap-1">
-                <CreditCard className="w-3.5 h-3.5 text-red-500" />
-                <span>TOTAL TAXAS / JUROS</span>
+            {/* 3. VALOR APÓS DESCONTO */}
+            <div className="p-3 bg-white border-2 border-blue-500/40 space-y-1 shadow-2xs">
+              <span className="text-[9px] font-black uppercase tracking-wider text-blue-700 flex items-center gap-1">
+                <Wallet className="w-3.5 h-3.5 text-blue-600" />
+                <span>3. APÓS DESC.</span>
               </span>
-              <p className="text-lg sm:text-xl font-black text-red-600 font-mono">
-                -${totals.totalFees.toFixed(2)}
+              <p className="text-base sm:text-lg font-black text-blue-900 font-mono">
+                ${(totals.totalAfterDiscount ?? (totals.totalSalesGross - totals.totalDiscounts)).toFixed(2)}
               </p>
-              <span className="text-[8px] text-red-500/70 uppercase font-bold block">
-                Gateways & Máquinas
+              <span className="text-[8px] text-blue-700/70 uppercase font-bold block truncate">
+                Faturado Líquido
               </span>
             </div>
 
-            {/* 3. TOTAL DE COMISSÃO */}
+            {/* 4. TOTAL DE CUSTO */}
+            <div className="p-3 bg-white border border-deep-black/20 space-y-1 shadow-2xs">
+              <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/60 flex items-center gap-1">
+                <Package className="w-3.5 h-3.5 text-deep-black/60" />
+                <span>4. PREÇO CUSTO</span>
+              </span>
+              <p className="text-base sm:text-lg font-black text-deep-black font-mono">
+                -${totals.totalCogs.toFixed(2)}
+              </p>
+              <span className="text-[8px] text-deep-black/50 uppercase font-bold block truncate">
+                Confecção / Peças
+              </span>
+            </div>
+
+            {/* 5. TOTAL DE COMISSÃO */}
             <div className="p-3 bg-white border border-deep-black/20 space-y-1 shadow-2xs">
               <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/60 flex items-center gap-1">
                 <Users className="w-3.5 h-3.5 text-gold" />
-                <span>TOTAL COMISSÃO</span>
+                <span>5. COMISSÕES</span>
               </span>
-              <p className="text-lg sm:text-xl font-black text-deep-black font-mono">
+              <p className="text-base sm:text-lg font-black text-deep-black font-mono">
                 -${totals.totalCommissions.toFixed(2)}
               </p>
-              <span className="text-[8px] text-deep-black/50 uppercase font-bold block">
+              <span className="text-[8px] text-deep-black/50 uppercase font-bold block truncate">
                 Equipe de Vendas
               </span>
             </div>
 
-            {/* 4. TOTAL DE LUCRO & 5. TOTAL DE TUDO */}
+            {/* 6. TOTAL DE TAXAS */}
+            <div className="p-3 bg-white border-2 border-red-500/30 space-y-1 shadow-2xs">
+              <span className="text-[9px] font-black uppercase tracking-wider text-red-600 flex items-center gap-1">
+                <CreditCard className="w-3.5 h-3.5 text-red-500" />
+                <span>6. TAXAS / JUROS</span>
+              </span>
+              <p className="text-base sm:text-lg font-black text-red-600 font-mono">
+                -${totals.totalFees.toFixed(2)}
+              </p>
+              <span className="text-[8px] text-red-500/70 uppercase font-bold block truncate">
+                Stripe & Cartão
+              </span>
+            </div>
+
+            {/* 7. TOTAL DE LUCRO / VALOR FINAL */}
             <div className="p-3 bg-deep-black text-white border-2 border-gold space-y-1 shadow-2xs">
               <span className="text-[9px] font-black uppercase tracking-wider text-gold flex items-center gap-1">
                 <TrendingUp className="w-3.5 h-3.5 text-gold" />
-                <span>TOTAL DE LUCRO (REAL)</span>
+                <span>7. VALOR FINAL</span>
               </span>
-              <p className="text-lg sm:text-xl font-black text-gold font-mono">
+              <p className="text-base sm:text-lg font-black text-gold font-mono">
                 ${totals.totalProfit.toFixed(2)}
               </p>
-              <span className="text-[8px] text-white/70 uppercase font-bold block">
-                Margem Retida: {totals.marginPct.toFixed(1)}%
+              <span className="text-[8px] text-white/70 uppercase font-bold block truncate">
+                Margem: {totals.marginPct.toFixed(1)}%
               </span>
             </div>
           </div>
@@ -237,12 +254,13 @@ export function SalesReportModal({
                   <th className="p-3">CANAL & VENDEDORA</th>
                   <th className="p-3">CLIENTE</th>
                   <th className="p-3">FORMA PGTO</th>
-                  <th className="p-3 text-right">VALOR VENDA</th>
-                  <th className="p-3 text-right">VALOR CUSTO</th>
-                  <th className="p-3 text-right">TAXAS / JUROS</th>
-                  <th className="p-3 text-right">COMISSÃO PAGA</th>
-                  <th className="p-3 text-right">DESCONTO</th>
-                  <th className="p-3 text-right">LUCRO REAL</th>
+                  <th className="p-3 text-right">1. VALOR TOTAL</th>
+                  <th className="p-3 text-right">2. DESCONTO</th>
+                  <th className="p-3 text-right">3. APÓS DESC.</th>
+                  <th className="p-3 text-right">4. PREÇO CUSTO</th>
+                  <th className="p-3 text-right">5. COMISSÕES</th>
+                  <th className="p-3 text-right">6. TAXAS</th>
+                  <th className="p-3 text-right">7. VALOR FINAL</th>
                   <th className="p-3 text-center">ENTREGA</th>
                   <th className="p-3 text-center">PAGAMENTO</th>
                 </tr>
@@ -250,7 +268,7 @@ export function SalesReportModal({
               <tbody className="divide-y divide-deep-black/10 text-[11px]">
                 {sales.map((sale) => {
                   const isOnline = sale.channel === 'ONLINE';
-                  const saleGross = Number(sale.subtotal_products) + Number(sale.shipping_fee);
+                  const fin = computeSaleFinancials(sale);
                   const isCancelled = sale.status === 'CANCELLED';
 
                   return (
@@ -315,44 +333,45 @@ export function SalesReportModal({
                         </span>
                       </td>
 
-                      {/* Valor Venda */}
-                      <td className="p-3 text-right font-mono font-black text-deep-black">
-                        ${saleGross.toFixed(2)}
+                      {/* 1. Valor Total */}
+                      <td className="p-3 text-right font-mono font-bold text-deep-black">
+                        ${fin.totalGross.toFixed(2)}
                       </td>
 
-                      {/* Valor Custo */}
+                      {/* 2. Valor do Desconto */}
+                      <td className="p-3 text-right font-mono text-amber-700">
+                        {fin.discount > 0 ? `-$${fin.discount.toFixed(2)}` : '$0.00'}
+                      </td>
+
+                      {/* 3. Valor Após Desconto */}
+                      <td className="p-3 text-right font-mono font-black text-deep-black bg-stone-50/60">
+                        ${fin.afterDiscount.toFixed(2)}
+                      </td>
+
+                      {/* 4. Preço de Custo */}
                       <td className="p-3 text-right font-mono text-deep-black/70">
-                        ${Number(sale.cost_of_goods || 0).toFixed(2)}
+                        ${fin.costOfGoods.toFixed(2)}
                       </td>
 
-                      {/* Taxas Pagas / Juros */}
+                      {/* 5. Comissões */}
+                      <td className="p-3 text-right font-mono text-deep-black/70">
+                        {fin.commission > 0 ? (
+                          <span className="text-red-700 font-bold">-${fin.commission.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-deep-black/40">$0.00</span>
+                        )}
+                      </td>
+
+                      {/* 6. Taxas */}
                       <td className="p-3 text-right font-mono text-red-600 font-bold">
-                        {Number(sale.payment_fee || 0) > 0 ? `-$${Number(sale.payment_fee).toFixed(2)}` : '$0.00'}
+                        {fin.fees > 0 ? `-$${fin.fees.toFixed(2)}` : '$0.00'}
                       </td>
 
-                      {/* Comissão Paga */}
-                      <td className="p-3 text-right font-mono text-deep-black/70">
-                        {Number(sale.commission_amount || 0) > 0 ? (
-                          <span className="text-red-700 font-bold">-${Number(sale.commission_amount).toFixed(2)}</span>
-                        ) : (
-                          <span className="text-deep-black/40">$0.00</span>
-                        )}
-                      </td>
-
-                      {/* Desconto Efetuado */}
-                      <td className="p-3 text-right font-mono">
-                        {Number(sale.discount_amount || 0) > 0 ? (
-                          <span className="text-amber-700 font-bold">-${Number(sale.discount_amount).toFixed(2)}</span>
-                        ) : (
-                          <span className="text-deep-black/40">$0.00</span>
-                        )}
-                      </td>
-
-                      {/* Lucro Real */}
+                      {/* 7. Valor Final (Lucro) */}
                       <td className={`p-3 text-right font-mono font-black ${
-                        Number(sale.net_profit) < 0 ? 'text-red-600' : 'text-emerald-700'
+                        fin.netProfit < 0 ? 'text-red-600' : 'text-emerald-700'
                       }`}>
-                        ${Number(sale.net_profit || 0).toFixed(2)}
+                        ${fin.netProfit.toFixed(2)}
                       </td>
 
                       {/* Situação Entrega */}
@@ -394,7 +413,7 @@ export function SalesReportModal({
               </tbody>
 
               {/* =========================================================================
-                  RODAPÉ DO RELATÓRIO COM A SOMA EXATA DE TUDO
+                  RODAPÉ DO RELATÓRIO COM A SOMA EXATA DOS 7 VALORES
                  ========================================================================= */}
               <tfoot className="bg-deep-black text-white font-mono text-xs border-t-4 border-gold">
                 <tr>
@@ -404,17 +423,20 @@ export function SalesReportModal({
                   <td className="p-3 text-right font-black text-gold">
                     ${totals.totalSalesGross.toFixed(2)}
                   </td>
+                  <td className="p-3 text-right font-bold text-amber-300">
+                    -${totals.totalDiscounts.toFixed(2)}
+                  </td>
+                  <td className="p-3 text-right font-black text-white bg-white/10">
+                    ${(totals.totalAfterDiscount ?? (totals.totalSalesGross - totals.totalDiscounts)).toFixed(2)}
+                  </td>
                   <td className="p-3 text-right font-bold text-white/80">
                     -${totals.totalCogs.toFixed(2)}
-                  </td>
-                  <td className="p-3 text-right font-bold text-red-400">
-                    -${totals.totalFees.toFixed(2)}
                   </td>
                   <td className="p-3 text-right font-bold text-white/80">
                     -${totals.totalCommissions.toFixed(2)}
                   </td>
-                  <td className="p-3 text-right font-bold text-amber-300">
-                    -${totals.totalDiscounts.toFixed(2)}
+                  <td className="p-3 text-right font-bold text-red-400">
+                    -${totals.totalFees.toFixed(2)}
                   </td>
                   <td className="p-3 text-right font-black text-gold text-sm">
                     ${totals.totalProfit.toFixed(2)}
@@ -427,12 +449,12 @@ export function SalesReportModal({
             </table>
           </div>
 
-          {/* Resumo Final de Conciliação "TOTAL DE TUDO" */}
+          {/* Resumo Final de Conciliação "TOTAL DE TUDO - 7 VALORES" */}
           <div className="bg-deep-black text-white p-5 border-2 border-gold space-y-3">
             <div className="flex items-center justify-between border-b border-white/20 pb-2">
               <span className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-gold" />
-                <span>FECHAMENTO DE RESULTADO CONSOLIDADO (TOTAL DE TUDO)</span>
+                <span>FECHAMENTO CONSOLIDADO DOS 7 VALORES FINANCEIROS</span>
               </span>
               <span className="text-[10px] font-mono text-white/60">
                 ANA FITNESS WEAR • LEOMINSTER/MA
@@ -441,27 +463,31 @@ export function SalesReportModal({
 
             <div className="text-xs font-mono space-y-1.5 leading-relaxed">
               <div className="flex justify-between border-b border-white/10 pb-1">
-                <span>(+) TOTAL DE VENDA (FATURAMENTO BRUTO):</span>
+                <span>(+) 1. VALOR TOTAL (BRUTO):</span>
                 <strong className="text-white">${totals.totalSalesGross.toFixed(2)} USD</strong>
               </div>
-              <div className="flex justify-between border-b border-white/10 pb-1 text-white/70">
-                <span>(-) TOTAL DE CUSTO DAS PEÇAS (CONFECÇÃO):</span>
-                <span>-${totals.totalCogs.toFixed(2)} USD</span>
-              </div>
               <div className="flex justify-between border-b border-white/10 pb-1 text-amber-300">
-                <span>(-) TOTAL DE DESCONTO EFETUADO:</span>
+                <span>(-) 2. VALOR DO DESCONTO:</span>
                 <span>-${totals.totalDiscounts.toFixed(2)} USD</span>
               </div>
-              <div className="flex justify-between border-b border-white/10 pb-1 text-red-400">
-                <span>(-) TOTAL DE JUROS / TAXAS PAGAS (GATEWAYS):</span>
-                <span>-${totals.totalFees.toFixed(2)} USD</span>
+              <div className="flex justify-between border-b border-white/10 pb-1 text-blue-300 font-bold">
+                <span>(=) 3. VALOR APÓS DESCONTO:</span>
+                <span>${(totals.totalAfterDiscount ?? (totals.totalSalesGross - totals.totalDiscounts)).toFixed(2)} USD</span>
               </div>
               <div className="flex justify-between border-b border-white/10 pb-1 text-white/70">
-                <span>(-) TOTAL DE COMISSÃO PAGA (VENDEDORAS):</span>
+                <span>(-) 4. VALOR DO PREÇO DE CUSTO (CONFECÇÃO/COGS):</span>
+                <span>-${totals.totalCogs.toFixed(2)} USD</span>
+              </div>
+              <div className="flex justify-between border-b border-white/10 pb-1 text-white/70">
+                <span>(-) 5. VALOR DE COMISSÕES (VENDEDORAS):</span>
                 <span>-${totals.totalCommissions.toFixed(2)} USD</span>
               </div>
+              <div className="flex justify-between border-b border-white/10 pb-1 text-red-400">
+                <span>(-) 6. VALOR DE TAXAS & JUROS (GATEWAYS / STRIPE):</span>
+                <span>-${totals.totalFees.toFixed(2)} USD</span>
+              </div>
               <div className="flex justify-between pt-2 text-base font-black text-gold">
-                <span>(=) TOTAL DE LUCRO LÍQUIDO REAL:</span>
+                <span>(=) 7. VALOR FINAL (LUCRO LÍQUIDO REAL):</span>
                 <span>${totals.totalProfit.toFixed(2)} USD ({totals.marginPct.toFixed(1)}% margem)</span>
               </div>
             </div>

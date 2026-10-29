@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 import { trackEvent } from '../../lib/tracking';
+import { UrgencyCountdownTimer } from '../../components/UrgencyCountdownTimer';
 import {
   ShieldCheck,
   Truck,
@@ -914,6 +915,9 @@ export default function CheckoutPage() {
           </button>
         </div>
       )}
+
+      {/* Relógio de Reserva & Urgência do Checkout */}
+      <UrgencyCountdownTimer mode="checkout" />
 
       <form onSubmit={handlePlaceOrder} className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
         {/* =========================================================================

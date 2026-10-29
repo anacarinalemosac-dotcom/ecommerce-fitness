@@ -27,7 +27,9 @@ import {
   Radio,
   ExternalLink,
   Calendar,
+  CalendarDays,
 } from 'lucide-react';
+import { computeSaleFinancials } from '@/lib/salesFinancials';
 
 interface DashboardMetricsViewProps {
   salesData: any;
@@ -58,6 +60,8 @@ export function DashboardMetricsView({
 }: DashboardMetricsViewProps) {
   const sales = salesData?.sales || [];
   const [salesMode, setSalesMode] = useState<'today' | 'all'>('today');
+  const [orderFilterMode, setOrderFilterMode] = useState<'today' | 'yesterday' | 'unfulfilled' | 'all' | 'specific_date'>('today');
+  const [orderSpecificDate, setOrderSpecificDate] = useState<string>('');
   const [copiedAddressId, setCopiedAddressId] = useState<string | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [shippingModalOrder, setShippingModalOrder] = useState<any | null>(null);
@@ -170,6 +174,10 @@ export function DashboardMetricsView({
   const todayDateStr = getNYDateStr(new Date());
   const nowMs = Date.now();
 
+  const yesterdayObj = new Date();
+  yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+  const yesterdayDateStr = getNYDateStr(yesterdayObj);
+
   // Pedidos de hoje: criados na data de hoje no fuso local ou nas últimas 24 horas
   const todayOrders = sales.filter((s: any) => {
     if (!s.created_at) return false;
@@ -177,6 +185,48 @@ export function DashboardMetricsView({
     const orderMs = new Date(s.created_at).getTime();
     return orderDateStr === todayDateStr || (nowMs - orderMs <= 24 * 60 * 60 * 1000);
   });
+
+  // Pedidos de ontem
+  const yesterdayOrders = sales.filter((s: any) => {
+    if (!s.created_at) return false;
+    const orderDateStr = getNYDateStr(s.created_at);
+    return orderDateStr === yesterdayDateStr;
+  });
+
+  // Pedidos não enviados (pendentes de separação ou despacho, e não cancelados)
+  const unfulfilledOrders = sales.filter((s: any) => {
+    const fSt = (s.fulfillment_status || '').toUpperCase();
+    const st = (s.status || '').toUpperCase();
+    const isCancelled = st === 'CANCELLED';
+    const isFulfilled = fSt === 'DELIVERED' || fSt === 'SHIPPED' || st === 'DELIVERED' || st === 'SHIPPED';
+    return !isCancelled && !isFulfilled;
+  });
+
+  // Pedidos pendentes de envio de ONTEM ou dias anteriores!
+  const unfulfilledPastOrders = unfulfilledOrders.filter((s: any) => {
+    if (!s.created_at) return false;
+    const orderDateStr = getNYDateStr(s.created_at);
+    return orderDateStr < todayDateStr;
+  });
+
+  // Pedidos a exibir conforme o filtro selecionado no dashboard
+  const displayedDashboardOrders = (() => {
+    switch (orderFilterMode) {
+      case 'today':
+        return todayOrders;
+      case 'yesterday':
+        return yesterdayOrders;
+      case 'unfulfilled':
+        return unfulfilledOrders;
+      case 'all':
+        return sales;
+      case 'specific_date':
+        if (!orderSpecificDate) return sales;
+        return sales.filter((s: any) => getNYDateStr(s.created_at) === orderSpecificDate);
+      default:
+        return todayOrders;
+    }
+  })();
 
   const getOrderItems = (order: any) => {
     if (Array.isArray(order.items) && order.items.length > 0) return order.items;
@@ -249,32 +299,92 @@ export function DashboardMetricsView({
             </div>
           </div>
 
-          {/* Alternador de Visualização: Pedidos de Hoje vs Vendas Geral */}
-          <div className="inline-flex rounded-none border-2 border-deep-black p-0.5 bg-deep-black/5 text-xs font-black uppercase tracking-wider self-start md:self-auto">
+          {/* Alternador Avançado: Últimos Pedidos, Pendentes de Envio, Hoje, Ontem, Escolher Data */}
+          <div className="flex flex-wrap items-center gap-1.5 self-start md:self-auto text-xs font-black uppercase">
             <button
               type="button"
-              onClick={() => setSalesMode('today')}
-              className={`px-4 py-2 transition flex items-center gap-1.5 ${
-                salesMode === 'today'
-                  ? 'bg-deep-black text-gold shadow-sm'
-                  : 'text-deep-black hover:text-gold'
+              onClick={() => {
+                setOrderFilterMode('all');
+                setOrderSpecificDate('');
+              }}
+              className={`px-3 py-1.5 transition flex items-center gap-1 border ${
+                orderFilterMode === 'all'
+                  ? 'bg-deep-black text-gold border-deep-black shadow-sm'
+                  : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
               }`}
             >
-              <Package className="w-4 h-4 text-gold" />
-              <span>PEDIDOS DE HOJE ({todayOrders.length})</span>
+              <Package className="w-3.5 h-3.5 text-gold" />
+              <span>📦 ÚLTIMOS PEDIDOS ({sales.length})</span>
             </button>
+
             <button
               type="button"
-              onClick={() => setSalesMode('all')}
-              className={`px-4 py-2 transition flex items-center gap-1.5 ${
-                salesMode === 'all'
-                  ? 'bg-deep-black text-white shadow-sm'
-                  : 'text-deep-black hover:text-gold'
+              onClick={() => {
+                setOrderFilterMode('unfulfilled');
+                setOrderSpecificDate('');
+              }}
+              className={`px-3 py-1.5 transition flex items-center gap-1 border ${
+                orderFilterMode === 'unfulfilled'
+                  ? 'bg-amber-600 text-white border-amber-700 shadow-sm'
+                  : unfulfilledPastOrders.length > 0
+                  ? 'bg-amber-100 text-amber-950 border-amber-400 animate-pulse'
+                  : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
               }`}
             >
-              <BarChart3 className="w-4 h-4" />
-              <span>VER VENDAS GERAL ({sales.length})</span>
+              <Truck className="w-3.5 h-3.5" />
+              <span>🚨 NÃO ENVIADOS ({unfulfilledOrders.length})</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setOrderFilterMode('today');
+                setOrderSpecificDate('');
+              }}
+              className={`px-3 py-1.5 transition flex items-center gap-1 border ${
+                orderFilterMode === 'today'
+                  ? 'bg-deep-black text-gold border-deep-black shadow-sm'
+                  : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5 text-gold" />
+              <span>📅 HOJE ({todayOrders.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setOrderFilterMode('yesterday');
+                setOrderSpecificDate('');
+              }}
+              className={`px-3 py-1.5 transition flex items-center gap-1 border ${
+                orderFilterMode === 'yesterday'
+                  ? 'bg-deep-black text-gold border-deep-black shadow-sm'
+                  : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5 text-gold" />
+              <span>⏳ ONTEM ({yesterdayOrders.length})</span>
+            </button>
+
+            {/* ESCOLHER DATA */}
+            <div className="flex items-center gap-1 bg-white border border-deep-black/30 px-2 py-1 text-xs">
+              <CalendarDays className="w-3.5 h-3.5 text-gold" />
+              <span className="text-[9px] font-black uppercase text-deep-black">DATA:</span>
+              <input
+                type="date"
+                value={orderSpecificDate}
+                onChange={(e) => {
+                  setOrderSpecificDate(e.target.value);
+                  if (e.target.value) {
+                    setOrderFilterMode('specific_date');
+                  } else {
+                    setOrderFilterMode('all');
+                  }
+                }}
+                className="text-xs font-mono font-black uppercase bg-white border border-deep-black/20 px-1 py-0.5"
+              />
+            </div>
           </div>
         </div>
 
@@ -352,296 +462,401 @@ export function DashboardMetricsView({
           )}
         </div>
 
-        {/* 2. CARD: PEDIDOS DE HOJE PARA LOGÍSTICA / ENVIO */}
-        {salesMode === 'today' ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-deep-black/10 pb-2">
-              <div className="flex items-center gap-2">
-                <Package className="w-4 h-4 text-gold" />
-                <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-deep-black">
-                  PEDIDOS DO DIA PARA EXPEDIÇÃO & LOGÍSTICA ({todayOrders.length})
-                </h3>
-              </div>
-              <span className="text-xs font-mono font-black text-deep-black bg-gold/20 px-2 py-0.5 border border-gold/40">
-                FATURADO HOJE: ${salesToday.toFixed(2)}
-              </span>
-            </div>
-
-            {todayOrders.length === 0 ? (
-              <div className="p-8 bg-deep-black/5 border-2 border-dashed border-deep-black/20 text-center space-y-3">
-                <div className="w-12 h-12 bg-white border border-deep-black/20 rounded-full flex items-center justify-center mx-auto text-emerald-600 shadow-xs">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="text-sm font-black uppercase tracking-wider text-deep-black">
-                    NENHUM PEDIDO NOVO HOJE ATÉ O MOMENTO
+        {/* 2. CARD: PEDIDOS PARA LOGÍSTICA / ENVIO */}
+        <div className="space-y-4">
+          {/* Alerta de Pedidos Pendentes de Ontem ou Dias Anteriores */}
+          {unfulfilledPastOrders.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-500/15 via-red-500/15 to-amber-500/15 border-2 border-amber-600 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
+              <div className="flex items-center gap-3">
+                <span className="p-2 bg-amber-600 text-white rounded-full shrink-0">
+                  <AlertTriangle className="w-5 h-5 animate-bounce" />
+                </span>
+                <div>
+                  <h4 className="text-sm font-black text-amber-950 uppercase tracking-wide">
+                    ⚠️ ATENÇÃO: VOCÊ TEM {unfulfilledPastOrders.length} PEDIDO(S) PENDENTE(S) DE ENVIO DE ONTEM OU DIAS ANTERIORES!
                   </h4>
-                  <p className="text-xs text-deep-black/60 max-w-md mx-auto uppercase font-medium">
-                    Toda a sua logística de expedição está em dia! Assim que uma cliente comprar, o pedido aparecerá aqui com as peças para separar e o endereço para entrega.
+                  <p className="text-xs text-amber-900 font-medium">
+                    Essas clientes já compraram e os pedidos ainda não foram despachados. Clique ao lado para conferir e não atrasar o envio.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSalesMode('all')}
-                  className="px-4 py-2 bg-deep-black text-gold text-xs font-black uppercase tracking-widest hover:bg-gold hover:text-deep-black transition border border-gold shadow-xs"
-                >
-                  VER VENDAS ANTERIORES / HISTÓRICO GERAL
-                </button>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {todayOrders.map((order: any) => {
-                  const items = getOrderItems(order);
-                  const addressText = getOrderAddress(order);
-                  const orderId = order.order_id || order.id?.substring(0, 8);
-                  const timeStr = order.created_at
-                    ? new Date(order.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-                    : '--:--';
-                  const isPos = order.channel === 'POS' || order.shipping_address?.channel_detail === 'POS_COUNTER';
-                  const totalVal = Number(
-                    order.total_amount ||
-                    (Number(order.subtotal_products || 0) + Number(order.shipping_fee || 0) - Number(order.discount_amount || 0))
-                  );
+              <button
+                type="button"
+                onClick={() => {
+                  setOrderFilterMode('unfulfilled');
+                  setOrderSpecificDate('');
+                }}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black uppercase tracking-wider shrink-0 shadow flex items-center gap-1.5"
+              >
+                <Truck className="w-4 h-4" />
+                <span>VER NÃO ENVIADOS ({unfulfilledPastOrders.length})</span>
+              </button>
+            </div>
+          )}
 
-                  return (
-                    <div
-                      key={order.id || order.order_id}
-                      className="bg-white border-2 border-deep-black p-5 shadow-sm space-y-4 hover:border-gold transition flex flex-col justify-between"
-                    >
-                      {/* Topo do Pedido */}
-                      <div className="space-y-2 border-b border-deep-black/10 pb-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-mono font-black text-gold bg-deep-black px-2 py-0.5">
-                            #{orderId}
-                          </span>
-                          <span className="text-xs font-bold text-deep-black/60 font-mono">
-                            Hoje às {timeStr}
-                          </span>
-                        </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-deep-black/10 pb-2">
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-gold" />
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-deep-black">
+                {orderFilterMode === 'today'
+                  ? `PEDIDOS DE HOJE PARA EXPEDIÇÃO (${todayOrders.length})`
+                  : orderFilterMode === 'yesterday'
+                  ? `PEDIDOS DE ONTEM PARA EXPEDIÇÃO (${yesterdayOrders.length})`
+                  : orderFilterMode === 'unfulfilled'
+                  ? `PEDIDOS NÃO ENVIADOS / PENDENTES DE EXPEDIÇÃO (${unfulfilledOrders.length})`
+                  : orderFilterMode === 'specific_date'
+                  ? `PEDIDOS DA DATA ${orderSpecificDate} (${displayedDashboardOrders.length})`
+                  : `ÚLTIMOS PEDIDOS REGISTRADOS (${displayedDashboardOrders.length})`}
+              </h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-black text-deep-black bg-gold/20 px-2 py-0.5 border border-gold/40">
+                {displayedDashboardOrders.length} {displayedDashboardOrders.length === 1 ? 'PEDIDO' : 'PEDIDOS'}
+              </span>
+              <button
+                type="button"
+                onClick={() => onNavigateTab('sales')}
+                className="text-[11px] font-black uppercase text-gold hover:text-deep-black transition flex items-center gap-1"
+              >
+                <span>Ver Extrato Completo</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
 
-                        <div className="flex items-center justify-between">
-                          <div>
+          {displayedDashboardOrders.length === 0 ? (
+            <div className="p-8 bg-deep-black/5 border-2 border-dashed border-deep-black/20 text-center space-y-3">
+              <div className="w-12 h-12 bg-white border border-deep-black/20 rounded-full flex items-center justify-center mx-auto text-emerald-600 shadow-xs">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-black uppercase tracking-wider text-deep-black">
+                  NENHUM PEDIDO ENCONTRADO NESTA SELEÇÃO
+                </h4>
+                <p className="text-xs text-deep-black/60 max-w-md mx-auto uppercase font-medium">
+                  {orderFilterMode === 'unfulfilled'
+                    ? 'Parabéns! Todos os pedidos já foram devidamente enviados ou entregues!'
+                    : 'Nenhum pedido registrado para o período ou data selecionada.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setOrderFilterMode('all');
+                  setOrderSpecificDate('');
+                }}
+                className="px-4 py-2 bg-deep-black text-gold text-xs font-black uppercase tracking-widest hover:bg-gold hover:text-deep-black transition border border-gold shadow-xs"
+              >
+                VER TODOS OS ÚLTIMOS PEDIDOS
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {displayedDashboardOrders.map((order: any) => {
+                const items = getOrderItems(order);
+                const addressText = getOrderAddress(order);
+                const orderId = order.order_id || order.id?.substring(0, 8);
+                const isOrderToday = getNYDateStr(order.created_at) === todayDateStr;
+                const timeStr = order.created_at
+                  ? (isOrderToday
+                      ? `Hoje às ${new Date(order.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                      : new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))
+                  : '--:--';
+                const isPos = order.channel === 'POS' || order.shipping_address?.channel_detail === 'POS_COUNTER';
+                const fin = computeSaleFinancials(order);
+
+                return (
+                  <div
+                    key={order.id || order.order_id}
+                    className="bg-white border-2 border-deep-black p-5 shadow-sm space-y-4 hover:border-gold transition flex flex-col justify-between"
+                  >
+                    {/* Topo do Pedido */}
+                    <div className="space-y-2 border-b border-deep-black/10 pb-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono font-black text-gold bg-deep-black px-2 py-0.5">
+                          #{orderId}
+                        </span>
+                        <span className="text-xs font-bold text-deep-black/60 font-mono">
+                          {timeStr}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h4 className="text-base font-black uppercase tracking-tight text-deep-black">
                               {order.customer_name || 'Cliente'}
                             </h4>
-                            <span className="text-[10px] font-bold text-deep-black/60 uppercase block">
-                              {isPos ? '🏢 Venda Showroom (PDV Balcão)' : '🌐 Venda Online (E-commerce)'}
-                            </span>
-                          </div>
-
-                          <div className="text-right">
-                            <div className="text-lg font-black text-deep-black font-mono">
-                              ${totalVal.toFixed(2)}
-                            </div>
-                            <span className="text-[9px] font-black uppercase text-gold bg-deep-black px-1.5 py-0.2">
-                              {order.payment_method || 'PAGO'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Peças para Separar */}
-                      <div className="space-y-2 bg-deep-black/5 p-3 border border-deep-black/15">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-deep-black/70 flex items-center gap-1">
-                          <Package className="w-3.5 h-3.5 text-gold" />
-                          <span>PEÇAS A DESPACHAR / SEPARAR ({items.length}):</span>
-                        </span>
-
-                        <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                          {items.length === 0 ? (
-                            <div className="text-xs text-deep-black/60 uppercase">
-                              1x Peça do Pedido
-                            </div>
-                          ) : (
-                            items.map((it: any, idx: number) => (
-                              <div
-                                key={idx}
-                                className="flex items-center justify-between text-xs py-1 border-b border-deep-black/5"
+                            {order.customer_phone && (
+                              <a
+                                href={`https://wa.me/${String(order.customer_phone).replace(/\D/g, '')}?text=${encodeURIComponent(`Olá ${order.customer_name || 'linda'}! 🥰 Aqui é da Ana Fitness Wear sobre o seu pedido #${orderId}.`)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-300 hover:bg-emerald-100 transition"
+                                title="Falar com a cliente pelo WhatsApp"
                               >
-                                <div className="flex items-center gap-2 truncate">
-                                  <span className="font-mono font-black text-deep-black bg-gold/40 px-1.5 py-0.2 text-[10px] shrink-0">
-                                    {it.quantity || 1}x
-                                  </span>
-                                  <span className="font-bold text-deep-black uppercase truncate" title={it.title}>
-                                    {it.title}
-                                  </span>
-                                </div>
-                                <div className="text-[10px] font-mono text-deep-black/70 shrink-0 pl-2">
-                                  {it.size ? `Tam: ${it.size}` : ''} {it.color ? `• ${it.color}` : ''}
-                                </div>
-                              </div>
-                            ))
-                          )}
+                                <Phone className="w-3 h-3 text-emerald-600" />
+                                <span>WhatsApp</span>
+                              </a>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-bold text-deep-black/60 uppercase block">
+                            {isPos ? '🏢 Venda Showroom (PDV Balcão)' : '🌐 Venda Online (E-commerce)'}
+                          </span>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="text-lg font-black text-deep-black font-mono">
+                            ${fin.totalGross.toFixed(2)}
+                          </div>
+                          <span className="text-[9px] font-black uppercase text-gold bg-deep-black px-1.5 py-0.2">
+                            {order.payment_method || 'PAGO'}
+                          </span>
                         </div>
                       </div>
+                    </div>
 
-                      {/* Endereço de Entrega (Logística) */}
-                      <div className="space-y-1.5 pt-1">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-deep-black/70 flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-gold" />
-                          <span>DESTINO DA LOGÍSTICA:</span>
-                        </span>
+                    {/* Peças para Separar */}
+                    <div className="space-y-2 bg-deep-black/5 p-3 border border-deep-black/15">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-deep-black/70 flex items-center gap-1">
+                        <Package className="w-3.5 h-3.5 text-gold" />
+                        <span>PEÇAS A DESPACHAR / SEPARAR ({items.length}):</span>
+                      </span>
 
-                        {addressText ? (
-                          <div className="p-2.5 bg-white border border-deep-black/20 flex items-center justify-between gap-2 text-xs">
-                            <span className="font-mono text-deep-black/90 uppercase text-[11px] truncate" title={addressText}>
-                              {addressText}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyAddress(order.id || orderId, addressText)}
-                              className="px-2 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1"
-                              title="Copiar endereço para o envio USPS"
-                            >
-                              {copiedAddressId === (order.id || orderId) ? (
-                                <>
-                                  <Check className="w-3 h-3 text-emerald-400" />
-                                  <span>COPIADO!</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3 h-3 text-gold" />
-                                  <span>COPIAR</span>
-                                </>
-                              )}
-                            </button>
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        {items.length === 0 ? (
+                          <div className="text-xs text-deep-black/60 uppercase">
+                            1x Peça do Pedido
                           </div>
                         ) : (
-                          <div className="p-2 bg-deep-black/5 text-[11px] text-deep-black/70 font-medium uppercase">
-                            Retirada Presencial no Showroom (Leominster, MA)
-                          </div>
+                          items.map((it: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between text-xs py-1 border-b border-deep-black/5"
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                <span className="font-mono font-black text-deep-black bg-gold/40 px-1.5 py-0.2 text-[10px] shrink-0">
+                                  {it.quantity || 1}x
+                                </span>
+                                <span className="font-bold text-deep-black uppercase truncate" title={it.title}>
+                                  {it.title}
+                                </span>
+                              </div>
+                              <div className="text-[10px] font-mono text-deep-black/70 shrink-0 pl-2">
+                                {it.size ? `Tam: ${it.size}` : ''} {it.color ? `• ${it.color}` : ''}
+                              </div>
+                            </div>
+                          ))
                         )}
                       </div>
+                    </div>
 
-                      {/* Botões Rápidos de Ação de Logística */}
-                      <div className="pt-2 border-t border-deep-black/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 flex-wrap self-start">
-                          {/* Badge de Entrega / Logística */}
-                          <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 border ${
-                            (order.fulfillment_status === 'DELIVERED' || order.status === 'DELIVERED')
-                              ? 'bg-deep-black text-gold border-gold'
-                              : (order.fulfillment_status === 'SHIPPED' || order.status === 'SHIPPED')
-                              ? 'bg-purple-100 text-purple-900 border-purple-300'
-                              : (order.fulfillment_status === 'IN_PRODUCTION' || order.status === 'IN_PRODUCTION')
-                              ? 'bg-blue-100 text-blue-900 border-blue-300'
-                              : 'bg-amber-100 text-amber-900 border-amber-300'
-                          }`}>
-                            {(order.fulfillment_status === 'DELIVERED' || order.status === 'DELIVERED')
-                              ? '✔ ENTREGA: ENTREGUE'
-                              : (order.fulfillment_status === 'SHIPPED' || order.status === 'SHIPPED')
-                              ? '🚚 ENTREGA: DESPACHADA'
-                              : (order.fulfillment_status === 'IN_PRODUCTION' || order.status === 'IN_PRODUCTION')
-                              ? '📦 ENTREGA: SEPARANDO'
-                              : '🕒 ENTREGA: AGUARDANDO'}
+                    {/* Endereço de Entrega (Logística) */}
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-deep-black/70 flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-gold" />
+                        <span>DESTINO DA LOGÍSTICA:</span>
+                      </span>
+
+                      {addressText ? (
+                        <div className="p-2.5 bg-white border border-deep-black/20 flex items-center justify-between gap-2 text-xs">
+                          <span className="font-mono text-deep-black/90 uppercase text-[11px] truncate" title={addressText}>
+                            {addressText}
                           </span>
-
-                          {/* Badge de Pagamento / Financeiro */}
-                          <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 border ${
-                            order.payment_status === 'CANCELLED' || order.status === 'CANCELLED'
-                              ? 'bg-red-100 text-red-900 border-red-300'
-                              : order.payment_status === 'PAID' || order.payment_status === 'COMPLETED' || order.status === 'PAID' || order.status === 'COMPLETED'
-                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                              : order.payment_status === 'PARTIAL'
-                              ? 'bg-amber-100 text-amber-950 border-amber-400'
-                              : 'bg-amber-50 text-amber-900 border-amber-300'
-                          }`}>
-                            {order.payment_status === 'CANCELLED' || order.status === 'CANCELLED'
-                              ? '✖ CANCELADO'
-                              : order.payment_status === 'PAID' || order.payment_status === 'COMPLETED' || order.status === 'PAID' || order.status === 'COMPLETED'
-                              ? '🟢 PGTO: QUITADO'
-                              : order.payment_status === 'PARTIAL'
-                              ? '🟡 PGTO: PARCIAL'
-                              : '⏳ PGTO: EM ABERTO'}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {/* Passo 1 -> Passo 2: De Pago para Separando Mercadoria */}
-                          {onUpdateOrderStatus && (!order.status || order.status === 'PAID' || order.status === 'COMPLETED') && (
-                            <button
-                              type="button"
-                              onClick={() => onUpdateOrderStatus(order.order_id || order.id, 'IN_PRODUCTION')}
-                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider transition shadow-2xs flex items-center gap-1"
-                              title="Marcar que a mercadoria está sendo separada para envio"
-                            >
-                              <Package className="w-3 h-3" />
-                              <span>SEPARAR</span>
-                            </button>
-                          )}
-
-                          {/* Passo 2 ou 1 -> Passo 3: Despachar nos Correios (USPS) */}
-                          {onUpdateOrderStatus && order.status !== 'SHIPPED' && order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenShippingModal(order)}
-                              className="px-3 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[10px] font-black uppercase tracking-wider transition border border-deep-black shadow-2xs flex items-center gap-1"
-                              title="Despachar pedido e enviar e-mail com código de rastreamento USPS para a cliente"
-                            >
-                              <Truck className="w-3 h-3 text-gold" />
-                              <span>DESPACHAR</span>
-                            </button>
-                          )}
-
-                          {/* Passo 3 -> Passo 4: Marcar como Entregue */}
-                          {order.status === 'SHIPPED' && onUpdateOrderStatus && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => onUpdateOrderStatus(order.order_id || order.id, 'DELIVERED')}
-                                className="px-2.5 py-1 bg-green-700 hover:bg-green-800 text-white text-[10px] font-black uppercase tracking-wider transition shadow-2xs flex items-center gap-1"
-                                title="Confirmar que o pedido foi entregue à cliente"
-                              >
-                                <CheckCircle2 className="w-3 h-3 text-white" />
-                                <span>ENTREGUE</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenShippingModal(order)}
-                                className="px-2 py-1 bg-gold/20 hover:bg-gold hover:text-deep-black text-deep-black text-[10px] font-black uppercase tracking-wider transition border border-gold/60 flex items-center gap-1"
-                                title="Ver ou alterar código de rastreamento"
-                              >
-                                <Truck className="w-3 h-3 text-deep-black" />
-                                <span>RASTREIO</span>
-                              </button>
-                            </>
-                          )}
-
                           <button
                             type="button"
-                            onClick={() => onNavigateTab('sales')}
-                            className="px-2.5 py-1 border border-deep-black hover:bg-deep-black hover:text-white text-deep-black text-[10px] font-black uppercase tracking-wider transition"
+                            onClick={() => handleCopyAddress(order.id || orderId, addressText)}
+                            className="px-2 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1"
+                            title="Copiar endereço para o envio USPS"
                           >
-                            DETALHES →
+                            {copiedAddressId === (order.id || orderId) ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                <span>COPIADO!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3 text-gold" />
+                                <span>COPIAR</span>
+                              </>
+                            )}
                           </button>
                         </div>
-                      </div>
-
-                      {/* Caixa de Rastreio Ativo */}
-                      {order.tracking_code && (
-                        <div className="mt-2 p-2 bg-gold/15 border border-gold/40 flex items-center justify-between text-[11px] font-mono">
-                          <span className="font-bold text-deep-black truncate">
-                            USPS: {order.tracking_code}
-                          </span>
-                          <a
-                            href={`https://tools.usps.com/go/TrackConfirmAction?tLabels=${order.tracking_code.replace(/\s+/g, '')}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-deep-black hover:underline font-black text-[10px] uppercase flex items-center gap-1 shrink-0 ml-2"
-                          >
-                            <span>RASTREAR</span>
-                            <ExternalLink className="w-3 h-3 text-gold" />
-                          </a>
+                      ) : (
+                        <div className="p-2 bg-deep-black/5 text-[11px] text-deep-black/70 font-medium uppercase">
+                          Retirada Presencial no Showroom (Leominster, MA)
                         </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Quando ela clica em 'VER VENDAS GERAL' */
-          <div className="p-6 bg-deep-black text-white border-2 border-gold space-y-4">
+
+                    {/* 7 VALORES FINANCEIROS OFICIAIS SOLICITADOS */}
+                    <div className="bg-deep-black/5 border border-deep-black/15 p-2.5 text-[10px] uppercase font-mono space-y-1.5">
+                      <div className="text-[9px] font-black text-deep-black/70 border-b border-deep-black/10 pb-1 flex justify-between items-center">
+                        <span>DETALHAMENTO FINANCEIRO DA VENDA</span>
+                        <span className="text-[8px] text-gold font-bold">7 VALORES OFICIAIS</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-right">
+                        <div className="bg-white p-1.5 border border-deep-black/10">
+                          <span className="text-[8px] text-deep-black/60 block text-left">1. TOTAL BRUTO</span>
+                          <span className="font-black text-deep-black">${fin.totalGross.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-white p-1.5 border border-deep-black/10">
+                          <span className="text-[8px] text-amber-700 block text-left">2. DESCONTO</span>
+                          <span className="font-bold text-amber-700">-${fin.discount.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-white p-1.5 border border-deep-black/10">
+                          <span className="text-[8px] text-deep-black/60 block text-left">3. APÓS DESCONTO</span>
+                          <span className="font-black text-deep-black">${fin.afterDiscount.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-white p-1.5 border border-deep-black/10">
+                          <span className="text-[8px] text-deep-black/60 block text-left">4. PREÇO CUSTO</span>
+                          <span className="font-bold text-deep-black/70">-${fin.costOfGoods.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-white p-1.5 border border-deep-black/10">
+                          <span className="text-[8px] text-red-700 block text-left">5. COMISSÕES</span>
+                          <span className="font-bold text-red-700">-${fin.commission.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-white p-1.5 border border-deep-black/10">
+                          <span className="text-[8px] text-red-700 block text-left">6. TAXAS GATEWAY</span>
+                          <span className="font-bold text-red-700">-${fin.fees.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-deep-black text-white p-1.5 border border-gold col-span-2">
+                          <span className="text-[8px] text-gold block text-left">7. VALOR FINAL (LUCRO)</span>
+                          <span className={`font-black text-xs ${fin.netProfit >= 0 ? 'text-gold' : 'text-red-400'}`}>
+                            ${fin.netProfit.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Botões Rápidos de Ação de Logística */}
+                    <div className="pt-2 border-t border-deep-black/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap self-start">
+                        {/* Badge de Entrega / Logística */}
+                        <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 border ${
+                          (order.fulfillment_status === 'DELIVERED' || order.status === 'DELIVERED')
+                            ? 'bg-deep-black text-gold border-gold'
+                            : (order.fulfillment_status === 'SHIPPED' || order.status === 'SHIPPED')
+                            ? 'bg-purple-100 text-purple-900 border-purple-300'
+                            : (order.fulfillment_status === 'IN_PRODUCTION' || order.status === 'IN_PRODUCTION')
+                            ? 'bg-blue-100 text-blue-900 border-blue-300'
+                            : 'bg-amber-100 text-amber-900 border-amber-300'
+                        }`}>
+                          {(order.fulfillment_status === 'DELIVERED' || order.status === 'DELIVERED')
+                            ? '✔ ENTREGA: ENTREGUE'
+                            : (order.fulfillment_status === 'SHIPPED' || order.status === 'SHIPPED')
+                            ? '🚚 ENTREGA: DESPACHADA'
+                            : (order.fulfillment_status === 'IN_PRODUCTION' || order.status === 'IN_PRODUCTION')
+                            ? '📦 ENTREGA: SEPARANDO'
+                            : '🕒 ENTREGA: AGUARDANDO'}
+                        </span>
+
+                        {/* Badge de Pagamento / Financeiro */}
+                        <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 border ${
+                          order.payment_status === 'CANCELLED' || order.status === 'CANCELLED'
+                            ? 'bg-red-100 text-red-900 border-red-300'
+                            : order.payment_status === 'PAID' || order.payment_status === 'COMPLETED' || order.status === 'PAID' || order.status === 'COMPLETED'
+                            ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                            : order.payment_status === 'PARTIAL'
+                            ? 'bg-amber-100 text-amber-950 border-amber-400'
+                            : 'bg-amber-50 text-amber-900 border-amber-300'
+                        }`}>
+                          {order.payment_status === 'CANCELLED' || order.status === 'CANCELLED'
+                            ? '✖ CANCELADO'
+                            : order.payment_status === 'PAID' || order.payment_status === 'COMPLETED' || order.status === 'PAID' || order.status === 'COMPLETED'
+                            ? '🟢 PGTO: QUITADO'
+                            : order.payment_status === 'PARTIAL'
+                            ? '🟡 PGTO: PARCIAL'
+                            : '⏳ PGTO: EM ABERTO'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Passo 1 -> Passo 2: De Pago para Separando Mercadoria */}
+                        {onUpdateOrderStatus && (!order.status || order.status === 'PAID' || order.status === 'COMPLETED') && (
+                          <button
+                            type="button"
+                            onClick={() => onUpdateOrderStatus(order.order_id || order.id, 'IN_PRODUCTION')}
+                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider transition shadow-2xs flex items-center gap-1"
+                            title="Marcar que a mercadoria está sendo separada para envio"
+                          >
+                            <Package className="w-3 h-3" />
+                            <span>SEPARAR</span>
+                          </button>
+                        )}
+
+                        {/* Passo 2 ou 1 -> Passo 3: Despachar nos Correios (USPS) */}
+                        {onUpdateOrderStatus && order.status !== 'SHIPPED' && order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenShippingModal(order)}
+                            className="px-3 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[10px] font-black uppercase tracking-wider transition border border-deep-black shadow-2xs flex items-center gap-1"
+                            title="Despachar pedido e enviar e-mail com código de rastreamento USPS para a cliente"
+                          >
+                            <Truck className="w-3 h-3 text-gold" />
+                            <span>DESPACHAR</span>
+                          </button>
+                        )}
+
+                        {/* Passo 3 -> Passo 4: Marcar como Entregue */}
+                        {order.status === 'SHIPPED' && onUpdateOrderStatus && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => onUpdateOrderStatus(order.order_id || order.id, 'DELIVERED')}
+                              className="px-2.5 py-1 bg-green-700 hover:bg-green-800 text-white text-[10px] font-black uppercase tracking-wider transition shadow-2xs flex items-center gap-1"
+                              title="Confirmar que o pedido foi entregue à cliente"
+                            >
+                              <CheckCircle2 className="w-3 h-3 text-white" />
+                              <span>ENTREGUE</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenShippingModal(order)}
+                              className="px-2 py-1 bg-gold/20 hover:bg-gold hover:text-deep-black text-deep-black text-[10px] font-black uppercase tracking-wider transition border border-gold/60 flex items-center gap-1"
+                              title="Ver ou alterar código de rastreamento"
+                            >
+                              <Truck className="w-3 h-3 text-deep-black" />
+                              <span>RASTREIO</span>
+                            </button>
+                          </>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => onNavigateTab('sales')}
+                          className="px-2.5 py-1 border border-deep-black hover:bg-deep-black hover:text-white text-deep-black text-[10px] font-black uppercase tracking-wider transition"
+                        >
+                          DETALHES →
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Caixa de Rastreio Ativo */}
+                    {order.tracking_code && (
+                      <div className="mt-2 p-2 bg-gold/15 border border-gold/40 flex items-center justify-between text-[11px] font-mono">
+                        <span className="font-bold text-deep-black truncate">
+                          USPS: {order.tracking_code}
+                        </span>
+                        <a
+                          href={`https://tools.usps.com/go/TrackConfirmAction?tLabels=${order.tracking_code.replace(/\s+/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-deep-black hover:underline font-black text-[10px] uppercase flex items-center gap-1 shrink-0 ml-2"
+                        >
+                          <span>RASTREAR</span>
+                          <ExternalLink className="w-3 h-3 text-gold" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* HISTÓRICO FINANCEIRO CONSOLIDADO */}
+          <div className="p-6 bg-deep-black text-white border-2 border-gold space-y-4 mt-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gold/30 pb-3">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
@@ -684,7 +899,7 @@ export function DashboardMetricsView({
               </div>
             </div>
           </div>
-        )}
+        </div>
       </section>
 
       {/* Banner de Boas-Vindas e Resumo Geral */}

@@ -8,6 +8,7 @@ import { trackEvent } from '../../../lib/tracking';
 import ProductShareModal from '../../../components/ProductShareModal';
 import { ProductSizeGuide } from '../../../components/ProductSizeGuide';
 import { FormattedDescription } from '../../../components/FormattedDescription';
+import { UrgencyCountdownTimer } from '../../../components/UrgencyCountdownTimer';
 import { translateEnToPt, translatePtToEn, isPortugueseText } from '../../../lib/translateFitness';
 import {
   Star,
@@ -981,6 +982,9 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 </span>
               </div>
             </div>
+
+            {/* Relógio Psicológico de Urgência & Escassez (15 minutos com clientes ao vivo) */}
+            <UrgencyCountdownTimer mode="product" />
           </div>
 
           {/* Banner de Frete Fixo $9.99 */}

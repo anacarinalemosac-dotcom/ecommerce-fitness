@@ -71,7 +71,11 @@ import {
   Building2,
   MessageCircle,
   Mail,
+  Calendar,
+  AlertTriangle,
+  Phone,
 } from 'lucide-react';
+import { computeSaleFinancials } from '@/lib/salesFinancials';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
 import { CsvProductImportModal, downloadCsvTemplate, downloadExcelTemplate } from '../../components/CsvProductImportModal';
@@ -271,9 +275,11 @@ export default function BackofficeDashboard() {
   const [loadingSales, setLoadingSales] = useState(false);
   const [salesChannelFilter, setSalesChannelFilter] = useState<'ALL' | 'ONLINE' | 'POS_COUNTER'>('ALL');
   const [salesPaymentFilter, setSalesPaymentFilter] = useState<'ALL' | 'CARD' | 'ZELLE' | 'VENMO' | 'CASH' | 'CREDIARIO'>('ALL');
-  const [salesPeriodFilter, setSalesPeriodFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'LAST_MONTH' | 'CUSTOM'>('ALL');
+  const [salesPeriodFilter, setSalesPeriodFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'LAST_MONTH' | 'CUSTOM' | 'SPECIFIC_DATE'>('ALL');
   const [salesCustomStartDate, setSalesCustomStartDate] = useState('');
   const [salesCustomEndDate, setSalesCustomEndDate] = useState('');
+  const [salesSpecificDate, setSalesSpecificDate] = useState('');
+  const [salesUnfulfilledOnly, setSalesUnfulfilledOnly] = useState(false);
   const [showSalesReportModal, setShowSalesReportModal] = useState(false);
   const [salesPreorderOnly, setSalesPreorderOnly] = useState(false);
   const [salesSearch, setSalesSearch] = useState('');
@@ -1301,6 +1307,20 @@ export default function BackofficeDashboard() {
     if (salesPaymentFilter !== 'ALL' && s.payment_method !== salesPaymentFilter) {
       return false;
     }
+    // Filtro Exclusivo de Pedidos Não Enviados (Pendentes de Logística)
+    if (salesUnfulfilledOnly) {
+      const fSt = (s.fulfillment_status || '').toUpperCase();
+      const st = (s.status || '').toUpperCase();
+      const isFulfilled = fSt === 'DELIVERED' || fSt === 'SHIPPED' || st === 'DELIVERED' || st === 'SHIPPED' || st === 'CANCELLED';
+      if (isFulfilled) return false;
+    }
+    // Filtro por Data Específica Direta
+    if (salesSpecificDate) {
+      if (!s.created_at) return false;
+      const orderDate = new Date(s.created_at);
+      const nyDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(orderDate);
+      if (nyDateStr !== salesSpecificDate) return false;
+    }
     // Filtro por Período
     if (salesPeriodFilter !== 'ALL') {
       if (!s.created_at) return false;
@@ -1332,6 +1352,8 @@ export default function BackofficeDashboard() {
       } else if (salesPeriodFilter === 'CUSTOM') {
         if (salesCustomStartDate && nyDateStr < salesCustomStartDate) return false;
         if (salesCustomEndDate && nyDateStr > salesCustomEndDate) return false;
+      } else if (salesPeriodFilter === 'SPECIFIC_DATE') {
+        if (salesSpecificDate && nyDateStr !== salesSpecificDate) return false;
       }
     }
     // Filtro Exclusivo de Pré-Vendas
@@ -1355,23 +1377,39 @@ export default function BackofficeDashboard() {
   // Totais matemáticos consolidados do relatório (todas as vendas ativas filtradas)
   const filteredSalesTotals = useMemo(() => {
     const activeList = filteredSalesList.filter((s: any) => s.status !== 'CANCELLED');
-    const totalSalesGross = activeList.reduce((acc: number, s: any) => acc + (Number(s.subtotal_products) || 0) + (Number(s.shipping_fee) || 0), 0);
-    const totalCogs = activeList.reduce((acc: number, s: any) => acc + (Number(s.cost_of_goods) || 0), 0);
-    const totalDiscounts = activeList.reduce((acc: number, s: any) => acc + (Number(s.discount_amount) || 0), 0);
-    const totalFees = activeList.reduce((acc: number, s: any) => acc + (Number(s.payment_fee) || 0), 0);
-    const totalCommissions = activeList.reduce((acc: number, s: any) => acc + (Number(s.commission_amount) || 0), 0);
-    const totalShippingCollected = activeList.reduce((acc: number, s: any) => acc + (Number(s.shipping_fee) || 0), 0);
-    const totalShippingCost = activeList.reduce((acc: number, s: any) => acc + (Number(s.shipping_cost) || 0), 0);
-    const totalProfit = activeList.reduce((acc: number, s: any) => acc + (Number(s.net_profit) || 0), 0);
-    const marginPct = totalSalesGross > 0 ? (totalProfit / totalSalesGross) * 100 : 0;
+    let totalSalesGross = 0;
+    let totalDiscounts = 0;
+    let totalAfterDiscount = 0;
+    let totalCogs = 0;
+    let totalCommissions = 0;
+    let totalFees = 0;
+    let totalProfit = 0;
+    let totalShippingCollected = 0;
+    let totalShippingCost = 0;
+
+    activeList.forEach((s: any) => {
+      const fin = computeSaleFinancials(s);
+      totalSalesGross += fin.totalGross;
+      totalDiscounts += fin.discount;
+      totalAfterDiscount += fin.afterDiscount;
+      totalCogs += fin.costOfGoods;
+      totalCommissions += fin.commission;
+      totalFees += fin.fees;
+      totalProfit += fin.netProfit;
+      totalShippingCollected += fin.shippingFee;
+      totalShippingCost += fin.shippingCost;
+    });
+
+    const marginPct = totalAfterDiscount > 0 ? (totalProfit / totalAfterDiscount) * 100 : 0;
 
     return {
       count: activeList.length,
       totalSalesGross,
-      totalCogs,
       totalDiscounts,
-      totalFees,
+      totalAfterDiscount,
+      totalCogs,
       totalCommissions,
+      totalFees,
       totalShippingCollected,
       totalShippingCost,
       totalProfit,
@@ -1379,7 +1417,24 @@ export default function BackofficeDashboard() {
     };
   }, [filteredSalesList]);
 
+  // Contagem de pedidos não enviados de ontem ou dias anteriores
+  const unsentPastSalesCount = useMemo(() => {
+    const nowNy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+    return (salesData?.sales || []).filter((s: any) => {
+      if (!s.created_at) return false;
+      const orderDate = new Date(s.created_at);
+      const nyDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(orderDate);
+      if (nyDateStr >= nowNy) return false;
+      const fSt = (s.fulfillment_status || '').toUpperCase();
+      const st = (s.status || '').toUpperCase();
+      const isFulfilled = fSt === 'DELIVERED' || fSt === 'SHIPPED' || st === 'DELIVERED' || st === 'SHIPPED' || st === 'CANCELLED';
+      return !isFulfilled;
+    }).length;
+  }, [salesData]);
+
   const getSalesPeriodLabel = () => {
+    if (salesUnfulfilledOnly) return 'Pedidos Pendentes de Envio (Não Enviados)';
+    if (salesSpecificDate) return `Data Específica: ${salesSpecificDate}`;
     switch (salesPeriodFilter) {
       case 'TODAY': return 'Hoje';
       case 'YESTERDAY': return 'Ontem';
@@ -1389,7 +1444,7 @@ export default function BackofficeDashboard() {
       case 'CUSTOM':
         return `Personalizado (${salesCustomStartDate || 'Início'} até ${salesCustomEndDate || 'Hoje'})`;
       default:
-        return 'Todas as Vendas';
+        return 'Todas as Vendas (Últimos Pedidos)';
     }
   };
 
@@ -1407,12 +1462,13 @@ export default function BackofficeDashboard() {
       'Cliente',
       'Telefone',
       'Forma_Pagamento',
-      'Valor_Venda_USD',
-      'Custo_Pecas_USD',
-      'Taxas_Juros_Pagas_USD',
-      'Comissao_Paga_USD',
-      'Desconto_Efetuado_USD',
-      'Lucro_Liquido_USD',
+      '1_Valor_Total_Bruto_USD',
+      '2_Valor_Desconto_USD',
+      '3_Valor_Apos_Desconto_USD',
+      '4_Valor_Preco_Custo_USD',
+      '5_Valor_Comissoes_USD',
+      '6_Valor_Taxas_Juros_USD',
+      '7_Valor_Final_Lucro_USD',
       'Margem_Lucro_Pct',
       'Status_Entrega',
       'Status_Pagamento',
@@ -1421,6 +1477,7 @@ export default function BackofficeDashboard() {
     const rows: string[] = [headers.join(',')];
 
     filteredSalesList.forEach((s: any) => {
+      const fin = computeSaleFinancials(s);
       const itemsDesc = (s.items || [])
         .map((i: any) => `${i.title} (${i.color || ''} ${i.size || ''}) x${i.quantity || 1}`)
         .join('; ');
@@ -1432,13 +1489,14 @@ export default function BackofficeDashboard() {
         `"${(s.customer_name || '').replace(/"/g, '""')}"`,
         `"${s.customer_phone || ''}"`,
         `"${s.payment_method || ''}"`,
-        (Number(s.subtotal_products) + Number(s.shipping_fee)).toFixed(2),
-        Number(s.cost_of_goods || 0).toFixed(2),
-        Number(s.payment_fee || 0).toFixed(2),
-        Number(s.commission_amount || 0).toFixed(2),
-        Number(s.discount_amount || 0).toFixed(2),
-        Number(s.net_profit || 0).toFixed(2),
-        `${s.profit_margin_pct || 0}%`,
+        fin.totalGross.toFixed(2),
+        fin.discount.toFixed(2),
+        fin.afterDiscount.toFixed(2),
+        fin.costOfGoods.toFixed(2),
+        fin.commission.toFixed(2),
+        fin.fees.toFixed(2),
+        fin.netProfit.toFixed(2),
+        `${fin.profitMarginPct.toFixed(1)}%`,
         `"${s.fulfillment_status || 'DELIVERED'}"`,
         `"${s.payment_status || 'PAID'}"`,
         `"${itemsDesc.replace(/"/g, '""')}"`,
@@ -1456,10 +1514,11 @@ export default function BackofficeDashboard() {
       '""',
       '""',
       filteredSalesTotals.totalSalesGross.toFixed(2),
-      filteredSalesTotals.totalCogs.toFixed(2),
-      filteredSalesTotals.totalFees.toFixed(2),
-      filteredSalesTotals.totalCommissions.toFixed(2),
       filteredSalesTotals.totalDiscounts.toFixed(2),
+      filteredSalesTotals.totalAfterDiscount.toFixed(2),
+      filteredSalesTotals.totalCogs.toFixed(2),
+      filteredSalesTotals.totalCommissions.toFixed(2),
+      filteredSalesTotals.totalFees.toFixed(2),
       filteredSalesTotals.totalProfit.toFixed(2),
       `"${filteredSalesTotals.marginPct.toFixed(1)}%"`,
       '""',
@@ -1486,12 +1545,7 @@ export default function BackofficeDashboard() {
     const period = getSalesPeriodLabel();
     const rowsHtml = filteredSalesList.map((sale: any) => {
       const isOnline = sale.channel === 'ONLINE';
-      const saleGross = (Number(sale.subtotal_products) + Number(sale.shipping_fee)).toFixed(2);
-      const cogs = Number(sale.cost_of_goods || 0).toFixed(2);
-      const fee = Number(sale.payment_fee || 0).toFixed(2);
-      const commission = Number(sale.commission_amount || 0).toFixed(2);
-      const discount = Number(sale.discount_amount || 0).toFixed(2);
-      const profit = Number(sale.net_profit || 0).toFixed(2);
+      const fin = computeSaleFinancials(sale);
       const isCancelled = sale.status === 'CANCELLED';
 
       return `
@@ -1508,22 +1562,25 @@ export default function BackofficeDashboard() {
             ${sale.payment_method || '-'}
           </td>
           <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace; font-weight: bold;">
-            $${saleGross}
-          </td>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace;">
-            $${cogs}
-          </td>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace; color: #b91c1c;">
-            -$${fee}
-          </td>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace;">
-            -$${commission}
+            $${fin.totalGross.toFixed(2)}
           </td>
           <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace; color: #b45309;">
-            -$${discount}
+            ${fin.discount > 0 ? `-$${fin.discount.toFixed(2)}` : '$0.00'}
           </td>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace; font-weight: bold; color: ${Number(profit) >= 0 ? '#047857' : '#b91c1c'};">
-            $${profit}
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace; font-weight: bold; background: #f9f9f9;">
+            $${fin.afterDiscount.toFixed(2)}
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace;">
+            $${fin.costOfGoods.toFixed(2)}
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace;">
+            ${fin.commission > 0 ? `-$${fin.commission.toFixed(2)}` : '$0.00'}
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace; color: #b91c1c;">
+            ${fin.fees > 0 ? `-$${fin.fees.toFixed(2)}` : '$0.00'}
+          </td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-family: monospace; font-weight: bold; color: ${fin.netProfit >= 0 ? '#047857' : '#b91c1c'};">
+            $${fin.netProfit.toFixed(2)}
           </td>
           <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px;">
             ${sale.fulfillment_status === 'DELIVERED' ? 'Entregue' : sale.fulfillment_status === 'SHIPPED' ? 'Despachada' : 'Aguardando'}
@@ -1546,16 +1603,16 @@ export default function BackofficeDashboard() {
             .logo { font-size: 24px; font-weight: 900; letter-spacing: 1px; }
             .subtitle { font-size: 11px; color: #555; text-transform: uppercase; margin-top: 2px; }
             .summary-box { background: #f4f4f4; border: 2px solid #000; padding: 14px; margin-bottom: 20px; font-family: monospace; }
-            .summary-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 10px; text-align: center; }
+            .summary-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 10px; text-align: center; }
             .summary-item { background: #fff; border: 1px solid #ccc; padding: 8px; }
-            .summary-item .label { font-size: 9px; font-weight: bold; color: #666; text-transform: uppercase; }
-            .summary-item .val { font-size: 15px; font-weight: 900; margin-top: 4px; }
-            table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
-            th { background: #000; color: #fff; padding: 8px; text-transform: uppercase; font-size: 9px; letter-spacing: 0.5px; }
-            tfoot td { background: #000; color: #fff; font-weight: 900; padding: 10px 6px; }
+            .summary-item .label { font-size: 8px; font-weight: bold; color: #666; text-transform: uppercase; }
+            .summary-item .val { font-size: 14px; font-weight: 900; margin-top: 4px; }
+            table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 10px; }
+            th { background: #000; color: #fff; padding: 6px; text-transform: uppercase; font-size: 8px; letter-spacing: 0.5px; }
+            tfoot td { background: #000; color: #fff; font-weight: 900; padding: 8px 6px; }
             @media print {
               body { padding: 0; }
-              @page { size: landscape; margin: 12mm; }
+              @page { size: landscape; margin: 10mm; }
             }
           </style>
         </head>
@@ -1574,33 +1631,37 @@ export default function BackofficeDashboard() {
 
           <div class="summary-box">
             <div style="font-weight: 900; font-size: 12px; border-bottom: 1px solid #ccc; padding-bottom: 6px;">
-              SOMA GERAL & FECHAMENTO (TOTAL DE TUDO):
+              SOMA GERAL & FECHAMENTO DOS 7 VALORES FINANCEIROS:
             </div>
             <div class="summary-grid">
               <div class="summary-item">
-                <div class="label">Total de Venda</div>
+                <div class="label">1. Total Bruto</div>
                 <div class="val">$${filteredSalesTotals.totalSalesGross.toFixed(2)}</div>
               </div>
               <div class="summary-item">
-                <div class="label">Total de Custo</div>
+                <div class="label">2. Descontos</div>
+                <div class="val" style="color: #b45309;">-$${filteredSalesTotals.totalDiscounts.toFixed(2)}</div>
+              </div>
+              <div class="summary-item" style="background: #eef2ff;">
+                <div class="label" style="color: #1e40af;">3. Após Desconto</div>
+                <div class="val" style="color: #1e3a8a;">$${filteredSalesTotals.totalAfterDiscount.toFixed(2)}</div>
+              </div>
+              <div class="summary-item">
+                <div class="label">4. Preço Custo</div>
                 <div class="val" style="color: #444;">-$${filteredSalesTotals.totalCogs.toFixed(2)}</div>
               </div>
               <div class="summary-item">
-                <div class="label">Total de Juro / Taxas</div>
-                <div class="val" style="color: #b91c1c;">-$${filteredSalesTotals.totalFees.toFixed(2)}</div>
-              </div>
-              <div class="summary-item">
-                <div class="label">Total de Comissão</div>
+                <div class="label">5. Comissões</div>
                 <div class="val">-$${filteredSalesTotals.totalCommissions.toFixed(2)}</div>
               </div>
               <div class="summary-item">
-                <div class="label">Total de Desconto</div>
-                <div class="val" style="color: #b45309;">-$${filteredSalesTotals.totalDiscounts.toFixed(2)}</div>
+                <div class="label">6. Taxas / Juros</div>
+                <div class="val" style="color: #b91c1c;">-$${filteredSalesTotals.totalFees.toFixed(2)}</div>
               </div>
               <div class="summary-item" style="border: 2px solid #000; background: #faf5e4;">
-                <div class="label" style="color: #000;">Total de Lucro Real</div>
+                <div class="label" style="color: #000;">7. Lucro Final</div>
                 <div class="val" style="color: #047857;">$${filteredSalesTotals.totalProfit.toFixed(2)}</div>
-                <div style="font-size: 9px; color: #555;">Margem: ${filteredSalesTotals.marginPct.toFixed(1)}%</div>
+                <div style="font-size: 8px; color: #555;">Margem: ${filteredSalesTotals.marginPct.toFixed(1)}%</div>
               </div>
             </div>
           </div>
@@ -1611,12 +1672,13 @@ export default function BackofficeDashboard() {
                 <th style="text-align: left;">Pedido / Data</th>
                 <th style="text-align: left;">Cliente & Canal</th>
                 <th>Pgto</th>
-                <th style="text-align: right;">Total Venda</th>
-                <th style="text-align: right;">Custo Peça</th>
-                <th style="text-align: right;">Taxas/Juros</th>
-                <th style="text-align: right;">Comissão</th>
-                <th style="text-align: right;">Desconto</th>
-                <th style="text-align: right;">Lucro Real</th>
+                <th style="text-align: right;">1. Total Venda</th>
+                <th style="text-align: right;">2. Desconto</th>
+                <th style="text-align: right;">3. Após Desc.</th>
+                <th style="text-align: right;">4. Custo Peça</th>
+                <th style="text-align: right;">5. Comissão</th>
+                <th style="text-align: right;">6. Taxas/Juros</th>
+                <th style="text-align: right;">7. Lucro Final</th>
                 <th>Entrega</th>
                 <th>Situação</th>
               </tr>
@@ -1628,10 +1690,11 @@ export default function BackofficeDashboard() {
               <tr>
                 <td colspan="3" style="text-transform: uppercase;">SOMA DE TUDO (${filteredSalesTotals.count} VENDAS):</td>
                 <td style="text-align: right; color: #facc15;">$${filteredSalesTotals.totalSalesGross.toFixed(2)}</td>
-                <td style="text-align: right;">-$${filteredSalesTotals.totalCogs.toFixed(2)}</td>
-                <td style="text-align: right; color: #f87171;">-$${filteredSalesTotals.totalFees.toFixed(2)}</td>
-                <td style="text-align: right;">-$${filteredSalesTotals.totalCommissions.toFixed(2)}</td>
                 <td style="text-align: right; color: #fde047;">-$${filteredSalesTotals.totalDiscounts.toFixed(2)}</td>
+                <td style="text-align: right; color: #93c5fd;">$${filteredSalesTotals.totalAfterDiscount.toFixed(2)}</td>
+                <td style="text-align: right;">-$${filteredSalesTotals.totalCogs.toFixed(2)}</td>
+                <td style="text-align: right;">-$${filteredSalesTotals.totalCommissions.toFixed(2)}</td>
+                <td style="text-align: right; color: #f87171;">-$${filteredSalesTotals.totalFees.toFixed(2)}</td>
                 <td style="text-align: right; color: #4ade80; font-size: 13px;">$${filteredSalesTotals.totalProfit.toFixed(2)}</td>
                 <td colspan="2" style="text-align: center; color: #facc15;">${filteredSalesTotals.marginPct.toFixed(1)}% MARGEM</td>
               </tr>
@@ -3685,6 +3748,136 @@ export default function BackofficeDashboard() {
             </div>
           </div>
 
+          {/* ALERTA DE PEDIDOS PENDENTES DE ONTEM OU DIAS ANTERIORES */}
+          {unsentPastSalesCount > 0 && (
+            <div className="bg-gradient-to-r from-amber-500/15 via-red-500/15 to-amber-500/15 border-2 border-amber-600 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
+              <div className="flex items-center gap-3">
+                <span className="p-2 bg-amber-600 text-white rounded-full shrink-0">
+                  <AlertTriangle className="w-5 h-5 animate-bounce" />
+                </span>
+                <div>
+                  <h4 className="text-sm font-black text-amber-950 uppercase tracking-wide">
+                    ⚠️ ATENÇÃO: VOCÊ TEM {unsentPastSalesCount} PEDIDO(S) PENDENTE(S) DE ENVIO DE ONTEM OU DIAS ANTERIORES!
+                  </h4>
+                  <p className="text-xs text-amber-900 font-medium">
+                    Essas clientes compraram e os pedidos ainda aguardam despacho. Clique ao lado para filtrar imediatamente e não atrasar a entrega.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSalesUnfulfilledOnly(true);
+                  setSalesPeriodFilter('ALL');
+                  setSalesSpecificDate('');
+                }}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black uppercase tracking-wider shrink-0 shadow flex items-center gap-1.5"
+              >
+                <Truck className="w-4 h-4" />
+                <span>VER NÃO ENVIADOS ({unsentPastSalesCount})</span>
+              </button>
+            </div>
+          )}
+
+          {/* BARRA DE FILTROS RÁPIDOS (1-CLIQUE NO CELULAR E COMPUTADOR) */}
+          <div className="bg-white border-2 border-deep-black p-3 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setSalesPeriodFilter('ALL');
+                  setSalesSpecificDate('');
+                  setSalesUnfulfilledOnly(false);
+                }}
+                className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider transition border flex items-center gap-1 ${
+                  salesPeriodFilter === 'ALL' && !salesSpecificDate && !salesUnfulfilledOnly
+                    ? 'bg-deep-black text-gold border-deep-black shadow-sm'
+                    : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
+                }`}
+              >
+                <Package className="w-3.5 h-3.5 text-gold" />
+                <span>📦 ÚLTIMOS PEDIDOS (TODOS)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSalesUnfulfilledOnly(!salesUnfulfilledOnly);
+                  setSalesSpecificDate('');
+                }}
+                className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider transition border flex items-center gap-1 ${
+                  salesUnfulfilledOnly
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-sm'
+                    : unsentPastSalesCount > 0
+                    ? 'bg-amber-100 text-amber-950 border-amber-400 animate-pulse'
+                    : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
+                }`}
+                title="Filtrar pedidos pendentes de envio"
+              >
+                <Truck className="w-3.5 h-3.5" />
+                <span>🚨 NÃO ENVIADOS (PENDENTES) {unsentPastSalesCount > 0 ? `(${unsentPastSalesCount})` : ''}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSalesPeriodFilter('TODAY');
+                  setSalesSpecificDate('');
+                  setSalesUnfulfilledOnly(false);
+                }}
+                className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider transition border flex items-center gap-1 ${
+                  salesPeriodFilter === 'TODAY' && !salesSpecificDate && !salesUnfulfilledOnly
+                    ? 'bg-deep-black text-gold border-deep-black shadow-sm'
+                    : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5 text-gold" />
+                <span>📅 HOJE</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSalesPeriodFilter('YESTERDAY');
+                  setSalesSpecificDate('');
+                  setSalesUnfulfilledOnly(false);
+                }}
+                className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider transition border flex items-center gap-1 ${
+                  salesPeriodFilter === 'YESTERDAY' && !salesSpecificDate && !salesUnfulfilledOnly
+                    ? 'bg-deep-black text-gold border-deep-black shadow-sm'
+                    : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5 text-gold" />
+                <span>⏳ ONTEM</span>
+              </button>
+
+              {/* ESCOLHER DATA DIRETO */}
+              <div className="flex items-center gap-1.5 bg-white border border-deep-black/30 px-2.5 py-1 text-xs">
+                <CalendarDays className="w-3.5 h-3.5 text-gold" />
+                <span className="text-[10px] font-black uppercase text-deep-black">ESCOLHER DATA:</span>
+                <input
+                  type="date"
+                  value={salesSpecificDate}
+                  onChange={(e) => {
+                    setSalesSpecificDate(e.target.value);
+                    if (e.target.value) {
+                      setSalesPeriodFilter('SPECIFIC_DATE' as any);
+                      setSalesUnfulfilledOnly(false);
+                    } else {
+                      setSalesPeriodFilter('ALL');
+                    }
+                  }}
+                  className="text-xs font-mono font-black uppercase bg-white border border-deep-black/20 px-1.5 py-0.5"
+                />
+              </div>
+            </div>
+
+            <span className="text-[10px] font-mono text-deep-black/60 font-bold uppercase">
+              {filteredSalesList.length} {filteredSalesList.length === 1 ? 'PEDIDO LOCALIZADO' : 'PEDIDOS LOCALIZADOS'}
+            </span>
+          </div>
+
           {/* FILTROS E BUSCA DE PEDIDOS */}
           <div className="bg-white border-2 border-deep-black p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-sm">
             <div className="relative flex-1 max-w-sm">
@@ -3786,8 +3979,164 @@ export default function BackofficeDashboard() {
             </div>
           </div>
 
-          {/* TABELA DETALHADA DE VENDAS & PEDIDOS */}
-          <div className="bg-white border-2 border-deep-black overflow-x-auto shadow-sm">
+          {/* CARDS RESPONSIVOS PARA CELULAR (EXTRATO DE VENDAS NO MOBILE) */}
+          <div className="block lg:hidden space-y-3">
+            <div className="p-3 bg-deep-black text-white flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-gold" />
+                <span className="text-xs font-black uppercase tracking-wider">
+                  PEDIDOS ({filteredSalesList.length} REGISTROS)
+                </span>
+              </div>
+              <span className="text-[9px] font-mono text-gold uppercase font-black">
+                7 VALORES OFICIAIS
+              </span>
+            </div>
+
+            {filteredSalesList.length === 0 ? (
+              <div className="bg-white border-2 border-deep-black p-6 text-center text-xs font-bold uppercase text-deep-black/60">
+                Nenhum pedido encontrado para os filtros selecionados.
+              </div>
+            ) : (
+              filteredSalesList.map((sale: any) => {
+                const isOnline = sale.channel === 'ONLINE';
+                const isWriteOff = sale.order_id?.startsWith('OUT-') || sale.channel === 'WRITE_OFF' || (Number(sale.subtotal_products) === 0 && Number(sale.cost_of_goods) > 0);
+                const fin = computeSaleFinancials(sale);
+
+                return (
+                  <div key={sale.id || sale.order_id} className="bg-white border-2 border-deep-black p-4 space-y-3 shadow-xs">
+                    {/* Topo do Card */}
+                    <div className="flex items-center justify-between border-b border-deep-black/10 pb-2">
+                      <div>
+                        <span className="font-mono font-black text-deep-black text-sm block">#{sale.order_id}</span>
+                        <span className="text-[10px] text-deep-black/50 font-mono">
+                          {new Date(sale.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className={`inline-block px-2 py-0.5 text-[9px] font-black border uppercase ${
+                          isWriteOff
+                            ? 'bg-purple-900 text-gold border-gold'
+                            : isOnline
+                            ? 'bg-deep-black text-white border-deep-black'
+                            : 'bg-gold/20 text-deep-black border-gold/40'
+                        }`}>
+                          {isWriteOff ? 'USO PRÓPRIO' : isOnline ? 'ONLINE' : 'BALCÃO'}
+                        </span>
+                        <span className="text-[10px] font-mono text-gold bg-deep-black px-1.5 py-0.5 block mt-1 font-black">
+                          {sale.payment_method}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Cliente */}
+                    <div className="flex items-start justify-between gap-2 text-xs">
+                      <div>
+                        <span className="font-black text-deep-black uppercase block">{sale.customer_name || 'Cliente'}</span>
+                        {sale.shipping_address && (
+                          <span className="text-[10px] text-deep-black/60 block">
+                            📍 {sale.shipping_address.city}, {sale.shipping_address.state}
+                          </span>
+                        )}
+                      </div>
+                      {sale.customer_phone && (
+                        <a
+                          href={`https://wa.me/${String(sale.customer_phone).replace(/\D/g, '')}?text=${encodeURIComponent(`Olá ${sale.customer_name || 'linda'}! 🥰 Aqui é da Ana Fitness Wear sobre seu pedido #${sale.order_id}.`)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-1 border border-emerald-300 shrink-0"
+                          title="Falar no WhatsApp"
+                        >
+                          <Phone className="w-3 h-3 text-emerald-600" />
+                          <span>WhatsApp</span>
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Peças */}
+                    <div className="bg-deep-black/5 p-2 border border-deep-black/10 space-y-1">
+                      <span className="text-[9px] font-black text-deep-black/60 uppercase block">PEÇAS COMPRADAS:</span>
+                      {(sale.items || []).map((it: any, iIdx: number) => (
+                        <div key={iIdx} className="text-[10px] flex items-center justify-between">
+                          <span className="font-bold text-deep-black truncate">{it.title}</span>
+                          <span className="text-gold font-bold font-mono shrink-0 pl-1">
+                            ({it.color} • {it.size}) ×{it.quantity}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* 7 Valores Financeiros Solicitados */}
+                    <div className="bg-deep-black/5 border border-deep-black/15 p-2.5 text-[10px] uppercase font-mono space-y-1.5">
+                      <div className="text-[9px] font-black text-deep-black/70 border-b border-deep-black/10 pb-1 flex justify-between items-center">
+                        <span>DETALHAMENTO FINANCEIRO</span>
+                        <span className="text-[8px] text-gold font-bold">7 VALORES OFICIAIS</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-right">
+                        <div className="bg-white p-1.5 border border-deep-black/10">
+                          <span className="text-[8px] text-deep-black/60 block text-left">1. TOTAL BRUTO</span>
+                          <span className="font-black text-deep-black">${fin.totalGross.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-white p-1.5 border border-deep-black/10">
+                          <span className="text-[8px] text-amber-700 block text-left">2. DESCONTO</span>
+                          <span className="font-bold text-amber-700">-${fin.discount.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-white p-1.5 border border-deep-black/10">
+                          <span className="text-[8px] text-deep-black/60 block text-left">3. APÓS DESCONTO</span>
+                          <span className="font-black text-deep-black">${fin.afterDiscount.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-white p-1.5 border border-deep-black/10">
+                          <span className="text-[8px] text-deep-black/60 block text-left">4. PREÇO CUSTO</span>
+                          <span className="font-bold text-deep-black/70">-${fin.costOfGoods.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-white p-1.5 border border-deep-black/10">
+                          <span className="text-[8px] text-red-700 block text-left">5. COMISSÕES</span>
+                          <span className="font-bold text-red-700">-${fin.commission.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-white p-1.5 border border-deep-black/10">
+                          <span className="text-[8px] text-red-700 block text-left">6. TAXAS GATEWAY</span>
+                          <span className="font-bold text-red-700">-${fin.fees.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-deep-black text-white p-1.5 border border-gold col-span-2">
+                          <span className="text-[8px] text-gold block text-left">7. VALOR FINAL (LUCRO)</span>
+                          <span className={`font-black text-sm ${fin.netProfit >= 0 ? 'text-gold' : 'text-red-400'}`}>
+                            ${fin.netProfit.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Status & Ações */}
+                    <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between gap-2">
+                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 border ${
+                        (sale.fulfillment_status === 'DELIVERED' || sale.status === 'DELIVERED')
+                          ? 'bg-deep-black text-gold border-gold'
+                          : (sale.fulfillment_status === 'SHIPPED' || sale.status === 'SHIPPED')
+                          ? 'bg-purple-100 text-purple-900 border-purple-300'
+                          : 'bg-amber-100 text-amber-900 border-amber-300'
+                      }`}>
+                        {(sale.fulfillment_status === 'DELIVERED' || sale.status === 'DELIVERED')
+                          ? '✔ ENTREGUE'
+                          : (sale.fulfillment_status === 'SHIPPED' || sale.status === 'SHIPPED')
+                          ? '🚚 ENVIADO'
+                          : '⏳ PENDENTE'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSaleDetail(sale)}
+                        className="px-3 py-1 bg-deep-black text-white text-[10px] font-black uppercase tracking-wider hover:bg-gold hover:text-deep-black transition"
+                      >
+                        VER DETALHES →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* TABELA DETALHADA DE VENDAS & PEDIDOS (DESKTOP) */}
+          <div className="hidden lg:block bg-white border-2 border-deep-black overflow-x-auto shadow-sm">
             <div className="p-4 bg-deep-black text-white flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-gold" />
@@ -3808,12 +4157,13 @@ export default function BackofficeDashboard() {
                   <th className="p-3">CLIENTE</th>
                   <th className="p-3">ITENS & GRADE (COR/TAM)</th>
                   <th className="p-3">PGTO</th>
-                  <th className="p-3 text-right">VALOR VENDA</th>
-                  <th className="p-3 text-right">CUSTO PEÇAS</th>
-                  <th className="p-3 text-right">TAXAS / JUROS</th>
-                  <th className="p-3 text-right">COMISSÃO</th>
-                  <th className="p-3 text-right">DESCONTO</th>
-                  <th className="p-3 text-right">LUCRO REAL</th>
+                  <th className="p-2.5 text-right whitespace-nowrap">1. VALOR TOTAL</th>
+                  <th className="p-2.5 text-right whitespace-nowrap">2. DESCONTO</th>
+                  <th className="p-2.5 text-right whitespace-nowrap">3. APÓS DESCONTO</th>
+                  <th className="p-2.5 text-right whitespace-nowrap">4. PREÇO CUSTO</th>
+                  <th className="p-2.5 text-right whitespace-nowrap">5. COMISSÕES</th>
+                  <th className="p-2.5 text-right whitespace-nowrap">6. TAXAS GATEWAY</th>
+                  <th className="p-2.5 text-right whitespace-nowrap">7. VALOR FINAL</th>
                   <th className="p-3 text-center">SITUAÇÃO ENTREGA (LOGÍSTICA)</th>
                   <th className="p-3 text-center">SITUAÇÃO PAGAMENTO (FINANCEIRO)</th>
                   <th className="p-3 text-center">AÇÕES</th>
@@ -3823,6 +4173,7 @@ export default function BackofficeDashboard() {
                 {filteredSalesList.map((sale: any) => {
                   const isOnline = sale.channel === 'ONLINE';
                   const isWriteOff = sale.order_id?.startsWith('OUT-') || sale.channel === 'WRITE_OFF' || (Number(sale.subtotal_products) === 0 && Number(sale.cost_of_goods) > 0);
+                  const fin = computeSaleFinancials(sale);
                   return (
                     <tr key={sale.id || sale.order_id} className="hover:bg-deep-black/5">
                       {/* Pedido & Data */}
@@ -3916,48 +4267,57 @@ export default function BackofficeDashboard() {
                         </div>
                       </td>
 
-                      {/* Valor Venda */}
-                      <td className="p-3 text-right font-mono font-black text-deep-black">
-                        ${(Number(sale.subtotal_products) + Number(sale.shipping_fee)).toFixed(2)}
+                      {/* 1. Valor Total Bruto */}
+                      <td className="p-2.5 text-right font-mono font-black text-deep-black whitespace-nowrap">
+                        ${fin.totalGross.toFixed(2)}
                       </td>
 
-                      {/* Custo Peças */}
-                      <td className="p-3 text-right font-mono text-deep-black/70">
-                        ${Number(sale.cost_of_goods || 0).toFixed(2)}
-                      </td>
-
-                      {/* Taxas Pagas / Juros */}
-                      <td className="p-3 text-right font-mono text-red-600 font-bold">
-                        {Number(sale.payment_fee || 0) > 0 ? `-$${Number(sale.payment_fee).toFixed(2)}` : '$0.00'}
-                      </td>
-
-                      {/* Comissão Vendedora */}
-                      <td className="p-3 text-right font-mono text-deep-black/70">
-                        {Number(sale.commission_amount || 0) > 0 ? (
-                          <span className="text-red-700 font-bold">-${Number(sale.commission_amount).toFixed(2)}</span>
+                      {/* 2. Desconto */}
+                      <td className="p-2.5 text-right font-mono whitespace-nowrap">
+                        {fin.discount > 0 ? (
+                          <span className="text-amber-700 font-bold">-${fin.discount.toFixed(2)}</span>
                         ) : (
-                          <span className="text-deep-black/40">$0.00</span>
+                          <span className="text-deep-black/30">$0.00</span>
                         )}
                       </td>
 
-                      {/* Desconto Efetuado */}
-                      <td className="p-3 text-right font-mono">
-                        {Number(sale.discount_amount || 0) > 0 ? (
-                          <span className="text-amber-700 font-bold">-${Number(sale.discount_amount).toFixed(2)}</span>
+                      {/* 3. Valor Após Desconto */}
+                      <td className="p-2.5 text-right font-mono font-black text-deep-black whitespace-nowrap">
+                        ${fin.afterDiscount.toFixed(2)}
+                      </td>
+
+                      {/* 4. Preço de Custo */}
+                      <td className="p-2.5 text-right font-mono text-deep-black/70 whitespace-nowrap">
+                        -${fin.costOfGoods.toFixed(2)}
+                      </td>
+
+                      {/* 5. Comissões Vendedoras */}
+                      <td className="p-2.5 text-right font-mono whitespace-nowrap">
+                        {fin.commission > 0 ? (
+                          <span className="text-red-700 font-bold">-${fin.commission.toFixed(2)}</span>
                         ) : (
-                          <span className="text-deep-black/40">$0.00</span>
+                          <span className="text-deep-black/30">$0.00</span>
                         )}
                       </td>
 
-                      {/* Lucro Líquido Real */}
-                      <td className={`p-3 text-right font-mono font-black bg-deep-black/5 ${
-                        Number(sale.net_profit) < 0 ? 'text-red-600' : 'text-gold'
+                      {/* 6. Taxas Pagas / Gateway */}
+                      <td className="p-2.5 text-right font-mono whitespace-nowrap">
+                        {fin.fees > 0 ? (
+                          <span className="text-red-600 font-bold">-${fin.fees.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-deep-black/30">$0.00</span>
+                        )}
+                      </td>
+
+                      {/* 7. Lucro Líquido Real (Valor Final) */}
+                      <td className={`p-2.5 text-right font-mono font-black bg-deep-black/5 whitespace-nowrap ${
+                        fin.netProfit < 0 ? 'text-red-600' : 'text-gold'
                       }`}>
-                        {Number(sale.net_profit) < 0
-                          ? `-$${Math.abs(Number(sale.net_profit)).toFixed(2)}`
-                          : `$${Number(sale.net_profit).toFixed(2)}`}
+                        {fin.netProfit < 0
+                          ? `-$${Math.abs(fin.netProfit).toFixed(2)}`
+                          : `$${fin.netProfit.toFixed(2)}`}
                         <span className="text-[8px] text-deep-black/50 block font-normal">
-                          {isWriteOff ? 'CUSTO ABSORVIDO' : `${sale.profit_margin_pct}%`}
+                          {isWriteOff ? 'CUSTO ABSORVIDO' : `${fin.profitMarginPct}%`}
                         </span>
                       </td>
 
@@ -4174,28 +4534,31 @@ export default function BackofficeDashboard() {
                   );
                 })}
               </tbody>
-              {/* Rodapé Oficial da Tabela com a Soma Exata dos Totais Solicitados */}
+              {/* Rodapé Oficial da Tabela com a Soma Exata dos 7 Totais Solicitados */}
               <tfoot className="bg-deep-black text-white font-mono text-xs border-t-4 border-gold">
                 <tr>
                   <td colSpan={5} className="p-3 font-black text-gold uppercase tracking-wider">
                     SOMA TOTAL ({filteredSalesTotals.count} VENDAS NO PERÍODO):
                   </td>
-                  <td className="p-3 text-right font-black text-gold text-sm">
+                  <td className="p-2.5 text-right font-black text-gold text-xs whitespace-nowrap">
                     ${filteredSalesTotals.totalSalesGross.toFixed(2)}
                   </td>
-                  <td className="p-3 text-right font-bold text-white/80">
-                    -${filteredSalesTotals.totalCogs.toFixed(2)}
-                  </td>
-                  <td className="p-3 text-right font-bold text-red-400">
-                    -${filteredSalesTotals.totalFees.toFixed(2)}
-                  </td>
-                  <td className="p-3 text-right font-bold text-white/80">
-                    -${filteredSalesTotals.totalCommissions.toFixed(2)}
-                  </td>
-                  <td className="p-3 text-right font-bold text-amber-300">
+                  <td className="p-2.5 text-right font-bold text-amber-300 text-xs whitespace-nowrap">
                     -${filteredSalesTotals.totalDiscounts.toFixed(2)}
                   </td>
-                  <td className="p-3 text-right font-black text-gold text-sm">
+                  <td className="p-2.5 text-right font-black text-white text-xs whitespace-nowrap">
+                    ${filteredSalesTotals.totalAfterDiscount.toFixed(2)}
+                  </td>
+                  <td className="p-2.5 text-right font-bold text-white/80 text-xs whitespace-nowrap">
+                    -${filteredSalesTotals.totalCogs.toFixed(2)}
+                  </td>
+                  <td className="p-2.5 text-right font-bold text-white/80 text-xs whitespace-nowrap">
+                    -${filteredSalesTotals.totalCommissions.toFixed(2)}
+                  </td>
+                  <td className="p-2.5 text-right font-bold text-red-400 text-xs whitespace-nowrap">
+                    -${filteredSalesTotals.totalFees.toFixed(2)}
+                  </td>
+                  <td className="p-2.5 text-right font-black text-gold text-xs whitespace-nowrap">
                     ${filteredSalesTotals.totalProfit.toFixed(2)}
                   </td>
                   <td colSpan={3} className="p-3 text-center text-gold font-bold text-[10px]">
