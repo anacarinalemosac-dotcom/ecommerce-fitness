@@ -595,10 +595,15 @@ export async function POST(req: NextRequest) {
           (edv.size?.toLowerCase() === (v.size || 'M').toLowerCase() && edv.color?.toLowerCase() === (v.color || 'Preto Ônix').toLowerCase())
         );
 
-        const assignedId = (isUuid(v.id) ? v.id : matchInDb?.id) || undefined;
+        // assignedId DEVE ser estritamente um ID que realmente existe na tabela product_variants do banco
+        const assignedId = (matchInDb?.id && isUuid(matchInDb.id))
+          ? matchInDb.id
+          : (isUuid(v.id) && (existingDbVariants || []).some((edv: any) => edv.id === v.id))
+          ? v.id
+          : undefined;
 
-        // Gera SKU garantidamente único por variação e globalmente no banco
-        let finalSku = v.sku?.trim() || matchInDb?.sku || `${title.slice(0, 3).toUpperCase()}-${(v.color || 'COR').slice(0, 3).toUpperCase()}-${v.size || 'TAM'}-${shortId}-${timeSalt}-${i + 1}`;
+        // Gera SKU garantidamente único por variação e globalmente no banco (max 100 caracteres)
+        let finalSku = (v.sku?.trim() || matchInDb?.sku || `${title.slice(0, 3).toUpperCase()}-${(v.color || 'COR').slice(0, 3).toUpperCase()}-${v.size || 'TAM'}-${shortId}-${timeSalt}-${i + 1}`).slice(0, 95);
         if (batchSkus.has(finalSku)) {
           finalSku = `${finalSku}-${i + 1}`;
         }
@@ -628,8 +633,8 @@ export async function POST(req: NextRequest) {
           product_id: finalProductId,
           sku: finalSku,
           barcode: genBarcode,
-          size: v.size || 'M',
-          color: v.color || 'Preto Ônix',
+          size: String(v.size || 'M').slice(0, 10),
+          color: String(v.color || 'Preto Ônix').slice(0, 50),
           price: vPrice,
           cost_price: vCost,
           stock_quantity: Math.max(0, parseInt(String(v.stock_quantity ?? v.stock ?? 0), 10) || 0),
@@ -647,12 +652,15 @@ export async function POST(req: NextRequest) {
       const orphanedVariants = (existingDbVariants || []).filter((edv: any) => !retainedVariantIds.has(edv.id));
       if (orphanedVariants.length > 0) {
         try {
-          await supabaseServer
+          const { error: delErr } = await supabaseServer
             .from('product_variants')
             .delete()
             .in('id', orphanedVariants.map((o: any) => o.id));
+          if (delErr) {
+            console.warn('Aviso: variantes antigas preservadas para histórico de pedidos:', delErr.message);
+          }
         } catch (delErr) {
-          console.warn('Variantes antigas não puderam ser excluídas (preservadas para histórico de pedidos):', delErr);
+          console.warn('Variantes antigas não puderam ser excluídas:', delErr);
         }
       }
 
@@ -661,7 +669,7 @@ export async function POST(req: NextRequest) {
 
       for (let idx = 0; idx < variantsData.length; idx++) {
         const vd = { ...variantsData[idx] };
-        const hasDbId = isUuid(vd.id);
+        const hasDbId = Boolean(vd.id && isUuid(vd.id) && (existingDbVariants || []).some((edv: any) => edv.id === vd.id));
 
         let savedRow: any = null;
 
@@ -681,7 +689,7 @@ export async function POST(req: NextRequest) {
             const randBarcode = `789${Math.floor(100000000 + Math.random() * 900000000)}`;
             const retryFields = {
               ...updateFields,
-              sku: `${updateFields.sku}-${randSalt}`,
+              sku: `${updateFields.sku}-${randSalt}`.slice(0, 95),
               barcode: randBarcode,
             };
             const retryUp = await supabaseServer
@@ -699,20 +707,11 @@ export async function POST(req: NextRequest) {
 
           if (!upErr && updated) {
             savedRow = updated;
-          } else {
-            console.warn(`Aviso ao atualizar variante ${vId}:`, upErr?.message);
-            // Se o ID não existia mais no banco, tenta como nova inserção
-            const { data: insertedFresh, error: freshErr } = await supabaseServer
-              .from('product_variants')
-              .insert(updateFields)
-              .select()
-              .maybeSingle();
-            if (!freshErr && insertedFresh) {
-              savedRow = insertedFresh;
-            }
           }
-        } else {
-          // 3.2 Nova variação: insere sem ID (Postgres gera UUID automaticamente)
+        }
+
+        // Se a variante não existia no banco pelo ID ou o update não retornou linha, realiza INSERT com retry seguro
+        if (!savedRow) {
           const { id: _, ...insertFields } = vd;
           let { data: inserted, error: inErr } = await supabaseServer
             .from('product_variants')
@@ -726,7 +725,7 @@ export async function POST(req: NextRequest) {
             const randBarcode = `789${Math.floor(100000000 + Math.random() * 900000000)}`;
             const retryInsertFields = {
               ...insertFields,
-              sku: `${insertFields.sku}-${randSalt}`,
+              sku: `${insertFields.sku}-${randSalt}`.slice(0, 95),
               barcode: randBarcode,
             };
             const retryIn = await supabaseServer

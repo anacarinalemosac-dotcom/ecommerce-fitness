@@ -89,6 +89,7 @@ import { InstagramDirectView } from '../../components/backoffice/InstagramDirect
 import { SimpleFinancesView } from '../../components/backoffice/SimpleFinancesView';
 import { SuppliersManagementView } from '../../components/backoffice/SuppliersManagementView';
 import { AccessReportsView } from '../../components/backoffice/AccessReportsView';
+import { InventoryReportView } from '../../components/backoffice/InventoryReportView';
 import { SalesReportModal } from '../../components/backoffice/SalesReportModal';
 import CouponsManagerView from '../../components/backoffice/CouponsManagerView';
 import {
@@ -236,6 +237,7 @@ export default function BackofficeDashboard() {
     'dashboard' | 'catalog' | 'sales' | 'commissions' | 'finances' | 'invoices' | 'coupons' | 'reports' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
   >('dashboard');
   const [cmsSubTab, setCmsSubTab] = useState<CmsSubTab>('categories');
+  const [reportsSubTab, setReportsSubTab] = useState<'inventory' | 'accesses'>('inventory');
   const [onlineCount, setOnlineCount] = useState(0);
 
   // Catálogo de produtos
@@ -2335,7 +2337,7 @@ export default function BackofficeDashboard() {
           </span>
         </button>
 
-        {/* Relatórios de Acessos & Tráfego */}
+        {/* Relatórios de Estoque & Tráfego */}
         <button
           onClick={() => setActiveTab('reports')}
           className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
@@ -2347,7 +2349,7 @@ export default function BackofficeDashboard() {
           <BarChart3 className="w-4 h-4 text-gold" />
           <span>RELATÓRIOS</span>
           <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
-            ACESSOS
+            ESTOQUE & TRÁFEGO
           </span>
         </button>
 
@@ -6647,9 +6649,41 @@ export default function BackofficeDashboard() {
       )}
 
       {/* =========================================================================
-          TAB: RELATÓRIOS DE ACESSOS E TRÁFEGO (CIDADE, DISPOSITIVO, PÁGINAS, TEMPO)
+          TAB: RELATÓRIOS (CONFERÊNCIA DE ESTOQUE & ACESSOS / TRÁFEGO)
          ========================================================================= */}
-      {activeTab === 'reports' && <AccessReportsView />}
+      {activeTab === 'reports' && (
+        <div className="space-y-6">
+          {/* Sub-navegação de Relatórios */}
+          <div className="bg-white dark:bg-deep-black/60 p-2 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setReportsSubTab('inventory')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition ${
+                reportsSubTab === 'inventory'
+                  ? 'bg-gold text-deep-black shadow-md shadow-gold/20'
+                  : 'bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              <span>📦 CONFERÊNCIA DE ESTOQUE & INVENTÁRIO</span>
+            </button>
+
+            <button
+              onClick={() => setReportsSubTab('accesses')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition ${
+                reportsSubTab === 'accesses'
+                  ? 'bg-gold text-deep-black shadow-md shadow-gold/20'
+                  : 'bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>📈 ACESSOS & TRÁFEGO EM TEMPO REAL</span>
+            </button>
+          </div>
+
+          {/* Conteúdo da Sub-aba Selecionada */}
+          {reportsSubTab === 'inventory' ? <InventoryReportView /> : <AccessReportsView />}
+        </div>
+      )}
 
       {/* =========================================================================
           TAB 6: APARÊNCIA DA LOJA (CMS VISUAL)
