@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
         channel: 'ONLINE',
         seller_name: meta.seller_name || 'Loja Oficial Online',
         coupon_code: meta.coupon_code || undefined,
-        payment_method: 'CARD', // Stripe processa cartão, Apple Pay e Google Pay
+        payment_method: (meta.payment_method || 'CARD').toUpperCase(), // Stripe processa cartão, Affirm, Afterpay, Apple Pay e Google Pay
         subtotal_products: Math.max(0, totalAmountPaid - 9.99),
         shipping_fee: 9.99,
         shipping_cost: 7.50,
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
             discount_amount: newSaleRecord.discount_amount,
             total_amount: totalAmountPaid,
             commission_amount: newSaleRecord.commission_amount,
-            payment_method: 'CARD',
+            payment_method: newSaleRecord.payment_method || 'CARD',
             status: 'COMPLETED',
             shipping_address: metadataPayload,
           },

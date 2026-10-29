@@ -961,6 +961,26 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 </div>
               )}
             </div>
+
+            {/* PARCELAMENTO BNPL (AFFIRM & AFTERPAY) */}
+            <div className="flex items-center gap-2 pt-1.5 pb-1 text-[11px] text-deep-black/85 flex-wrap">
+              <span>
+                {lang === 'pt' ? 'ou 4x de' : 'or 4 interest-free payments of'}{' '}
+                <strong className="font-mono font-black text-deep-black text-xs">
+                  ${(productData.price / 4).toFixed(2)}
+                </strong>{' '}
+                {lang === 'pt' ? 'sem juros com' : 'with'}
+              </span>
+              <div className="inline-flex items-center gap-1.5 font-black uppercase text-[10px]">
+                <span className="px-1.5 py-0.5 bg-[#004BFF]/10 text-[#004BFF] border border-[#004BFF]/30 font-bold rounded-xs tracking-tight">
+                  affirm
+                </span>
+                <span className="text-deep-black/40 text-[9px] font-bold">{lang === 'pt' ? 'ou' : 'or'}</span>
+                <span className="px-1.5 py-0.5 bg-[#b2fce4] text-deep-black border border-[#7ae3c0] font-bold rounded-xs tracking-tight">
+                  afterpay ↗
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Banner de Frete Fixo $9.99 */}

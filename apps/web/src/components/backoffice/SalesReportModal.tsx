@@ -297,7 +297,11 @@ export function SalesReportModal({
                       {/* Forma de Pagamento */}
                       <td className="p-3">
                         <span className={`px-2 py-0.5 text-[8px] font-black font-mono border inline-block ${
-                          sale.payment_method === 'ZELLE'
+                          sale.payment_method === 'AFFIRM'
+                            ? 'bg-[#004BFF]/10 text-[#004BFF] border-[#004BFF]/30 font-bold'
+                            : sale.payment_method === 'AFTERPAY'
+                            ? 'bg-[#b2fce4] text-deep-black border-[#10b981] font-bold'
+                            : sale.payment_method === 'ZELLE'
                             ? 'bg-green-100 text-green-900 border-green-300'
                             : sale.payment_method === 'VENMO'
                             ? 'bg-blue-100 text-blue-900 border-blue-300'

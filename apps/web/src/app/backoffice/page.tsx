@@ -3759,9 +3759,11 @@ export default function BackofficeDashboard() {
                   className="text-xs font-black uppercase bg-transparent border-0 focus:outline-none cursor-pointer"
                 >
                   <option value="ALL">TODOS</option>
+                  <option value="CARD">CARTÃO</option>
+                  <option value="AFFIRM">AFFIRM (4X)</option>
+                  <option value="AFTERPAY">AFTERPAY (4X)</option>
                   <option value="ZELLE">ZELLE</option>
                   <option value="VENMO">VENMO</option>
-                  <option value="CARD">CARTÃO</option>
                   <option value="CASH">CASH</option>
                   <option value="CREDIARIO">CREDIÁRIO (CARNÊ)</option>
                 </select>
@@ -3890,7 +3892,11 @@ export default function BackofficeDashboard() {
                       <td className="p-3">
                         <div className="space-y-1">
                           <span className={`px-2 py-0.5 text-[8px] font-black font-mono border inline-block ${
-                            sale.payment_method === 'ZELLE'
+                            sale.payment_method === 'AFFIRM'
+                              ? 'bg-[#004BFF]/10 text-[#004BFF] border-[#004BFF]/30 font-bold'
+                              : sale.payment_method === 'AFTERPAY'
+                              ? 'bg-[#b2fce4] text-deep-black border-[#10b981] font-bold'
+                              : sale.payment_method === 'ZELLE'
                               ? 'bg-green-100 text-green-800 border-green-300'
                               : sale.payment_method === 'VENMO'
                               ? 'bg-blue-100 text-blue-800 border-blue-300'

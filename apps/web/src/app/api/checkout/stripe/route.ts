@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
       coupon_code,
       discount_amount = 0,
       seller_name,
+      payment_method = 'card',
     } = body;
 
     const origin = req.headers.get('origin') || 'https://anafitwear.com';
@@ -58,14 +59,16 @@ export async function POST(req: NextRequest) {
 
     // Se houver cupom com desconto, podemos aplicar ou abater
     const generatedOrderId = order_id || `ANA-${Math.floor(100000 + Math.random() * 900000)}`;
+    const paymentMethodChoice = (payment_method || 'card').toLowerCase();
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionPayloadBase: any = {
       line_items: lineItems,
       mode: 'payment',
       customer_email: customer_email || undefined,
       client_reference_id: generatedOrderId,
       metadata: {
         order_id: generatedOrderId,
+        payment_method: paymentMethodChoice.toUpperCase(),
         customer_name: customer_name || 'Cliente VIP',
         customer_email: customer_email || '',
         customer_phone: customer_phone || '',
@@ -80,7 +83,44 @@ export async function POST(req: NextRequest) {
       },
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_id=${generatedOrderId}`,
       cancel_url: `${origin}/checkout?canceled=true`,
-    });
+    };
+
+    let session: any;
+
+    // Determina os tipos de método de pagamento solicitados
+    let requestedTypes: string[] = ['card', 'link'];
+    if (paymentMethodChoice === 'affirm') {
+      requestedTypes = ['affirm', 'card', 'link'];
+    } else if (paymentMethodChoice === 'afterpay') {
+      requestedTypes = ['afterpay_clearpay', 'card', 'link'];
+    } else {
+      requestedTypes = ['card', 'affirm', 'afterpay_clearpay', 'link'];
+    }
+
+    try {
+      // 1. Tenta criar com os tipos BNPL solicitados (Affirm / Afterpay)
+      session = await stripe.checkout.sessions.create({
+        ...sessionPayloadBase,
+        payment_method_types: requestedTypes as any,
+      });
+    } catch (errMethodTypes: any) {
+      console.warn(
+        'Stripe Checkout: payment_method_types com Affirm/Afterpay não ativos na conta ou restrito por moeda/país. Aplicando fallback resiliente:',
+        errMethodTypes?.message
+      );
+      try {
+        // 2. Fallback resiliente para cartão padrão
+        session = await stripe.checkout.sessions.create({
+          ...sessionPayloadBase,
+          payment_method_types: ['card'],
+        });
+      } catch (errCardFallback: any) {
+        // 3. Fallback dinâmico (usa métodos configurados no Stripe Dashboard)
+        session = await stripe.checkout.sessions.create({
+          ...sessionPayloadBase,
+        });
+      }
+    }
 
     return NextResponse.json({
       configured: true,

@@ -194,7 +194,7 @@ export default function CheckoutPage() {
   }, []);
 
   // Pagamento Online
-  const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'APPLE_PAY' | 'ZELLE' | 'VENMO'>('CARD');
+  const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'APPLE_PAY' | 'AFFIRM' | 'AFTERPAY' | 'ZELLE' | 'VENMO'>('CARD');
 
   // Cupom de Desconto & Promoções / Vendedora
   const [couponInput, setCouponInput] = useState('');
@@ -368,16 +368,21 @@ export default function CheckoutPage() {
     }
 
     const generatedOrderId = `ANA-${Math.floor(100000 + Math.random() * 900000)}`;
-    const isCardOrApplePay = paymentMethod === 'CARD' || paymentMethod === 'APPLE_PAY';
+    const isStripeMethod =
+      paymentMethod === 'CARD' ||
+      paymentMethod === 'APPLE_PAY' ||
+      paymentMethod === 'AFFIRM' ||
+      paymentMethod === 'AFTERPAY';
 
-    // 1. Se for Cartão ou Apple Pay, tenta iniciar a sessão oficial da Stripe
-    if (isCardOrApplePay) {
+    // 1. Se for Cartão, Apple Pay, Affirm ou Afterpay, inicia a sessão oficial da Stripe
+    if (isStripeMethod) {
       try {
         const stripeRes = await fetch('/api/checkout/stripe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             order_id: generatedOrderId,
+            payment_method: paymentMethod.toLowerCase(),
             customer_name: `${shippingForm.firstName || 'Cliente'} ${shippingForm.lastName || 'Online'}`,
             customer_email: shippingForm.email || 'cliente@exemplo.com',
             customer_phone: shippingForm.phone || '+1 978 313-9452',
@@ -968,57 +973,105 @@ export default function CheckoutPage() {
             </div>
 
             {/* Abas de Seleção de Pagamento */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               <button
                 type="button"
                 onClick={() => setPaymentMethod('CARD')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center gap-1 ${
+                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[74px] ${
                   paymentMethod === 'CARD'
-                    ? 'border-deep-black bg-deep-black text-white'
-                    : 'border-deep-black/20 text-deep-black hover:border-gold'
+                    ? 'border-deep-black bg-deep-black text-white shadow-sm'
+                    : 'border-deep-black/20 text-deep-black hover:border-gold bg-white'
                 }`}
               >
                 <CreditCard className="w-4 h-4 text-gold" />
                 <span>CREDIT CARD</span>
+                <span className={`text-[8px] font-mono ${paymentMethod === 'CARD' ? 'text-white/60' : 'text-deep-black/50'}`}>
+                  VISA • MASTER • AMEX
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setPaymentMethod('APPLE_PAY')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center gap-1 ${
+                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[74px] ${
                   paymentMethod === 'APPLE_PAY'
-                    ? 'border-deep-black bg-deep-black text-white'
-                    : 'border-deep-black/20 text-deep-black hover:border-gold'
+                    ? 'border-deep-black bg-deep-black text-white shadow-sm'
+                    : 'border-deep-black/20 text-deep-black hover:border-gold bg-white'
                 }`}
               >
                 <Sparkles className="w-4 h-4 text-gold" />
                 <span>APPLE PAY</span>
+                <span className={`text-[8px] font-mono ${paymentMethod === 'APPLE_PAY' ? 'text-white/60' : 'text-deep-black/50'}`}>
+                  1-CLICK CHECKOUT
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('AFFIRM')}
+                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[74px] relative ${
+                  paymentMethod === 'AFFIRM'
+                    ? 'border-[#004BFF] bg-[#004BFF] text-white shadow-sm'
+                    : 'border-deep-black/20 text-deep-black hover:border-[#004BFF] bg-white'
+                }`}
+              >
+                <span className={`font-black text-xs tracking-tight ${paymentMethod === 'AFFIRM' ? 'text-white' : 'text-[#004BFF]'}`}>
+                  affirm
+                </span>
+                <span>PARCELAMENTO</span>
+                <span className={`text-[8px] font-bold ${paymentMethod === 'AFFIRM' ? 'text-white/80' : 'text-emerald-700'}`}>
+                  4x SEM JUROS
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('AFTERPAY')}
+                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[74px] relative ${
+                  paymentMethod === 'AFTERPAY'
+                    ? 'border-[#10b981] bg-[#b2fce4] text-deep-black shadow-sm ring-2 ring-[#10b981]'
+                    : 'border-deep-black/20 text-deep-black hover:border-[#10b981] bg-white'
+                }`}
+              >
+                <span className="font-black text-xs tracking-tight text-deep-black">
+                  afterpay ↗
+                </span>
+                <span>PARCELAMENTO</span>
+                <span className="text-[8px] font-bold text-emerald-800">
+                  4x QUINZENAIS
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setPaymentMethod('ZELLE')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center gap-1 ${
+                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[74px] ${
                   paymentMethod === 'ZELLE'
-                    ? 'border-deep-black bg-deep-black text-white'
-                    : 'border-deep-black/20 text-deep-black hover:border-gold'
+                    ? 'border-deep-black bg-deep-black text-white shadow-sm'
+                    : 'border-deep-black/20 text-deep-black hover:border-gold bg-white'
                 }`}
               >
-                <span className="font-mono text-gold font-black">ZELLE</span>
+                <span className="font-mono text-gold font-black text-xs">ZELLE</span>
                 <span>ZELLE PAY</span>
+                <span className={`text-[8px] font-mono ${paymentMethod === 'ZELLE' ? 'text-white/60' : 'text-deep-black/50'}`}>
+                  INSTANT TRANSFER
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setPaymentMethod('VENMO')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center gap-1 ${
+                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[74px] ${
                   paymentMethod === 'VENMO'
-                    ? 'border-deep-black bg-deep-black text-white'
-                    : 'border-deep-black/20 text-deep-black hover:border-gold'
+                    ? 'border-deep-black bg-deep-black text-white shadow-sm'
+                    : 'border-deep-black/20 text-deep-black hover:border-[#008CFF] bg-white'
                 }`}
               >
-                <span className="font-mono text-gold font-black">VENMO</span>
+                <span className="font-mono text-[#008CFF] font-black text-xs">VENMO</span>
                 <span>VENMO PAY</span>
+                <span className={`text-[8px] font-mono ${paymentMethod === 'VENMO' ? 'text-white/60' : 'text-deep-black/50'}`}>
+                  @Accleaningproservices
+                </span>
               </button>
             </div>
 
@@ -1072,6 +1125,140 @@ export default function CheckoutPage() {
                     ? 'Ao clicar no botão abaixo, a Stripe abrirá a janela de autorização direta do Apple Pay via Face ID ou Touch ID no seu aparelho.'
                     : 'When you click the button below, Stripe will open the Apple Pay window for direct authorization via Face ID or Touch ID.'}
                 </p>
+              </div>
+            )}
+
+            {/* Informações Affirm */}
+            {paymentMethod === 'AFFIRM' && (
+              <div className="p-4 sm:p-5 border-2 border-[#004BFF] bg-[#004BFF]/5 space-y-4 animate-fadeIn text-xs text-deep-black">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-[#004BFF] text-white font-black text-xs tracking-tight rounded-xs">
+                      affirm
+                    </span>
+                    <span className="font-black uppercase tracking-wider text-deep-black">
+                      {lang === 'pt' ? 'PARCELAMENTO VIA AFFIRM' : 'FINANCING WITH AFFIRM'}
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[9px] font-black uppercase font-mono">
+                    0% APR DISPONÍVEL
+                  </span>
+                </div>
+
+                <div className="bg-white p-3.5 border border-[#004BFF]/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-deep-black/70 uppercase">
+                      {lang === 'pt' ? 'Plano 4 Parcelas Sem Juros:' : '4 Interest-Free Payments Plan:'}
+                    </span>
+                    <span className="text-sm font-black font-mono text-[#004BFF]">
+                      4x de ${(total / 4).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-deep-black/80 font-medium leading-relaxed">
+                    {lang === 'pt'
+                      ? `Pague a 1ª parcela de $${(total / 4).toFixed(2)} hoje e as outras 3 a cada 2 semanas com zero juros e sem taxas adicionais.`
+                      : `Pay $${(total / 4).toFixed(2)} today, and the remaining 3 every 2 weeks with 0% APR and no hidden fees.`}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
+                  <div className="p-2.5 bg-white border border-deep-black/10 flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block font-black text-deep-black">
+                        {lang === 'pt' ? 'SEM JUROS OCULTOS' : 'NO HIDDEN FEES'}
+                      </strong>
+                      <span className="text-deep-black/70">
+                        {lang === 'pt' ? 'Você nunca paga 1 centavo além do combinado.' : 'You will never pay a penny more than agreed.'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-2.5 bg-white border border-deep-black/10 flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block font-black text-deep-black">
+                        {lang === 'pt' ? 'APROVAÇÃO INSTANTÂNEA' : 'INSTANT DECISION'}
+                      </strong>
+                      <span className="text-deep-black/70">
+                        {lang === 'pt' ? 'Não afeta seu Credit Score na consulta.' : 'Does not impact your credit score to check.'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-2.5 bg-white border border-deep-black/10 flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block font-black text-deep-black">
+                        {lang === 'pt' ? 'ENVIO IMEDIATO' : 'FAST SHIPPING'}
+                      </strong>
+                      <span className="text-deep-black/70">
+                        {lang === 'pt' ? 'Seu pedido é enviado normalmente via USPS.' : 'Your order is processed & shipped immediately via USPS.'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-deep-black/60 italic">
+                  {lang === 'pt'
+                    ? 'Ao clicar no botão de finalizar pedido, você será direcionada para a tela oficial da Stripe / Affirm para confirmar seu parcelamento com segurança.'
+                    : 'When you click place order, you will be directed to the official Stripe / Affirm portal to securely confirm your plan.'}
+                </p>
+              </div>
+            )}
+
+            {/* Informações Afterpay */}
+            {paymentMethod === 'AFTERPAY' && (
+              <div className="p-4 sm:p-5 border-2 border-[#10b981] bg-[#b2fce4]/15 space-y-4 animate-fadeIn text-xs text-deep-black">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-[#b2fce4] text-deep-black border border-[#10b981] font-black text-xs tracking-tight rounded-xs">
+                      afterpay ↗
+                    </span>
+                    <span className="font-black uppercase tracking-wider text-deep-black">
+                      {lang === 'pt' ? 'PARCELAMENTO EM 4x QUINZENAIS' : '4 BI-WEEKLY PAYMENTS WITH AFTERPAY'}
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-950 border border-emerald-300 text-[9px] font-black uppercase font-mono">
+                    ZERO JUROS
+                  </span>
+                </div>
+
+                {/* Cronograma das 4 Parcelas */}
+                <div className="bg-white p-3.5 border border-[#10b981]/30 space-y-3">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-deep-black/70 block">
+                    {lang === 'pt' ? 'CRONOGRAMA DE PAGAMENTO AFTERPAY:' : 'AFTERPAY PAYMENT SCHEDULE:'}
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                    <div className="p-2 bg-[#b2fce4]/30 border border-[#10b981]/40 rounded-xs">
+                      <span className="block text-[9px] font-black text-emerald-900 uppercase">1ª (HOJE)</span>
+                      <strong className="block text-xs font-mono font-black text-deep-black">${(total / 4).toFixed(2)}</strong>
+                      <span className="block text-[8px] text-deep-black/60">{lang === 'pt' ? 'No checkout' : 'Due today'}</span>
+                    </div>
+                    <div className="p-2 bg-gray-50 border border-deep-black/10 rounded-xs">
+                      <span className="block text-[9px] font-bold text-deep-black/70 uppercase">2ª (2 SEMANAS)</span>
+                      <strong className="block text-xs font-mono font-black text-deep-black">${(total / 4).toFixed(2)}</strong>
+                      <span className="block text-[8px] text-deep-black/60">{lang === 'pt' ? 'Automático' : 'Auto-pay'}</span>
+                    </div>
+                    <div className="p-2 bg-gray-50 border border-deep-black/10 rounded-xs">
+                      <span className="block text-[9px] font-bold text-deep-black/70 uppercase">3ª (4 SEMANAS)</span>
+                      <strong className="block text-xs font-mono font-black text-deep-black">${(total / 4).toFixed(2)}</strong>
+                      <span className="block text-[8px] text-deep-black/60">{lang === 'pt' ? 'Automático' : 'Auto-pay'}</span>
+                    </div>
+                    <div className="p-2 bg-gray-50 border border-deep-black/10 rounded-xs">
+                      <span className="block text-[9px] font-bold text-deep-black/70 uppercase">4ª (6 SEMANAS)</span>
+                      <strong className="block text-xs font-mono font-black text-deep-black">${(total / 4).toFixed(2)}</strong>
+                      <span className="block text-[8px] text-deep-black/60">{lang === 'pt' ? 'Última parcela' : 'Final payment'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-[10px] text-deep-black/80 font-bold">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                  <span>
+                    {lang === 'pt'
+                      ? 'Sem juros quando pago em dia. Seus produtos são despachados imediatamente com rastreamento USPS.'
+                      : 'No interest fees when paid on time. Your pieces ship immediately with USPS tracking.'}
+                  </span>
+                </div>
               </div>
             )}
 
@@ -1305,7 +1492,7 @@ export default function CheckoutPage() {
             >
               {isSubmitting ? (
                 <span>
-                  {paymentMethod === 'CARD' || paymentMethod === 'APPLE_PAY'
+                  {paymentMethod === 'CARD' || paymentMethod === 'APPLE_PAY' || paymentMethod === 'AFFIRM' || paymentMethod === 'AFTERPAY'
                     ? (lang === 'pt' ? 'REDIRECIONANDO PARA O STRIPE...' : 'REDIRECTING TO STRIPE...')
                     : (lang === 'pt' ? 'PROCESSANDO PEDIDO...' : 'PROCESSING ORDER...')}
                 </span>
@@ -1315,6 +1502,8 @@ export default function CheckoutPage() {
                   <span>
                     {paymentMethod === 'CARD' && (lang === 'pt' ? `PAGAR COM CARTÃO (STRIPE) • $${total.toFixed(2)}` : `PAY WITH CARD (STRIPE) • $${total.toFixed(2)}`)}
                     {paymentMethod === 'APPLE_PAY' && (lang === 'pt' ? `PAGAR COM APPLE PAY • $${total.toFixed(2)}` : `PAY WITH APPLE PAY • $${total.toFixed(2)}`)}
+                    {paymentMethod === 'AFFIRM' && (lang === 'pt' ? `PAGAR COM AFFIRM • 4x DE $${(total / 4).toFixed(2)}` : `PAY WITH AFFIRM • 4x OF $${(total / 4).toFixed(2)}`)}
+                    {paymentMethod === 'AFTERPAY' && (lang === 'pt' ? `PAGAR COM AFTERPAY • 4x DE $${(total / 4).toFixed(2)}` : `PAY WITH AFTERPAY • 4x OF $${(total / 4).toFixed(2)}`)}
                     {paymentMethod === 'ZELLE' && (lang === 'pt' ? `FINALIZAR PEDIDO (ZELLE) • $${total.toFixed(2)}` : `CONFIRM ORDER (ZELLE) • $${total.toFixed(2)}`)}
                     {paymentMethod === 'VENMO' && (lang === 'pt' ? `FINALIZAR PEDIDO (VENMO) • $${total.toFixed(2)}` : `CONFIRM ORDER (VENMO) • $${total.toFixed(2)}`)}
                   </span>
