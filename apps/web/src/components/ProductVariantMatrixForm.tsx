@@ -166,6 +166,7 @@ export function ProductVariantMatrixForm({
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
+  const [hasDraftRestored, setHasDraftRestored] = useState(false);
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) return;
@@ -553,25 +554,104 @@ export function ProductVariantMatrixForm({
 
       setMediaList(existingMedia);
     } else {
-      setTitle('');
-      setSlug('');
-      setDescription('');
-      setDescriptionPt('');
-      setDescriptionEn('');
-      setCupsType('removable');
-      setComposition('');
-      setMediaList([]);
-      setColors([{ name: 'Preto Ônix', hex: '#0A0A0A' }]);
-      setSelectedSizes(['P', 'M', 'G']);
-      setVisibleOnline(false); // Novos produtos iniciam como rascunho por segurança
-      setVisiblePos(true);
-      setRibbon('');
-      setBrand('ANA Fitness Wear');
-      setGeneralSku('');
-      setComparePrice('');
-      setIsOnSale(false);
+      // 1. Tenta recuperar rascunho salvo do localStorage para que o usuário NUNCA perca seu trabalho
+      let draftLoaded = false;
+      try {
+        const savedDraftStr = typeof window !== 'undefined' ? localStorage.getItem('ana_fitness_product_draft_new') : null;
+        if (savedDraftStr) {
+          const draft = JSON.parse(savedDraftStr);
+          if (draft && (draft.title || (Array.isArray(draft.variants) && draft.variants.length > 0) || (Array.isArray(draft.colors) && draft.colors.length > 0))) {
+            draftLoaded = true;
+            if (draft.title) setTitle(draft.title);
+            if (draft.slug) setSlug(draft.slug);
+            if (draft.categoryId) setCategoryId(draft.categoryId);
+            if (draft.supplierId) setSupplierId(draft.supplierId);
+            if (draft.description) setDescription(draft.description);
+            if (draft.descriptionPt) setDescriptionPt(draft.descriptionPt);
+            if (draft.descriptionEn) setDescriptionEn(draft.descriptionEn);
+            if (draft.cupsType) setCupsType(draft.cupsType);
+            if (draft.composition) setComposition(draft.composition);
+            if (Array.isArray(draft.colors) && draft.colors.length > 0) setColors(draft.colors);
+            if (Array.isArray(draft.selectedSizes) && draft.selectedSizes.length > 0) setSelectedSizes(draft.selectedSizes);
+            if (Array.isArray(draft.variants) && draft.variants.length > 0) setVariants(draft.variants);
+            if (Array.isArray(draft.mediaList) && draft.mediaList.length > 0) setMediaList(draft.mediaList);
+            if (draft.defaultPrice) setDefaultPrice(draft.defaultPrice);
+            if (draft.defaultCostPrice) setDefaultCostPrice(draft.defaultCostPrice);
+            setHasDraftRestored(true);
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao carregar rascunho de produto:', e);
+      }
+
+      if (!draftLoaded) {
+        setTitle('');
+        setSlug('');
+        setDescription('');
+        setDescriptionPt('');
+        setDescriptionEn('');
+        setCupsType('removable');
+        setComposition('');
+        setMediaList([]);
+        setColors([{ name: 'Preto Ônix', hex: '#0A0A0A' }]);
+        setSelectedSizes(['P', 'M', 'G']);
+        setVariants([]);
+        setVisibleOnline(false); // Novos produtos iniciam como rascunho por segurança
+        setVisiblePos(true);
+        setRibbon('');
+        setBrand('ANA Fitness Wear');
+        setGeneralSku('');
+        setComparePrice('');
+        setIsOnSale(false);
+      }
     }
   }, [initialProduct]);
+
+  // Auto-save automático do rascunho no localStorage
+  useEffect(() => {
+    if (!initialProduct && typeof window !== 'undefined') {
+      if (title.trim() || variants.length > 0 || colors.length > 1 || mediaList.length > 0) {
+        try {
+          const draftPayload = {
+            title,
+            slug,
+            categoryId,
+            supplierId,
+            description,
+            descriptionPt,
+            descriptionEn,
+            cupsType,
+            composition,
+            colors,
+            selectedSizes,
+            variants,
+            mediaList: mediaList.filter((m) => !m.isUploading && !m.url.startsWith('data:')),
+            defaultPrice,
+            defaultCostPrice,
+            updatedAt: Date.now(),
+          };
+          localStorage.setItem('ana_fitness_product_draft_new', JSON.stringify(draftPayload));
+        } catch (e) {}
+      }
+    }
+  }, [
+    title,
+    slug,
+    categoryId,
+    supplierId,
+    description,
+    descriptionPt,
+    descriptionEn,
+    cupsType,
+    composition,
+    colors,
+    selectedSizes,
+    variants,
+    mediaList,
+    defaultPrice,
+    defaultCostPrice,
+    initialProduct,
+  ]);
 
   // Atualiza slug automaticamente conforme o título
   const handleTitleChange = (val: string) => {
@@ -604,8 +684,8 @@ export function ProductVariantMatrixForm({
     currentSizes: string[],
     existingVariants: VariantRow[]
   ) => {
+    // Se o usuário estiver alterando temporariamente cores ou tamanhos, não apaga o trabalho já feito!
     if (currentColors.length === 0 || currentSizes.length === 0) {
-      setVariants([]);
       return;
     }
 
@@ -649,7 +729,10 @@ export function ProductVariantMatrixForm({
           size: sz,
           sku,
           barcode,
-          stock_quantity: existing !== undefined ? existing.stock_quantity : 5,
+          // Preserva estritamente a quantidade digitada (inclusive 0!). Novas variações iniciam com 0 un.
+          stock_quantity: (existing !== undefined && existing.stock_quantity !== undefined && existing.stock_quantity !== null)
+            ? Number(existing.stock_quantity)
+            : 0,
           price: existing !== undefined ? existing.price : (parseFloat(defaultPrice) || 44.9),
           cost_price: existing !== undefined ? existing.cost_price : (parseFloat(defaultCostPrice) || 16.0),
           allow_backorder: existing !== undefined ? existing.allow_backorder : true,
@@ -1012,7 +1095,7 @@ export function ProductVariantMatrixForm({
     const activeColorNames = new Set(colors.map((c) => c.name.trim().toLowerCase()));
     const activeSizeNames = new Set(selectedSizes.map((s) => s.trim().toUpperCase()));
 
-    // 1. Considera apenas variações que pertencem às cores e tamanhos ativos
+    // 1. Considera variações que pertencem às cores e tamanhos ativos
     const validVariants = variants.filter(
       (v) =>
         activeColorNames.has((v.color || '').trim().toLowerCase()) &&
@@ -1020,13 +1103,13 @@ export function ProductVariantMatrixForm({
     );
 
     const basePrefix = (generalSku || title || 'PROD').slice(0, 4).toUpperCase().replace(/[^\w]/g, '');
-    const currentKeys = new Set(validVariants.map((v) => `${(v.color || '').trim().toLowerCase()}___${(v.size || '').trim().toUpperCase()}`));
-    const completedVariants = [...validVariants];
+    let completedVariants = [...validVariants];
 
-    colors.forEach((c) => {
-      selectedSizes.forEach((s) => {
-        const key = `${c.name.trim().toLowerCase()}___${s.trim().toUpperCase()}`;
-        if (!currentKeys.has(key)) {
+    // Se o usuário já possui variações configuradas na tabela, utiliza elas diretamente!
+    // Não força a adição de tamanhos com 5 unidades que o usuário deletou ou que têm estoque 0.
+    if (completedVariants.length === 0) {
+      colors.forEach((c) => {
+        selectedSizes.forEach((s) => {
           const colorImgs = mediaList
             .filter((m) => m.associatedColor === c.name || m.associatedColor === 'all')
             .map((m) => m.url);
@@ -1037,7 +1120,7 @@ export function ProductVariantMatrixForm({
             size: s,
             sku: `${basePrefix}-${c.name.slice(0, 3).toUpperCase().replace(/[^\w]/g, '')}-${s}`,
             barcode: `789${Math.floor(100000000 + Math.random() * 900000000)}`,
-            stock_quantity: 5,
+            stock_quantity: 0, // Inicia zerado, respeitando que o usuário só definirá o que tem em estoque
             price: parseFloat(defaultPrice) || 44.9,
             cost_price: parseFloat(defaultCostPrice) || 16.0,
             allow_backorder: true,
@@ -1045,9 +1128,9 @@ export function ProductVariantMatrixForm({
             images: colorImgs.length ? colorImgs : mediaList.map((m) => m.url).filter(Boolean),
             image: colorImgs[0] || mediaList[0]?.url || '',
           });
-        }
+        });
       });
-    });
+    }
 
     if (completedVariants.length === 0) {
       alert('Por favor, adicione ao menos uma cor e um tamanho para o produto.');
@@ -1213,6 +1296,13 @@ export function ProductVariantMatrixForm({
       });
 
       try {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('ana_fitness_product_draft_new');
+        }
+        setHasDraftRestored(false);
+      } catch (e) {}
+
+      try {
         await refreshProducts();
       } catch (e) {}
 
@@ -1372,6 +1462,44 @@ export function ProductVariantMatrixForm({
           </button>
         </div>
       </div>
+
+      {/* Alerta de Rascunho Recuperado Automaticamente */}
+      {hasDraftRestored && !initialProduct && (
+        <div className="p-4 bg-amber-50 border-2 border-amber-500 flex items-center justify-between text-xs font-bold text-amber-950 animate-fadeIn shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
+            <div>
+              <span className="font-black uppercase tracking-wider block">Rascunho Automático Recuperado!</span>
+              <span className="text-[11px] text-amber-900 font-normal">
+                Restauramos os dados, cores e variações que você estava preenchendo para que você não precise recomeçar tudo de novo.
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('Deseja realmente descartar este rascunho e recomeçar o formulário do zero?')) {
+                try {
+                  if (typeof window !== 'undefined') localStorage.removeItem('ana_fitness_product_draft_new');
+                } catch (e) {}
+                setHasDraftRestored(false);
+                setTitle('');
+                setSlug('');
+                setDescription('');
+                setDescriptionPt('');
+                setDescriptionEn('');
+                setVariants([]);
+                setMediaList([]);
+                setColors([{ name: 'Preto Ônix', hex: '#0A0A0A' }]);
+                setSelectedSizes(['P', 'M', 'G']);
+              }
+            }}
+            className="px-3 py-1.5 bg-amber-200/80 hover:bg-amber-300 text-amber-950 text-[10px] font-black uppercase tracking-wider transition rounded shrink-0 border border-amber-400"
+          >
+            Limpar e Começar do Zero
+          </button>
+        </div>
+      )}
 
       {/* Alerta de Feedback */}
       {feedback && (
@@ -2512,17 +2640,58 @@ export function ProductVariantMatrixForm({
                           </td>
 
                           <td className="p-2.5">
-                            <input
-                              type="number"
-                              min="0"
-                              value={v.stock_quantity}
-                              onChange={(e) => {
-                                const updated = [...variants];
-                                updated[idx].stock_quantity = Math.max(0, parseInt(e.target.value) || 0);
-                                setVariants(updated);
-                              }}
-                              className="w-16 p-1 border border-deep-black text-center font-mono font-bold text-xs bg-white"
-                            />
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={v.stock_quantity === 0 ? '0' : (v.stock_quantity || '')}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const updated = [...variants];
+                                    updated[idx].stock_quantity = val === '' ? 0 : Math.max(0, parseInt(val, 10) || 0);
+                                    setVariants(updated);
+                                  }}
+                                  className={`w-14 p-1 border text-center font-mono font-bold text-xs ${
+                                    v.stock_quantity === 0
+                                      ? 'border-amber-400 bg-amber-50/70 text-amber-900 font-black'
+                                      : 'border-deep-black bg-white text-deep-black'
+                                  }`}
+                                />
+                                {v.stock_quantity > 0 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...variants];
+                                      updated[idx].stock_quantity = 0;
+                                      setVariants(updated);
+                                    }}
+                                    className="text-[8px] font-bold px-1.5 py-0.5 border border-amber-300 text-amber-700 hover:bg-amber-100 transition rounded"
+                                    title="Zerar estoque deste tamanho (ex: não tem M ou GG em estoque)"
+                                  >
+                                    Zerar
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...variants];
+                                      updated[idx].stock_quantity = 1;
+                                      setVariants(updated);
+                                    }}
+                                    className="text-[8px] font-bold px-1.5 py-0.5 border border-emerald-300 text-emerald-700 hover:bg-emerald-100 transition rounded"
+                                    title="Definir 1 unidade em estoque"
+                                  >
+                                    +1 un
+                                  </button>
+                                )}
+                              </div>
+                              {v.stock_quantity === 0 && (
+                                <span className="text-[7.5px] font-black uppercase text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300">
+                                  Zerado (0 un)
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           <td className="p-2.5">

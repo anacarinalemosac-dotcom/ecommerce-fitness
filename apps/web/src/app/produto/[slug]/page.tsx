@@ -419,23 +419,19 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [selectedMediaIdx, setSelectedMediaIdx] = useState(0);
 
   // Grade ESTRITA de tamanhos com estoque real disponível (> 0)
-  // Se tiver um conjunto com apenas P, vai aparecer APENAS P no tamanho. Não aparece M, G, GG.
+  // Se tiver um conjunto com apenas P e G, vai aparecer APENAS P e G no tamanho. M e GG com estoque zero NÃO aparecem.
   // Se a peça for spoiler ou estoque zero, a lista fica vazia e a compra é bloqueada.
   const availableSizes = useMemo(() => {
     if (isSpoilerProduct) return [];
 
-    // Filtra variantes da cor selecionada com estoque real > 0
+    // Filtra estritamente as variantes da cor selecionada com estoque real > 0
     const colorInStock = (productData.variants || []).filter(
       (v: Variant) => v.color.toLowerCase() === selectedColor.toLowerCase() && Number(v.stock) > 0
     );
 
-    const sourceVariants = colorInStock.length > 0
-      ? colorInStock
-      : (productData.variants || []).filter((v: Variant) => Number(v.stock) > 0);
-
-    if (sourceVariants.length > 0) {
+    if (colorInStock.length > 0) {
       const set = new Set<string>();
-      sourceVariants.forEach((v: Variant) => {
+      colorInStock.forEach((v: Variant) => {
         if (v.size) set.add(v.size.toUpperCase());
       });
       const sizeOrder: Record<string, number> = { S: 1, P: 1, M: 2, L: 3, G: 3, XL: 4, GG: 4 };
@@ -444,6 +440,12 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       );
     }
 
+    // Se temos variantes cadastradas no produto e nenhuma desta cor tem estoque, o tamanho nesta cor é vazio
+    if (Array.isArray(productData.variants) && productData.variants.length > 0) {
+      return [];
+    }
+
+    // Fallback legado para produtos estáticos sem variantes
     if (!isSpoilerProduct && totalStock > 0 && Array.isArray(productData.sizes) && productData.sizes.length > 0) {
       return productData.sizes.map((s: string) => s.toUpperCase());
     }
