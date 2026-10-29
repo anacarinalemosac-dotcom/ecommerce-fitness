@@ -116,9 +116,9 @@ export async function GET(req: NextRequest) {
             return { name: cName, hex: match?.colorHex || '#0A0A0A' };
           });
 
-      const resolvedSizes = Array.isArray(meta.sizes) && meta.sizes.length > 0
-        ? meta.sizes
-        : Array.from(new Set(effectiveVariants.map((v: any) => v.size).filter(Boolean)));
+      const variantSizes = effectiveVariants.map((v: any) => v.size).filter(Boolean);
+      const metaSizes = Array.isArray(meta.sizes) ? meta.sizes.filter(Boolean) : [];
+      const resolvedSizes = Array.from(new Set([...metaSizes, ...variantSizes]));
 
       const enrichedProduct = {
         ...product,
@@ -135,13 +135,21 @@ export async function GET(req: NextRequest) {
         costPrice: resolvedCost,
         visible_online: meta.visible_online === true,
         visible_pos: meta.visible_pos !== false,
-        variants: (effectiveVariants || []).map((v: any) => ({
-          ...v,
-          price: (v.price !== undefined && v.price !== null && !isNaN(Number(v.price))) ? Number(v.price) : resolvedPrice,
-          images: Array.isArray(v.images) && v.images.length > 0 ? v.images : (v.image ? [v.image] : galleryImages),
-          cost_price: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
-          costPrice: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
-        })),
+        variants: (effectiveVariants || []).map((v: any) => {
+          let varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
+          if (!varImg && Array.isArray(meta.media_list) && v.color) {
+            const mMatch = meta.media_list.find((m: any) => m.associatedColor && m.associatedColor.trim().toLowerCase() === v.color.trim().toLowerCase());
+            if (mMatch?.url) varImg = mMatch.url;
+          }
+          return {
+            ...v,
+            image: varImg || galleryImages[0] || primaryImage,
+            images: varImg ? [varImg] : (Array.isArray(v.images) && v.images.length > 0 ? v.images : galleryImages),
+            price: (v.price !== undefined && v.price !== null && !isNaN(Number(v.price))) ? Number(v.price) : resolvedPrice,
+            cost_price: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
+            costPrice: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
+          };
+        }),
       };
 
       return NextResponse.json(
@@ -227,9 +235,9 @@ export async function GET(req: NextRequest) {
             return { name: cName, hex: match?.colorHex || '#0A0A0A' };
           });
 
-      const resolvedSizes = Array.isArray(meta.sizes) && meta.sizes.length > 0
-        ? meta.sizes
-        : Array.from(new Set(effectiveVariants.map((v: any) => v.size).filter(Boolean)));
+      const variantSizes = effectiveVariants.map((v: any) => v.size).filter(Boolean);
+      const metaSizes = Array.isArray(meta.sizes) ? meta.sizes.filter(Boolean) : [];
+      const resolvedSizes = Array.from(new Set([...metaSizes, ...variantSizes]));
 
       return {
         ...p,
@@ -246,13 +254,21 @@ export async function GET(req: NextRequest) {
         costPrice: resolvedCost,
         visible_online: meta.visible_online === true,
         visible_pos: meta.visible_pos !== false,
-        variants: effectiveVariants.map((v: any) => ({
-          ...v,
-          price: (v.price !== undefined && v.price !== null && !isNaN(Number(v.price))) ? Number(v.price) : resolvedPrice,
-          images: Array.isArray(v.images) && v.images.length > 0 ? v.images : (v.image ? [v.image] : galleryImages),
-          cost_price: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
-          costPrice: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
-        })),
+        variants: effectiveVariants.map((v: any) => {
+          let varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
+          if (!varImg && Array.isArray(meta.media_list) && v.color) {
+            const mMatch = meta.media_list.find((m: any) => m.associatedColor && m.associatedColor.trim().toLowerCase() === v.color.trim().toLowerCase());
+            if (mMatch?.url) varImg = mMatch.url;
+          }
+          return {
+            ...v,
+            image: varImg || galleryImages[0] || primaryImage,
+            images: varImg ? [varImg] : (Array.isArray(v.images) && v.images.length > 0 ? v.images : galleryImages),
+            price: (v.price !== undefined && v.price !== null && !isNaN(Number(v.price))) ? Number(v.price) : resolvedPrice,
+            cost_price: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
+            costPrice: (v.cost_price !== undefined && v.cost_price !== null) ? Number(v.cost_price) : resolvedCost,
+          };
+        }),
         total_stock: effectiveVariants.reduce((sum: number, v: any) => sum + (v.stock_quantity || 0), 0),
       };
     });

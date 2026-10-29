@@ -273,6 +273,19 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       });
     }
 
+    if (Array.isArray((dynamicProduct as any).media_list)) {
+      (dynamicProduct as any).media_list.forEach((m: any, idx: number) => {
+        if (m?.url && !mediaList.some((med) => med.url === m.url)) {
+          mediaList.push({
+            type: m.type === 'video' ? 'video' : 'image',
+            url: m.url,
+            label: m.label || `${m.associatedColor || 'Detail'} ${idx + 1}`,
+            color: m.associatedColor || 'all',
+          });
+        }
+      });
+    }
+
     // Se temos variantes completas salvas no Supabase, mapeamos diretamente
     let variantsList: Variant[] = [];
 
@@ -286,7 +299,14 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           cName.toLowerCase().includes('vinho') || cName.toLowerCase().includes('marsala') ? '#800020' :
           cName.toLowerCase().includes('verd') ? '#2E4F4F' : '#0A0A0A';
 
-        const varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
+        let varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
+        if (!varImg && Array.isArray((dynamicProduct as any).media_list)) {
+          const mMatch = (dynamicProduct as any).media_list.find(
+            (m: any) => m.associatedColor && m.associatedColor.trim().toLowerCase() === cName.trim().toLowerCase()
+          );
+          if (mMatch?.url) varImg = mMatch.url;
+        }
+
         if (varImg) {
           const existingMedia = mediaList.find((m) => m.url === varImg);
           if (existingMedia) {
@@ -743,6 +763,18 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const handleSelectSize = (sz: string) => {
     setSelectedSize(sz);
   };
+
+  // Pre-seleciona cor se vier via parâmetro de URL (?cor=...)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const corParam = params.get('cor');
+      if (corParam) {
+        handleSelectColor(corParam);
+      }
+    } catch (_) {}
+  }, [productData.variants, productData.media]);
 
   // Dispara evento de ViewContent / view_item nos Pixels
   useEffect(() => {

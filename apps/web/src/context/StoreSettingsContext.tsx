@@ -217,6 +217,7 @@ export interface ProductItem {
   brand?: string;
   comparePrice?: number;
   productType?: string;
+  media_list?: any[];
   description?: string;
   descriptionPt?: string;
   descriptionEn?: string;
@@ -725,8 +726,17 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
               v.images.forEach((img: string) => {
                 if (img && !allImages.includes(img)) allImages.push(img);
               });
+            } else if (v.image && !allImages.includes(v.image)) {
+              allImages.push(v.image);
             }
           });
+
+          if (Array.isArray(p.sizes)) {
+            p.sizes.forEach((s: string) => { if (s) sizesSet.add(s); });
+          }
+          if (Array.isArray(meta.sizes)) {
+            meta.sizes.forEach((s: string) => { if (s) sizesSet.add(s); });
+          }
 
           if (Array.isArray(p.images)) {
             p.images.forEach((img: string) => {
@@ -741,6 +751,16 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
           if (Array.isArray(meta.gallery)) {
             meta.gallery.forEach((img: string) => {
               if (img && !allImages.includes(img)) allImages.push(img);
+            });
+          }
+          if (Array.isArray(p.media_list)) {
+            p.media_list.forEach((m: any) => {
+              if (m?.url && !allImages.includes(m.url)) allImages.push(m.url);
+            });
+          }
+          if (Array.isArray(meta.media_list)) {
+            meta.media_list.forEach((m: any) => {
+              if (m?.url && !allImages.includes(m.url)) allImages.push(m.url);
             });
           }
 
@@ -1026,6 +1046,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             brand: meta.brand || 'ANA Fitness Wear',
             comparePrice: meta.compare_price ? Number(meta.compare_price) : undefined,
             productType: meta.product_type || 'physical',
+            media_list: p.media_list || meta.media_list || [],
           };
         });
 
