@@ -568,21 +568,42 @@ export default function CheckoutPage() {
           }),
         });
 
-        if (stripeRes.ok) {
-          const stripeData = await stripeRes.json();
-          if (stripeData.configured && stripeData.url) {
-            // Mantém os dados da sacola para o caso da cliente voltar da Stripe ou navegar
-            // A limpeza final só ocorre quando o pagamento for confirmado em /checkout/success
-            window.location.href = stripeData.url;
-            return;
-          }
+        const stripeData = await stripeRes.json();
+        if (stripeRes.ok && stripeData.configured && stripeData.url) {
+          // Redireciona imediatamente para o ambiente oficial de pagamento (Stripe / Afterpay / Affirm)
+          window.location.href = stripeData.url;
+          return;
+        } else {
+          // Se o Stripe falhar ou o método não estiver ativo, NUNCA aprova pedido falso!
+          setIsSubmitting(false);
+          const errorMsg =
+            stripeData?.error ||
+            stripeData?.message ||
+            (lang === 'pt'
+              ? 'Não foi possível conectar com o checkout online do Stripe/Afterpay. Por favor, verifique se a forma de pagamento está ativa no Stripe ou tente com Cartão.'
+              : 'Unable to connect to Stripe/Afterpay online checkout. Please try again or use another payment method.');
+          setAddressErrors([errorMsg]);
+          const box = document.getElementById('payment-methods-box');
+          if (box) box.scrollIntoView({ behavior: 'smooth' });
+          return;
         }
-      } catch (err) {
-        console.warn('Stripe checkout fallback para modo simulação:', err);
+      } catch (err: any) {
+        setIsSubmitting(false);
+        setAddressErrors([
+          err?.message ||
+            (lang === 'pt'
+              ? 'Erro de comunicação com o processador de pagamento. Tente novamente.'
+              : 'Connection error communicating with payment processor.'),
+        ]);
+        return;
       }
     }
 
-    // 2. Fallback / Pagamentos Zelle, Venmo ou teste
+    // 2. Pagamentos Manuais Offline (Apenas Zelle e Venmo)
+    if (paymentMethod !== 'ZELLE' && paymentMethod !== 'VENMO') {
+      setIsSubmitting(false);
+      return;
+    }
     try {
       await fetch('/api/backoffice/sales', {
         method: 'POST',
