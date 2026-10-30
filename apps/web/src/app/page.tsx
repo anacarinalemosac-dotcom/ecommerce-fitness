@@ -159,6 +159,7 @@ const FEATURED_PRODUCTS: ProductItem[] = [
     sizes: ['S', 'M', 'L', 'XL'],
     stock: 0,
     allowBackorder: false,
+    visibleOnline: false,
   },
   {
     id: 'p5',
@@ -184,6 +185,7 @@ const FEATURED_PRODUCTS: ProductItem[] = [
     sizes: ['S', 'M', 'L'],
     stock: 0,
     allowBackorder: false,
+    visibleOnline: false,
   },
   {
     id: 'p6',
@@ -370,8 +372,8 @@ export default function HomePage() {
 
   // Vitrine exibe estritamente produtos com visibilidade online ativa
   const onlineProducts = storeProducts && storeProducts.length > 0
-    ? storeProducts.filter((p) => p.visibleOnline !== false)
-    : FEATURED_PRODUCTS;
+    ? storeProducts.filter((p) => p.visibleOnline === true)
+    : FEATURED_PRODUCTS.filter((p) => p.visibleOnline === true);
   const activeProducts = onlineProducts;
 
   // Função auxiliar: identifica se a peça é SPOILER (se zerou o estoque, categoria spoiler/preorder ou badge spoiler)

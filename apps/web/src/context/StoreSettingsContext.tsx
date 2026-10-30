@@ -572,6 +572,7 @@ const DEFAULT_PRODUCTS: ProductItem[] = [
     removableCups: true,
     sku: 'KEL-BLK-M',
     barcode: '789100000004',
+    visibleOnline: false,
   },
   {
     id: 'p5',
@@ -611,6 +612,7 @@ const DEFAULT_PRODUCTS: ProductItem[] = [
     removableCups: true,
     sku: 'DEL-BLK-M',
     barcode: '789100000005',
+    visibleOnline: false,
   },
   {
     id: 'p6',
