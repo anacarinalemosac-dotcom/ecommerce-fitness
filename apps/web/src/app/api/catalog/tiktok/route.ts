@@ -168,7 +168,14 @@ export async function GET(req: NextRequest) {
             });
             const inStockImg = inStockVar ? (inStockVar.image || (Array.isArray(inStockVar.images) && inStockVar.images[0])) : null;
 
-            const primaryImage = inStockImg || meta.primary_image || meta.images?.[0] || effectiveVars[0]?.images?.[0] || effectiveVars[0]?.image || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
+            // Prioriza imagem de capa definida pela lojista
+            const primaryImage =
+              meta.primary_image ||
+              meta.images?.[0] ||
+              inStockImg ||
+              effectiveVars[0]?.images?.[0] ||
+              effectiveVars[0]?.image ||
+              'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
             const gallery = Array.isArray(meta.images) && meta.images.length > 0
               ? meta.images
               : [primaryImage];
@@ -237,12 +244,13 @@ export async function GET(req: NextRequest) {
         const variantImg = v.image || (Array.isArray(v.images) && v.images[0]) || prod.primaryImage;
         const addImg = prod.images?.find((img: string) => img !== variantImg) || prod.primaryImage;
         const itemPrice = Number(v.price || prod.price).toFixed(2);
+        const richDesc = `${prod.title} by ANA FITNESS WEAR LLC. Luxury activewear engineered with anatomical sculpt compression and guaranteed 100% squat-proof zero-transparency fabric. Fabric composition: 84% Polyamide, 16% Elastane. Ergonomic waistband support, moisture-wicking and ultra-durable finish. Care: Machine wash cold, hang dry. Dispatched from Leominster, MA, United States via USPS Priority Mail ($9.99 flat rate across all 50 states).`;
 
         feedItems.push({
           id: sku,
           item_group_id: prod.slug,
-          title: `${prod.title} - ${color} (${size})`,
-          description: `${prod.description} Zero transparência e modelagem anatômica. Marca oficial ANA FITNESS WEAR LLC.`,
+          title: `${prod.title} - ${color} (${size}) | Squat-Proof Activewear`,
+          description: richDesc,
           link: itemUrl,
           image_link: variantImg,
           additional_image_link: addImg,
@@ -262,6 +270,37 @@ export async function GET(req: NextRequest) {
         });
       });
     });
+
+    // 1.5 Se o formato solicitado for JSON (para a Central TikTok do Backoffice e APIs)
+    if (format === 'json') {
+      return NextResponse.json({
+        success: true,
+        totalItems: feedItems.length,
+        totalProducts: rawProducts.length,
+        feedUrl: `${origin}/api/catalog/tiktok`,
+        csvUrl: `${origin}/api/catalog/tiktok?format=csv`,
+        items: feedItems,
+        products: rawProducts.map((p) => {
+          const itemUrl = `${origin}/produto/${p.slug}?utm_source=tiktok&utm_medium=social&utm_campaign=product_showcase`;
+          return {
+            id: p.id,
+            slug: p.slug,
+            title: p.title,
+            category: p.category,
+            price: Number(p.price).toFixed(2),
+            primaryImage: p.primaryImage,
+            images: p.images,
+            variants: p.variants,
+            tiktokLink: itemUrl,
+            shareText: `✨ ${p.title} • ANA FITNESS WEAR\nModa fitness premium com compressão anatômica e ZERO transparência.\nPreço: $${Number(p.price).toFixed(2)} USD • Frete Fixo USPS $9.99\nCompre agora: ${itemUrl}\n\n#anafitnesswear #fitnesswear #squatproof #activewear #workout`,
+          };
+        }),
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      });
+    }
 
     // 2. Se o formato solicitado for CSV
     if (format === 'csv') {

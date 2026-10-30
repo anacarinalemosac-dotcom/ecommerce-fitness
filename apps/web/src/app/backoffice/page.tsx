@@ -97,6 +97,7 @@ import { AccessReportsView } from '../../components/backoffice/AccessReportsView
 import { InventoryReportView } from '../../components/backoffice/InventoryReportView';
 import { SalesReportModal } from '../../components/backoffice/SalesReportModal';
 import CouponsManagerView from '../../components/backoffice/CouponsManagerView';
+import { TikTokCatalogModal } from '../../components/backoffice/TikTokCatalogModal';
 import {
   generateReceiptWhatsAppMessage,
   generateCrediarioWhatsAppMessage,
@@ -265,6 +266,8 @@ export default function BackofficeDashboard() {
   const [loadingWriteOffs, setLoadingWriteOffs] = useState(false);
   const [showWhatsAppCatalogModal, setShowWhatsAppCatalogModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showTikTokModal, setShowTikTokModal] = useState(false);
+  const [copiedTikTokSlug, setCopiedTikTokSlug] = useState<string | null>(null);
 
   // Filtros e Busca Rápida no Catálogo de Produtos
   const [productSearch, setProductSearch] = useState('');
@@ -2273,6 +2276,16 @@ export default function BackofficeDashboard() {
 
             <button
               type="button"
+              onClick={() => setShowTikTokModal(true)}
+              className="px-3 py-1.5 bg-black hover:bg-gold hover:text-deep-black text-white font-black text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-gold/50 cursor-pointer shadow-xs"
+              title="Abrir Central de Links e Catálogo do TikTok"
+            >
+              <span className="text-xs">🎵</span>
+              <span>Links TikTok Shop</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setShowCategoryModal(true)}
               className="px-3 py-1.5 bg-white/5 hover:bg-gold hover:text-deep-black text-white/80 font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-white/15 cursor-pointer"
             >
@@ -2708,6 +2721,20 @@ export default function BackofficeDashboard() {
               >
                 <Layers className="w-3.5 h-3.5 text-gold" />
                 <span>Capas das Categorias</span>
+              </button>
+
+              {/* Botão Central de Links TikTok */}
+              <button
+                type="button"
+                onClick={() => setShowTikTokModal(true)}
+                className="px-4 py-3 border-2 border-deep-black bg-black text-white hover:bg-gold hover:text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm cursor-pointer"
+                title="Abrir Central de Links e Catálogo do TikTok"
+              >
+                <span className="text-sm">🎵</span>
+                <span>Links TikTok</span>
+                <span className="px-1.5 py-0.5 bg-gold text-deep-black text-[9px] font-black">
+                  FEED PRONTO
+                </span>
               </button>
 
               {/* Botão Gerenciar Categorias */}
@@ -3245,6 +3272,30 @@ export default function BackofficeDashboard() {
                           >
                             <Edit3 className="w-3.5 h-3.5 text-gold" />
                             <span>EDITAR</span>
+                          </button>
+
+                          {/* Botão Copiar Link TikTok */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const productUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://anafitwear.com'}/produto/${item.slug}?utm_source=tiktok&utm_medium=social&utm_campaign=product_showcase`;
+                              try {
+                                if (navigator.clipboard) {
+                                  navigator.clipboard.writeText(productUrl);
+                                }
+                              } catch (e) {}
+                              setCopiedTikTokSlug(item.slug || item.id);
+                              setTimeout(() => setCopiedTikTokSlug(null), 3000);
+                            }}
+                            className={`p-1.5 border transition flex items-center gap-1 text-[10px] font-black cursor-pointer shadow-xs ${
+                              copiedTikTokSlug === (item.slug || item.id)
+                                ? 'bg-green-600 border-green-700 text-white'
+                                : 'border-deep-black bg-black text-white hover:bg-gold hover:text-deep-black hover:border-gold'
+                            }`}
+                            title="Copiar link formatado no padrão TikTok com rastreamento UTM"
+                          >
+                            <span>🎵</span>
+                            <span>{copiedTikTokSlug === (item.slug || item.id) ? '✓ COPIADO!' : 'LINK TIKTOK'}</span>
                           </button>
 
                           <button
@@ -7291,6 +7342,12 @@ export default function BackofficeDashboard() {
         periodLabel={getSalesPeriodLabel()}
         onExportCsv={handleExportSalesCsv}
         onPrintReport={handlePrintSalesReportWindow}
+      />
+
+      {/* Central de Links & Catálogo Oficial do TikTok Shop */}
+      <TikTokCatalogModal
+        isOpen={showTikTokModal}
+        onClose={() => setShowTikTokModal(false)}
       />
     </div>
   );
