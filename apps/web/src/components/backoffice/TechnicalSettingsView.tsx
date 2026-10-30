@@ -22,12 +22,32 @@ import {
   Radio,
   Globe,
   Download,
+  Power,
+  Eye,
+  AlertTriangle,
 } from 'lucide-react';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 
 export function TechnicalSettingsView() {
   const { siteInfo, updateSiteInfo, changeMasterPassword, adminProfiles } = useStoreSettings();
   const [baseUrl, setBaseUrl] = useState('https://anafitwear.com');
+
+  // Estados de Loja Fora do Ar (Modo Manutenção)
+  const [storeOffline, setStoreOffline] = useState(siteInfo.storeOffline || false);
+  const [maintenanceTitle, setMaintenanceTitle] = useState(
+    siteInfo.maintenanceTitle || 'Estamos Preparando Novidades!'
+  );
+  const [maintenanceMessage, setMaintenanceMessage] = useState(
+    siteInfo.maintenanceMessage ||
+      'Nossa loja online está passando por uma breve manutenção e preparando uma nova coleção exclusiva. Em breve estaremos de volta!'
+  );
+  const [maintenanceEstimatedReturn, setMaintenanceEstimatedReturn] = useState(
+    siteInfo.maintenanceEstimatedReturn || ''
+  );
+  const [maintenanceShowContact, setMaintenanceShowContact] = useState(
+    siteInfo.maintenanceShowContact !== false
+  );
+  const [saveMaintenanceSuccess, setSaveMaintenanceSuccess] = useState(false);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined' && window.location.origin) {
@@ -76,6 +96,11 @@ export function TechnicalSettingsView() {
     if (siteInfo.tiktokShopId !== undefined) setTiktokShopId(siteInfo.tiktokShopId || '7494943021231081116');
     if (siteInfo.tiktokShopCipher !== undefined) setTiktokShopCipher(siteInfo.tiktokShopCipher || '');
     if (siteInfo.tiktokShopAutoSync !== undefined) setTiktokShopAutoSync(siteInfo.tiktokShopAutoSync || false);
+    if (siteInfo.storeOffline !== undefined) setStoreOffline(siteInfo.storeOffline || false);
+    if (siteInfo.maintenanceTitle !== undefined) setMaintenanceTitle(siteInfo.maintenanceTitle || 'Estamos Preparando Novidades!');
+    if (siteInfo.maintenanceMessage !== undefined) setMaintenanceMessage(siteInfo.maintenanceMessage || '');
+    if (siteInfo.maintenanceEstimatedReturn !== undefined) setMaintenanceEstimatedReturn(siteInfo.maintenanceEstimatedReturn || '');
+    if (siteInfo.maintenanceShowContact !== undefined) setMaintenanceShowContact(siteInfo.maintenanceShowContact !== false);
   }, [
     siteInfo.metaPixelId,
     siteInfo.googleAnalyticsId,
@@ -88,7 +113,38 @@ export function TechnicalSettingsView() {
     siteInfo.tiktokShopId,
     siteInfo.tiktokShopCipher,
     siteInfo.tiktokShopAutoSync,
+    siteInfo.storeOffline,
+    siteInfo.maintenanceTitle,
+    siteInfo.maintenanceMessage,
+    siteInfo.maintenanceEstimatedReturn,
+    siteInfo.maintenanceShowContact,
   ]);
+
+  const handleToggleStoreOffline = (newOfflineState: boolean) => {
+    setStoreOffline(newOfflineState);
+    updateSiteInfo({
+      storeOffline: newOfflineState,
+      maintenanceTitle: maintenanceTitle.trim(),
+      maintenanceMessage: maintenanceMessage.trim(),
+      maintenanceEstimatedReturn: maintenanceEstimatedReturn.trim(),
+      maintenanceShowContact,
+    });
+    setSaveMaintenanceSuccess(true);
+    setTimeout(() => setSaveMaintenanceSuccess(false), 4000);
+  };
+
+  const handleSaveMaintenanceConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateSiteInfo({
+      storeOffline,
+      maintenanceTitle: maintenanceTitle.trim(),
+      maintenanceMessage: maintenanceMessage.trim(),
+      maintenanceEstimatedReturn: maintenanceEstimatedReturn.trim(),
+      maintenanceShowContact,
+    });
+    setSaveMaintenanceSuccess(true);
+    setTimeout(() => setSaveMaintenanceSuccess(false), 4000);
+  };
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -266,6 +322,161 @@ export function TechnicalSettingsView() {
           <span>✓ Parâmetros de frete e prazos atualizados com sucesso!</span>
         </div>
       )}
+
+      {/* 0. STATUS DE OPERAÇÃO DA LOJA (ONLINE / FORA DO AR) */}
+      <div
+        className={`p-6 border-2 transition-all ${
+          storeOffline
+            ? 'bg-red-50/70 border-red-600 shadow-luxury'
+            : 'bg-white border-deep-black shadow-sm'
+        }`}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4 mb-5 border-deep-black/10">
+          <div>
+            <div className="flex items-center gap-2">
+              <Power className={`w-5 h-5 ${storeOffline ? 'text-red-600' : 'text-green-600'}`} />
+              <h3 className="text-sm font-black uppercase tracking-wider text-deep-black">
+                STATUS DE OPERAÇÃO DA LOJA (ONLINE / FORA DO AR)
+              </h3>
+            </div>
+            <p className="text-xs text-deep-black/70 mt-1">
+              Ative quando quiser colocar a loja fora do ar para manutenção, reposição de estoque ou atualização de coleção.
+            </p>
+          </div>
+
+          <div>
+            {storeOffline ? (
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white text-xs font-black uppercase tracking-wider shadow animate-pulse">
+                <span className="w-2.5 h-2.5 rounded-full bg-white" />
+                <span>🔴 LOJA FORA DO AR (MODO MANUTENÇÃO ATIVO)</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-100 border border-green-400 text-green-900 text-xs font-black uppercase tracking-wider">
+                <span className="w-2.5 h-2.5 rounded-full bg-green-600 animate-pulse" />
+                <span>🟢 LOJA NO AR (ONLINE E DISPONÍVEL)</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Botão de Chave Mestre de Ativação / Desativação */}
+        <div className="p-4 sm:p-5 bg-white border-2 border-deep-black/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <span className="text-xs font-black uppercase tracking-wider text-deep-black block">
+              {storeOffline
+                ? 'A loja está FORA DO AR para os clientes.'
+                : 'A loja está ONLINE para os clientes.'}
+            </span>
+            <span className="text-[11px] text-deep-black/70 block">
+              {storeOffline
+                ? 'Visitantes comuns veem a tela de manutenção personalizada. O seu Backoffice continua 100% liberado para trabalhar.'
+                : 'Todos os produtos ativos e páginas estão disponíveis normalmente para compra online.'}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              const nextState = !storeOffline;
+              if (
+                nextState &&
+                !window.confirm(
+                  'Deseja realmente colocar a loja FORA DO AR? Os clientes não conseguirão visualizar a vitrine nem comprar enquanto o modo manutenção estiver ativo.'
+                )
+              ) {
+                return;
+              }
+              handleToggleStoreOffline(nextState);
+            }}
+            className={`px-6 py-3.5 font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow cursor-pointer shrink-0 ${
+              storeOffline
+                ? 'bg-green-600 hover:bg-green-500 text-white border-2 border-green-700'
+                : 'bg-red-600 hover:bg-red-700 text-white border-2 border-red-800'
+            }`}
+          >
+            <Power className="w-4 h-4" />
+            <span>{storeOffline ? '✓ COLOCAR LOJA NO AR AGORA' : '✕ COLOCAR LOJA FORA DO AR'}</span>
+          </button>
+        </div>
+
+        {saveMaintenanceSuccess && (
+          <div className="mt-4 p-3 bg-green-100 border-2 border-green-500 text-green-900 text-xs font-black uppercase tracking-wider flex items-center gap-2 animate-fadeIn">
+            <CheckCircle2 className="w-4 h-4 text-green-700" />
+            <span>✓ Configuração de status da loja salva com sucesso no sistema!</span>
+          </div>
+        )}
+
+        {/* Formulário de Personalização da Tela de Manutenção */}
+        <form onSubmit={handleSaveMaintenanceConfig} className="mt-6 pt-5 border-t border-deep-black/10 space-y-4">
+          <span className="text-xs font-black uppercase tracking-widest text-deep-black flex items-center gap-1.5">
+            <Settings className="w-3.5 h-3.5 text-gold" />
+            <span>PERSONALIZAR TEXTOS DA TELA DE MANUTENÇÃO (QUANDO A LOJA ESTIVER FORA DO AR)</span>
+          </span>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                TÍTULO PRINCIPAL DA TELA DE MANUTENÇÃO
+              </label>
+              <input
+                type="text"
+                value={maintenanceTitle}
+                onChange={(e) => setMaintenanceTitle(e.target.value)}
+                placeholder="Ex: Estamos Preparando Novidades!"
+                className="w-full p-2.5 bg-white border border-deep-black/30 text-xs font-bold text-deep-black uppercase focus:border-gold outline-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+                PREVISÃO DE RETORNO (OPCIONAL)
+              </label>
+              <input
+                type="text"
+                value={maintenanceEstimatedReturn}
+                onChange={(e) => setMaintenanceEstimatedReturn(e.target.value)}
+                placeholder="Ex: Hoje às 20h (EST) / Amanhã às 09:00"
+                className="w-full p-2.5 bg-white border border-deep-black/30 text-xs text-deep-black focus:border-gold outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase tracking-widest text-deep-black">
+              MENSAGEM EXPLICATIVA AOS CLIENTES
+            </label>
+            <textarea
+              rows={3}
+              value={maintenanceMessage}
+              onChange={(e) => setMaintenanceMessage(e.target.value)}
+              placeholder="Ex: Nossa loja online está passando por uma breve manutenção e preparando uma nova coleção exclusiva. Em breve estaremos de volta!"
+              className="w-full p-2.5 bg-white border border-deep-black/30 text-xs text-deep-black focus:border-gold outline-none"
+            />
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-deep-black uppercase">
+              <input
+                type="checkbox"
+                checked={maintenanceShowContact}
+                onChange={(e) => setMaintenanceShowContact(e.target.checked)}
+                className="w-4 h-4 text-gold border-deep-black focus:ring-gold"
+              />
+              <span>Exibir botão direto para o cliente falar no WhatsApp com a Ana</span>
+            </label>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <Save className="w-3.5 h-3.5 text-gold" />
+                <span>Salvar Textos</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
 
       {/* 1. MEIOS DE PAGAMENTO & STATUS DE GATEWAYS */}
       <div className="bg-white border-2 border-deep-black p-6 space-y-6">

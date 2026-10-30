@@ -8,6 +8,7 @@ import { CustomerChatWidget } from '../components/CustomerChatWidget';
 import { LiveVisitorTracker } from '../components/LiveVisitorTracker';
 import { AffiliateLinkTracker } from '../components/AffiliateLinkTracker';
 import { TrackingScripts } from '../components/TrackingScripts';
+import { StoreMaintenanceGuard } from '../components/StoreMaintenanceGuard';
 
 export const metadata: Metadata = {
   title: 'ANA FITNESS WEAR | ✨Wear Your Strength✨ | Official US Store',
@@ -36,13 +37,15 @@ export default function RootLayout({
           <TrackingScripts />
           <LiveVisitorTracker />
           <AffiliateLinkTracker />
-          <SiteHeader />
-          <main className="flex-1 w-full">
-            {children}
-          </main>
-          <SiteFooter />
-          <FloatingLanguageSwitcher />
-          <CustomerChatWidget />
+          <StoreMaintenanceGuard>
+            <SiteHeader />
+            <main className="flex-1 w-full">
+              {children}
+            </main>
+            <SiteFooter />
+            <FloatingLanguageSwitcher />
+            <CustomerChatWidget />
+          </StoreMaintenanceGuard>
         </Providers>
       </body>
     </html>

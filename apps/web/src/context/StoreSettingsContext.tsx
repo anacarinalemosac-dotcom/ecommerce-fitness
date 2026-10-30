@@ -153,6 +153,12 @@ export interface SiteInfo {
   tiktokShopId?: string;
   tiktokShopCipher?: string;
   tiktokShopAutoSync?: boolean;
+  // Configuração Loja Fora do Ar (Modo Manutenção)
+  storeOffline?: boolean;
+  maintenanceTitle?: string;
+  maintenanceMessage?: string;
+  maintenanceEstimatedReturn?: string;
+  maintenanceShowContact?: boolean;
 }
 
 export interface SiteImages {
@@ -383,6 +389,11 @@ const DEFAULT_SITE_INFO: SiteInfo = {
   tiktokShopId: '7494943021231081116',
   tiktokShopCipher: '',
   tiktokShopAutoSync: false,
+  storeOffline: false,
+  maintenanceTitle: 'Estamos Preparando Novidades!',
+  maintenanceMessage: 'Nossa loja online está passando por uma breve manutenção e preparando uma nova coleção exclusiva. Em breve estaremos de volta!',
+  maintenanceEstimatedReturn: '',
+  maintenanceShowContact: true,
 };
 
 const DEFAULT_SITE_IMAGES: SiteImages = {

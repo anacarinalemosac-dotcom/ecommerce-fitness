@@ -74,6 +74,7 @@ import {
   Calendar,
   AlertTriangle,
   Phone,
+  Power,
 } from 'lucide-react';
 import { computeSaleFinancials } from '@/lib/salesFinancials';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
@@ -233,7 +234,7 @@ const INITIAL_CATALOG: CatalogProduct[] = [
 
 
 export default function BackofficeDashboard() {
-  const { adminUser, loginAdmin, logoutAdmin, refreshProducts, siteInfo } = useStoreSettings();
+  const { adminUser, loginAdmin, logoutAdmin, refreshProducts, siteInfo, updateSiteInfo } = useStoreSettings();
   const [authEmail, setAuthEmail] = useState('anafitweareua@gmail.com');
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
@@ -1984,6 +1985,28 @@ export default function BackofficeDashboard() {
             </div>
           </button>
 
+          {/* Botão de Status da Loja: No Ar / Fora do Ar */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('settings');
+              if (typeof window !== 'undefined') {
+                window.scrollTo({ top: 300, behavior: 'smooth' });
+              }
+            }}
+            className={`p-2 sm:p-2.5 border transition flex items-center gap-1.5 text-xs font-black uppercase tracking-wider cursor-pointer ${
+              siteInfo.storeOffline
+                ? 'bg-red-600 text-white border-red-500 animate-pulse shadow-md'
+                : 'bg-green-500/20 text-green-400 border-green-500/40 hover:bg-green-500/30'
+            }`}
+            title={siteInfo.storeOffline ? 'Loja está FORA DO AR (Modo Manutenção). Clique para configurar.' : 'Loja está ONLINE e no ar. Clique para configurar.'}
+          >
+            <Power className={`w-4 h-4 ${siteInfo.storeOffline ? 'text-white' : 'text-green-400'}`} />
+            <span className="text-[10px] sm:text-xs font-black">
+              {siteInfo.storeOffline ? '🔴 FORA DO AR' : '🟢 LOJA NO AR'}
+            </span>
+          </button>
+
           {/* Botão de Bloquear Painel / Sair da Sessão */}
           <button
             type="button"
@@ -1996,6 +2019,45 @@ export default function BackofficeDashboard() {
           </button>
         </div>
       </div>
+
+      {/* Alerta de Loja Fora do Ar (Modo Manutenção Ativo) */}
+      {siteInfo.storeOffline && (
+        <div className="bg-red-600 text-white px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-2 border-red-800 shadow-luxury animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-white text-red-600 font-black shrink-0 shadow-sm">
+              <Power className="w-5 h-5 text-red-600 animate-pulse" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-wider text-white">
+                ⚠️ A SUA LOJA ESTÁ FORA DO AR PARA O PÚBLICO (MODO MANUTENÇÃO ATIVO)
+              </p>
+              <p className="text-[11px] text-white/90 font-medium">
+                Os clientes estão vendo a tela de manutenção. Você pode continuar mexendo no catálogo e nas configurações livremente.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('Deseja colocar a loja NO AR agora para todos os clientes comprarem?')) {
+                  updateSiteInfo({ storeOffline: false });
+                }
+              }}
+              className="px-4 py-2 bg-white hover:bg-gold hover:text-deep-black text-red-700 font-black text-xs uppercase tracking-wider transition shadow cursor-pointer"
+            >
+              🟢 COLOCAR NO AR AGORA
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('settings')}
+              className="px-3 py-2 bg-red-900/60 hover:bg-red-900 text-white border border-white/20 font-bold text-xs uppercase tracking-wider transition cursor-pointer"
+            >
+              Ajustar Textos
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Banner de Ativação de Notificações Push para Celular */}
       {!browserNotificationsActive && (
