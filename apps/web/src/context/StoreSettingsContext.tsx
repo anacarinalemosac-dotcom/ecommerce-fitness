@@ -786,12 +786,15 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
                 : effectiveInStockVariant.image)
             : null;
 
-          if (meta.primary_image && !allImages.includes(meta.primary_image)) {
+          // Se a lojista escolheu explicitamente uma foto de capa (primary_image), ela tem PRIORIDADE MÁXIMA e NUNCA é sobreposta!
+          if (meta.primary_image) {
+            const pIdx = allImages.indexOf(meta.primary_image);
+            if (pIdx !== -1) {
+              allImages.splice(pIdx, 1);
+            }
             allImages.unshift(meta.primary_image);
-          }
-
-          // REGRA DE OURO: Se houver imagem de um item/variação com estoque disponível (>0), coloca ela na frente absoluta!
-          if (inStockImage) {
+          } else if (inStockImage) {
+            // Apenas se NÃO houver capa explícita, usa a imagem de variação com estoque como fallback
             const idx = allImages.indexOf(inStockImage);
             if (idx !== -1) {
               allImages.splice(idx, 1);
@@ -1023,7 +1026,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
               : (totalStock > 0 ? 'bg-gold text-deep-black font-black' : 'bg-deep-black text-gold border border-gold font-black'),
             rating: 5.0,
             reviewsCount: 32,
-            primaryImage: allImages[0] || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80',
+            primaryImage: meta.primary_image || allImages[0] || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80',
             secondaryImage: allImages[1] || allImages[0] || 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=900&q=80',
             galleryImages: allImages,
             colors,

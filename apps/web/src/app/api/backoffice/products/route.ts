@@ -85,15 +85,21 @@ export async function GET(req: NextRequest) {
         ? (Array.isArray(inStockVariant.images) && inStockVariant.images.length > 0 ? inStockVariant.images[0] : inStockVariant.image)
         : null;
 
-      const primaryImage = inStockImage || meta.primary_image || (meta.images?.[0]) || (effectiveVariants?.[0]?.images?.[0]) || '';
-      const galleryImages = Array.isArray(meta.images) && meta.images.length > 0
-        ? meta.images
+      const primaryImage = meta.primary_image || (meta.images?.[0]) || inStockImage || (effectiveVariants?.[0]?.images?.[0]) || '';
+      let galleryImages = Array.isArray(meta.images) && meta.images.length > 0
+        ? [...meta.images]
         : Array.isArray(meta.gallery) && meta.gallery.length > 0
-        ? meta.gallery
+        ? [...meta.gallery]
         : Array.from(new Set([
             primaryImage,
             ...effectiveVariants.flatMap((v: any) => Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []))
           ].filter(Boolean)));
+
+      if (primaryImage) {
+        const pIdx = galleryImages.indexOf(primaryImage);
+        if (pIdx !== -1) galleryImages.splice(pIdx, 1);
+        galleryImages.unshift(primaryImage);
+      }
 
       const resolvedCost = (effectiveVariants?.[0]?.cost_price !== undefined && effectiveVariants?.[0]?.cost_price !== null && !isNaN(Number(effectiveVariants[0].cost_price)))
         ? Number(effectiveVariants[0].cost_price)
@@ -206,15 +212,21 @@ export async function GET(req: NextRequest) {
         ? (Array.isArray(inStockVariant.images) && inStockVariant.images.length > 0 ? inStockVariant.images[0] : inStockVariant.image)
         : null;
 
-      const primaryImage = inStockImage || meta.primary_image || (meta.images?.[0]) || (effectiveVariants[0]?.images?.[0]) || '';
-      const galleryImages = Array.isArray(meta.images) && meta.images.length > 0
-        ? meta.images
+      const primaryImage = meta.primary_image || (meta.images?.[0]) || inStockImage || (effectiveVariants[0]?.images?.[0]) || '';
+      let galleryImages = Array.isArray(meta.images) && meta.images.length > 0
+        ? [...meta.images]
         : Array.isArray(meta.gallery) && meta.gallery.length > 0
-        ? meta.gallery
+        ? [...meta.gallery]
         : Array.from(new Set([
             primaryImage,
             ...effectiveVariants.flatMap((v: any) => Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []))
           ].filter(Boolean)));
+
+      if (primaryImage) {
+        const pIdx = galleryImages.indexOf(primaryImage);
+        if (pIdx !== -1) galleryImages.splice(pIdx, 1);
+        galleryImages.unshift(primaryImage);
+      }
 
       const resolvedCost = (effectiveVariants[0]?.cost_price !== undefined && effectiveVariants[0]?.cost_price !== null)
         ? Number(effectiveVariants[0].cost_price)
@@ -364,19 +376,26 @@ export async function POST(req: NextRequest) {
 
     const parsedExplicitPrice = !isNaN(Number(rawExplicitPrice)) ? Number(rawExplicitPrice) : 44.90;
 
-    // Constrói galeria completa com todas as fotos passadas
+    // Constrói galeria completa com todas as fotos passadas, garantindo que a capa escolhida esteja no índice 0
     const rawImagesList: string[] = [];
-    if (Array.isArray(images)) rawImagesList.push(...images);
-    if (Array.isArray(gallery)) rawImagesList.push(...gallery);
+    if (primary_image && typeof primary_image === 'string' && !primary_image.startsWith('data:')) {
+      rawImagesList.push(primary_image);
+    }
+    if (Array.isArray(images)) {
+      images.forEach((u) => { if (u && !u.startsWith('data:') && !rawImagesList.includes(u)) rawImagesList.push(u); });
+    }
+    if (Array.isArray(gallery)) {
+      gallery.forEach((u) => { if (u && !u.startsWith('data:') && !rawImagesList.includes(u)) rawImagesList.push(u); });
+    }
     if (Array.isArray(media_list)) {
       media_list.forEach((m: any) => {
-        if (m?.url && !rawImagesList.includes(m.url)) rawImagesList.push(m.url);
+        if (m?.url && !m.url.startsWith('data:') && !rawImagesList.includes(m.url)) rawImagesList.push(m.url);
       });
     }
     if (Array.isArray(variants)) {
       variants.forEach((v: any) => {
         if (Array.isArray(v.images)) {
-          v.images.forEach((u: string) => { if (u && !rawImagesList.includes(u)) rawImagesList.push(u); });
+          v.images.forEach((u: string) => { if (u && !u.startsWith('data:') && !rawImagesList.includes(u)) rawImagesList.push(u); });
         } else if (v.image && !rawImagesList.includes(v.image)) {
           rawImagesList.push(v.image);
         }
@@ -384,7 +403,9 @@ export async function POST(req: NextRequest) {
     }
 
     const primaryImg = primary_image || rawImagesList[0] || (variants?.[0]?.images?.[0]) || '';
-    if (primaryImg && !rawImagesList.includes(primaryImg)) {
+    if (primaryImg) {
+      const pIdx = rawImagesList.indexOf(primaryImg);
+      if (pIdx !== -1) rawImagesList.splice(pIdx, 1);
       rawImagesList.unshift(primaryImg);
     }
     const finalGalleryImages = Array.from(new Set(rawImagesList.filter((u) => u && !u.startsWith('data:'))));
@@ -810,7 +831,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       productId: targetProductId,
-      product: product || { id: targetProductId, title, slug: cleanSlug },
+      product: {
+        ...(product || {}),
+        id: finalProductId,
+        title: title.toUpperCase(),
+        slug: finalCleanSlug,
+        meta: metadataPayload,
+        primary_image: primaryImg,
+        primaryImage: primaryImg,
+        images: finalGalleryImages,
+        galleryImages: finalGalleryImages,
+        media_list: metadataPayload.media_list,
+        colors: Array.isArray(colors) ? colors : [],
+        sizes: Array.isArray(sizes) ? sizes : [],
+        variants: savedVariants,
+        price: parsedExplicitPrice,
+        cost_price: parsedExplicitCost,
+        costPrice: parsedExplicitCost,
+        visible_online: visible_online === true,
+        visible_pos: visible_pos !== false,
+      },
       cost_price: parsedExplicitCost,
       costPrice: parsedExplicitCost,
       variants: savedVariants,

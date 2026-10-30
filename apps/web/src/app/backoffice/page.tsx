@@ -2739,7 +2739,7 @@ export default function BackofficeDashboard() {
                               sku: `${found.sku || 'PROD'}-${sz}`,
                               stock_quantity: Math.round((found.stock || 0) / found.sizes.length),
                             })) : []);
-                            const firstImage = itemVariants[0]?.images?.[0] || found.primaryImage || found.primary_image || found.meta?.primary_image || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
+                            const firstImage = found.meta?.primary_image || found.primary_image || found.primaryImage || itemVariants[0]?.images?.[0] || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
                             setEditingProduct({
                               ...found,
                               variants: itemVariants,
@@ -2795,6 +2795,9 @@ export default function BackofficeDashboard() {
                     });
                   }
                   fetchSupabaseProducts();
+                  if (refreshProducts) {
+                    refreshProducts();
+                  }
                 }}
                 onCancel={() => {
                   setShowAddForm(false);
@@ -2995,7 +2998,7 @@ export default function BackofficeDashboard() {
                   })) : []);
 
                   const totalStock = item.total_stock ?? item.stock ?? itemVariants.reduce((s: number, v: any) => s + (v.stock_quantity || 0), 0);
-                  const firstImage = itemVariants[0]?.images?.[0] || item.primaryImage || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
+                  const firstImage = item.meta?.primary_image || item.primary_image || item.primaryImage || itemVariants[0]?.images?.[0] || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
                   const supplierName = item.suppliers?.company_name || 'Confecções FitPro Brasil';
                   const categoryName = item.categories?.name || item.category || 'CONJUNTOS';
                   const basePrice = item.meta?.promotional_price ?? item.meta?.price ?? item.price ?? itemVariants[0]?.price ?? 44.9;
@@ -3168,8 +3171,8 @@ export default function BackofficeDashboard() {
                                 cost_price: baseCost,
                                 costPrice: baseCost,
                                 variants: itemVariants,
-                                primaryImage: item.primaryImage || item.primary_image || item.meta?.primary_image || firstImage,
-                                primary_image: item.primary_image || item.primaryImage || item.meta?.primary_image || firstImage,
+                                primaryImage: item.meta?.primary_image || item.primary_image || item.primaryImage || firstImage,
+                                primary_image: item.meta?.primary_image || item.primary_image || item.primaryImage || firstImage,
                                 images: item.images || item.galleryImages || item.meta?.images || item.meta?.gallery || (firstImage ? [firstImage] : []),
                               });
                               setShowAddForm(true);

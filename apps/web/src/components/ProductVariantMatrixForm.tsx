@@ -356,16 +356,16 @@ export function ProductVariantMatrixForm({
         });
       };
 
-      // 1. Candidatas a foto principal
+      // 1. Candidata a foto de capa principal (prioriza estritamente a escolha da lojista salva no banco)
       const primaryCandidate =
-        initialProduct.primaryImage ||
-        initialProduct.primary_image ||
-        initialProduct.meta?.primary_image ||
         parsedMeta.primary_image ||
+        initialProduct.meta?.primary_image ||
+        initialProduct.primary_image ||
+        initialProduct.primaryImage ||
         '';
 
       if (primaryCandidate) {
-        addMediaIfNew(primaryCandidate, 'all', 'Foto Principal');
+        addMediaIfNew(primaryCandidate, 'all', 'Foto Principal (Capa)');
       }
 
       // 2. Extrai TODAS as fotos da galeria e mídias associadas (evita perder fotos adicionais)
