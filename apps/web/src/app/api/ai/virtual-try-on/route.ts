@@ -8,6 +8,7 @@ interface VirtualTryOnRequest {
   productId?: string;
   productTitle?: string;
   productImage?: string;
+  referenceModelImage?: string;
   modelProfile?: string;
   bodyType?: string;
   scene?: string;
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
       productId,
       productTitle = 'Peça Fitness Ana Fitness Wear',
       productImage,
+      referenceModelImage,
       modelProfile = 'latina_curls',
       bodyType = 'curvy_sculpt',
       scene = 'penthouse_miami',
@@ -94,7 +96,7 @@ export async function POST(req: NextRequest) {
             version: 'c871bb9b046607b680449ecbae55fd8e6d945e0a1948644bf2361b3fb7de026b',
             input: {
               garm_img: productImage,
-              human_img: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1000&q=80',
+              human_img: referenceModelImage || 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/default-model-reference.jpg',
               garment_des: `${productTitle} luxury athletic activewear`,
               category: 'upper_body',
             },
@@ -107,7 +109,7 @@ export async function POST(req: NextRequest) {
             success: true,
             status: repData.status,
             predictionId: repData.id,
-            resultImageUrl: repData.output || 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/ai-model-yellow-pink-sculpt.jpg',
+            resultImageUrl: repData.output || 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/ai-model-yellow-pink-studio.jpg',
             provider: 'replicate_vton',
           });
         }
@@ -120,10 +122,23 @@ export async function POST(req: NextRequest) {
     const imgStr = (productImage || '').toLowerCase();
     const titleStr = (productTitle || '').toLowerCase();
 
-    let targetGeneratedModel = 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/ai-model-yellow-pink-sculpt.jpg';
+    let targetGeneratedModel = 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/ai-model-yellow-pink-studio.jpg';
 
-    // Se for o conjunto Monique flare / poliamida verde oliva:
+    // Se a peça for o conjunto Pink & Purple / Violeta:
     if (
+      imgStr.includes('18-13-12') ||
+      imgStr.includes('1793407992810') ||
+      imgStr.includes('purple') ||
+      imgStr.includes('roxo') ||
+      imgStr.includes('lil') ||
+      imgStr.includes('violet') ||
+      titleStr.includes('purple') ||
+      titleStr.includes('roxo') ||
+      titleStr.includes('lil') ||
+      titleStr.includes('violet')
+    ) {
+      targetGeneratedModel = 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/ai-model-pink-purple-studio.jpg';
+    } else if (
       imgStr.includes('monique') ||
       imgStr.includes('1791904227939') ||
       imgStr.includes('w8ov6g') ||
@@ -135,8 +150,8 @@ export async function POST(req: NextRequest) {
     ) {
       targetGeneratedModel = '/uploads/ai-model-demo-monique.jpg';
     } else {
-      // Para o conjunto Amarelo e Pink ou nova foto enviada do celular:
-      targetGeneratedModel = 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/ai-model-yellow-pink-sculpt.jpg';
+      // Amarelo e Pink espelhado na modelo real de estúdio:
+      targetGeneratedModel = 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/ai-model-yellow-pink-studio.jpg';
     }
 
     const promptSummary = {

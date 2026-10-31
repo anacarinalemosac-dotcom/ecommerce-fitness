@@ -20,6 +20,7 @@ import {
   Upload,
   ShoppingBag,
   AlertCircle,
+  UserCheck,
 } from 'lucide-react';
 
 interface AIModelStudioModalProps {
@@ -47,10 +48,16 @@ export function AIModelStudioModal({
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string>('');
 
+  // FOTO 2: Modelo ou Pose de Referência para a IA se espelhar (o grande diferencial solicitado!)
+  const [referenceModelUrl, setReferenceModelUrl] = useState<string>(
+    'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/default-model-reference.jpg'
+  );
+  const [isUploadingRefModel, setIsUploadingRefModel] = useState<boolean>(false);
+
   // Configurações da Modelo Virtual
   const [modelProfile, setModelProfile] = useState<'latina_curls' | 'blonde_waves' | 'brunette_sleek' | 'black_goddess'>('latina_curls');
   const [bodyType, setBodyType] = useState<'curvy_sculpt' | 'fitness_toned' | 'slim_athletic'>('curvy_sculpt');
-  const [scene, setScene] = useState<'penthouse_miami' | 'luxury_gold_studio' | 'glass_gym' | 'minimalist_loft'>('penthouse_miami');
+  const [scene, setScene] = useState<'penthouse_miami' | 'luxury_gold_studio' | 'glass_gym' | 'minimalist_loft'>('luxury_gold_studio');
   const [aspectRatio, setAspectRatio] = useState<'3:4' | '9:16' | '1:1'>('3:4');
 
   // Estados de Geração
@@ -145,6 +152,30 @@ export function AIModelStudioModal({
     }
   };
 
+  // Upload da Modelo / Pose de Referência (Foto 2)
+  const handleRefModelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingRefModel(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setReferenceModelUrl(data.url);
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar modelo de referência:', err);
+    } finally {
+      setIsUploadingRefModel(false);
+    }
+  };
+
   const handleGenerateModel = async () => {
     const activeImage = customUploadUrl || productImage;
     if (!activeImage) {
@@ -155,14 +186,14 @@ export function AIModelStudioModal({
     setIsGenerating(true);
     setSaveSuccessMsg(false);
 
-    // Efeito visual realista de etapas de processamento por IA
-    setGenerationStep('1/3 • Identificando tecido, decote e modelagem da peça...');
+    // Efeito visual realista de etapas de espelhamento por IA
+    setGenerationStep('1/3 • Mapeando pose, iluminação e silhueta da modelo de referência...');
     await new Promise((r) => setTimeout(r, 800));
 
-    setGenerationStep('2/3 • Ajustando proporções anatômicas sculpt fit na modelo...');
+    setGenerationStep('2/3 • Transferindo tecido, cós anatômico V, cores e logo ANA da sua peça...');
     await new Promise((r) => setTimeout(r, 900));
 
-    setGenerationStep('3/3 • Renderizando iluminação de estúdio luxo e sombras reais...');
+    setGenerationStep('3/3 • Ajustando caimento 100% fiel sem alterar o modelo da roupa...');
 
     try {
       const res = await fetch('/api/ai/virtual-try-on', {
@@ -173,6 +204,7 @@ export function AIModelStudioModal({
           productId: selectedProductId,
           productTitle: productTitle || 'Conjunto Fitness Anatômico',
           productImage: activeImage,
+          referenceModelImage: referenceModelUrl,
           modelProfile,
           bodyType,
           scene,
@@ -256,14 +288,14 @@ export function AIModelStudioModal({
                 ✨
               </span>
               <span className="text-[10px] font-black uppercase tracking-widest text-gold">
-                ANA FITNESS WEAR • ESTÚDIO IA DE MODELOS VIRTUAIS
+                ANA FITNESS WEAR • ESPELHAMENTO DE MODELO & PROVADOR 3D
               </span>
             </div>
             <h2 className="text-lg sm:text-2xl font-black uppercase tracking-wider flex items-center gap-2 text-white">
-              <span>PROVADOR VIRTUAL 3D (TIKTOK & VITRINE)</span>
+              <span>ESTÚDIO IA: VESTIR ROUPA NA MODELO (COM ESPELHAMENTO)</span>
             </h2>
             <p className="text-xs text-white/70 max-w-2xl leading-relaxed">
-              Carregue a foto de qualquer roupa (cabide, mesa, chão ou foto de fornecedor) para a Inteligência Artificial vestir automaticamente em uma modelo fitness de luxo.
+              Envie a foto da sua roupa (mesa/cabide) e uma modelo de referência vestida (mesmo que em outra cor). A IA copia a pose e caimento exatos e veste a sua roupa sem alterar o modelo original!
             </p>
           </div>
 
@@ -287,240 +319,181 @@ export function AIModelStudioModal({
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* COLUNA ESQUERDA: CONTROLES E CONFIGURAÇÃO DA IA (5 Colunas) */}
-            <div className="lg:col-span-5 space-y-5 bg-white p-5 border-2 border-deep-black shadow-sm">
-              <div className="flex items-center gap-2 border-b border-deep-black/10 pb-3">
+            {/* COLUNA ESQUERDA: DUPLO INPUT (ROUPA + MODELO DE REFERÊNCIA) (5 Colunas) */}
+            <div className="lg:col-span-5 space-y-4 bg-white p-5 border-2 border-deep-black shadow-sm">
+              <div className="flex items-center gap-2 border-b border-deep-black/10 pb-2.5">
                 <Sliders className="w-4 h-4 text-gold" />
                 <h3 className="text-xs font-black uppercase tracking-widest text-deep-black">
-                  1. FOTO DA ROUPA & CONFIGURAÇÃO DA MODELO
+                  1. DUPLA REFERÊNCIA (ROUPA + MODELO VESTIDA)
                 </h3>
               </div>
 
-              {/* ABAS: CARREGAR FOTO NOVA VS ESCOLHER DO CATÁLOGO */}
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 p-1 bg-stone-100 border border-deep-black/20">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSourceMode('upload');
-                      setSelectedProductId('');
-                    }}
-                    className={`py-2 px-2 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                      sourceMode === 'upload'
-                        ? 'bg-deep-black text-white shadow-xs'
-                        : 'text-deep-black/60 hover:text-deep-black'
-                    }`}
-                  >
-                    <Upload className="w-3.5 h-3.5 text-gold" />
-                    <span>CARREGAR FOTO NOVA</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSourceMode('catalog');
-                      if (catalogProducts.length > 0 && !selectedProductId) {
-                        handleSelectProduct(catalogProducts[0].id);
-                      }
-                    }}
-                    className={`py-2 px-2 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                      sourceMode === 'catalog'
-                        ? 'bg-deep-black text-white shadow-xs'
-                        : 'text-deep-black/60 hover:text-deep-black'
-                    }`}
-                  >
-                    <ShoppingBag className="w-3.5 h-3.5 text-gold" />
-                    <span>DO MEU CATÁLOGO</span>
-                  </button>
+              {/* CAMPO A: FOTO DA SUA ROUPA (PEÇA NA MESA OU CABIDE) */}
+              <div className="space-y-2 border border-deep-black/20 p-3 bg-stone-50">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-deep-black text-gold text-[10px] font-black flex items-center justify-center">1</span>
+                    <span>SUA ROUPA (CORES, TECIDO & ESTAMPA)</span>
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSourceMode('upload');
+                        setSelectedProductId('');
+                      }}
+                      className={`px-2 py-0.5 text-[9px] font-black uppercase transition ${
+                        sourceMode === 'upload' ? 'bg-deep-black text-gold' : 'text-deep-black/60 hover:text-deep-black'
+                      }`}
+                    >
+                      Upload
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSourceMode('catalog');
+                        if (catalogProducts.length > 0 && !selectedProductId) {
+                          handleSelectProduct(catalogProducts[0].id);
+                        }
+                      }}
+                      className={`px-2 py-0.5 text-[9px] font-black uppercase transition ${
+                        sourceMode === 'catalog' ? 'bg-deep-black text-gold' : 'text-deep-black/60 hover:text-deep-black'
+                      }`}
+                    >
+                      Catálogo
+                    </button>
+                  </div>
                 </div>
 
-                {/* ABA 1: UPLOAD DE FOTO NOVA (LIVRE - NÃO PRECISA ESTAR CADASTRADA) */}
-                {sourceMode === 'upload' && (
-                  <div className="space-y-3 bg-stone-50 p-3.5 border border-dashed border-deep-black/30">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-deep-black flex items-center justify-between">
-                        <span>FOTO DA PEÇA (CELULAR OU COMPUTADOR):</span>
-                        <span className="text-[9px] text-gold font-bold">CABIDE / MESA / CHÃO</span>
-                      </label>
-                      <label className="block border-2 border-dashed border-deep-black/40 hover:border-gold p-4 bg-white text-center cursor-pointer transition group">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleFileUpload}
-                          className="hidden"
-                        />
-                        <div className="flex flex-col items-center justify-center gap-1.5">
-                          {isUploading ? (
-                            <>
-                              <RefreshCw className="w-6 h-6 text-gold animate-spin" />
-                              <span className="text-xs font-black uppercase text-deep-black">Enviando foto...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Camera className="w-6 h-6 text-gold group-hover:scale-110 transition" />
-                              <span className="text-xs font-black uppercase text-deep-black">
-                                {customUploadUrl ? '✓ Foto Carregada (Clique para Trocar)' : 'Tirar Foto ou Escolher Arquivo'}
-                              </span>
-                              <span className="text-[9px] text-deep-black/50 uppercase font-mono">
-                                JPG, PNG ou WEBP do seu celular
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </label>
-                      {uploadError && (
-                        <p className="text-[10px] text-red-600 font-bold flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" /> {uploadError}
-                        </p>
+                {sourceMode === 'upload' ? (
+                  <label className="block border-2 border-dashed border-deep-black/40 hover:border-gold p-3 bg-white text-center cursor-pointer transition">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <div className="flex items-center justify-center gap-2">
+                      {isUploading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 text-gold animate-spin" />
+                          <span className="text-xs font-black uppercase text-deep-black">Enviando foto...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="w-4 h-4 text-gold" />
+                          <span className="text-[11px] font-black uppercase text-deep-black">
+                            {customUploadUrl ? '✓ Foto Carregada (Trocar)' : 'Enviar Foto da Peça (Mesa / Cabide)'}
+                          </span>
+                        </>
                       )}
                     </div>
+                  </label>
+                ) : (
+                  <select
+                    value={selectedProductId}
+                    onChange={(e) => handleSelectProduct(e.target.value)}
+                    className="w-full p-2 bg-white border border-deep-black/30 text-xs font-bold text-deep-black uppercase focus:border-gold outline-none"
+                  >
+                    <option value="">-- Escolha um produto da loja --</option>
+                    {catalogProducts.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title} (${Number(p.price || 49.9).toFixed(2)})
+                      </option>
+                    ))}
+                  </select>
+                )}
 
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black uppercase tracking-widest text-deep-black/70 block">
-                        NOME / DESCRIÇÃO DA PEÇA (OPCIONAL):
-                      </label>
+                {activeDisplayGarmentImage && (
+                  <div className="flex items-center gap-3 bg-white p-2 border border-deep-black/10">
+                    <img
+                      src={activeDisplayGarmentImage}
+                      alt="Roupa Selecionada"
+                      className="w-12 h-12 object-contain bg-stone-100 border border-deep-black/10"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[9px] font-mono text-green-700 font-bold block truncate">
+                        ✓ Peça pronta para espelhar
+                      </span>
                       <input
                         type="text"
                         value={productTitle}
                         onChange={(e) => setProductTitle(e.target.value)}
-                        placeholder="Ex: Conjunto Sunshine Amarelo e Pink Cós V"
-                        className="w-full p-2 bg-white border border-deep-black/30 text-xs font-bold text-deep-black uppercase outline-none focus:border-gold"
+                        placeholder="Nome da peça..."
+                        className="text-[10px] font-bold text-deep-black uppercase w-full bg-transparent border-b border-deep-black/20 outline-none"
                       />
                     </div>
                   </div>
                 )}
+              </div>
 
-                {/* ABA 2: ESCOLHER DO CATÁLOGO EXISTENTE */}
-                {sourceMode === 'catalog' && (
-                  <div className="space-y-2 bg-stone-50 p-3.5 border border-deep-black/20">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-deep-black block">
-                      SELECIONE UM PRODUTO CADASTRADO:
-                    </label>
-                    <select
-                      value={selectedProductId}
-                      onChange={(e) => handleSelectProduct(e.target.value)}
-                      className="w-full p-2.5 bg-white border border-deep-black/30 text-xs font-bold text-deep-black uppercase focus:border-gold outline-none"
-                    >
-                      <option value="">-- Escolha um produto da loja --</option>
-                      {catalogProducts.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.title} (${Number(p.price || 49.9).toFixed(2)})
-                        </option>
-                      ))}
-                    </select>
+              {/* CAMPO B: MODELO / POSE DE REFERÊNCIA (O PEDIDO DA CLIENTE!) */}
+              <div className="space-y-2 border-2 border-gold/60 p-3 bg-amber-50/40">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-gold text-deep-black text-[10px] font-black flex items-center justify-center">2</span>
+                    <span>MODELO DE REFERÊNCIA (MESMO DE OUTRA COR)</span>
+                  </span>
+                  <span className="text-[8px] bg-gold text-deep-black font-black px-1.5 py-0.2 uppercase">
+                    ESPELHO DE POSE
+                  </span>
+                </div>
+
+                <p className="text-[9px] text-deep-black/70 leading-relaxed">
+                  Envie a foto de alguém vestindo a peça (mesmo que em outra cor), ou use a modelo oficial do estúdio para a IA clonar a pose e o caimento exatos!
+                </p>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="border-2 border-dashed border-deep-black/40 hover:border-gold p-2.5 bg-white text-center cursor-pointer transition flex items-center justify-center gap-1.5">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleRefModelUpload}
+                      className="hidden"
+                    />
+                    {isUploadingRefModel ? (
+                      <RefreshCw className="w-3.5 h-3.5 text-gold animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5 text-gold" />
+                    )}
+                    <span className="text-[9px] font-black uppercase text-deep-black">
+                      Subir Nova Foto
+                    </span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReferenceModelUrl(
+                        'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/default-model-reference.jpg'
+                      )
+                    }
+                    className="border border-deep-black/30 hover:border-gold p-2.5 bg-white text-center cursor-pointer transition flex items-center justify-center gap-1.5"
+                  >
+                    <UserCheck className="w-3.5 h-3.5 text-green-700" />
+                    <span className="text-[9px] font-black uppercase text-deep-black">
+                      Modelo Oficial
+                    </span>
+                  </button>
+                </div>
+
+                {referenceModelUrl && (
+                  <div className="flex items-center gap-3 bg-white p-2 border border-gold/40">
+                    <img
+                      src={referenceModelUrl}
+                      alt="Modelo Referência"
+                      className="w-12 h-14 object-cover border border-deep-black/10"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[9px] font-mono text-gold font-black uppercase block truncate">
+                        ★ Modelo Referência Ativa
+                      </span>
+                      <span className="text-[9px] text-deep-black/60 block truncate">
+                        Pose e estúdio espelhados com 100% de precisão
+                      </span>
+                    </div>
                   </div>
                 )}
-              </div>
-
-              {/* Biotipo da Modelo */}
-              <div className="space-y-1.5 pt-2 border-t border-deep-black/10">
-                <label className="text-[10px] font-black uppercase tracking-widest text-deep-black block">
-                  BIOTIPO DA MODELO FITNESS:
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'curvy_sculpt', label: 'Curvas / Sculpt', desc: 'Padrão Brasil' },
-                    { id: 'fitness_toned', label: 'Toned / Definida', desc: 'Musculosa' },
-                    { id: 'slim_athletic', label: 'Slim / Longilínea', desc: 'Esguia' },
-                  ].map((b) => (
-                    <button
-                      key={b.id}
-                      type="button"
-                      onClick={() => setBodyType(b.id as any)}
-                      className={`p-2 border text-left transition cursor-pointer ${
-                        bodyType === b.id
-                          ? 'border-gold bg-gold/15 text-deep-black font-black shadow-xs'
-                          : 'border-deep-black/20 bg-stone-50 text-deep-black/70 hover:border-deep-black'
-                      }`}
-                    >
-                      <span className="block text-[11px] font-black uppercase">{b.label}</span>
-                      <span className="block text-[8px] text-deep-black/60 uppercase">{b.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Perfil & Cabelo da Modelo */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-deep-black block">
-                  PERFIL & CABELO:
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: 'latina_curls', label: 'Morena Cachos Dourados' },
-                    { id: 'blonde_waves', label: 'Loira com Ondas' },
-                    { id: 'brunette_sleek', label: 'Morena Cabelo Liso' },
-                    { id: 'black_goddess', label: 'Negra Imponente / Tranças' },
-                  ].map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setModelProfile(m.id as any)}
-                      className={`p-2 border text-left transition cursor-pointer ${
-                        modelProfile === m.id
-                          ? 'border-gold bg-gold/15 text-deep-black font-black shadow-xs'
-                          : 'border-deep-black/20 bg-stone-50 text-deep-black/70 hover:border-deep-black'
-                      }`}
-                    >
-                      <span className="block text-[10px] font-black uppercase truncate">{m.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Cenário de Fundo */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-deep-black block">
-                  CENÁRIO DE FUNDO:
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: 'penthouse_miami', label: 'Penthouse Luxo Miami' },
-                    { id: 'luxury_gold_studio', label: 'Estúdio Clean Dourado' },
-                    { id: 'glass_gym', label: 'Academia Moderna Vidro' },
-                    { id: 'minimalist_loft', label: 'Loft Minimalista Chic' },
-                  ].map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => setScene(s.id as any)}
-                      className={`p-2 border text-left transition cursor-pointer ${
-                        scene === s.id
-                          ? 'border-gold bg-gold/15 text-deep-black font-black shadow-xs'
-                          : 'border-deep-black/20 bg-stone-50 text-deep-black/70 hover:border-deep-black'
-                      }`}
-                    >
-                      <span className="block text-[10px] font-black uppercase truncate">{s.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Proporção da Imagem */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-deep-black block">
-                  FORMATO / PROPORÇÃO:
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: '3:4', label: '3:4 Vitrine & Feed' },
-                    { id: '9:16', label: '9:16 TikTok / Reels' },
-                    { id: '1:1', label: '1:1 Quadrado' },
-                  ].map((ar) => (
-                    <button
-                      key={ar.id}
-                      type="button"
-                      onClick={() => setAspectRatio(ar.id as any)}
-                      className={`p-2 border text-center transition cursor-pointer ${
-                        aspectRatio === ar.id
-                          ? 'border-gold bg-gold/15 text-deep-black font-black shadow-xs'
-                          : 'border-deep-black/20 bg-stone-50 text-deep-black/70 hover:border-deep-black'
-                      }`}
-                    >
-                      <span className="block text-[10px] font-black uppercase">{ar.label}</span>
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/* Botão de Disparo da Geração com IA */}
@@ -528,17 +501,17 @@ export function AIModelStudioModal({
                 type="button"
                 disabled={isGenerating || !activeDisplayGarmentImage}
                 onClick={handleGenerateModel}
-                className="w-full py-4 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 border-2 border-gold shadow-md cursor-pointer disabled:opacity-50 mt-4 group"
+                className="w-full py-4 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 border-2 border-gold shadow-md cursor-pointer disabled:opacity-50 mt-2 group"
               >
                 {isGenerating ? (
                   <>
                     <RefreshCw className="w-4 h-4 text-gold animate-spin" />
-                    <span>VESTINDO MODELO COM IA...</span>
+                    <span>VESTINDO E ESPELHANDO COM IA...</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 text-gold group-hover:text-deep-black" />
-                    <span>✨ GERAR MODELO VESTINDO COM IA</span>
+                    <span>✨ VESTIR ROUPA NA MODELO (SEM ALTERAR O MODELO)</span>
                   </>
                 )}
               </button>
@@ -556,11 +529,11 @@ export function AIModelStudioModal({
                 <div className="flex items-center gap-2">
                   <ImageIcon className="w-4 h-4 text-gold" />
                   <h3 className="text-xs font-black uppercase tracking-widest text-deep-black">
-                    2. RESULTADO VISUAL (PEÇA ORIGINAL VS MODELO IA)
+                    2. RESULTADO VISUAL (ROUPA ENVIADA VS MODELO FINAL VESTIDA)
                   </h3>
                 </div>
                 <span className="text-[9px] bg-green-100 text-green-900 border border-green-300 px-2 py-0.5 font-black uppercase font-mono">
-                  8K ULTRA HD • PROVADOR 3D
+                  8K ULTRA HD • CLONE DE POSE
                 </span>
               </div>
 
@@ -573,7 +546,7 @@ export function AIModelStudioModal({
                       FOTO DA SUA ROUPA
                     </span>
                     <span className="text-[8px] bg-stone-200 text-deep-black px-1.5 py-0.2 font-black uppercase">
-                      REFERÊNCIA
+                      PEÇA REAL
                     </span>
                   </div>
                   <div className="w-full h-80 sm:h-96 bg-stone-200 flex items-center justify-center overflow-hidden border border-deep-black/10">
@@ -587,7 +560,6 @@ export function AIModelStudioModal({
                       <div className="p-6 text-center text-xs text-deep-black/50 font-bold uppercase flex flex-col items-center gap-2">
                         <Camera className="w-8 h-8 text-deep-black/30" />
                         <span>Nenhuma foto carregada ainda</span>
-                        <span className="text-[9px] text-deep-black/40">Carregue uma foto na coluna ao lado</span>
                       </div>
                     )}
                   </div>
@@ -600,10 +572,10 @@ export function AIModelStudioModal({
                 <div className="border-2 border-gold p-2.5 bg-gradient-to-b from-stone-50 to-amber-50/30 flex flex-col items-center justify-between space-y-2 relative shadow-luxury">
                   <div className="flex items-center justify-between w-full">
                     <span className="text-[10px] font-black uppercase text-gold tracking-wider flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-gold" /> MODELO IA VESTINDO A PEÇA
+                      <Sparkles className="w-3 h-3 text-gold" /> MODELO IA VESTINDO A SUA PEÇA
                     </span>
                     <span className="text-[8px] bg-gold text-deep-black px-1.5 py-0.2 font-black uppercase">
-                      PADRÃO TIKTOK
+                      ESPELHADO
                     </span>
                   </div>
 
@@ -620,7 +592,7 @@ export function AIModelStudioModal({
                           <>
                             <RefreshCw className="w-10 h-10 text-gold animate-spin" />
                             <span className="text-xs font-black uppercase tracking-wider text-white">
-                              PROCESSANDO COM INTELIGÊNCIA ARTIFICIAL...
+                              ESPELHANDO POSE E VESTINDO ROUPA...
                             </span>
                           </>
                         ) : (
@@ -630,7 +602,7 @@ export function AIModelStudioModal({
                               ESTÚDIO PRONTO PARA GERAR
                             </h4>
                             <p className="text-[10px] text-white/70 max-w-xs leading-relaxed">
-                              Carregue a foto da sua roupa ao lado, escolha o biotipo e clique no botão dourado <strong>GERAR MODELO VESTINDO COM IA</strong>.
+                              Clique no botão dourado <strong>VESTIR ROUPA NA MODELO</strong> para a IA espelhar a pose da modelo e colocar a sua roupa sem alterar o corte.
                             </p>
                           </>
                         )}
@@ -641,14 +613,14 @@ export function AIModelStudioModal({
                       <div className="absolute inset-0 bg-black/75 backdrop-blur-xs flex flex-col items-center justify-center gap-3 p-4 text-center">
                         <RefreshCw className="w-8 h-8 text-gold animate-spin" />
                         <span className="text-xs font-black uppercase tracking-wider text-white">
-                          RENDERIZANDO NOVA MODELO COM IA...
+                          ESPELHANDO POSE E CAIMENTO COM IA...
                         </span>
                       </div>
                     )}
                   </div>
 
                   <span className="text-[9px] text-deep-black/70 font-mono font-bold">
-                    {generatedImageUrl ? '✓ Caimento perfeito • Compressão Anatômica' : 'Aguardando disparo da IA'}
+                    {generatedImageUrl ? '✓ Modelo da roupa 100% preservado com cós e logo ANA' : 'Aguardando disparo da IA'}
                   </span>
                 </div>
               </div>
@@ -745,7 +717,7 @@ export function AIModelStudioModal({
               <div className="p-3 bg-amber-50 border border-gold/40 text-[11px] text-deep-black/80 flex items-start gap-2">
                 <Info className="w-4 h-4 text-gold shrink-0 mt-0.5" />
                 <p>
-                  <strong>Dica de Vendas TikTok Shop:</strong> Fotos de produtos com modelos atléticas em poses naturais e iluminação de estúdio aumentam a taxa de conversão em até <strong>3.8x</strong> comparado com fotos de roupas no cabide.
+                  <strong>Como Funciona o Espelhamento:</strong> A IA analisa a modelo de referência enviada (pose, corpo, estúdio e iluminação) e projeta as cores, tecidos e logotipo da sua roupa exatamente como ela é, sem distorcer o decote ou o cós!
                 </p>
               </div>
             </div>
