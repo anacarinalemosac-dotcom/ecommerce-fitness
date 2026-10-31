@@ -98,6 +98,7 @@ import { InventoryReportView } from '../../components/backoffice/InventoryReport
 import { SalesReportModal } from '../../components/backoffice/SalesReportModal';
 import CouponsManagerView from '../../components/backoffice/CouponsManagerView';
 import { TikTokCatalogModal } from '../../components/backoffice/TikTokCatalogModal';
+import { AIModelStudioModal } from '../../components/backoffice/AIModelStudioModal';
 import {
   generateReceiptWhatsAppMessage,
   generateCrediarioWhatsAppMessage,
@@ -268,6 +269,8 @@ export default function BackofficeDashboard() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showTikTokModal, setShowTikTokModal] = useState(false);
   const [copiedTikTokSlug, setCopiedTikTokSlug] = useState<string | null>(null);
+  const [showAIStudioModal, setShowAIStudioModal] = useState(false);
+  const [aiStudioTargetProduct, setAiStudioTargetProduct] = useState<any | null>(null);
 
   // Filtros e Busca Rápida no Catálogo de Produtos
   const [productSearch, setProductSearch] = useState('');
@@ -2286,6 +2289,20 @@ export default function BackofficeDashboard() {
 
             <button
               type="button"
+              onClick={() => {
+                setAiStudioTargetProduct(null);
+                setShowAIStudioModal(true);
+              }}
+              className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-gold hover:from-gold hover:to-amber-400 text-deep-black font-black text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-gold cursor-pointer shadow-sm"
+              title="Abrir Estúdio IA de Modelos Virtuais (Virtual Try-On Padrão TikTok)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-deep-black" />
+              <span>Estúdio Modelo IA</span>
+              <span className="px-1 py-0.2 bg-deep-black text-gold text-[8px] font-black">NOVO</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setShowCategoryModal(true)}
               className="px-3 py-1.5 bg-white/5 hover:bg-gold hover:text-deep-black text-white/80 font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-white/15 cursor-pointer"
             >
@@ -2734,6 +2751,23 @@ export default function BackofficeDashboard() {
                 <span>Links TikTok</span>
                 <span className="px-1.5 py-0.5 bg-gold text-deep-black text-[9px] font-black">
                   FEED PRONTO
+                </span>
+              </button>
+
+              {/* Botão Estúdio de Modelos IA */}
+              <button
+                type="button"
+                onClick={() => {
+                  setAiStudioTargetProduct(null);
+                  setShowAIStudioModal(true);
+                }}
+                className="px-4 py-3 border-2 border-gold bg-gradient-to-r from-amber-500 to-gold hover:from-gold hover:to-amber-400 text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm cursor-pointer"
+                title="Abrir Estúdio IA de Modelos Virtuais (Virtual Try-On Padrão TikTok)"
+              >
+                <Sparkles className="w-4 h-4 text-deep-black" />
+                <span>Estúdio Modelo IA</span>
+                <span className="px-1.5 py-0.5 bg-deep-black text-gold text-[9px] font-black">
+                  TRY-ON
                 </span>
               </button>
 
@@ -3296,6 +3330,20 @@ export default function BackofficeDashboard() {
                           >
                             <span>🎵</span>
                             <span>{copiedTikTokSlug === (item.slug || item.id) ? '✓ COPIADO!' : 'LINK TIKTOK'}</span>
+                          </button>
+
+                          {/* Botão Abrir Estúdio IA para esta Peça */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAiStudioTargetProduct(item);
+                              setShowAIStudioModal(true);
+                            }}
+                            className="p-1.5 border border-gold bg-gold/10 hover:bg-gold hover:text-deep-black text-deep-black transition flex items-center gap-1 text-[10px] font-black cursor-pointer shadow-xs"
+                            title="Gerar modelo fitness vestindo esta peça com IA (Padrão TikTok)"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-gold group-hover:text-deep-black" />
+                            <span>MODELO IA</span>
                           </button>
 
                           <button
@@ -7348,6 +7396,21 @@ export default function BackofficeDashboard() {
       <TikTokCatalogModal
         isOpen={showTikTokModal}
         onClose={() => setShowTikTokModal(false)}
+      />
+
+      {/* Estúdio IA de Modelos Virtuais & Provador 3D (TikTok / Reels / Vitrine) */}
+      <AIModelStudioModal
+        isOpen={showAIStudioModal}
+        onClose={() => {
+          setShowAIStudioModal(false);
+          setAiStudioTargetProduct(null);
+        }}
+        catalogProducts={baseCatalogList}
+        initialProduct={aiStudioTargetProduct}
+        onCoverUpdated={() => {
+          fetchSupabaseProducts();
+          if (refreshProducts) refreshProducts();
+        }}
       />
     </div>
   );
