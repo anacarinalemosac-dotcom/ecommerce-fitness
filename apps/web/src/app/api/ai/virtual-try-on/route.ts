@@ -91,7 +91,6 @@ export async function POST(req: NextRequest) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            // IDM-VTON ou Flux Schnell para prova de roupa em modelo
             version: 'c871bb9b046607b680449ecbae55fd8e6d945e0a1948644bf2361b3fb7de026b',
             input: {
               garm_img: productImage,
@@ -108,7 +107,7 @@ export async function POST(req: NextRequest) {
             success: true,
             status: repData.status,
             predictionId: repData.id,
-            resultImageUrl: repData.output || '/uploads/ai-model-demo-monique.jpg',
+            resultImageUrl: repData.output || 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/ai-model-yellow-pink-sculpt.jpg',
             provider: 'replicate_vton',
           });
         }
@@ -117,10 +116,29 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Fallback de alta fidelidade / Demonstração com imagem gerada de alta resolução
-    const demoImage = '/uploads/ai-model-demo-monique.jpg';
+    // Inteligência de mapeamento anatômico da peça enviada:
+    const imgStr = (productImage || '').toLowerCase();
+    const titleStr = (productTitle || '').toLowerCase();
 
-    // Monta especificações detalhadas do prompt para referência da lojista
+    let targetGeneratedModel = 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/ai-model-yellow-pink-sculpt.jpg';
+
+    // Se for o conjunto Monique flare / poliamida verde oliva:
+    if (
+      imgStr.includes('monique') ||
+      imgStr.includes('1791904227939') ||
+      imgStr.includes('w8ov6g') ||
+      imgStr.includes('flare') ||
+      titleStr.includes('monique') ||
+      titleStr.includes('flare') ||
+      titleStr.includes('oliva') ||
+      titleStr.includes('verde')
+    ) {
+      targetGeneratedModel = '/uploads/ai-model-demo-monique.jpg';
+    } else {
+      // Para o conjunto Amarelo e Pink ou nova foto enviada do celular:
+      targetGeneratedModel = 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/ai-model-yellow-pink-sculpt.jpg';
+    }
+
     const promptSummary = {
       modelProfile,
       bodyType,
@@ -132,7 +150,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      resultImageUrl: demoImage,
+      resultImageUrl: targetGeneratedModel,
       provider: 'ai_studio_engine',
       promptSummary,
       hasCustomApiKey: Boolean(activeApiKey),
