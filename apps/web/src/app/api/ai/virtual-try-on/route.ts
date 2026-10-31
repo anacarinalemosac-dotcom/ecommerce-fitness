@@ -124,8 +124,19 @@ export async function POST(req: NextRequest) {
 
     let targetGeneratedModel = 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/ai-model-yellow-pink-studio.jpg';
 
-    // Se a peça for o conjunto Pink & Purple / Violeta:
+    // Se a peça for o Regatão Café (regataocafe, marrom, bronze, mesh):
     if (
+      imgStr.includes('regataocafe') ||
+      imgStr.includes('regatao') ||
+      imgStr.includes('cafe') ||
+      imgStr.includes('marrom') ||
+      imgStr.includes('bronze') ||
+      titleStr.includes('regatao') ||
+      titleStr.includes('cafe') ||
+      titleStr.includes('marrom')
+    ) {
+      targetGeneratedModel = 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/ai-model-regatao-cafe.jpg';
+    } else if (
       imgStr.includes('18-13-12') ||
       imgStr.includes('1793407992810') ||
       imgStr.includes('purple') ||
