@@ -2717,7 +2717,11 @@ export default function BackofficeDashboard() {
          ========================================================================= */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
-          <ExecutiveFinancialSummary sales={salesData?.sales || []} />
+          <ExecutiveFinancialSummary
+            sales={salesData?.sales || []}
+            onOpenPaymentModal={handleOpenCrediarioPayModal}
+            onSelectSale={setSelectedSaleDetail}
+          />
           <DashboardMetricsView
             salesData={salesData}
             products={supabaseProducts.length > 0 ? supabaseProducts : products}
@@ -3591,7 +3595,11 @@ export default function BackofficeDashboard() {
             </div>
 
             {/* RESUMO FINANCEIRO EXECUTIVO SOLICITADO */}
-            <ExecutiveFinancialSummary sales={salesData?.sales || []} />
+            <ExecutiveFinancialSummary
+              sales={salesData?.sales || []}
+              onOpenPaymentModal={handleOpenCrediarioPayModal}
+              onSelectSale={setSelectedSaleDetail}
+            />
 
             {/* =========================================================================
                 AS 5 MÉTRICAS PRIORITÁRIAS DA ANA CARINA

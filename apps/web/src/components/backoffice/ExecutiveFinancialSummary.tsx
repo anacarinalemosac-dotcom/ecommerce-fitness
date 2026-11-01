@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   DollarSign,
   TrendingUp,
@@ -15,11 +15,15 @@ import {
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
+  FileText,
 } from 'lucide-react';
 import { computeSaleFinancials } from '@/lib/salesFinancials';
+import { PendingCrediarioReportModal } from './PendingCrediarioReportModal';
 
 interface ExecutiveFinancialSummaryProps {
   sales: any[];
+  onOpenPaymentModal?: (sale: any, installmentNumber?: number, amount?: number) => void;
+  onSelectSale?: (sale: any) => void;
 }
 
 function classifyPaymentMethod(methodStr: any): 'VENMO' | 'ZELLE' | 'CASH' | 'CARD' {
@@ -41,7 +45,19 @@ function getSaleMonthStr(dateInput: any): string {
   }
 }
 
-export function ExecutiveFinancialSummary({ sales }: ExecutiveFinancialSummaryProps) {
+export function ExecutiveFinancialSummary({
+  sales,
+  onOpenPaymentModal,
+  onSelectSale,
+}: ExecutiveFinancialSummaryProps) {
+  const [showPendingReportModal, setShowPendingReportModal] = useState(false);
+  const [pendingReportFilter, setPendingReportFilter] = useState<'ALL' | 'THIS_MONTH' | 'OVERDUE'>('ALL');
+
+  const handleOpenReportModal = (filter: 'ALL' | 'THIS_MONTH' | 'OVERDUE' = 'ALL') => {
+    setPendingReportFilter(filter);
+    setShowPendingReportModal(true);
+  };
+
   // Fuso horário oficial de Massachusetts (EDT / EST)
   const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
   const currentMonthStr = todayStr.substring(0, 7); // 'YYYY-MM'
@@ -182,16 +198,27 @@ export function ExecutiveFinancialSummary({ sales }: ExecutiveFinancialSummaryPr
   return (
     <div className="space-y-4 animate-fadeIn">
       {/* Top Banner de Identificação */}
-      <div className="flex items-center justify-between border-b-2 border-deep-black pb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b-2 border-deep-black pb-2 gap-2">
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 bg-gold inline-block" />
           <h3 className="text-sm font-black uppercase tracking-wider text-deep-black">
             RESUMO FINANCEIRO EXECUTIVO • SOLICITADO PELA LOJISTA
           </h3>
         </div>
-        <span className="text-[10px] font-mono text-gold bg-deep-black px-2 py-0.5 font-black uppercase">
-          MOEDA: DÓLAR ($ USD) • SEMPRE APÓS DESCONTO
-        </span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => handleOpenReportModal('ALL')}
+            className="text-[10px] font-black uppercase bg-gradient-to-r from-amber-500 to-gold hover:from-gold hover:to-amber-400 text-deep-black px-3 py-1 font-mono flex items-center gap-1.5 shadow-sm cursor-pointer border border-amber-600 transition"
+            title="Abrir relatório de clientes com saldo de crediário pendente"
+          >
+            <FileText className="w-3.5 h-3.5 text-deep-black" />
+            <span>📋 RELATÓRIO DE CREDIÁRIOS PENDENTES</span>
+          </button>
+          <span className="text-[10px] font-mono text-gold bg-deep-black px-2 py-0.5 font-black uppercase">
+            MOEDA: DÓLAR ($ USD) • APÓS DESCONTO
+          </span>
+        </div>
       </div>
 
       {/* =========================================================================
@@ -289,22 +316,32 @@ export function ExecutiveFinancialSummary({ sales }: ExecutiveFinancialSummaryPr
           </div>
 
           {/* Valor Pendente Total */}
-          <div className="p-4 bg-amber-50 border-2 border-amber-500 space-y-1">
+          <div
+            onClick={() => handleOpenReportModal('ALL')}
+            className="p-4 bg-amber-50 border-2 border-amber-500 space-y-1 cursor-pointer hover:border-gold hover:shadow-md transition group select-none"
+            title="Clique para abrir o relatório de crediários pendentes"
+          >
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-950 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-amber-700" />
                 <span>VALOR PENDENTE TOTAL</span>
               </span>
-              <span className="px-1.5 py-0.5 bg-amber-700 text-white text-[9px] font-black uppercase font-mono">
-                A RECEBER
+              <span className="px-1.5 py-0.5 bg-amber-700 text-white text-[9px] font-black uppercase font-mono group-hover:bg-deep-black group-hover:text-gold transition">
+                A RECEBER • VER LISTA ➔
               </span>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-amber-950 font-mono">
               ${totalPendingAllTime.toFixed(2)}
             </div>
-            <p className="text-[10px] text-amber-800 uppercase font-bold">
-              Saldo devedor acumulado a receber de clientes (crediário em aberto)
-            </p>
+            <div className="flex items-center justify-between pt-1">
+              <p className="text-[10px] text-amber-800 uppercase font-bold">
+                Saldo devedor acumulado a receber de clientes
+              </p>
+              <span className="text-[9px] font-black uppercase text-amber-950 underline group-hover:text-deep-black flex items-center gap-0.5 shrink-0">
+                <span>Relatório</span>
+                <ArrowRight className="w-2.5 h-2.5" />
+              </span>
+            </div>
           </div>
         </div>
 
@@ -472,34 +509,72 @@ export function ExecutiveFinancialSummary({ sales }: ExecutiveFinancialSummaryPr
           </div>
 
           <div className="space-y-2.5">
-            {/* Crediário Pendente Total */}
-            <div className="p-2.5 bg-amber-50 border border-amber-400">
-              <span className="text-[9px] font-black uppercase text-amber-950 block">
-                CREDIÁRIO PENDENTE TOTAL (TODOS OS MESES):
-              </span>
+            {/* Crediário Pendente Total (Clicável) */}
+            <div
+              onClick={() => handleOpenReportModal('ALL')}
+              className="p-2.5 bg-amber-50 border border-amber-400 cursor-pointer hover:border-gold hover:shadow-sm transition group"
+              title="Clique para ver todos os clientes com crediário em aberto"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase text-amber-950 block">
+                  CREDIÁRIO PENDENTE TOTAL (TODOS OS MESES):
+                </span>
+                <span className="text-[8px] font-mono font-black text-amber-800 group-hover:text-deep-black flex items-center gap-0.5">
+                  <span>VER ➔</span>
+                </span>
+              </div>
               <div className="text-2xl font-black text-amber-950 font-mono mt-0.5">
                 ${totalCrediarioPendingAllTime.toFixed(2)}
               </div>
               <span className="text-[8px] text-amber-800 font-bold block uppercase mt-0.5">
-                Saldo total devedor em aberto
+                Saldo total devedor em aberto (Clique para relatório)
               </span>
             </div>
 
-            {/* Crediário Pendente do Mês */}
-            <div className="p-2.5 bg-white border border-amber-300">
-              <span className="text-[9px] font-black uppercase text-amber-900 block">
-                CREDIÁRIO PENDENTE DO MÊS ({currentMonthStr}):
-              </span>
+            {/* Crediário Pendente do Mês (Clicável) */}
+            <div
+              onClick={() => handleOpenReportModal('THIS_MONTH')}
+              className="p-2.5 bg-white border border-amber-300 cursor-pointer hover:border-gold hover:shadow-sm transition group"
+              title="Clique para ver clientes com parcelas vencendo no mês atual"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase text-amber-900 block">
+                  CREDIÁRIO PENDENTE DO MÊS ({currentMonthStr}):
+                </span>
+                <span className="text-[8px] font-mono font-black text-amber-800 group-hover:text-deep-black flex items-center gap-0.5">
+                  <span>MÊS ➔</span>
+                </span>
+              </div>
               <div className="text-xl font-black text-amber-900 font-mono mt-0.5">
                 ${totalCrediarioPendingThisMonth.toFixed(2)}
               </div>
               <span className="text-[8px] text-amber-700 font-bold block uppercase mt-0.5">
-                Parcelas vencendo no mês atual
+                Parcelas vencendo no mês atual (Clique para relatório)
               </span>
             </div>
+
+            {/* Botão de Ação Direta para o Relatório */}
+            <button
+              type="button"
+              onClick={() => handleOpenReportModal('ALL')}
+              className="w-full py-2 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-[9.5px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer border border-amber-800"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>VER RELATÓRIO COMPLETO & COBRAR ➔</span>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Modal Interativo de Relatório de Crediários e Saldos Pendentes */}
+      <PendingCrediarioReportModal
+        isOpen={showPendingReportModal}
+        onClose={() => setShowPendingReportModal(false)}
+        sales={sales}
+        initialFilter={pendingReportFilter}
+        onOpenPaymentModal={onOpenPaymentModal}
+        onSelectSale={onSelectSale}
+      />
     </div>
   );
 }
