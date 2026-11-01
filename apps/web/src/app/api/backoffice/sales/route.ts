@@ -755,7 +755,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     // =========================================================================
-    // AÇÃO 1: EDITAR VENDA COMPLETA DO PDV (DATA, CLIENTE, ITENS, PGTO, TOTAL)
+    // AÇÃO 1: EDITAR VENDA COMPLETA DO PDV E ONLINE (DATA, CLIENTE, ENDEREÇO, ITENS, PGTO, TOTAL)
     // =========================================================================
     if (action === 'edit_sale') {
       const {
@@ -766,6 +766,9 @@ export async function PATCH(req: NextRequest) {
         payment_method,
         seller_name,
         discount_amount,
+        shipping_fee,
+        shipping_address,
+        tracking_code: inputTrackingCode,
         subtotal_products,
         total_amount,
         items,
@@ -775,7 +778,8 @@ export async function PATCH(req: NextRequest) {
       const pMethod = (payment_method || 'CASH').toUpperCase();
       const disc = Math.max(0, Number(discount_amount) || 0);
       const subtotal = Math.max(0, Number(subtotal_products) || 0);
-      const grossTotal = Math.max(0, Number(total_amount) || (subtotal - disc));
+      const shipFee = shipping_fee !== undefined ? Math.max(0, Number(shipping_fee) || 0) : undefined;
+      const grossTotal = Math.max(0, Number(total_amount) || (subtotal + (shipFee || 0) - disc));
       const pFee = calculatePaymentFee(pMethod, grossTotal);
 
       // Custo de confecção / aquisição das peças
@@ -816,10 +820,17 @@ export async function PATCH(req: NextRequest) {
               ? seller_name
               : (currentMeta.seller_name && !currentMeta.seller_name.includes('Juliana Silva') ? currentMeta.seller_name : 'Ana Karina');
 
+            const resolvedShipFee = shipFee !== undefined ? shipFee : Number(currentMeta.shipping_fee || 0);
+            const resolvedAddress = shipping_address !== undefined ? shipping_address : currentMeta.address;
+            const resolvedTracking = inputTrackingCode !== undefined ? inputTrackingCode : (tracking_code || currentMeta.tracking_code);
+
             const updatedMeta = {
               ...currentMeta,
               seller_name: cleanSeller,
               payment_fee: pFee,
+              shipping_fee: resolvedShipFee,
+              ...(resolvedAddress ? { address: resolvedAddress } : {}),
+              ...(resolvedTracking ? { tracking_code: resolvedTracking } : {}),
               cost_of_goods: totalCostOfGoods,
               net_profit: netProfit,
               profit_margin_pct: marginPct,
@@ -860,6 +871,10 @@ export async function PATCH(req: NextRequest) {
       const sales = readSavedSales();
       const updated = sales.map((s: any) => {
         if (s.order_id === order_id || s.id === order_id || (body.id && s.id === body.id)) {
+          const resolvedShipFee = shipFee !== undefined ? shipFee : Number(s.shipping_fee || 0);
+          const resolvedAddress = shipping_address !== undefined ? shipping_address : s.shipping_address;
+          const resolvedTracking = inputTrackingCode !== undefined ? inputTrackingCode : (tracking_code || s.tracking_code);
+
           return {
             ...s,
             created_at: created_at || s.created_at,
@@ -870,7 +885,9 @@ export async function PATCH(req: NextRequest) {
             seller_name: seller_name || s.seller_name,
             subtotal_products: subtotal,
             discount_amount: disc,
-            shipping_fee: s.shipping_fee || 0,
+            shipping_fee: resolvedShipFee,
+            shipping_address: resolvedAddress,
+            tracking_code: resolvedTracking,
             payment_fee: pFee,
             cost_of_goods: totalCostOfGoods,
             commission_amount: commissionAmount,

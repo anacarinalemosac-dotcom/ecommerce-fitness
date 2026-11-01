@@ -4286,13 +4286,24 @@ export default function BackofficeDashboard() {
                           ? '🚚 ENVIADO'
                           : '⏳ PENDENTE'}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedSaleDetail(sale)}
-                        className="px-3 py-1 bg-deep-black text-white text-[10px] font-black uppercase tracking-wider hover:bg-gold hover:text-deep-black transition"
-                      >
-                        VER DETALHES →
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditingSale(sale)}
+                          className="px-2.5 py-1 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-[10px] font-black uppercase tracking-wider flex items-center gap-1 border border-deep-black transition shadow-xs"
+                          title="Editar venda"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>EDITAR</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSaleDetail(sale)}
+                          className="px-2.5 py-1 bg-deep-black text-white text-[10px] font-black uppercase tracking-wider hover:bg-gold hover:text-deep-black transition"
+                        >
+                          VER DETALHES →
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -4301,7 +4312,7 @@ export default function BackofficeDashboard() {
           </div>
 
           {/* TABELA DETALHADA DE VENDAS & PEDIDOS (DESKTOP) */}
-          <div className="hidden lg:block bg-white border-2 border-deep-black overflow-x-auto shadow-sm">
+          <div className="hidden lg:block bg-white border-2 border-deep-black shadow-sm">
             <div className="p-4 bg-deep-black text-white flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-gold" />
@@ -4310,85 +4321,114 @@ export default function BackofficeDashboard() {
                 </span>
               </div>
               <span className="text-[10px] font-mono text-gold uppercase font-black">
-                VALORES LÍQUIDOS CALCULADOS AUTOMATICAMENTE
+                COLUNAS DE CLIENTE & AÇÕES FIXAS • SEMPRE VISÍVEIS
               </span>
             </div>
 
-            <table className="w-full text-left text-xs uppercase tracking-wider">
-              <thead className="bg-deep-black/5 text-[9px] font-black text-deep-black border-b border-deep-black/20">
-                <tr>
-                  <th className="p-3">PEDIDO # / DATA</th>
-                  <th className="p-3">CANAL & OPERADORA</th>
-                  <th className="p-3">CLIENTE</th>
-                  <th className="p-3">ITENS & GRADE (COR/TAM)</th>
-                  <th className="p-3">PGTO</th>
-                  <th className="p-2.5 text-right whitespace-nowrap">1. VALOR TOTAL</th>
-                  <th className="p-2.5 text-right whitespace-nowrap">2. DESCONTO</th>
-                  <th className="p-2.5 text-right whitespace-nowrap">3. APÓS DESCONTO</th>
-                  <th className="p-2.5 text-right whitespace-nowrap">4. PREÇO CUSTO</th>
-                  <th className="p-2.5 text-right whitespace-nowrap">5. COMISSÕES</th>
-                  <th className="p-2.5 text-right whitespace-nowrap">6. TAXAS GATEWAY</th>
-                  <th className="p-2.5 text-right whitespace-nowrap">7. VALOR FINAL</th>
-                  <th className="p-3 text-center">SITUAÇÃO ENTREGA (LOGÍSTICA)</th>
-                  <th className="p-3 text-center">SITUAÇÃO PAGAMENTO (FINANCEIRO)</th>
-                  <th className="p-3 text-center">AÇÕES</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-deep-black/10">
-                {filteredSalesList.map((sale: any) => {
-                  const isOnline = sale.channel === 'ONLINE';
-                  const isWriteOff = sale.order_id?.startsWith('OUT-') || sale.channel === 'WRITE_OFF' || (Number(sale.subtotal_products) === 0 && Number(sale.cost_of_goods) > 0);
-                  const fin = computeSaleFinancials(sale);
-                  return (
-                    <tr key={sale.id || sale.order_id} className="hover:bg-deep-black/5">
-                      {/* Pedido & Data */}
-                      <td className="p-3 font-mono">
-                        <span className="font-black text-deep-black block">{sale.order_id}</span>
-                        <span className="text-[9px] text-deep-black/50">
-                          {new Date(sale.created_at).toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      </td>
+            {/* Banner Informativo de Usabilidade */}
+            <div className="bg-amber-50 px-4 py-2 border-b border-gold/40 text-[10px] text-deep-black flex items-center justify-between">
+              <span className="flex items-center gap-1.5 font-bold">
+                <Edit3 className="w-3.5 h-3.5 text-gold shrink-0" />
+                <span>
+                  DICA: Você pode clicar em <strong>EDITAR VENDA</strong> direto na 1ª coluna fixa ao lado do nome do cliente, ou na coluna de Ações à direita, sem precisar rolar!
+                </span>
+              </span>
+              <span className="text-[9px] text-deep-black/60 font-mono hidden xl:inline">
+                ← Pedido & Cliente Fixos | Ações Rápidas Fixas →
+              </span>
+            </div>
 
-                      {/* Canal & Operadora */}
-                      <td className="p-3">
-                        <span className={`inline-block px-1.5 py-0.5 text-[8px] font-black border uppercase ${
-                          isWriteOff
-                            ? 'bg-purple-900 text-gold border-gold'
-                            : isOnline
-                            ? 'bg-deep-black text-white border-deep-black'
-                            : 'bg-gold/20 text-deep-black border-gold/40'
-                        }`}>
-                          {isWriteOff ? 'RETIRADA SEM CUSTO' : isOnline ? 'LOJA ONLINE' : 'PDV BALCÃO'}
-                        </span>
-                        <span className="text-[9px] text-deep-black/60 block font-bold truncate max-w-[120px] mt-0.5" title={sale.seller_name}>
-                          {sale.seller_name}
-                        </span>
-                      </td>
+            {/* Container com scroll limitado no viewport e barra horizontal sempre ao alcance */}
+            <div className="overflow-x-auto max-h-[75vh] overflow-y-auto relative scrollbar-thin">
+              <table className="w-full text-left text-xs uppercase tracking-wider border-collapse">
+                <thead className="sticky top-0 bg-stone-900 text-white text-[9px] font-black uppercase z-30 shadow-sm border-b-2 border-gold">
+                  <tr>
+                    <th className="p-3 sticky left-0 top-0 z-40 bg-stone-900 text-gold border-r-2 border-gold/40 min-w-[230px] max-w-[260px] shadow-[4px_0_8px_-2px_rgba(0,0,0,0.3)]">
+                      PEDIDO / CLIENTE (FIXO)
+                    </th>
+                    <th className="p-3">ITENS & GRADE (COR/TAM)</th>
+                    <th className="p-3">PGTO</th>
+                    <th className="p-2.5 text-right whitespace-nowrap">1. VALOR TOTAL</th>
+                    <th className="p-2.5 text-right whitespace-nowrap">2. DESCONTO</th>
+                    <th className="p-2.5 text-right whitespace-nowrap">3. APÓS DESCONTO</th>
+                    <th className="p-2.5 text-right whitespace-nowrap">4. PREÇO CUSTO</th>
+                    <th className="p-2.5 text-right whitespace-nowrap">5. COMISSÕES</th>
+                    <th className="p-2.5 text-right whitespace-nowrap">6. TAXAS GATEWAY</th>
+                    <th className="p-2.5 text-right whitespace-nowrap">7. VALOR FINAL</th>
+                    <th className="p-3 text-center">SITUAÇÃO ENTREGA (LOGÍSTICA)</th>
+                    <th className="p-3 text-center">SITUAÇÃO PAGAMENTO (FINANCEIRO)</th>
+                    <th className="p-3 text-center sticky right-0 top-0 z-40 bg-stone-900 text-gold border-l-2 border-gold shadow-[-6px_0_12px_-2px_rgba(0,0,0,0.35)] min-w-[220px]">
+                      AÇÕES RÁPIDAS (FIXO)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-deep-black/10">
+                  {filteredSalesList.map((sale: any) => {
+                    const isOnline = sale.channel === 'ONLINE';
+                    const isWriteOff = sale.order_id?.startsWith('OUT-') || sale.channel === 'WRITE_OFF' || (Number(sale.subtotal_products) === 0 && Number(sale.cost_of_goods) > 0);
+                    const fin = computeSaleFinancials(sale);
+                    return (
+                      <tr key={sale.id || sale.order_id} className="hover:bg-deep-black/5">
+                        {/* Pedido, Canal & Cliente (FIXO À ESQUERDA COM BOTÃO DE EDITAR DIRETO) */}
+                        <td className="p-3 font-mono sticky left-0 z-20 bg-white border-r-2 border-deep-black/20 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)] min-w-[230px] max-w-[260px]">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-1 flex-wrap">
+                              <span className="font-black text-deep-black text-xs block">#{sale.order_id}</span>
+                              <span className={`inline-block px-1.5 py-0.5 text-[8px] font-black border uppercase ${
+                                isWriteOff
+                                  ? 'bg-purple-900 text-gold border-gold'
+                                  : isOnline
+                                  ? 'bg-deep-black text-white border-deep-black'
+                                  : 'bg-gold/20 text-deep-black border-gold/40'
+                              }`}>
+                                {isWriteOff ? 'RETIRADA' : isOnline ? 'ONLINE' : 'BALCÃO'}
+                              </span>
+                            </div>
 
-                      {/* Cliente */}
-                      <td className="p-3 font-bold text-deep-black">
-                        <span className="block">{sale.customer_name}</span>
-                        {sale.customer_phone && (
-                          <span className="text-[9px] text-deep-black/60 block font-mono">
-                            📞 {sale.customer_phone}
-                          </span>
-                        )}
-                        {sale.customer_email && (
-                          <span className="text-[9px] text-deep-black/50 block font-mono lowercase truncate max-w-[140px]">
-                            ✉️ {sale.customer_email}
-                          </span>
-                        )}
-                        {sale.shipping_address && (
-                          <span className="text-[9px] text-gold font-bold block mt-0.5">
-                            📍 {sale.shipping_address.city}, {sale.shipping_address.state} {sale.shipping_address.zip}
-                          </span>
-                        )}
-                      </td>
+                            <div className="text-[9px] text-deep-black/60 flex items-center justify-between">
+                              <span>
+                                {new Date(sale.created_at).toLocaleDateString('pt-BR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                              {sale.seller_name && (
+                                <span className="font-bold truncate max-w-[100px]" title={sale.seller_name}>
+                                  👤 {sale.seller_name}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="pt-1 border-t border-deep-black/10">
+                              <span className="font-black text-deep-black block text-xs truncate" title={sale.customer_name}>
+                                {sale.customer_name}
+                              </span>
+                              {sale.customer_phone && (
+                                <span className="text-[9px] text-deep-black/70 block font-mono">
+                                  📞 {sale.customer_phone}
+                                </span>
+                              )}
+                              {sale.shipping_address && (
+                                <span className="text-[9px] text-gold font-bold block truncate mt-0.5" title={`${sale.shipping_address.city || ''}, ${sale.shipping_address.state || ''} ${sale.shipping_address.zip || ''}`}>
+                                  📍 {sale.shipping_address.city || ''}, {sale.shipping_address.state || ''}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* BOTÃO DIRETO DE EDIÇÃO - 1 CLIQUE SEM PRECISAR ROLAR! */}
+                            <button
+                              type="button"
+                              onClick={() => setEditingSale(sale)}
+                              className="mt-1.5 w-full py-1.5 px-2 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-[9.5px] font-black uppercase transition tracking-wider flex items-center justify-center gap-1.5 border-2 border-deep-black shadow-xs cursor-pointer"
+                              title="Editar venda agora (sem precisar rolar a tela!)"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>✏️ EDITAR VENDA</span>
+                            </button>
+                          </div>
+                        </td>
 
                       {/* Itens e Grade */}
                       <td className="p-3">
@@ -4596,8 +4636,8 @@ export default function BackofficeDashboard() {
                         })()}
                       </td>
 
-                      {/* Botões Ação: Editar Venda, Cancelar & Raio-X */}
-                      <td className="p-3 text-center">
+                      {/* Botões Ação: Editar Venda, Cancelar & Raio-X (FIXO À DIREITA) */}
+                      <td className="p-3 text-center sticky right-0 z-20 bg-white border-l-2 border-gold shadow-[-6px_0_12px_-2px_rgba(0,0,0,0.15)] min-w-[220px]">
                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
                           <button
                             type="button"
@@ -4700,9 +4740,9 @@ export default function BackofficeDashboard() {
                 })}
               </tbody>
               {/* Rodapé Oficial da Tabela com a Soma Exata dos 7 Totais Solicitados */}
-              <tfoot className="bg-deep-black text-white font-mono text-xs border-t-4 border-gold">
+              <tfoot className="sticky bottom-0 z-30 bg-deep-black text-white font-mono text-xs border-t-4 border-gold shadow-lg">
                 <tr>
-                  <td colSpan={5} className="p-3 font-black text-gold uppercase tracking-wider">
+                  <td colSpan={3} className="p-3 font-black text-gold uppercase tracking-wider sticky left-0 bg-deep-black z-40 border-r-2 border-gold/40 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]">
                     SOMA TOTAL ({filteredSalesTotals.count} VENDAS NO PERÍODO):
                   </td>
                   <td className="p-2.5 text-right font-black text-gold text-xs whitespace-nowrap">
@@ -4726,13 +4766,14 @@ export default function BackofficeDashboard() {
                   <td className="p-2.5 text-right font-black text-gold text-xs whitespace-nowrap">
                     ${filteredSalesTotals.totalProfit.toFixed(2)}
                   </td>
-                  <td colSpan={3} className="p-3 text-center text-gold font-bold text-[10px]">
+                  <td colSpan={3} className="p-3 text-center text-gold font-bold text-[10px] sticky right-0 bg-deep-black z-40 border-l-2 border-gold shadow-[-6px_0_12px_-2px_rgba(0,0,0,0.4)]">
                     MARGEM: {filteredSalesTotals.marginPct.toFixed(1)}%
                   </td>
                 </tr>
               </tfoot>
             </table>
           </div>
+        </div>
 
           {/* =========================================================================
               PAINEL EXECUTIVO: FECHAMENTO CONSOLIDADO / TOTAL DE TUDO

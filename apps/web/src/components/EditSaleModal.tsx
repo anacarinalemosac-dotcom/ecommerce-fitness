@@ -20,6 +20,9 @@ import {
   Receipt,
   FileText,
   Ban,
+  Truck,
+  Globe,
+  MapPin,
 } from 'lucide-react';
 
 interface SaleItem {
@@ -48,6 +51,13 @@ export function EditSaleModal({
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
+  const [shippingStreet, setShippingStreet] = useState('');
+  const [shippingApt, setShippingApt] = useState('');
+  const [shippingCity, setShippingCity] = useState('');
+  const [shippingState, setShippingState] = useState('');
+  const [shippingZip, setShippingZip] = useState('');
+  const [shippingFee, setShippingFee] = useState('0');
+  const [trackingCode, setTrackingCode] = useState('');
   const [createdAt, setCreatedAt] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [sellerName, setSellerName] = useState('Ana Karina');
@@ -66,6 +76,22 @@ export function EditSaleModal({
       setCustomerName(sale.customer_name || '');
       setCustomerPhone(sale.customer_phone || '');
       setCustomerEmail(sale.customer_email || '');
+      
+      const rawShip = (typeof sale.shipping_address === 'object' && sale.shipping_address !== null)
+        ? sale.shipping_address
+        : {};
+      const rawAddress = rawShip.address || rawShip.street || '';
+      setShippingStreet(rawAddress);
+      setShippingApt(rawShip.apt || rawShip.suite || '');
+      setShippingCity(rawShip.city || '');
+      setShippingState(rawShip.state || '');
+      setShippingZip(rawShip.zip || rawShip.postal_code || '');
+      const fee = sale.shipping_fee !== undefined && sale.shipping_fee !== null
+        ? sale.shipping_fee
+        : (rawShip.shipping_fee !== undefined ? rawShip.shipping_fee : (sale.channel === 'ONLINE' ? 9.99 : 0));
+      setShippingFee(String(fee));
+      setTrackingCode(sale.tracking_code || rawShip.tracking_code || '');
+
       setPaymentMethod((sale.payment_method || 'CASH').toUpperCase());
       const rawSeller = sale.seller_name || '';
       setSellerName(rawSeller.includes('Juliana Silva') ? 'Ana Karina' : (rawSeller || 'Ana Karina'));
@@ -170,6 +196,7 @@ export function EditSaleModal({
   };
 
   // Cálculos Financeiros
+  const isOnline = sale?.channel === 'ONLINE';
   const subtotalProducts = items.reduce(
     (acc, it) => acc + (Number(it.quantity) || 1) * (Number(it.unit_price) || 0),
     0
@@ -180,7 +207,8 @@ export function EditSaleModal({
   );
   const discountVal = Math.max(0, Number(discountAmount) || 0);
   const commissionVal = Math.max(0, Number(commissionAmount) || 0);
-  const totalAmount = Math.max(0, subtotalProducts - discountVal);
+  const shippingFeeVal = Math.max(0, Number(shippingFee) || 0);
+  const totalAmount = Math.max(0, subtotalProducts + shippingFeeVal - discountVal);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,6 +244,15 @@ export function EditSaleModal({
         discount_amount: discountVal,
         commission_amount: commissionVal,
         subtotal_products: Number(subtotalProducts.toFixed(2)),
+        shipping_fee: shippingFeeVal,
+        tracking_code: trackingCode.trim() || undefined,
+        shipping_address: (shippingStreet || shippingCity || shippingState || shippingZip) ? {
+          address: shippingStreet.trim(),
+          apt: shippingApt.trim() || undefined,
+          city: shippingCity.trim(),
+          state: shippingState.trim().toUpperCase(),
+          zip: shippingZip.trim(),
+        } : undefined,
         total_amount: Number(totalAmount.toFixed(2)),
         items,
         notes: notes.trim() || undefined,
@@ -290,8 +327,18 @@ export function EditSaleModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-gold">
-                  EDITAR VENDA PDV • LOJA FÍSICA
+                <span className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center gap-1.5">
+                  {isOnline ? (
+                    <>
+                      <Globe className="w-3.5 h-3.5 text-gold" />
+                      <span>PEDIDO ONLINE • LOJA VIRTUAL / SITE</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingBag className="w-3.5 h-3.5 text-gold" />
+                      <span>EDITAR VENDA PDV • BALCÃO LOJA FÍSICA</span>
+                    </>
+                  )}
                 </span>
                 <span className="text-[9px] font-mono px-2 py-0.5 bg-white/10 text-white border border-white/20">
                   #{sale.order_id || sale.id}
@@ -406,6 +453,102 @@ export function EditSaleModal({
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
                   className="w-full p-2.5 border-2 border-deep-black font-mono text-xs lowercase focus:outline-none focus:border-gold"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* SEÇÃO 2.1: ENDEREÇO DE ENTREGA & RASTREIO USPS (ONLINE E BALCÃO) */}
+          <div className="p-4 bg-white border-2 border-deep-black space-y-3">
+            <div className="flex items-center justify-between border-b border-deep-black/10 pb-2">
+              <div className="flex items-center gap-1.5">
+                <Truck className="w-4 h-4 text-gold" />
+                <span className="text-[10px] font-black tracking-wider text-deep-black">
+                  Endereço de Entrega & Rastreio USPS {isOnline && '(Venda do Site)'}
+                </span>
+              </div>
+              {isOnline ? (
+                <span className="px-2 py-0.5 text-[8.5px] font-black bg-deep-black text-gold border border-gold">
+                  ONLINE • VIA CORREIOS (USPS)
+                </span>
+              ) : (
+                <span className="text-[8.5px] text-deep-black/50 font-bold">
+                  (OPCIONAL PARA BALCÃO)
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div className="sm:col-span-8 space-y-1">
+                <label className="text-[9.5px] font-black text-deep-black">Endereço (Rua e Número)</label>
+                <input
+                  type="text"
+                  placeholder="Ex: 742 Commonwealth Ave"
+                  value={shippingStreet}
+                  onChange={(e) => setShippingStreet(e.target.value)}
+                  className="w-full p-2.5 border-2 border-deep-black font-medium text-xs focus:outline-none focus:border-gold"
+                />
+              </div>
+              <div className="sm:col-span-4 space-y-1">
+                <label className="text-[9.5px] font-black text-deep-black">Apt / Suite / Bloco</label>
+                <input
+                  type="text"
+                  placeholder="Apt 4B"
+                  value={shippingApt}
+                  onChange={(e) => setShippingApt(e.target.value)}
+                  className="w-full p-2.5 border-2 border-deep-black font-medium text-xs focus:outline-none focus:border-gold"
+                />
+              </div>
+              <div className="sm:col-span-5 space-y-1">
+                <label className="text-[9.5px] font-black text-deep-black">Cidade</label>
+                <input
+                  type="text"
+                  placeholder="Boston"
+                  value={shippingCity}
+                  onChange={(e) => setShippingCity(e.target.value)}
+                  className="w-full p-2.5 border-2 border-deep-black font-medium text-xs focus:outline-none focus:border-gold"
+                />
+              </div>
+              <div className="sm:col-span-3 space-y-1">
+                <label className="text-[9.5px] font-black text-deep-black">Estado (UF)</label>
+                <input
+                  type="text"
+                  placeholder="MA"
+                  maxLength={2}
+                  value={shippingState}
+                  onChange={(e) => setShippingState(e.target.value.toUpperCase())}
+                  className="w-full p-2.5 border-2 border-deep-black font-bold text-xs uppercase focus:outline-none focus:border-gold"
+                />
+              </div>
+              <div className="sm:col-span-4 space-y-1">
+                <label className="text-[9.5px] font-black text-deep-black">ZIP Code (CEP EUA)</label>
+                <input
+                  type="text"
+                  placeholder="02215"
+                  value={shippingZip}
+                  onChange={(e) => setShippingZip(e.target.value)}
+                  className="w-full p-2.5 border-2 border-deep-black font-mono font-bold text-xs focus:outline-none focus:border-gold"
+                />
+              </div>
+              <div className="sm:col-span-8 space-y-1">
+                <label className="text-[9.5px] font-black text-deep-black">Código de Rastreio (USPS Tracking)</label>
+                <input
+                  type="text"
+                  placeholder="Ex: 9400 1118 9956 2534 8920 12"
+                  value={trackingCode}
+                  onChange={(e) => setTrackingCode(e.target.value)}
+                  className="w-full p-2.5 border-2 border-deep-black font-mono font-bold text-xs focus:outline-none focus:border-gold"
+                />
+              </div>
+              <div className="sm:col-span-4 space-y-1">
+                <label className="text-[9.5px] font-black text-deep-black">Taxa de Frete ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={shippingFee}
+                  onChange={(e) => setShippingFee(e.target.value)}
+                  placeholder="9.99"
+                  className="w-full p-2.5 border-2 border-deep-black font-mono font-bold text-xs text-right focus:outline-none focus:border-gold"
                 />
               </div>
             </div>
@@ -706,6 +849,15 @@ export function EditSaleModal({
               <span className="text-white/70">Faturamento Bruto (Peças):</span>
               <span className="font-mono font-bold text-white">${subtotalProducts.toFixed(2)}</span>
             </div>
+            {shippingFeeVal > 0 && (
+              <div className="flex items-center justify-between text-xs text-blue-300">
+                <span className="flex items-center gap-1 font-bold">
+                  <Truck className="w-3.5 h-3.5" />
+                  <span>(+) Taxa de Frete (USPS):</span>
+                </span>
+                <span className="font-mono font-bold">+${shippingFeeVal.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between text-xs text-amber-300">
               <span className="flex items-center gap-1 font-bold">
                 <span>(-) Custo Total das Peças (CMV Atualizado):</span>
@@ -732,7 +884,7 @@ export function EditSaleModal({
             <div className="flex items-center justify-between text-xs text-green-400 pt-1 border-t border-white/10">
               <span>(=) Lucro Líquido Real Estimado:</span>
               <span className="font-mono font-bold text-sm">
-                +${Math.max(0, subtotalProducts - totalCostOfGoods - discountVal - commissionVal).toFixed(2)}
+                +${Math.max(0, subtotalProducts + shippingFeeVal - totalCostOfGoods - discountVal - commissionVal).toFixed(2)}
               </span>
             </div>
             <div className="flex items-center justify-between text-base font-black text-gold pt-2 border-t border-white/20">
