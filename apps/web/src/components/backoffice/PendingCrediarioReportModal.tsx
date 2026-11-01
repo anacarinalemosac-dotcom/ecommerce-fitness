@@ -94,13 +94,12 @@ export function PendingCrediarioReportModal({
         remainingBalance = Math.max(0, Number((fin.afterDiscount - paidAmount).toFixed(2)));
       }
 
-      // Se não há saldo pendente e todas as parcelas estão pagas, ignora
-      const pendingInstallments = installments.filter((i: any) => i.status === 'PENDING');
-      const hasPendingInstallments = pendingInstallments.length > 0;
-
-      if (remainingBalance <= 0.01 && !hasPendingInstallments) {
+      // Se a venda está QUITADA (status PAID ou saldo devedor <= 0.01), ignora: não tem pendência!
+      if (s.payment_status === 'PAID' || remainingBalance <= 0.01) {
         return;
       }
+
+      const pendingInstallments = installments.filter((i: any) => i.status === 'PENDING');
 
       // Identifica parcelas vencidas e vencendo no mês
       let hasOverdue = false;

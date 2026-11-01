@@ -244,6 +244,15 @@ export async function GET(req: NextRequest) {
               ? Number(meta.remaining_balance)
               : (rawPayStatus === 'PAID' ? 0 : Math.max(0, Number((grossTotal - alreadyPaid).toFixed(2))));
 
+            const isFullyPaid = rawPayStatus === 'PAID' || remainingBal <= 0.01;
+            const crediarioData = meta.crediario ? {
+              ...meta.crediario,
+              remaining_balance: isFullyPaid ? 0 : (meta.crediario.remaining_balance ?? remainingBal),
+              installments: Array.isArray(meta.crediario.installments)
+                ? meta.crediario.installments.map((i: any) => isFullyPaid ? { ...i, status: 'PAID' } : i)
+                : []
+            } : undefined;
+
             return {
               id: ord.id,
               order_id: orderNumber,
@@ -271,12 +280,12 @@ export async function GET(req: NextRequest) {
                   ? ord.status
                   : (isOnline ? 'AWAITING_SEPARATION' : 'DELIVERED')
               ),
-              payment_status: rawPayStatus,
+              payment_status: isFullyPaid ? 'PAID' : rawPayStatus,
               payments: rawPayments,
-              amount_paid: alreadyPaid,
-              remaining_balance: remainingBal,
+              amount_paid: isFullyPaid && alreadyPaid === 0 ? grossTotal : alreadyPaid,
+              remaining_balance: isFullyPaid ? 0 : remainingBal,
               shipping_address: meta.address && typeof meta.address === 'object' ? meta.address : undefined,
-              crediario: meta.crediario || undefined,
+              crediario: crediarioData,
               tracking_code: meta.tracking_code || ord.tracking_code || undefined,
               shipped_at: meta.shipped_at || undefined,
               confirmation_email_sent: meta.confirmation_email_sent || undefined,

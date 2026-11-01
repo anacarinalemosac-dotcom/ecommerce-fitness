@@ -161,7 +161,9 @@ export function ExecutiveFinancialSummary({
 
       // Saldo devedor pendente:
       let credPending = 0;
-      if (s.remaining_balance !== undefined && !isNaN(Number(s.remaining_balance))) {
+      if (s.payment_status === 'PAID') {
+        credPending = 0;
+      } else if (s.remaining_balance !== undefined && !isNaN(Number(s.remaining_balance))) {
         credPending = Math.max(0, Number(s.remaining_balance));
       } else {
         credPending = Math.max(0, fin.afterDiscount - credPaid);
@@ -170,18 +172,20 @@ export function ExecutiveFinancialSummary({
       totalPendingAllTime += credPending;
       totalCrediarioPendingAllTime += credPending;
 
-      // Crediário pendente do mês corrente:
-      if (installments.length > 0) {
-        installments.forEach((inst: any) => {
-          if (inst.status === 'PENDING') {
-            const dueMonth = getSaleMonthStr(inst.due_date);
-            if (dueMonth === currentMonthStr) {
-              totalCrediarioPendingThisMonth += (Number(inst.amount) || 0);
+      // Crediário pendente do mês corrente (apenas se houver saldo devedor real):
+      if (credPending > 0.01 && s.payment_status !== 'PAID') {
+        if (installments.length > 0) {
+          installments.forEach((inst: any) => {
+            if (inst.status === 'PENDING') {
+              const dueMonth = getSaleMonthStr(inst.due_date);
+              if (dueMonth === currentMonthStr) {
+                totalCrediarioPendingThisMonth += (Number(inst.amount) || 0);
+              }
             }
-          }
-        });
-      } else if (isThisMonth) {
-        totalCrediarioPendingThisMonth += credPending;
+          });
+        } else if (isThisMonth) {
+          totalCrediarioPendingThisMonth += credPending;
+        }
       }
     } else {
       // Venda normal à vista (Não é crediário)

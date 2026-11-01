@@ -1371,6 +1371,7 @@ export default function BackofficeDashboard() {
     // Filtro Exclusivo de Crediário com Saldo Pendente
     if (salesCrediarioPendingOnly) {
       if (s.status === 'CANCELLED') return false;
+      if (s.payment_status === 'PAID') return false;
       const isCred = (s.payment_method || '').toUpperCase() === 'CREDIARIO' || !!s.crediario;
       if (!isCred) return false;
       const fin = computeSaleFinancials(s);
@@ -1392,8 +1393,7 @@ export default function BackofficeDashboard() {
       } else {
         remainingBalance = Math.max(0, Number((fin.afterDiscount - paidAmount).toFixed(2)));
       }
-      const hasPendingInst = installments.some((i: any) => i.status === 'PENDING');
-      if (remainingBalance <= 0.01 && !hasPendingInst) return false;
+      if (remainingBalance <= 0.01) return false;
     }
     // Filtro por Data Específica Direta
     if (salesSpecificDate) {
@@ -1517,6 +1517,7 @@ export default function BackofficeDashboard() {
   const { pendingCrediarioSalesCount, pendingCrediarioSalesTotal } = useMemo(() => {
     const list = (salesData?.sales || []).filter((s: any) => {
       if (s.status === 'CANCELLED') return false;
+      if (s.payment_status === 'PAID') return false;
       const isCred = (s.payment_method || '').toUpperCase() === 'CREDIARIO' || !!s.crediario;
       if (!isCred) return false;
       const fin = computeSaleFinancials(s);
@@ -1538,8 +1539,7 @@ export default function BackofficeDashboard() {
       } else {
         remainingBalance = Math.max(0, Number((fin.afterDiscount - paidAmount).toFixed(2)));
       }
-      const hasPendingInst = installments.some((i: any) => i.status === 'PENDING');
-      return remainingBalance > 0.01 || hasPendingInst;
+      return remainingBalance > 0.01;
     });
 
     const total = list.reduce((sum: number, s: any) => {
