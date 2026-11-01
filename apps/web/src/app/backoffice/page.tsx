@@ -289,6 +289,7 @@ export default function BackofficeDashboard() {
   const [salesCustomEndDate, setSalesCustomEndDate] = useState('');
   const [salesSpecificDate, setSalesSpecificDate] = useState('');
   const [salesUnfulfilledOnly, setSalesUnfulfilledOnly] = useState(false);
+  const [salesCrediarioPendingOnly, setSalesCrediarioPendingOnly] = useState(false);
   const [showSalesReportModal, setShowSalesReportModal] = useState(false);
   const [salesPreorderOnly, setSalesPreorderOnly] = useState(false);
   const [salesSearch, setSalesSearch] = useState('');
@@ -1367,6 +1368,33 @@ export default function BackofficeDashboard() {
       const isFulfilled = fSt === 'DELIVERED' || fSt === 'SHIPPED' || st === 'DELIVERED' || st === 'SHIPPED' || st === 'CANCELLED';
       if (isFulfilled) return false;
     }
+    // Filtro Exclusivo de Crediário com Saldo Pendente
+    if (salesCrediarioPendingOnly) {
+      if (s.status === 'CANCELLED') return false;
+      const isCred = (s.payment_method || '').toUpperCase() === 'CREDIARIO' || !!s.crediario;
+      if (!isCred) return false;
+      const fin = computeSaleFinancials(s);
+      const downPay = Math.max(0, Number(s.crediario?.down_payment) || 0);
+      const paymentsList = Array.isArray(s.payments)
+        ? s.payments
+        : (Array.isArray(s.crediario?.payments) ? s.crediario.payments : []);
+      const installments = Array.isArray(s.crediario?.installments) ? s.crediario.installments : [];
+      let paidAmount = 0;
+      if (paymentsList.length > 0) {
+        paidAmount = paymentsList.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+      } else {
+        const paidInsts = installments.filter((i: any) => i.status === 'PAID').reduce((sum: number, i: any) => sum + (Number(i.amount) || 0), 0);
+        paidAmount = downPay + paidInsts;
+      }
+      let remainingBalance = 0;
+      if (s.remaining_balance !== undefined && !isNaN(Number(s.remaining_balance))) {
+        remainingBalance = Math.max(0, Number(s.remaining_balance));
+      } else {
+        remainingBalance = Math.max(0, Number((fin.afterDiscount - paidAmount).toFixed(2)));
+      }
+      const hasPendingInst = installments.some((i: any) => i.status === 'PENDING');
+      if (remainingBalance <= 0.01 && !hasPendingInst) return false;
+    }
     // Filtro por Data Específica Direta
     if (salesSpecificDate) {
       if (!s.created_at) return false;
@@ -1485,7 +1513,64 @@ export default function BackofficeDashboard() {
     }).length;
   }, [salesData]);
 
+  // Contagem e valor total de vendas de crediário com saldo pendente
+  const { pendingCrediarioSalesCount, pendingCrediarioSalesTotal } = useMemo(() => {
+    const list = (salesData?.sales || []).filter((s: any) => {
+      if (s.status === 'CANCELLED') return false;
+      const isCred = (s.payment_method || '').toUpperCase() === 'CREDIARIO' || !!s.crediario;
+      if (!isCred) return false;
+      const fin = computeSaleFinancials(s);
+      const downPay = Math.max(0, Number(s.crediario?.down_payment) || 0);
+      const paymentsList = Array.isArray(s.payments)
+        ? s.payments
+        : (Array.isArray(s.crediario?.payments) ? s.crediario.payments : []);
+      const installments = Array.isArray(s.crediario?.installments) ? s.crediario.installments : [];
+      let paidAmount = 0;
+      if (paymentsList.length > 0) {
+        paidAmount = paymentsList.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+      } else {
+        const paidInsts = installments.filter((i: any) => i.status === 'PAID').reduce((sum: number, i: any) => sum + (Number(i.amount) || 0), 0);
+        paidAmount = downPay + paidInsts;
+      }
+      let remainingBalance = 0;
+      if (s.remaining_balance !== undefined && !isNaN(Number(s.remaining_balance))) {
+        remainingBalance = Math.max(0, Number(s.remaining_balance));
+      } else {
+        remainingBalance = Math.max(0, Number((fin.afterDiscount - paidAmount).toFixed(2)));
+      }
+      const hasPendingInst = installments.some((i: any) => i.status === 'PENDING');
+      return remainingBalance > 0.01 || hasPendingInst;
+    });
+
+    const total = list.reduce((sum: number, s: any) => {
+      const fin = computeSaleFinancials(s);
+      const downPay = Math.max(0, Number(s.crediario?.down_payment) || 0);
+      const paymentsList = Array.isArray(s.payments) ? s.payments : (Array.isArray(s.crediario?.payments) ? s.crediario.payments : []);
+      const installments = Array.isArray(s.crediario?.installments) ? s.crediario.installments : [];
+      let paidAmount = 0;
+      if (paymentsList.length > 0) {
+        paidAmount = paymentsList.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+      } else {
+        const paidInsts = installments.filter((i: any) => i.status === 'PAID').reduce((sum: number, i: any) => sum + (Number(i.amount) || 0), 0);
+        paidAmount = downPay + paidInsts;
+      }
+      let remaining = 0;
+      if (s.remaining_balance !== undefined && !isNaN(Number(s.remaining_balance))) {
+        remaining = Math.max(0, Number(s.remaining_balance));
+      } else {
+        remaining = Math.max(0, Number((fin.afterDiscount - paidAmount).toFixed(2)));
+      }
+      return sum + remaining;
+    }, 0);
+
+    return {
+      pendingCrediarioSalesCount: list.length,
+      pendingCrediarioSalesTotal: total,
+    };
+  }, [salesData]);
+
   const getSalesPeriodLabel = () => {
+    if (salesCrediarioPendingOnly) return `Crediário com Saldo Pendente (${pendingCrediarioSalesCount} pedidos • Total $${pendingCrediarioSalesTotal.toFixed(2)})`;
     if (salesUnfulfilledOnly) return 'Pedidos Pendentes de Envio (Não Enviados)';
     if (salesSpecificDate) return `Data Específica: ${salesSpecificDate}`;
     switch (salesPeriodFilter) {
@@ -4055,9 +4140,10 @@ export default function BackofficeDashboard() {
                   setSalesPeriodFilter('ALL');
                   setSalesSpecificDate('');
                   setSalesUnfulfilledOnly(false);
+                  setSalesCrediarioPendingOnly(false);
                 }}
                 className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider transition border flex items-center gap-1 ${
-                  salesPeriodFilter === 'ALL' && !salesSpecificDate && !salesUnfulfilledOnly
+                  salesPeriodFilter === 'ALL' && !salesSpecificDate && !salesUnfulfilledOnly && !salesCrediarioPendingOnly
                     ? 'bg-deep-black text-gold border-deep-black shadow-sm'
                     : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
                 }`}
@@ -4071,6 +4157,7 @@ export default function BackofficeDashboard() {
                 onClick={() => {
                   setSalesUnfulfilledOnly(!salesUnfulfilledOnly);
                   setSalesSpecificDate('');
+                  setSalesCrediarioPendingOnly(false);
                 }}
                 className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider transition border flex items-center gap-1 ${
                   salesUnfulfilledOnly
@@ -4088,12 +4175,37 @@ export default function BackofficeDashboard() {
               <button
                 type="button"
                 onClick={() => {
+                  const nextState = !salesCrediarioPendingOnly;
+                  setSalesCrediarioPendingOnly(nextState);
+                  if (nextState) {
+                    setSalesUnfulfilledOnly(false);
+                    setSalesPeriodFilter('ALL');
+                    setSalesSpecificDate('');
+                  }
+                }}
+                className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider transition border flex items-center gap-1.5 ${
+                  salesCrediarioPendingOnly
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-sm'
+                    : pendingCrediarioSalesCount > 0
+                    ? 'bg-amber-50 text-amber-950 border-amber-400 hover:bg-amber-100'
+                    : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
+                }`}
+                title="Filtrar somente vendas no crediário com saldo pendente"
+              >
+                <CreditCard className="w-3.5 h-3.5 text-amber-600" />
+                <span>💳 CREDIÁRIO PENDENTE {pendingCrediarioSalesCount > 0 ? `(${pendingCrediarioSalesCount})` : ''}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
                   setSalesPeriodFilter('TODAY');
                   setSalesSpecificDate('');
                   setSalesUnfulfilledOnly(false);
+                  setSalesCrediarioPendingOnly(false);
                 }}
                 className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider transition border flex items-center gap-1 ${
-                  salesPeriodFilter === 'TODAY' && !salesSpecificDate && !salesUnfulfilledOnly
+                  salesPeriodFilter === 'TODAY' && !salesSpecificDate && !salesUnfulfilledOnly && !salesCrediarioPendingOnly
                     ? 'bg-deep-black text-gold border-deep-black shadow-sm'
                     : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
                 }`}
@@ -4108,9 +4220,10 @@ export default function BackofficeDashboard() {
                   setSalesPeriodFilter('YESTERDAY');
                   setSalesSpecificDate('');
                   setSalesUnfulfilledOnly(false);
+                  setSalesCrediarioPendingOnly(false);
                 }}
                 className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider transition border flex items-center gap-1 ${
-                  salesPeriodFilter === 'YESTERDAY' && !salesSpecificDate && !salesUnfulfilledOnly
+                  salesPeriodFilter === 'YESTERDAY' && !salesSpecificDate && !salesUnfulfilledOnly && !salesCrediarioPendingOnly
                     ? 'bg-deep-black text-gold border-deep-black shadow-sm'
                     : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
                 }`}
@@ -4131,6 +4244,7 @@ export default function BackofficeDashboard() {
                     if (e.target.value) {
                       setSalesPeriodFilter('SPECIFIC_DATE' as any);
                       setSalesUnfulfilledOnly(false);
+                      setSalesCrediarioPendingOnly(false);
                     } else {
                       setSalesPeriodFilter('ALL');
                     }
@@ -4245,6 +4359,37 @@ export default function BackofficeDashboard() {
               </button>
             </div>
           </div>
+
+          {/* BANNER INFORMATIVO QUANDO FILTRO DE CREDIÁRIO PENDENTE ESTÁ ATIVO */}
+          {salesCrediarioPendingOnly && (
+            <div className="bg-gradient-to-r from-amber-500/20 via-amber-400/20 to-gold/20 border-2 border-amber-600 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 bg-amber-600 text-white rounded-full shrink-0 shadow-xs">
+                  <CreditCard className="w-5 h-5" />
+                </span>
+                <div>
+                  <h4 className="text-sm font-black text-amber-950 uppercase tracking-wide flex items-center gap-2">
+                    <span>💳 FILTRO ATIVO: VENDAS DE CREDIÁRIO COM SALDO PENDENTE</span>
+                    <span className="px-2 py-0.5 bg-amber-600 text-white text-[10px] font-mono font-black">
+                      {filteredSalesList.length} PEDIDOS
+                    </span>
+                  </h4>
+                  <p className="text-xs text-amber-900 font-medium mt-0.5">
+                    Total a receber neste crediário: <strong className="text-amber-950 font-black font-mono text-sm">${pendingCrediarioSalesTotal.toFixed(2)}</strong>. Você pode clicar em <strong>+ ABATER / BAIXA</strong> para abater valores recebidos ou <strong>EDITAR</strong> para ajustar o pedido.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSalesCrediarioPendingOnly(false)}
+                  className="px-3 py-2 bg-white hover:bg-gray-100 text-deep-black text-xs font-black uppercase tracking-wider border border-deep-black shadow-xs cursor-pointer"
+                >
+                  VER TODAS AS VENDAS
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* CARDS RESPONSIVOS PARA CELULAR (EXTRATO DE VENDAS NO MOBILE) */}
           <div className="block lg:hidden space-y-3">
@@ -4389,6 +4534,29 @@ export default function BackofficeDashboard() {
                           : '⏳ PENDENTE'}
                       </span>
                       <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                        {(() => {
+                          const isCred = (sale.payment_method || '').toUpperCase() === 'CREDIARIO' || !!sale.crediario;
+                          if (!isCred) return null;
+                          const paymentsList = Array.isArray(sale.payments) ? sale.payments : (Array.isArray(sale.crediario?.payments) ? sale.crediario.payments : []);
+                          const paidAmount = paymentsList.length > 0
+                            ? paymentsList.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
+                            : (Number(sale.crediario?.down_payment || 0) + (sale.crediario?.installments || []).filter((i: any) => i.status === 'PAID').reduce((sum: number, i: any) => sum + (Number(i.amount) || 0), 0));
+                          const remaining = sale.remaining_balance !== undefined
+                            ? Number(sale.remaining_balance)
+                            : Math.max(0, fin.afterDiscount - paidAmount);
+                          if (remaining <= 0.01) return null;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenCrediarioPayModal(sale)}
+                              className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1 border border-emerald-900 shadow-2xs cursor-pointer"
+                              title="Abater pagamento no crediário"
+                            >
+                              <DollarSign className="w-3 h-3 text-gold" />
+                              <span>ABATER (${remaining.toFixed(2)})</span>
+                            </button>
+                          );
+                        })()}
                         <button
                           type="button"
                           onClick={() => setEditingSale(sale)}
