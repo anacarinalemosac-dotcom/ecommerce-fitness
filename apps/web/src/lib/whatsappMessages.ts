@@ -286,3 +286,230 @@ export function printCrediarioCarnet(sale: any) {
   `);
   printWindow.document.close();
 }
+
+// 4. Mensagem de Envio / Entrega da Mala Condicional (WhatsApp)
+export function generateConditionalDispatchWhatsAppMessage(cond: any): string {
+  const customer = cond.customer_name || 'Cliente';
+  const condNumber = cond.conditional_number || cond.id?.slice(0, 8);
+  const seller = cond.seller_name || 'Ana Fitness Wear';
+  const total = Number(cond.total_value || 0).toFixed(2);
+  const count = Number(cond.total_items || (cond.items || []).length || 0);
+
+  const dispatchDate = cond.dispatch_date
+    ? (cond.dispatch_date.includes('-') ? cond.dispatch_date.split('-').reverse().join('/') : cond.dispatch_date)
+    : new Date().toLocaleDateString('pt-BR');
+
+  const returnDate = cond.expected_return_date
+    ? (cond.expected_return_date.includes('-') ? cond.expected_return_date.split('-').reverse().join('/') : cond.expected_return_date)
+    : 'A combinar';
+
+  let msg = `👜 *ANA FITNESS WEAR • MALA CONDICIONAL* 👜\n\n`;
+  msg += `Olá *${customer}*! 🥰\n`;
+  msg += `Sua Mala Condicional foi preparada com muito carinho com as peças selecionadas para você provar com todo o conforto na sua casa! ✨\n\n`;
+  msg += `📋 *DADOS DA MALA:*\n`;
+  msg += `▫️ *Mala:* #${condNumber}\n`;
+  msg += `▫️ *Data de Saída:* ${dispatchDate}\n`;
+  msg += `▫️ *Data Prevista de Retorno:* ⏰ *${returnDate}*\n`;
+  msg += `▫️ *Atendimento / Vendedora:* ${seller}\n`;
+  msg += `▫️ *Total de Peças:* ${count} itens\n`;
+  msg += `▫️ *Valor Total sob Custódia:* $${total} USD\n\n`;
+
+  const items = Array.isArray(cond.items) ? cond.items : [];
+  if (items.length > 0) {
+    msg += `🛍️ *PEÇAS INCLUÍDAS NA MALA:*\n`;
+    items.forEach((it: any) => {
+      const title = it.title || it.name || 'Peça Fitness';
+      const color = it.color || '';
+      const size = it.size || '';
+      const qty = it.quantity || 1;
+      const price = Number(it.unit_price || it.price || 0).toFixed(2);
+      const detail = [color, size].filter(Boolean).join(' • TAM ');
+      msg += `▪️ *${qty}x* ${title}${detail ? ` (${detail})` : ''} • $${price}\n`;
+    });
+  }
+
+  if (cond.notes) {
+    msg += `\n📝 *Observações:* ${cond.notes}\n`;
+  }
+
+  msg += `\n✨ *Dica:* Experimente suas peças com calma e monte seus looks! As peças que você amar você fica, e as que não servirem você nos devolve no retorno da mala.\n\n`;
+  msg += `📍 *Showroom:* Leominster, Massachusetts\n`;
+  msg += `Qualquer dúvida nos mande mensagem aqui. Boas provas, linda! 💕✨`;
+
+  return msg;
+}
+
+// 5. Mensagem de Fechamento / Acerto da Mala Condicional (WhatsApp)
+export function generateConditionalSettlementWhatsAppMessage(
+  cond: any,
+  keptItems: any[] = [],
+  returnedItems: any[] = [],
+  totalPaid: number = 0,
+  paymentMethod: string = 'ZELLE'
+): string {
+  const customer = cond.customer_name || 'Cliente';
+  const condNumber = cond.conditional_number || cond.id?.slice(0, 8);
+  const payLabel = formatPaymentMethodLabel(paymentMethod);
+
+  let msg = `✨ *ANA FITNESS WEAR • ACERTO DE MALA CONDICIONAL* ✨\n\n`;
+  msg += `Olá *${customer}*! 🥰\n`;
+  msg += `Muito obrigada por provar nossas peças! Segue o resumo do fechamento da sua mala condicional *#${condNumber}*:\n\n`;
+
+  if (keptItems.length > 0) {
+    msg += `🛍️ *PEÇAS QUE VOCÊ ESCOLHEU / COMPROU:*\n`;
+    keptItems.forEach((it: any) => {
+      const title = it.title || 'Peça Fitness';
+      const color = it.color || '';
+      const size = it.size || '';
+      const qty = it.kept_quantity || it.quantity || 1;
+      const price = Number(it.unit_price || 0).toFixed(2);
+      const detail = [color, size].filter(Boolean).join(' • TAM ');
+      msg += `✅ *${qty}x* ${title}${detail ? ` (${detail})` : ''} • $${price}\n`;
+    });
+    msg += `\n💰 *Total das Peças Compradas:* $${totalPaid.toFixed(2)} USD\n`;
+    msg += `💳 *Forma de Pagamento:* ${payLabel}\n`;
+    msg += `✅ *Status:* PAGO E FINALIZADO\n\n`;
+  } else {
+    msg += `🛍️ *Nenhuma peça retida nesta mala.*\n\n`;
+  }
+
+  if (returnedItems.length > 0) {
+    msg += `↩️ *PEÇAS DEVOLVIDAS AO SHOWROOM:*\n`;
+    returnedItems.forEach((it: any) => {
+      const title = it.title || 'Peça Fitness';
+      const color = it.color || '';
+      const size = it.size || '';
+      const qty = it.returned_quantity || it.quantity || 1;
+      const detail = [color, size].filter(Boolean).join(' • TAM ');
+      msg += `▫️ *${qty}x* ${title}${detail ? ` (${detail})` : ''} (Devolvido ao estoque)\n`;
+    });
+    msg += `\n`;
+  }
+
+  msg += `📍 *Showroom:* Leominster, Massachusetts\n`;
+  msg += `Muito obrigada pelo carinho e preferência! Esperamos te vestir novamente em breve! 🥰✨`;
+
+  return msg;
+}
+
+// 6. Impressão de Ficha / Termo de Entrega da Mala Condicional
+export function printConditionalReceipt(cond: any) {
+  if (typeof window === 'undefined') return;
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
+
+  const customer = cond.customer_name || 'Cliente';
+  const phone = cond.customer_phone || '(não informado)';
+  const address = cond.customer_address || 'Entrega local';
+  const condNumber = cond.conditional_number || cond.id?.slice(0, 8);
+  const seller = cond.seller_name || 'Ana Fitness Wear';
+  const total = Number(cond.total_value || 0).toFixed(2);
+  const count = Number(cond.total_items || (cond.items || []).length || 0);
+
+  const dispatchDate = cond.dispatch_date
+    ? (cond.dispatch_date.includes('-') ? cond.dispatch_date.split('-').reverse().join('/') : cond.dispatch_date)
+    : new Date().toLocaleDateString('pt-BR');
+
+  const returnDate = cond.expected_return_date
+    ? (cond.expected_return_date.includes('-') ? cond.expected_return_date.split('-').reverse().join('/') : cond.expected_return_date)
+    : 'A combinar';
+
+  const itemsHtml = (cond.items || []).map((it: any, idx: number) => `
+    <tr style="border-bottom: 1px solid #e5e5e5;">
+      <td style="padding: 8px 4px; text-align: center; font-family: monospace;">${idx + 1}</td>
+      <td style="padding: 8px 4px; font-weight: bold;">
+        ${it.title}
+        <div style="font-size: 11px; font-weight: normal; color: #555;">${it.color || 'Preto'} • TAM: ${it.size || 'M'} • SKU: ${it.sku || ''}</div>
+      </td>
+      <td style="padding: 8px 4px; text-align: center; font-weight: bold; font-family: monospace;">${it.quantity} un</td>
+      <td style="padding: 8px 4px; text-align: right; font-family: monospace;">$${Number(it.unit_price || 0).toFixed(2)}</td>
+      <td style="padding: 8px 4px; text-align: right; font-weight: bold; font-family: monospace;">$${(Number(it.unit_price || 0) * Number(it.quantity || 1)).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Ficha de Mala Condicional - ${condNumber}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #000; font-size: 12px; }
+          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 14px; }
+          .title { font-size: 20px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+          .badge { display: inline-block; padding: 4px 8px; background: #000; color: #D4AF37; font-size: 11px; font-weight: 900; margin-top: 6px; }
+          .info-box { background: #fafafa; border: 1px solid #000; padding: 12px; margin-bottom: 16px; line-height: 1.6; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+          th { background: #000; color: #fff; padding: 8px 4px; font-size: 11px; text-transform: uppercase; font-weight: 900; }
+          .terms { font-size: 10px; border: 1px solid #777; padding: 8px 10px; margin-top: 14px; line-height: 1.4; background: #fdfdfd; }
+          .signatures { display: flex; justify-content: space-between; margin-top: 36px; padding: 0 20px; }
+          .sig-line { width: 42%; text-align: center; border-top: 1px solid #000; padding-top: 6px; font-size: 11px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="title">ANA FITNESS WEAR LLC</div>
+          <div style="font-size: 11px; margin-top: 2px;">Showroom & Moda Fitness Feminina • Leominster, MA</div>
+          <div class="badge">TERMO DE MALA CONDICIONAL #${condNumber}</div>
+        </div>
+
+        <div class="info-box">
+          <div style="display: flex; justify-content: space-between;">
+            <div><strong>CLIENTE:</strong> ${customer}</div>
+            <div><strong>WHATSAPP / TEL:</strong> ${phone}</div>
+          </div>
+          <div><strong>ENDEREÇO / LOCAL DE ENTREGA:</strong> ${address}</div>
+          <div style="display: flex; justify-content: space-between; margin-top: 4px; border-top: 1px dashed #ccc; padding-top: 4px;">
+            <div><strong>DATA DE SAÍDA:</strong> ${dispatchDate}</div>
+            <div><strong style="color: #b91c1c;">DATA PREVISTA DE DEVOLUÇÃO:</strong> ${returnDate}</div>
+            <div><strong>VENDEDORA:</strong> ${seller}</div>
+          </div>
+          ${cond.notes ? `<div style="margin-top: 4px; font-size: 11px; color: #444;"><strong>OBSERVAÇÕES:</strong> ${cond.notes}</div>` : ''}
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 30px;">Item</th>
+              <th style="text-align: left;">Descrição da Peça</th>
+              <th style="width: 70px;">Qtd</th>
+              <th style="width: 80px; text-align: right;">Unitário</th>
+              <th style="width: 90px; text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+          <tfoot>
+            <tr style="background: #f0f0f0; font-weight: 900; font-size: 13px;">
+              <td colspan="2" style="padding: 10px 4px; text-transform: uppercase;">TOTAL DA MALA CONDICIONAL (${count} peças)</td>
+              <td style="padding: 10px 4px; text-align: center; font-family: monospace;">${count}</td>
+              <td colspan="2" style="padding: 10px 4px; text-align: right; font-family: monospace; font-size: 14px;">$${total} USD</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div class="terms">
+          <strong>TERMO DE RESPONSABILIDADE E GUARDA TEMPORÁRIA:</strong><br/>
+          Declaro ter recebido em perfeito estado de conservação as peças descritas neste documento a título de <strong>Mala Condicional</strong> para experimentação. Comprometo-me a efetuar o acerto das peças que desejar adquirir e devolver as demais intactas com etiquetas afixadas até a data prevista acima perante a <strong>ANA FITNESS WEAR LLC</strong>.
+        </div>
+
+        <div class="signatures">
+          <div class="sig-line">
+            <strong>ANA FITNESS WEAR</strong><br/>
+            Responsável pelo Envio
+          </div>
+          <div class="sig-line">
+            <strong>${customer}</strong><br/>
+            Assinatura da Cliente
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() { window.print(); }
+        </script>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+

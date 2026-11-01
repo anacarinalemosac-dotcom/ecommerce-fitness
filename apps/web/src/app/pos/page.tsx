@@ -40,6 +40,7 @@ import {
   Instagram,
   MessageCircle,
   Ban,
+  ShoppingBag,
 } from 'lucide-react';
 import { StockWriteOffModal } from '../../components/StockWriteOffModal';
 import { PosInstagramChat } from '../../components/pos/PosInstagramChat';
@@ -64,6 +65,8 @@ import {
   printSaleReceipt,
   printCrediarioCarnet,
   formatPaymentMethodLabel,
+  generateConditionalDispatchWhatsAppMessage,
+  printConditionalReceipt,
 } from '@/lib/whatsappMessages';
 
 export default function PosTerminalPage() {
@@ -165,6 +168,13 @@ export default function PosTerminalPage() {
   const [completedSalePhone, setCompletedSalePhone] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState('');
   const [showWriteOffModal, setShowWriteOffModal] = useState(false);
+
+  // Estados para Registro de Mala Condicional no PDV
+  const [showPosConditionalModal, setShowPosConditionalModal] = useState(false);
+  const [posConditionalReturnDays, setPosConditionalReturnDays] = useState<number>(3);
+  const [posConditionalNotes, setPosConditionalNotes] = useState<string>('');
+  const [posConditionalSuccess, setPosConditionalSuccess] = useState<any | null>(null);
+  const [isSubmittingConditional, setIsSubmittingConditional] = useState(false);
 
   const [cart, setCart] = useState<CartItem[]>([]);
 
@@ -498,6 +508,61 @@ export default function PosTerminalPage() {
       setErrorMessage(err.message || 'Falha ao registrar venda');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Finalização rápida de Mala Condicional diretamente pelo PDV
+  const handleCreatePosConditional = async () => {
+    if (cart.length === 0) return;
+    if (!customerName.trim() || customerName.trim() === 'Cliente Balcão') {
+      alert('⚠️ Para registrar a Mala Condicional, digite o Nome da Cliente no campo de cliente.');
+      return;
+    }
+
+    setIsSubmittingConditional(true);
+    setErrorMessage('');
+
+    try {
+      const returnDate = getFutureDateStr(posConditionalReturnDays);
+      const payload = {
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim() || undefined,
+        customer_address: customerAddress.trim() || undefined,
+        seller_name: seller || 'Ana Karina',
+        expected_return_date: returnDate,
+        notes: posConditionalNotes.trim() || undefined,
+        items: cart.map((item) => ({
+          title: item.name,
+          sku: item.sku,
+          size: item.size,
+          color: item.color,
+          quantity: item.quantity,
+          unit_price: item.price,
+          cost_price: item.costPrice,
+          image: item.image,
+        })),
+      };
+
+      const res = await fetch('/api/backoffice/conditionals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Erro ao registrar condicional');
+      }
+
+      setPosConditionalSuccess(data.conditional);
+      setCart([]);
+      setShowPosConditionalModal(false);
+      setPosConditionalNotes('');
+      if (refreshProducts) refreshProducts();
+    } catch (err: any) {
+      alert(`Falha ao registrar condicional: ${err.message}`);
+    } finally {
+      setIsSubmittingConditional(false);
     }
   };
 
@@ -960,6 +1025,244 @@ export default function PosTerminalPage() {
                 <span>CANCELAR / ESTORNAR ESTA VENDA</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE MALA CONDICIONAL NO PDV */}
+      {showPosConditionalModal && (
+        <div className="fixed inset-0 z-50 bg-deep-black/85 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white border-4 border-gold p-6 max-w-lg w-full space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b-2 border-deep-black pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-gold/20 flex items-center justify-center border border-gold">
+                  <ShoppingBag className="w-5 h-5 text-gold" />
+                </div>
+                <div>
+                  <span className="text-[9px] font-black uppercase text-gold tracking-widest block">
+                    ENVIO PARA PROVA EM CASA
+                  </span>
+                  <h3 className="text-base font-black uppercase tracking-wider text-deep-black">
+                    REGISTRAR MALA CONDICIONAL
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPosConditionalModal(false)}
+                className="p-1 text-deep-black/60 hover:text-deep-black"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              {/* Nome da Cliente */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1">
+                  <User className="w-3 h-3 text-gold" />
+                  <span>Nome da Cliente *</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={customerName === 'Cliente Balcão' ? '' : customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Digite o nome completo da cliente"
+                  className="w-full p-2.5 border-2 border-deep-black font-bold uppercase focus:outline-none focus:border-gold"
+                  autoFocus
+                />
+              </div>
+
+              {/* WhatsApp */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1">
+                  <Phone className="w-3 h-3 text-gold" />
+                  <span>WhatsApp / Telefone para Contato</span>
+                </label>
+                <input
+                  type="text"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder="Ex: (978) 555-0192"
+                  className="w-full p-2.5 border-2 border-deep-black font-mono font-bold focus:outline-none focus:border-gold"
+                />
+              </div>
+
+              {/* Prazo de Devolução */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-red-600" />
+                    <span>Prazo de Devolução da Mala:</span>
+                  </span>
+                  <span className="text-gold font-mono font-bold">
+                    Vence em: {getFutureDateStr(posConditionalReturnDays).split('-').reverse().join('/')}
+                  </span>
+                </label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { label: '+2 Dias', days: 2 },
+                    { label: '+3 Dias (Padrão)', days: 3 },
+                    { label: '+5 Dias', days: 5 },
+                    { label: '+7 Dias', days: 7 },
+                  ].map((p) => (
+                    <button
+                      key={p.days}
+                      type="button"
+                      onClick={() => setPosConditionalReturnDays(p.days)}
+                      className={`py-1.5 px-1 text-[10px] font-black uppercase border transition cursor-pointer ${
+                        posConditionalReturnDays === p.days
+                          ? 'bg-gold text-deep-black border-deep-black font-black shadow-xs'
+                          : 'bg-gray-100 text-deep-black/70 border-deep-black/20 hover:bg-gold/20'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Observações da Mala */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                  Observações da Mala (Opcional):
+                </label>
+                <input
+                  type="text"
+                  value={posConditionalNotes}
+                  onChange={(e) => setPosConditionalNotes(e.target.value)}
+                  placeholder="Ex: Mala com 4 peças, sacola rosa, levar no trabalho..."
+                  className="w-full p-2 border-2 border-deep-black font-medium text-xs focus:outline-none focus:border-gold"
+                />
+              </div>
+
+              {/* Resumo dos Itens do Carrinho */}
+              <div className="p-3 bg-deep-black/5 border border-deep-black/15 space-y-1 text-xs">
+                <div className="flex justify-between font-bold">
+                  <span>Total de Peças na Mala:</span>
+                  <span className="font-mono">{cart.reduce((s, it) => s + it.quantity, 0)} unidades</span>
+                </div>
+                <div className="flex justify-between font-black text-sm">
+                  <span>Valor Total sob Custódia:</span>
+                  <span className="font-mono text-gold bg-deep-black px-2 py-0.5">
+                    ${subtotal.toFixed(2)} USD
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-deep-black/10">
+              <button
+                type="button"
+                onClick={() => setShowPosConditionalModal(false)}
+                disabled={isSubmittingConditional}
+                className="flex-1 py-3 bg-white hover:bg-gray-100 text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-wider transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleCreatePosConditional}
+                disabled={isSubmittingConditional}
+                className="flex-1 py-3 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {isSubmittingConditional ? (
+                  <span>REGISTRANDO MALA...</span>
+                ) : (
+                  <>
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>CONFIRMAR SAÍDA DA MALA</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE SUCESSO DE MALA CONDICIONAL NO PDV */}
+      {posConditionalSuccess && (
+        <div className="fixed inset-0 z-50 bg-deep-black/85 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white border-4 border-gold p-6 sm:p-8 max-w-lg w-full space-y-5 shadow-2xl text-center">
+            <div className="w-16 h-16 bg-gold/20 text-gold rounded-full flex items-center justify-center mx-auto border-2 border-gold shadow-md">
+              <ShoppingBag className="w-9 h-9" />
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                MALA CONDICIONAL REGISTRADA
+              </span>
+              <h2 className="text-2xl font-black uppercase tracking-wider text-deep-black">
+                MALA #{posConditionalSuccess.conditional_number}
+              </h2>
+              <p className="text-xs text-deep-black/70">
+                As peças foram reservadas e retiradas do estoque disponível para a cliente provar em casa!
+              </p>
+            </div>
+
+            <div className="bg-deep-black/5 p-4 border border-deep-black/15 text-xs text-left space-y-2 font-mono">
+              <div className="flex justify-between">
+                <span className="text-deep-black/60 font-sans uppercase">Cliente:</span>
+                <span className="font-black text-deep-black font-sans uppercase">{posConditionalSuccess.customer_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-deep-black/60 font-sans uppercase">Devolução Prevista:</span>
+                <span className="font-black text-red-700">
+                  ⏰ {posConditionalSuccess.expected_return_date?.split('-').reverse().join('/')}
+                </span>
+              </div>
+              <div className="flex justify-between border-t border-deep-black/10 pt-2 font-bold">
+                <span className="text-deep-black/60 font-sans uppercase">Total de Peças:</span>
+                <span>{posConditionalSuccess.total_items} peças</span>
+              </div>
+              <div className="flex justify-between font-black text-sm">
+                <span className="text-deep-black/60 font-sans uppercase">Valor da Mala:</span>
+                <span className="text-gold bg-deep-black px-2 py-0.5">${Number(posConditionalSuccess.total_value || 0).toFixed(2)} USD</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const msg = generateConditionalDispatchWhatsAppMessage(posConditionalSuccess);
+                  const cleanPhone = String(posConditionalSuccess.customer_phone || '').replace(/\D/g, '');
+                  const fullPhone = cleanPhone.length === 10 ? `1${cleanPhone}` : cleanPhone;
+                  if (fullPhone) {
+                    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+                  } else {
+                    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                  }
+                }}
+                className="py-3 px-3 bg-green-600 hover:bg-green-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>MANDAR NO WHATSAPP</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => printConditionalReceipt(posConditionalSuccess)}
+                className="py-3 px-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>IMPRIMIR FICHA</span>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setPosConditionalSuccess(null);
+                setCustomerName('Cliente Balcão');
+                setCustomerPhone('');
+                setCustomerAddress('');
+              }}
+              className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-deep-black font-black text-xs uppercase tracking-wider transition cursor-pointer"
+            >
+              FECHAR E INICIAR PRÓXIMO ATENDIMENTO
+            </button>
           </div>
         </div>
       )}
@@ -2105,6 +2408,21 @@ export default function PosTerminalPage() {
             ) : (
               <span>CONCLUIR VENDA NO BALCÃO (${totalAfterDiscount.toFixed(2)})</span>
             )}
+          </button>
+
+          {/* Botão de Envio de Mala Condicional (Prova em Casa) */}
+          <button
+            type="button"
+            onClick={() => {
+              if (cart.length === 0) return;
+              setShowPosConditionalModal(true);
+            }}
+            disabled={cart.length === 0 || isSubmitting}
+            className="w-full py-3 bg-white/10 hover:bg-gold hover:text-deep-black text-white disabled:opacity-40 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition border border-gold/40 shadow-sm cursor-pointer"
+            title="Registrar peças do carrinho como Mala Condicional para a cliente provar em casa"
+          >
+            <ShoppingBag className="w-4 h-4 text-gold" />
+            <span>👜 REGISTRAR COMO MALA CONDICIONAL ({cart.reduce((s, it) => s + it.quantity, 0)} PEÇAS)</span>
           </button>
         </div>
 

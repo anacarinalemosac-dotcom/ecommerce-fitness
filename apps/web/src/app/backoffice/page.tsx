@@ -99,6 +99,7 @@ import { SalesReportModal } from '../../components/backoffice/SalesReportModal';
 import CouponsManagerView from '../../components/backoffice/CouponsManagerView';
 import { TikTokCatalogModal } from '../../components/backoffice/TikTokCatalogModal';
 import { AIModelStudioModal } from '../../components/backoffice/AIModelStudioModal';
+import { ConditionalsView } from '../../components/backoffice/ConditionalsView';
 import {
   generateReceiptWhatsAppMessage,
   generateCrediarioWhatsAppMessage,
@@ -241,7 +242,7 @@ export default function BackofficeDashboard() {
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'catalog' | 'sales' | 'commissions' | 'finances' | 'invoices' | 'coupons' | 'reports' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
+    'dashboard' | 'catalog' | 'sales' | 'conditionals' | 'commissions' | 'finances' | 'invoices' | 'coupons' | 'reports' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
   >('dashboard');
   const [cmsSubTab, setCmsSubTab] = useState<CmsSubTab>('categories');
   const [reportsSubTab, setReportsSubTab] = useState<'inventory' | 'accesses'>('inventory');
@@ -2243,6 +2244,24 @@ export default function BackofficeDashboard() {
             </span>
           </button>
 
+          {/* 5.1 Condicionais & Consignação */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('conditionals')}
+            className={`p-3 transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm border cursor-pointer ${
+              activeTab === 'conditionals'
+                ? 'bg-gold/20 border-gold text-gold font-black'
+                : 'bg-white/5 hover:bg-white/15 text-white/90 border-white/15 hover:border-gold/40'
+            }`}
+            title="Gerenciar Malas Condicionais e Consignação para clientes provarem em casa"
+          >
+            <ShoppingBag className="w-5 h-5 text-gold" />
+            <span className="leading-tight text-[11px] font-black">CONDICIONAIS</span>
+            <span className="text-[8px] bg-gold/20 text-gold px-1.5 py-0.5 border border-gold/40 font-bold uppercase font-mono">
+              MALAS DE ROUPA
+            </span>
+          </button>
+
           {/* 6. Catálogo WhatsApp (PDF) */}
           <button
             type="button"
@@ -2447,6 +2466,22 @@ export default function BackofficeDashboard() {
           <span>3. PAINEL DE VENDAS & RESULTADOS</span>
           <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
             {salesData?.sales?.length || 0}
+          </span>
+        </button>
+
+        {/* 3.1 Condicionais & Consignação */}
+        <button
+          onClick={() => setActiveTab('conditionals')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'conditionals'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <ShoppingBag className="w-4 h-4 text-gold" />
+          <span>CONDICIONAIS (MALAS)</span>
+          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
+            CONSIGNAÇÃO
           </span>
         </button>
 
@@ -3493,6 +3528,15 @@ export default function BackofficeDashboard() {
                   </h2>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('conditionals')}
+                    className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-gold hover:from-gold hover:to-amber-400 text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 shadow cursor-pointer border border-gold"
+                    title="Acessar Gestão de Malas Condicionais e Consignação"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5 text-deep-black" />
+                    <span>👜 CONDICIONAIS</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setShowSalesReportModal(true)}
@@ -7261,6 +7305,19 @@ export default function BackofficeDashboard() {
         </div>
         );
       })()}
+
+      {activeTab === 'conditionals' && (
+        <ConditionalsView
+          products={supabaseProducts.length > 0 ? supabaseProducts : products}
+          sellers={sellers}
+          onOpenSaleDetail={(orderId) => {
+            const found = (salesData?.sales || []).find((s: any) => s.order_id === orderId);
+            if (found) {
+              setSelectedSaleDetail(found);
+            }
+          }}
+        />
+      )}
 
       {activeTab === 'finances' && (
         <SimpleFinancesView
