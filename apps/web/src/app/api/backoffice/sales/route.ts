@@ -1422,16 +1422,18 @@ export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const order_id = searchParams.get('order_id');
+    const id = searchParams.get('id');
     const restore_stock = searchParams.get('restore_stock') !== 'false';
 
-    if (!order_id) {
-      return NextResponse.json({ error: 'order_id é obrigatório' }, { status: 400 });
+    const targetId = order_id || id;
+    if (!targetId) {
+      return NextResponse.json({ error: 'order_id ou id é obrigatório' }, { status: 400 });
     }
 
     const sales = readSavedSales();
-    const targetSale = sales.find((s) => s.order_id === order_id || s.id === order_id);
+    const targetSale = sales.find((s) => s.order_id === targetId || s.id === targetId || (order_id && s.order_id === order_id) || (id && s.id === id));
 
-    // Se solicitado estorno e a venda não estava cancelada antes
+    // 1. Se solicitado estorno e a venda não estava cancelada antes, devolve itens ao estoque
     if (restore_stock && targetSale && targetSale.status !== 'CANCELLED' && Array.isArray(targetSale.items)) {
       for (const it of targetSale.items) {
         if (it.sku) {
@@ -1455,29 +1457,67 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
-    // Remove do Supabase
+    // 2. Se a venda possuía comissão e não estava cancelada, ajusta os stats da vendedora
+    if (targetSale && targetSale.status !== 'CANCELLED' && (targetSale.commission_amount || 0) > 0 && targetSale.seller_name) {
+      try {
+        const SELLERS_FILE = path.join(process.cwd(), 'sellers_db.json');
+        if (fs.existsSync(SELLERS_FILE)) {
+          const sellersList = JSON.parse(fs.readFileSync(SELLERS_FILE, 'utf8'));
+          if (Array.isArray(sellersList) && sellersList.length > 0) {
+            const updatedSellers = sellersList.map((s: any) => {
+              if (s.name && (s.name === targetSale.seller_name || targetSale.seller_name.includes(s.name))) {
+                const sub = (targetSale.subtotal_products || 0) - (targetSale.discount_amount || 0);
+                return {
+                  ...s,
+                  total_sales_count: Math.max(0, (s.total_sales_count || 1) - 1),
+                  total_revenue_generated: Number(Math.max(0, (s.total_revenue_generated || 0) - sub).toFixed(2)),
+                  total_commission_earned: Number(Math.max(0, (s.total_commission_earned || 0) - (targetSale.commission_amount || 0)).toFixed(2)),
+                };
+              }
+              return s;
+            });
+            fs.writeFileSync(SELLERS_FILE, JSON.stringify(updatedSellers, null, 2), 'utf8');
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao estornar comissão no DELETE:', e);
+      }
+    }
+
+    // 3. Remove do Supabase orders
     try {
+      // Deleta direto se targetId for UUID
+      if (targetId.includes('-') && targetId.length === 36) {
+        await supabaseServer.from('orders').delete().eq('id', targetId);
+      }
+
       const { data: dbOrders } = await supabaseServer.from('orders').select('id, shipping_address');
       if (dbOrders) {
-        const target = dbOrders.find((o: any) => {
+        const targets = dbOrders.filter((o: any) => {
           const meta = typeof o.shipping_address === 'object' && o.shipping_address ? o.shipping_address : {};
-          return meta.order_number === order_id || o.id === order_id;
+          return (
+            meta.order_number === targetId ||
+            o.id === targetId ||
+            (order_id && meta.order_number === order_id) ||
+            (order_id && o.id === order_id) ||
+            (id && o.id === id)
+          );
         });
-        if (target) {
-          await supabaseServer.from('orders').delete().eq('id', target.id);
+        for (const t of targets) {
+          await supabaseServer.from('orders').delete().eq('id', t.id);
         }
       }
     } catch (e) {
       console.warn('Erro ao remover pedido do Supabase:', e);
     }
 
-    // Remove do arquivo local
-    const updated = sales.filter((s) => s.order_id !== order_id && s.id !== order_id);
+    // 4. Remove do arquivo local sales_history_db.json
+    const updated = sales.filter((s) => s.order_id !== targetId && s.id !== targetId && (!order_id || s.order_id !== order_id) && (!id || s.id !== id));
     writeSavedSales(updated);
 
     return NextResponse.json({
       success: true,
-      message: 'Registro de venda excluído permanentemente!',
+      message: `Pedido #${targetId} excluído definitivamente do sistema!`,
       sales: updated,
     });
   } catch (err: any) {

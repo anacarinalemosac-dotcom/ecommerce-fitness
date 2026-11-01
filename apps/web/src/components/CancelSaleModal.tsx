@@ -305,11 +305,11 @@ export function CancelSaleModal({
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
-                className="text-[10px] font-black uppercase text-red-400 hover:text-red-300 hover:underline flex items-center gap-1"
-                title="Excluir completamente o registro caso seja venda teste"
+                className="px-3 py-1.5 bg-red-900/70 hover:bg-red-700 text-red-100 hover:text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border border-red-500/60 transition shadow-xs cursor-pointer"
+                title="Excluir completamente o pedido do banco de dados"
               >
-                <Trash2 className="w-3 h-3" />
-                <span>Excluir registro permanentemente</span>
+                <Trash2 className="w-3.5 h-3.5 text-red-300" />
+                <span>🗑️ EXCLUIR PEDIDO DEFINITIVAMENTE</span>
               </button>
             )}
           </div>

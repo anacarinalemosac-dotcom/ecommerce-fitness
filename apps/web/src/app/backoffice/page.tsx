@@ -568,6 +568,49 @@ export default function BackofficeDashboard() {
     }
   };
 
+  // Exclusão definitiva de pedido/venda do banco de dados e do histórico
+  const handleDeleteSale = async (sale: any) => {
+    if (!sale) return;
+    const orderId = sale.order_id || sale.id;
+    const customer = sale.customer_name || 'Cliente';
+    const total = Number(sale.subtotal_products || sale.total_amount || 0).toFixed(2);
+
+    const confirmed = window.confirm(
+      `⚠️ EXCLUIR DEFINITIVAMENTE O PEDIDO?\n\n` +
+      `Pedido: #${orderId}\n` +
+      `Cliente: ${customer}\n` +
+      `Valor: $${total} USD\n\n` +
+      `Tem certeza que deseja APAGAR permanentemente este pedido do banco de dados e do histórico?\n\n` +
+      `• As peças voltarão ao estoque se a venda estiver ativa.\n` +
+      `• Esta ação é IRREVERSÍVEL e removerá completamente o pedido do sistema.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/backoffice/sales?order_id=${encodeURIComponent(orderId)}&restore_stock=true`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Erro ao excluir pedido');
+      }
+
+      alert(`✓ Pedido #${orderId} excluído com sucesso do sistema!`);
+      await fetchSalesData();
+      setSaveSuccessMessage(true);
+      setTimeout(() => setSaveSuccessMessage(false), 3000);
+      if (selectedSaleDetail && (selectedSaleDetail.order_id === orderId || selectedSaleDetail.id === orderId)) {
+        setSelectedSaleDetail(null);
+      }
+      if (editingSale && (editingSale.order_id === orderId || editingSale.id === orderId)) {
+        setEditingSale(null);
+      }
+    } catch (err: any) {
+      alert(`Falha ao excluir pedido: ${err.message || 'Erro desconhecido'}`);
+    }
+  };
+
   // Dar baixa em parcela de Crediário
   const handlePayInstallment = async (orderId: string, installmentNumber: number, method: string = 'CASH') => {
     return handleExecuteCrediarioPayment(orderId, method, installmentNumber);
@@ -4286,11 +4329,11 @@ export default function BackofficeDashboard() {
                           ? '🚚 ENVIADO'
                           : '⏳ PENDENTE'}
                       </span>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap justify-end">
                         <button
                           type="button"
                           onClick={() => setEditingSale(sale)}
-                          className="px-2.5 py-1 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-[10px] font-black uppercase tracking-wider flex items-center gap-1 border border-deep-black transition shadow-xs"
+                          className="px-2.5 py-1 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-[10px] font-black uppercase tracking-wider flex items-center gap-1 border border-deep-black transition shadow-xs cursor-pointer"
                           title="Editar venda"
                         >
                           <Edit3 className="w-3 h-3" />
@@ -4298,10 +4341,19 @@ export default function BackofficeDashboard() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setSelectedSaleDetail(sale)}
-                          className="px-2.5 py-1 bg-deep-black text-white text-[10px] font-black uppercase tracking-wider hover:bg-gold hover:text-deep-black transition"
+                          onClick={() => handleDeleteSale(sale)}
+                          className="px-2 py-1 bg-red-600 hover:bg-red-800 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1 border border-red-800 transition shadow-xs cursor-pointer"
+                          title="Excluir este pedido definitivamente do sistema"
                         >
-                          VER DETALHES →
+                          <Trash2 className="w-3 h-3 text-white" />
+                          <span>EXCLUIR</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSaleDetail(sale)}
+                          className="px-2.5 py-1 bg-deep-black text-white text-[10px] font-black uppercase tracking-wider hover:bg-gold hover:text-deep-black transition cursor-pointer"
+                        >
+                          DETALHES →
                         </button>
                       </div>
                     </div>
@@ -4417,16 +4469,27 @@ export default function BackofficeDashboard() {
                               )}
                             </div>
 
-                            {/* BOTÃO DIRETO DE EDIÇÃO - 1 CLIQUE SEM PRECISAR ROLAR! */}
-                            <button
-                              type="button"
-                              onClick={() => setEditingSale(sale)}
-                              className="mt-1.5 w-full py-1.5 px-2 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-[9.5px] font-black uppercase transition tracking-wider flex items-center justify-center gap-1.5 border-2 border-deep-black shadow-xs cursor-pointer"
-                              title="Editar venda agora (sem precisar rolar a tela!)"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              <span>✏️ EDITAR VENDA</span>
-                            </button>
+                            {/* BOTÕES DIRETOS DE EDIÇÃO & EXCLUSÃO - 1 CLIQUE SEM PRECISAR ROLAR! */}
+                            <div className="mt-1.5 grid grid-cols-2 gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setEditingSale(sale)}
+                                className="py-1.5 px-1 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-[9px] font-black uppercase transition tracking-wider flex items-center justify-center gap-1 border-2 border-deep-black shadow-xs cursor-pointer"
+                                title="Editar venda agora (sem precisar rolar a tela!)"
+                              >
+                                <Edit3 className="w-3 h-3 shrink-0" />
+                                <span>EDITAR</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSale(sale)}
+                                className="py-1.5 px-1 bg-red-600 hover:bg-red-800 text-white text-[9px] font-black uppercase transition tracking-wider flex items-center justify-center gap-1 border-2 border-red-800 shadow-xs cursor-pointer"
+                                title="Excluir este pedido definitivamente do sistema"
+                              >
+                                <Trash2 className="w-3 h-3 shrink-0 text-white" />
+                                <span>EXCLUIR</span>
+                              </button>
+                            </div>
                           </div>
                         </td>
 
@@ -4660,6 +4723,15 @@ export default function BackofficeDashboard() {
                           >
                             <Ban className="w-3 h-3" />
                             <span>{sale.status === 'CANCELLED' ? 'CANCELADA' : 'CANCELAR'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSale(sale)}
+                            className="px-2 py-1 bg-red-600 hover:bg-red-800 text-white text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border border-red-800 shadow-2xs cursor-pointer"
+                            title="Excluir este pedido definitivamente do banco de dados e do histórico"
+                          >
+                            <Trash2 className="w-3 h-3 text-white" />
+                            <span>EXCLUIR</span>
                           </button>
                           <button
                             type="button"
@@ -5403,21 +5475,32 @@ export default function BackofficeDashboard() {
                     <Edit3 className="w-4 h-4" />
                     <span>EDITAR ESTA VENDA / ATUALIZAR PREÇO DE CUSTO</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCancellingSale(selectedSaleDetail);
-                      setSelectedSaleDetail(null);
-                    }}
-                    className="w-full py-2.5 bg-red-100 hover:bg-red-700 hover:text-white text-red-900 border-2 border-red-500 font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
-                  >
-                    <Ban className="w-4 h-4" />
-                    <span>CANCELAR ESTA VENDA (ESTORNAR ESTOQUE)</span>
-                  </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCancellingSale(selectedSaleDetail);
+                        setSelectedSaleDetail(null);
+                      }}
+                      className="w-full py-2.5 bg-red-100 hover:bg-red-700 hover:text-white text-red-900 border-2 border-red-500 font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      <Ban className="w-4 h-4" />
+                      <span>CANCELAR VENDA</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSale(selectedSaleDetail)}
+                      className="w-full py-2.5 bg-red-600 hover:bg-red-800 text-white border-2 border-red-800 font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                      title="Apagar este pedido permanentemente do banco de dados"
+                    >
+                      <Trash2 className="w-4 h-4 text-white" />
+                      <span>EXCLUIR PEDIDO</span>
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setSelectedSaleDetail(null)}
-                    className="w-full py-2.5 bg-gray-100 hover:bg-deep-black hover:text-white text-deep-black text-xs font-black uppercase tracking-widest transition"
+                    className="w-full py-2.5 bg-gray-100 hover:bg-deep-black hover:text-white text-deep-black text-xs font-black uppercase tracking-widest transition cursor-pointer"
                   >
                     FECHAR DETALHES
                   </button>

@@ -316,6 +316,38 @@ export function EditSaleModal({
     }
   };
 
+  const handleDeleteSale = async () => {
+    const orderId = sale.order_id || sale.id;
+    const confirmed = window.confirm(
+      `⚠️ EXCLUIR DEFINITIVAMENTE O PEDIDO #${orderId}?\n\n` +
+      `Tem certeza que deseja apagar permanentemente este pedido do banco de dados e do histórico?\n\n` +
+      `• As peças retornarão ao estoque se o pedido estiver ativo.\n` +
+      `• Esta ação é IRREVERSÍVEL e o pedido deixará de existir no sistema.`
+    );
+    if (!confirmed) return;
+
+    setIsSaving(true);
+    setFeedback(null);
+    try {
+      const res = await fetch(`/api/backoffice/sales?order_id=${encodeURIComponent(orderId)}&restore_stock=true`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Erro ao excluir pedido.');
+      }
+      setFeedback({ type: 'success', message: `✓ Pedido #${orderId} excluído com sucesso do banco de dados!` });
+      setTimeout(() => {
+        onSaveSuccess();
+        onClose();
+      }, 1000);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || 'Falha ao excluir pedido.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-deep-black/85 backdrop-blur-sm animate-fadeIn">
       <div className="bg-white border-4 border-gold w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
@@ -894,12 +926,22 @@ export function EditSaleModal({
           </div>
 
           {/* BOTÕES DE AÇÃO */}
-          <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+            <button
+              type="button"
+              onClick={handleDeleteSale}
+              disabled={isSaving}
+              className="py-3 px-3.5 bg-red-600 hover:bg-red-800 text-white font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 shadow-sm border-2 border-red-800 disabled:opacity-40 cursor-pointer"
+              title="Excluir este pedido definitivamente do banco de dados"
+            >
+              <Trash2 className="w-4 h-4 text-white" />
+              <span>EXCLUIR PEDIDO</span>
+            </button>
             <button
               type="button"
               onClick={handleCancelSale}
               disabled={isSaving || status === 'CANCELLED'}
-              className="py-3 px-4 bg-red-100 hover:bg-red-700 hover:text-white text-red-900 border-2 border-red-500 font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 disabled:opacity-40"
+              className="py-3 px-3 bg-red-100 hover:bg-red-700 hover:text-white text-red-900 border-2 border-red-500 font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 disabled:opacity-40 cursor-pointer"
               title="Cancelar esta venda e estornar as peças para o estoque"
             >
               <Ban className="w-4 h-4 text-red-700 group-hover:text-white" />
@@ -909,14 +951,14 @@ export function EditSaleModal({
               type="button"
               onClick={onClose}
               disabled={isSaving}
-              className="py-3 px-4 bg-white hover:bg-gray-100 text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-wider transition"
+              className="py-3 px-3.5 bg-white hover:bg-gray-100 text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-wider transition cursor-pointer"
             >
               Fechar
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 py-3 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-md"
+              className="flex-1 py-3 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-md cursor-pointer"
             >
               {isSaving ? (
                 <>
