@@ -9,6 +9,12 @@ import { ArrowRight, MapPin, Phone, Instagram, ShieldCheck, DollarSign, CheckCir
 
 export function SiteFooter() {
   const pathname = usePathname();
+  const { lang, t } = useLanguage();
+  const { siteInfo, siteImages } = useStoreSettings();
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
+  const [newsletterSuccess, setNewsletterSuccess] = useState(false);
+
   const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
   if (
     !currentPath ||
@@ -21,12 +27,6 @@ export function SiteFooter() {
   ) {
     return null;
   }
-
-  const { lang, t } = useLanguage();
-  const { siteInfo, siteImages } = useStoreSettings();
-  const [newsletterEmail, setNewsletterEmail] = useState('');
-  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
-  const [newsletterSuccess, setNewsletterSuccess] = useState(false);
 
   const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

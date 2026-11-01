@@ -19,10 +19,6 @@ import { usePathname } from 'next/navigation';
 
 export function SiteHeader() {
   const pathname = usePathname();
-  if (pathname === '/links' || pathname === '/bio') {
-    return null;
-  }
-
   const { lang, setLang, t } = useLanguage();
   const { siteInfo, siteImages } = useStoreSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -64,6 +60,10 @@ export function SiteHeader() {
   }, []);
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
+
+  if (pathname === '/links' || pathname === '/bio') {
+    return null;
+  }
 
   return (
     <>

@@ -36,6 +36,7 @@ function isCustomerFacingPage(path: string): boolean {
 
 export function FloatingLanguageSwitcher() {
   const pathname = usePathname();
+  const { lang, setLang } = useLanguage();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -47,8 +48,6 @@ export function FloatingLanguageSwitcher() {
   if (!mounted || !isCustomerFacingPage(currentPath)) {
     return null;
   }
-
-  const { lang, setLang } = useLanguage();
 
   return (
     <div

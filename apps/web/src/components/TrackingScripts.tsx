@@ -10,15 +10,18 @@ export function TrackingScripts() {
   const { siteInfo } = useStoreSettings();
   const pathname = usePathname();
 
-  // Não dispara rastreadores externos em rotas de ERP/Backoffice/POS
+  // Dispara PageView a cada mudança de rota pública
+  useEffect(() => {
+    if (pathname && (pathname.startsWith('/backoffice') || pathname.startsWith('/admin') || pathname.startsWith('/pos') || pathname.startsWith('/vendedora'))) {
+      return;
+    }
+    trackEvent.pageView(pathname);
+  }, [pathname]);
+
+  // Não renderiza rastreadores externos em rotas de ERP/Backoffice/POS
   if (pathname && (pathname.startsWith('/backoffice') || pathname.startsWith('/admin') || pathname.startsWith('/pos') || pathname.startsWith('/vendedora'))) {
     return null;
   }
-
-  // Dispara PageView a cada mudança de rota
-  useEffect(() => {
-    trackEvent.pageView(pathname);
-  }, [pathname]);
 
   const metaPixelId = siteInfo.metaPixelId?.trim();
   const gaId = siteInfo.googleAnalyticsId?.trim();
