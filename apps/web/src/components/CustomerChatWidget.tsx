@@ -6,19 +6,52 @@ import { MessageCircle, X, Send, Sparkles, Phone, HelpCircle, CheckCircle2 } fro
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 
+// Função restrita: o chat de suporte só pode aparecer nas páginas públicas da loja do cliente
+function isCustomerFacingPage(path: string): boolean {
+  if (!path) return false;
+  const clean = path.toLowerCase().split('?')[0].split('#')[0];
+
+  // Bloqueio absoluto de rotas internas, operacionais e de administração
+  if (
+    clean.includes('/backoffice') ||
+    clean.includes('/pos') ||
+    clean.includes('/admin') ||
+    clean.includes('/vendedora') ||
+    clean.includes('/api') ||
+    clean === '/links' ||
+    clean === '/bio'
+  ) {
+    return false;
+  }
+
+  // Lista estrita das únicas páginas da loja visíveis para o cliente
+  return (
+    clean === '/' ||
+    clean.startsWith('/catalogo') ||
+    clean.startsWith('/produto') ||
+    clean.startsWith('/checkout') ||
+    clean.startsWith('/contato') ||
+    clean.startsWith('/trocas-e-devolucoes') ||
+    clean.startsWith('/politica-de-envio') ||
+    clean.startsWith('/conta') ||
+    clean.startsWith('/pedidos') ||
+    clean.startsWith('/avaliar') ||
+    clean.startsWith('/review')
+  );
+}
+
 export function CustomerChatWidget() {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
 
-  // Não exibe o chat de suporte flutuante dentro do Backoffice, POS ou páginas de administração
-  if (
-    !pathname ||
-    pathname.startsWith('/backoffice') ||
-    pathname.startsWith('/pos') ||
-    pathname.startsWith('/admin') ||
-    pathname.startsWith('/vendedora') ||
-    pathname === '/links' ||
-    pathname === '/bio'
-  ) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
+
+  // Não exibe nada antes de montar ou em qualquer página que não seja pública do cliente
+  if (!mounted || !isCustomerFacingPage(currentPath)) {
     return null;
   }
 

@@ -1,21 +1,50 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '../context/LanguageContext';
 import { Globe } from 'lucide-react';
 
+function isCustomerFacingPage(path: string): boolean {
+  if (!path) return false;
+  const clean = path.toLowerCase().split('?')[0].split('#')[0];
+  if (
+    clean.includes('/backoffice') ||
+    clean.includes('/pos') ||
+    clean.includes('/admin') ||
+    clean.includes('/vendedora') ||
+    clean.includes('/api') ||
+    clean === '/links' ||
+    clean === '/bio'
+  ) {
+    return false;
+  }
+  return (
+    clean === '/' ||
+    clean.startsWith('/catalogo') ||
+    clean.startsWith('/produto') ||
+    clean.startsWith('/checkout') ||
+    clean.startsWith('/contato') ||
+    clean.startsWith('/trocas-e-devolucoes') ||
+    clean.startsWith('/politica-de-envio') ||
+    clean.startsWith('/conta') ||
+    clean.startsWith('/pedidos') ||
+    clean.startsWith('/avaliar') ||
+    clean.startsWith('/review')
+  );
+}
+
 export function FloatingLanguageSwitcher() {
   const pathname = usePathname();
-  if (
-    !pathname ||
-    pathname.startsWith('/backoffice') ||
-    pathname.startsWith('/pos') ||
-    pathname.startsWith('/admin') ||
-    pathname.startsWith('/vendedora') ||
-    pathname === '/links' ||
-    pathname === '/bio'
-  ) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
+
+  if (!mounted || !isCustomerFacingPage(currentPath)) {
     return null;
   }
 

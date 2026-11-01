@@ -9,7 +9,16 @@ import { ArrowRight, MapPin, Phone, Instagram, ShieldCheck, DollarSign, CheckCir
 
 export function SiteFooter() {
   const pathname = usePathname();
-  if (pathname === '/links' || pathname === '/bio') {
+  const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
+  if (
+    !currentPath ||
+    currentPath.includes('/backoffice') ||
+    currentPath.includes('/pos') ||
+    currentPath.includes('/admin') ||
+    currentPath.includes('/vendedora') ||
+    currentPath === '/links' ||
+    currentPath === '/bio'
+  ) {
     return null;
   }
 
