@@ -1,11 +1,27 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { MessageCircle, X, Send, Sparkles, Phone, HelpCircle, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 
 export function CustomerChatWidget() {
+  const pathname = usePathname();
+
+  // Não exibe o chat de suporte flutuante dentro do Backoffice, POS ou páginas de administração
+  if (
+    !pathname ||
+    pathname.startsWith('/backoffice') ||
+    pathname.startsWith('/pos') ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/vendedora') ||
+    pathname === '/links' ||
+    pathname === '/bio'
+  ) {
+    return null;
+  }
+
   const { lang } = useLanguage();
   const { siteInfo } = useStoreSettings();
   const [isOpen, setIsOpen] = useState(false);

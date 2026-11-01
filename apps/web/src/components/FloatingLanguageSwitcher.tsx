@@ -7,7 +7,15 @@ import { Globe } from 'lucide-react';
 
 export function FloatingLanguageSwitcher() {
   const pathname = usePathname();
-  if (pathname === '/links' || pathname === '/bio') {
+  if (
+    !pathname ||
+    pathname.startsWith('/backoffice') ||
+    pathname.startsWith('/pos') ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/vendedora') ||
+    pathname === '/links' ||
+    pathname === '/bio'
+  ) {
     return null;
   }
 
@@ -16,7 +24,7 @@ export function FloatingLanguageSwitcher() {
   return (
     <div
       aria-label="Language Selector / Seletor de Idioma"
-      className="fixed bottom-5 right-5 z-50 bg-deep-black/95 backdrop-blur-md border-2 border-gold shadow-2xl p-1.5 flex items-center gap-1 text-[10px] font-black uppercase tracking-wider animate-fadeIn"
+      className="fixed bottom-5 left-5 z-40 bg-deep-black/95 backdrop-blur-md border-2 border-gold shadow-2xl p-1.5 flex items-center gap-1 text-[10px] font-black uppercase tracking-wider animate-fadeIn"
     >
       <div className="flex items-center gap-1 pl-1 pr-1.5 text-gold hidden sm:flex">
         <Globe className="w-3.5 h-3.5 text-gold" />
