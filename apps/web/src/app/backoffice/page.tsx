@@ -100,6 +100,7 @@ import CouponsManagerView from '../../components/backoffice/CouponsManagerView';
 import { TikTokCatalogModal } from '../../components/backoffice/TikTokCatalogModal';
 import { AIModelStudioModal } from '../../components/backoffice/AIModelStudioModal';
 import { ConditionalsView } from '../../components/backoffice/ConditionalsView';
+import { ExecutiveFinancialSummary } from '../../components/backoffice/ExecutiveFinancialSummary';
 import {
   generateReceiptWhatsAppMessage,
   generateCrediarioWhatsAppMessage,
@@ -2715,20 +2716,23 @@ export default function BackofficeDashboard() {
           TAB 1: PAINEL GERAL (DASHBOARD & MÉTRICAS)
          ========================================================================= */}
       {activeTab === 'dashboard' && (
-        <DashboardMetricsView
-          salesData={salesData}
-          products={supabaseProducts.length > 0 ? supabaseProducts : products}
-          sellers={sellers}
-          liveVisitors={liveFeed?.activeCount || onlineCount}
-          liveFeed={liveFeed}
-          onNavigateTab={setActiveTab}
-          onUpdateOrderStatus={handleUpdateOrderStatus}
-          writeOffsSummary={writeOffsData.summary}
-          onOpenWriteOffModal={(tab) => {
-            setWriteOffModalTab(tab || 'NEW');
-            setShowWriteOffModal(true);
-          }}
-        />
+        <div className="space-y-6">
+          <ExecutiveFinancialSummary sales={salesData?.sales || []} />
+          <DashboardMetricsView
+            salesData={salesData}
+            products={supabaseProducts.length > 0 ? supabaseProducts : products}
+            sellers={sellers}
+            liveVisitors={liveFeed?.activeCount || onlineCount}
+            liveFeed={liveFeed}
+            onNavigateTab={setActiveTab}
+            onUpdateOrderStatus={handleUpdateOrderStatus}
+            writeOffsSummary={writeOffsData.summary}
+            onOpenWriteOffModal={(tab) => {
+              setWriteOffModalTab(tab || 'NEW');
+              setShowWriteOffModal(true);
+            }}
+          />
+        </div>
       )}
 
       {/* =========================================================================
@@ -3585,6 +3589,9 @@ export default function BackofficeDashboard() {
                 <strong className="text-gold font-black underline">LUCRO REAL NO SEU BOLSO ($ USD)</strong>
               </div>
             </div>
+
+            {/* RESUMO FINANCEIRO EXECUTIVO SOLICITADO */}
+            <ExecutiveFinancialSummary sales={salesData?.sales || []} />
 
             {/* =========================================================================
                 AS 5 MÉTRICAS PRIORITÁRIAS DA ANA CARINA
