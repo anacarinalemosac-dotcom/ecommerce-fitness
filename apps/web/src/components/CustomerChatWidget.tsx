@@ -43,10 +43,30 @@ function isCustomerFacingPage(path: string): boolean {
 export function CustomerChatWidget() {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const { lang } = useLanguage();
+  const { siteInfo } = useStoreSettings();
+  const [isOpen, setIsOpen] = useState(false);
+  const [hasUnread, setHasUnread] = useState(true);
+  const [userMessage, setUserMessage] = useState('');
+  const [chatStep, setChatStep] = useState<'welcome' | 'custom'>('welcome');
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Abre automaticamente uma mensagem de boas-vindas sutil após 6 segundos na primeira visita
+  useEffect(() => {
+    if (!mounted) return;
+    const timer = setTimeout(() => {
+      try {
+        const alreadyClosed = sessionStorage.getItem('ana_chat_auto_shown');
+        if (!alreadyClosed) {
+          setHasUnread(true);
+        }
+      } catch (_) {}
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [mounted]);
 
   const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
 
@@ -55,32 +75,16 @@ export function CustomerChatWidget() {
     return null;
   }
 
-  const { lang } = useLanguage();
-  const { siteInfo } = useStoreSettings();
-  const [isOpen, setIsOpen] = useState(false);
-  const [hasUnread, setHasUnread] = useState(true);
-  const [userMessage, setUserMessage] = useState('');
-  const [chatStep, setChatStep] = useState<'welcome' | 'custom'>('welcome');
-
   // Número do WhatsApp oficial da loja
   const rawPhone = siteInfo.phone ? siteInfo.phone.replace(/\D/g, '') : '19783139452';
   const whatsappNumber = rawPhone.length === 10 ? `1${rawPhone}` : rawPhone;
 
-  // Abre automaticamente uma mensagem de boas-vindas sutil após 6 segundos na primeira visita
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const alreadyClosed = sessionStorage.getItem('ana_chat_auto_shown');
-      if (!alreadyClosed) {
-        setHasUnread(true);
-      }
-    }, 6000);
-    return () => clearTimeout(timer);
-  }, []);
-
   const handleOpenChat = () => {
     setIsOpen(true);
     setHasUnread(false);
-    sessionStorage.setItem('ana_chat_auto_shown', 'true');
+    try {
+      sessionStorage.setItem('ana_chat_auto_shown', 'true');
+    } catch (_) {}
   };
 
   const handleCloseChat = () => {

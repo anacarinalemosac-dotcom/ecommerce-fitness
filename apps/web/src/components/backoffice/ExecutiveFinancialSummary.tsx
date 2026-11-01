@@ -567,14 +567,16 @@ export function ExecutiveFinancialSummary({
       </div>
 
       {/* Modal Interativo de Relatório de Crediários e Saldos Pendentes */}
-      <PendingCrediarioReportModal
-        isOpen={showPendingReportModal}
-        onClose={() => setShowPendingReportModal(false)}
-        sales={sales}
-        initialFilter={pendingReportFilter}
-        onOpenPaymentModal={onOpenPaymentModal}
-        onSelectSale={onSelectSale}
-      />
+      {showPendingReportModal && (
+        <PendingCrediarioReportModal
+          isOpen={showPendingReportModal}
+          onClose={() => setShowPendingReportModal(false)}
+          sales={sales}
+          initialFilter={pendingReportFilter}
+          onOpenPaymentModal={onOpenPaymentModal}
+          onSelectSale={onSelectSale}
+        />
+      )}
     </div>
   );
 }
