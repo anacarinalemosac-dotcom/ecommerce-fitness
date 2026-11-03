@@ -1338,7 +1338,17 @@ export function ProductVariantMatrixForm({
           fileName: 'video.mp4',
         });
       }
-      const primaryCoverImg = validMedia[0]?.url || enrichedVariants[0]?.images?.[0] || enrichedVariants[0]?.image || '';
+      const isVideoUrl = (u: any) =>
+        typeof u === 'string' &&
+        (u.toLowerCase().endsWith('.mp4') ||
+          u.toLowerCase().endsWith('.webm') ||
+          u.toLowerCase().endsWith('.mov') ||
+          u.toLowerCase().includes('.mp4?') ||
+          u.toLowerCase().includes('whatsappvideo') ||
+          u.toLowerCase().includes('/videos/'));
+
+      const firstRealImage = validMedia.find((m) => m.type !== 'video' && !isVideoUrl(m.url))?.url;
+      const primaryCoverImg = firstRealImage || enrichedVariants[0]?.images?.[0] || enrichedVariants[0]?.image || '';
       const numCompare = isOnSale && comparePrice ? parseFloat(comparePrice) : null;
       const numPrice = parseFloat(defaultPrice) || 34.90;
 
@@ -1410,8 +1420,8 @@ export function ProductVariantMatrixForm({
         compare_price: finalComparePrice,
         promotional_price: isOnSale ? finalSellingPrice : null,
         primary_image: primaryCoverImg,
-        images: validMedia.map((m) => m.url),
-        gallery: validMedia.map((m) => m.url),
+        images: validMedia.filter((m) => m.type !== 'video' && !isVideoUrl(m.url)).map((m) => m.url),
+        gallery: validMedia.filter((m) => m.type !== 'video' && !isVideoUrl(m.url)).map((m) => m.url),
         media_list: validMedia.map((m) => ({
           url: m.url,
           type: m.type,

@@ -218,6 +218,19 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           const pPrice = Number(p.price) || 44.9;
           const pCompare = meta.compare_price ? Number(meta.compare_price) : undefined;
 
+          const isVideoUrlRaw = (u: any) =>
+            typeof u === 'string' &&
+            (u.toLowerCase().endsWith('.mp4') ||
+              u.toLowerCase().endsWith('.webm') ||
+              u.toLowerCase().endsWith('.mov') ||
+              u.toLowerCase().includes('.mp4?') ||
+              u.toLowerCase().includes('whatsappvideo') ||
+              u.toLowerCase().includes('/videos/'));
+
+          const realImages = (p.galleryImages || p.images || []).filter((u: string) => !isVideoUrlRaw(u));
+          const primaryCandidate = (!isVideoUrlRaw(p.primaryImage || p.primary_image) ? (p.primaryImage || p.primary_image) : '') || realImages[0] || '';
+          const secondaryCandidate = realImages.find((u: string) => u !== primaryCandidate) || realImages[1] || '';
+
           setLiveProduct({
             id: p.id,
             title: p.title,
@@ -230,9 +243,11 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             price: pPrice,
             originalPrice: pCompare && pCompare > pPrice ? pCompare : undefined,
             costPrice: Number(p.cost_price) || 16.0,
-            primaryImage: p.primaryImage || p.primary_image || '',
-            secondaryImage: p.galleryImages?.[1] || p.images?.[1] || '',
-            galleryImages: p.galleryImages || p.images || [],
+            primaryImage: primaryCandidate,
+            secondaryImage: secondaryCandidate,
+            galleryImages: realImages,
+            media_list: p.media_list || meta.media_list || [],
+            video_url: p.video_url || meta.video_url || null,
             colors: p.colors || [],
             sizes: p.sizes || [],
             stock: (p.variants || []).reduce((acc: number, v: any) => acc + (v.stock_quantity || 0), 0),
@@ -260,33 +275,84 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   let productData = CATALOG_ITEMS[slug] || CATALOG_ITEMS['samanta-romper'];
 
   if (dynamicProduct) {
-    const mediaList: Array<{ type: 'image' | 'video'; url: string; label: string; color?: string }> = [
-      { type: 'image', url: dynamicProduct.primaryImage, label: 'Front', color: dynamicProduct.colors[0]?.name || 'all' },
-    ];
-    if (dynamicProduct.secondaryImage) {
-      mediaList.push({ type: 'image', url: dynamicProduct.secondaryImage, label: 'Back / Hover', color: dynamicProduct.colors[0]?.name || 'all' });
-    }
-    if (dynamicProduct.galleryImages && dynamicProduct.galleryImages.length > 0) {
-      dynamicProduct.galleryImages.forEach((img, idx) => {
-        if (img && !mediaList.some((m) => m.url === img)) {
-          mediaList.push({ type: 'image', url: img, label: `Detail ${idx + 1}`, color: 'all' });
-        }
+    const isVideoUrl = (url: string) => {
+      if (!url || typeof url !== 'string') return false;
+      const lower = url.toLowerCase();
+      return (
+        lower.endsWith('.mp4') ||
+        lower.endsWith('.webm') ||
+        lower.endsWith('.mov') ||
+        lower.includes('.mp4?') ||
+        lower.includes('.webm?') ||
+        lower.includes('.mov?') ||
+        lower.includes('whatsappvideo') ||
+        lower.includes('/videos/')
+      );
+    };
+
+    const mediaList: Array<{ type: 'image' | 'video'; url: string; label: string; color?: string }> = [];
+
+    // 1. Foto principal (apenas fotos reais)
+    if (dynamicProduct.primaryImage && !isVideoUrl(dynamicProduct.primaryImage)) {
+      mediaList.push({
+        type: 'image',
+        url: dynamicProduct.primaryImage,
+        label: 'Front',
+        color: dynamicProduct.colors[0]?.name || 'all',
       });
     }
 
-    if (Array.isArray((dynamicProduct as any).media_list)) {
-      (dynamicProduct as any).media_list.forEach((m: any, idx: number) => {
-        if (m?.url && !mediaList.some((med) => med.url === m.url)) {
+    // 2. Foto secundária (apenas fotos reais)
+    if (
+      dynamicProduct.secondaryImage &&
+      !isVideoUrl(dynamicProduct.secondaryImage) &&
+      !mediaList.some((m) => m.url === dynamicProduct.secondaryImage)
+    ) {
+      mediaList.push({
+        type: 'image',
+        url: dynamicProduct.secondaryImage,
+        label: 'Back / Hover',
+        color: dynamicProduct.colors[0]?.name || 'all',
+      });
+    }
+
+    // 3. Imagens da galeria
+    if (dynamicProduct.galleryImages && dynamicProduct.galleryImages.length > 0) {
+      dynamicProduct.galleryImages.forEach((img: string, idx: number) => {
+        if (img && !mediaList.some((m) => m.url === img)) {
+          const type: 'image' | 'video' = isVideoUrl(img) ? 'video' : 'image';
           mediaList.push({
-            type: m.type === 'video' ? 'video' : 'image',
-            url: m.url,
-            label: m.label || `${m.associatedColor || 'Detail'} ${idx + 1}`,
-            color: m.associatedColor || 'all',
+            type,
+            url: img,
+            label: type === 'video' ? 'Vídeo da Peça' : `Detail ${idx + 1}`,
+            color: 'all',
           });
         }
       });
     }
 
+    // 4. Mídias estruturadas (imagens e vídeos explícitos)
+    if (Array.isArray((dynamicProduct as any).media_list)) {
+      (dynamicProduct as any).media_list.forEach((m: any, idx: number) => {
+        if (m?.url) {
+          const type: 'image' | 'video' = (m.type === 'video' || isVideoUrl(m.url)) ? 'video' : 'image';
+          const existing = mediaList.find((med) => med.url === m.url);
+          if (existing) {
+            existing.type = type;
+            if (type === 'video') existing.label = 'Vídeo da Peça';
+          } else {
+            mediaList.push({
+              type,
+              url: m.url,
+              label: m.label || (type === 'video' ? 'Vídeo da Peça' : `${m.associatedColor || 'Detail'} ${idx + 1}`),
+              color: m.associatedColor || 'all',
+            });
+          }
+        }
+      });
+    }
+
+    // 5. Vídeo dedicado da peça
     const resolvedVideoUrl =
       (dynamicProduct as any).video_url ||
       (dynamicProduct as any).meta?.video_url ||
@@ -294,11 +360,27 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       (Array.isArray(dynamicProduct.variants) ? dynamicProduct.variants.find((v: any) => v.video_url)?.video_url : null) ||
       null;
 
-    if (resolvedVideoUrl && !mediaList.some((m) => m.url === resolvedVideoUrl)) {
-      mediaList.push({
-        type: 'video',
-        url: resolvedVideoUrl,
-        label: 'Vídeo da Peça',
+    if (resolvedVideoUrl) {
+      const existing = mediaList.find((m) => m.url === resolvedVideoUrl);
+      if (existing) {
+        existing.type = 'video';
+        existing.label = 'Vídeo da Peça';
+      } else {
+        mediaList.push({
+          type: 'video',
+          url: resolvedVideoUrl,
+          label: 'Vídeo da Peça',
+          color: 'all',
+        });
+      }
+    }
+
+    // Fallback de segurança: se nenhuma foto foi inserida, adiciona a capa
+    if (mediaList.length === 0 || !mediaList.some((m) => m.type === 'image')) {
+      mediaList.unshift({
+        type: 'image',
+        url: dynamicProduct.primaryImage || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&q=85',
+        label: 'Front',
         color: 'all',
       });
     }
@@ -887,9 +969,17 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   }`}
                 >
                   {item.type === 'video' ? (
-                    <div className="w-full h-full bg-deep-black flex flex-col items-center justify-center text-gold gap-1 p-1 text-center">
-                      <Video className="w-5 h-5 text-gold shrink-0" />
-                      <span className="text-[7.5px] font-black uppercase tracking-wider">VÍDEO</span>
+                    <div className="w-full h-full bg-deep-black flex flex-col items-center justify-center text-gold gap-1 p-1 text-center relative overflow-hidden group">
+                      <video
+                        src={item.url}
+                        className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none"
+                        muted
+                        playsInline
+                      />
+                      <div className="relative z-10 flex flex-col items-center justify-center bg-black/80 px-1 py-1 border border-gold/40 rounded-xs">
+                        <Video className="w-4 h-4 text-gold animate-pulse drop-shadow" />
+                        <span className="text-[7px] font-black uppercase tracking-wider text-white">VÍDEO</span>
+                      </div>
                     </div>
                   ) : (
                     <img src={item.url} alt={item.label} className="w-full h-full object-cover" />
@@ -902,15 +992,15 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               {productData.media[selectedMediaIdx]?.type === 'video' ? (
                 <div className="relative w-full h-full bg-black flex items-center justify-center">
                   <video
+                    key={productData.media[selectedMediaIdx].url}
                     src={productData.media[selectedMediaIdx].url}
                     controls
                     autoPlay
                     loop
-                    muted
                     playsInline
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain bg-black"
                   />
-                  <div className="absolute top-4 left-4 pointer-events-none">
+                  <div className="absolute top-4 left-4 pointer-events-none z-10">
                     <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm bg-deep-black/90 text-gold border border-gold/40 flex items-center gap-1.5">
                       <Video className="w-3.5 h-3.5 text-gold" />
                       <span>{lang === 'pt' ? 'VÍDEO DA PEÇA' : 'VIDEO PREVIEW'}</span>
@@ -918,14 +1008,33 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   </div>
                 </div>
               ) : (
-                <img
-                  src={productData.media[selectedMediaIdx]?.url}
-                  alt={productData.title}
-                  className={`w-full h-full object-cover transition-transform duration-500 cursor-zoom-in ${
-                    isZoomed ? 'scale-150' : 'group-hover:scale-105'
-                  }`}
-                  onClick={() => setIsZoomed(!isZoomed)}
-                />
+                <div className="relative w-full h-full">
+                  <img
+                    src={productData.media[selectedMediaIdx]?.url}
+                    alt={productData.title}
+                    className={`w-full h-full object-cover transition-transform duration-500 cursor-zoom-in ${
+                      isZoomed ? 'scale-150' : 'group-hover:scale-105'
+                    }`}
+                    onClick={() => setIsZoomed(!isZoomed)}
+                  />
+                  {productData.media.some((m: any) => m.type === 'video') && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const vidIdx = productData.media.findIndex((m: any) => m.type === 'video');
+                        if (vidIdx >= 0) {
+                          setSelectedMediaIdx(vidIdx);
+                          setIsZoomed(false);
+                        }
+                      }}
+                      className="absolute bottom-4 left-4 bg-deep-black/95 hover:bg-gold hover:text-deep-black text-white text-[11px] font-black uppercase tracking-wider px-3.5 py-2 border-2 border-gold flex items-center gap-2 shadow-2xl transition z-20 cursor-pointer group"
+                    >
+                      <Video className="w-4 h-4 text-gold group-hover:text-deep-black transition" />
+                      <span>{lang === 'pt' ? '▶ Ver Vídeo da Peça' : '▶ Watch Video'}</span>
+                    </button>
+                  )}
+                </div>
               )}
 
               {/* Selos de Destaque da Foto */}

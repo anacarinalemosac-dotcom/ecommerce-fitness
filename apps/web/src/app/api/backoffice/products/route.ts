@@ -9,6 +9,17 @@ const isUuid = (val: any): boolean =>
   typeof val === 'string' &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
+const isVideoUrl = (val: any): boolean =>
+  typeof val === 'string' &&
+  (val.toLowerCase().endsWith('.mp4') ||
+    val.toLowerCase().endsWith('.webm') ||
+    val.toLowerCase().endsWith('.mov') ||
+    val.toLowerCase().includes('.mp4?') ||
+    val.toLowerCase().includes('.webm?') ||
+    val.toLowerCase().includes('.mov?') ||
+    val.toLowerCase().includes('whatsappvideo') ||
+    val.toLowerCase().includes('/videos/'));
+
 function reconcileProductVariants(dbVariants: any[], metaVariants: any[]) {
   const dbList = Array.isArray(dbVariants) ? dbVariants : [];
   const metaList = Array.isArray(metaVariants) ? metaVariants : [];
@@ -85,16 +96,17 @@ export async function GET(req: NextRequest) {
         ? (Array.isArray(inStockVariant.images) && inStockVariant.images.length > 0 ? inStockVariant.images[0] : inStockVariant.image)
         : null;
 
-      const primaryImage = meta.primary_image || (meta.images?.[0]) || inStockImage || (effectiveVariants?.[0]?.images?.[0]) || '';
-      let galleryImages = Array.isArray(meta.images) && meta.images.length > 0
+      const rawPrimary = meta.primary_image || (meta.images?.[0]) || inStockImage || (effectiveVariants?.[0]?.images?.[0]) || '';
+      let galleryImages = (Array.isArray(meta.images) && meta.images.length > 0
         ? [...meta.images]
         : Array.isArray(meta.gallery) && meta.gallery.length > 0
         ? [...meta.gallery]
         : Array.from(new Set([
-            primaryImage,
+            rawPrimary,
             ...effectiveVariants.flatMap((v: any) => Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []))
-          ].filter(Boolean)));
+          ].filter(Boolean)))).filter((u: string) => !isVideoUrl(u));
 
+      const primaryImage = (!isVideoUrl(rawPrimary) ? rawPrimary : '') || galleryImages[0] || '';
       if (primaryImage) {
         const pIdx = galleryImages.indexOf(primaryImage);
         if (pIdx !== -1) galleryImages.splice(pIdx, 1);
@@ -213,16 +225,17 @@ export async function GET(req: NextRequest) {
         ? (Array.isArray(inStockVariant.images) && inStockVariant.images.length > 0 ? inStockVariant.images[0] : inStockVariant.image)
         : null;
 
-      const primaryImage = meta.primary_image || (meta.images?.[0]) || inStockImage || (effectiveVariants[0]?.images?.[0]) || '';
-      let galleryImages = Array.isArray(meta.images) && meta.images.length > 0
+      const rawPrimary = meta.primary_image || (meta.images?.[0]) || inStockImage || (effectiveVariants[0]?.images?.[0]) || '';
+      let galleryImages = (Array.isArray(meta.images) && meta.images.length > 0
         ? [...meta.images]
         : Array.isArray(meta.gallery) && meta.gallery.length > 0
         ? [...meta.gallery]
         : Array.from(new Set([
-            primaryImage,
+            rawPrimary,
             ...effectiveVariants.flatMap((v: any) => Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []))
-          ].filter(Boolean)));
+          ].filter(Boolean)))).filter((u: string) => !isVideoUrl(u));
 
+      const primaryImage = (!isVideoUrl(rawPrimary) ? rawPrimary : '') || galleryImages[0] || '';
       if (primaryImage) {
         const pIdx = galleryImages.indexOf(primaryImage);
         if (pIdx !== -1) galleryImages.splice(pIdx, 1);
@@ -379,34 +392,34 @@ export async function POST(req: NextRequest) {
 
     const parsedExplicitPrice = !isNaN(Number(rawExplicitPrice)) ? Number(rawExplicitPrice) : 44.90;
 
-    // Constrói galeria completa com todas as fotos passadas, garantindo que a capa escolhida esteja no índice 0
+    // Constrói galeria completa com todas as fotos passadas (apenas imagens reais, sem vídeos)
     const rawImagesList: string[] = [];
-    if (primary_image && typeof primary_image === 'string' && !primary_image.startsWith('data:')) {
+    if (primary_image && typeof primary_image === 'string' && !primary_image.startsWith('data:') && !isVideoUrl(primary_image)) {
       rawImagesList.push(primary_image);
     }
     if (Array.isArray(images)) {
-      images.forEach((u) => { if (u && !u.startsWith('data:') && !rawImagesList.includes(u)) rawImagesList.push(u); });
+      images.forEach((u) => { if (u && !u.startsWith('data:') && !isVideoUrl(u) && !rawImagesList.includes(u)) rawImagesList.push(u); });
     }
     if (Array.isArray(gallery)) {
-      gallery.forEach((u) => { if (u && !u.startsWith('data:') && !rawImagesList.includes(u)) rawImagesList.push(u); });
+      gallery.forEach((u) => { if (u && !u.startsWith('data:') && !isVideoUrl(u) && !rawImagesList.includes(u)) rawImagesList.push(u); });
     }
     if (Array.isArray(media_list)) {
       media_list.forEach((m: any) => {
-        if (m?.url && !m.url.startsWith('data:') && !rawImagesList.includes(m.url)) rawImagesList.push(m.url);
+        if (m?.url && !m.url.startsWith('data:') && m.type !== 'video' && !isVideoUrl(m.url) && !rawImagesList.includes(m.url)) rawImagesList.push(m.url);
       });
     }
     if (Array.isArray(variants)) {
       variants.forEach((v: any) => {
         if (Array.isArray(v.images)) {
-          v.images.forEach((u: string) => { if (u && !u.startsWith('data:') && !rawImagesList.includes(u)) rawImagesList.push(u); });
-        } else if (v.image && !rawImagesList.includes(v.image)) {
+          v.images.forEach((u: string) => { if (u && !u.startsWith('data:') && !isVideoUrl(u) && !rawImagesList.includes(u)) rawImagesList.push(u); });
+        } else if (v.image && !isVideoUrl(v.image) && !rawImagesList.includes(v.image)) {
           rawImagesList.push(v.image);
         }
       });
     }
 
-    const primaryImg = primary_image || rawImagesList[0] || (variants?.[0]?.images?.[0]) || '';
-    if (primaryImg) {
+    const primaryImg = (!isVideoUrl(primary_image) ? primary_image : '') || rawImagesList[0] || (variants?.[0]?.images?.[0]) || '';
+    if (primaryImg && !isVideoUrl(primaryImg)) {
       const pIdx = rawImagesList.indexOf(primaryImg);
       if (pIdx !== -1) rawImagesList.splice(pIdx, 1);
       rawImagesList.unshift(primaryImg);

@@ -722,6 +722,15 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
           const sizeStockMap: Record<string, number> = {};
           const allImages: string[] = [];
 
+          const isVideoUrl = (u: any) =>
+            typeof u === 'string' &&
+            (u.toLowerCase().endsWith('.mp4') ||
+              u.toLowerCase().endsWith('.webm') ||
+              u.toLowerCase().endsWith('.mov') ||
+              u.toLowerCase().includes('.mp4?') ||
+              u.toLowerCase().includes('whatsappvideo') ||
+              u.toLowerCase().includes('/videos/'));
+
           variants.forEach((v: any) => {
             if (v.color) {
               const defaultHex =
@@ -738,9 +747,9 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             }
             if (Array.isArray(v.images)) {
               v.images.forEach((img: string) => {
-                if (img && !allImages.includes(img)) allImages.push(img);
+                if (img && !isVideoUrl(img) && !allImages.includes(img)) allImages.push(img);
               });
-            } else if (v.image && !allImages.includes(v.image)) {
+            } else if (v.image && !isVideoUrl(v.image) && !allImages.includes(v.image)) {
               allImages.push(v.image);
             }
           });
@@ -754,27 +763,27 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
           if (Array.isArray(p.images)) {
             p.images.forEach((img: string) => {
-              if (img && !allImages.includes(img)) allImages.push(img);
+              if (img && !isVideoUrl(img) && !allImages.includes(img)) allImages.push(img);
             });
           }
           if (Array.isArray(meta.images)) {
             meta.images.forEach((img: string) => {
-              if (img && !allImages.includes(img)) allImages.push(img);
+              if (img && !isVideoUrl(img) && !allImages.includes(img)) allImages.push(img);
             });
           }
           if (Array.isArray(meta.gallery)) {
             meta.gallery.forEach((img: string) => {
-              if (img && !allImages.includes(img)) allImages.push(img);
+              if (img && !isVideoUrl(img) && !allImages.includes(img)) allImages.push(img);
             });
           }
           if (Array.isArray(p.media_list)) {
             p.media_list.forEach((m: any) => {
-              if (m?.url && !allImages.includes(m.url)) allImages.push(m.url);
+              if (m?.url && m.type !== 'video' && !isVideoUrl(m.url) && !allImages.includes(m.url)) allImages.push(m.url);
             });
           }
           if (Array.isArray(meta.media_list)) {
             meta.media_list.forEach((m: any) => {
-              if (m?.url && !allImages.includes(m.url)) allImages.push(m.url);
+              if (m?.url && m.type !== 'video' && !isVideoUrl(m.url) && !allImages.includes(m.url)) allImages.push(m.url);
             });
           }
 
@@ -782,14 +791,14 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
           const inStockVariantWithImg = variants.find((v: any) => {
             const stockQty = Number(v.stock_quantity ?? v.stock ?? 0);
             const varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
-            return stockQty > 0 && Boolean(varImg);
+            return stockQty > 0 && Boolean(varImg) && !isVideoUrl(varImg);
           });
 
           const metaVariants = Array.isArray(meta.variants) ? meta.variants : [];
           const effectiveInStockVariant = inStockVariantWithImg || metaVariants.find((v: any) => {
             const stockQty = Number(v.stock_quantity ?? v.stock ?? 0);
             const varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
-            return stockQty > 0 && Boolean(varImg);
+            return stockQty > 0 && Boolean(varImg) && !isVideoUrl(varImg);
           });
 
           const inStockImage = effectiveInStockVariant
@@ -799,13 +808,13 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             : null;
 
           // Se a lojista escolheu explicitamente uma foto de capa (primary_image), ela tem PRIORIDADE MÁXIMA e NUNCA é sobreposta!
-          if (meta.primary_image) {
+          if (meta.primary_image && !isVideoUrl(meta.primary_image)) {
             const pIdx = allImages.indexOf(meta.primary_image);
             if (pIdx !== -1) {
               allImages.splice(pIdx, 1);
             }
             allImages.unshift(meta.primary_image);
-          } else if (inStockImage) {
+          } else if (inStockImage && !isVideoUrl(inStockImage)) {
             // Apenas se NÃO houver capa explícita, usa a imagem de variação com estoque como fallback
             const idx = allImages.indexOf(inStockImage);
             if (idx !== -1) {
@@ -1038,8 +1047,8 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
               : (totalStock > 0 ? 'bg-gold text-deep-black font-black' : 'bg-deep-black text-gold border border-gold font-black'),
             rating: 5.0,
             reviewsCount: 32,
-            primaryImage: meta.primary_image || allImages[0] || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80',
-            secondaryImage: allImages[1] || allImages[0] || 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=900&q=80',
+            primaryImage: (!isVideoUrl(meta.primary_image) ? meta.primary_image : '') || allImages[0] || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80',
+            secondaryImage: allImages.find((img) => img !== (!isVideoUrl(meta.primary_image) ? meta.primary_image : allImages[0])) || allImages[1] || allImages[0] || 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=900&q=80',
             galleryImages: allImages,
             colors,
             sizes,
