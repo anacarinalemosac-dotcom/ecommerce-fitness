@@ -102,34 +102,32 @@ export async function POST(req: NextRequest) {
 
     let session: any;
 
-    // Determina os tipos de método de pagamento solicitados
-    let requestedTypes: string[] = ['card', 'link'];
-    if (paymentMethodChoice === 'affirm') {
-      requestedTypes = ['affirm', 'card', 'link'];
-    } else if (paymentMethodChoice === 'afterpay') {
-      requestedTypes = ['afterpay_clearpay', 'card', 'link'];
-    } else {
-      requestedTypes = ['card', 'affirm', 'afterpay_clearpay', 'link'];
-    }
-
     try {
-      // 1. Tenta criar com os tipos BNPL solicitados (Affirm / Afterpay) incluindo o shipping obrigatório
+      // 1. Cria a sessão com os Métodos de Pagamento Dinâmicos da Stripe (Afterpay, Klarna, Cards, Apple Pay, Google Pay, Link)
       session = await stripe.checkout.sessions.create({
         ...sessionPayloadBase,
-        payment_method_types: requestedTypes as any,
       });
-    } catch (errMethodTypes: any) {
+    } catch (errDynamic: any) {
       console.warn(
-        'Stripe Checkout: tentativa com payment_method_types falhou:',
-        errMethodTypes?.message
+        'Stripe Checkout: sessão dinâmica falhou, tentando com payment_method_types:',
+        errDynamic?.message
       );
       try {
-        // 2. Fallback dinâmico (usa todos os métodos ativos no Stripe Dashboard da conta)
+        // 2. Fallback com tipos solicitados
+        let requestedTypes: string[] = ['card', 'link'];
+        if (paymentMethodChoice === 'affirm') {
+          requestedTypes = ['affirm', 'card', 'link'];
+        } else if (paymentMethodChoice === 'afterpay') {
+          requestedTypes = ['afterpay_clearpay', 'card', 'link'];
+        } else {
+          requestedTypes = ['card', 'affirm', 'afterpay_clearpay', 'link'];
+        }
         session = await stripe.checkout.sessions.create({
           ...sessionPayloadBase,
+          payment_method_types: requestedTypes as any,
         });
-      } catch (errDynamic: any) {
-        console.warn('Stripe Checkout: fallback dinâmico falhou, usando card:', errDynamic?.message);
+      } catch (errMethodTypes: any) {
+        console.warn('Stripe Checkout: fallback method_types falhou, usando card:', errMethodTypes?.message);
         // 3. Fallback seguro para cartão
         session = await stripe.checkout.sessions.create({
           ...sessionPayloadBase,

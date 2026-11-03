@@ -9,4 +9,6 @@ export const stripe = stripeSecretKey
     })
   : null;
 
-export const isStripeConfigured = Boolean(stripeSecretKey && stripeSecretKey.startsWith('sk_'));
+export const isStripeConfigured = Boolean(
+  stripeSecretKey && (stripeSecretKey.startsWith('sk_') || stripeSecretKey.startsWith('rk_'))
+);
