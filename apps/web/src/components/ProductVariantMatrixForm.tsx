@@ -147,6 +147,12 @@ export function ProductVariantMatrixForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [draggedMediaIndex, setDraggedMediaIndex] = useState<number | null>(null);
 
+  // Vídeo da Peça
+  const [productVideoUrl, setProductVideoUrl] = useState('');
+  const [directVideoUrlInput, setDirectVideoUrlInput] = useState('');
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
+
   // Vínculo de Foto com Variação
   const [variantPhotoModal, setVariantPhotoModal] = useState<{
     variantIndex: number;
@@ -393,6 +399,24 @@ export function ProductVariantMatrixForm({
         });
       }
 
+      const existingVideo =
+        parsedMeta.video_url ||
+        initialProduct.meta?.video_url ||
+        initialProduct.video_url ||
+        (Array.isArray(parsedMeta.media_list)
+          ? parsedMeta.media_list.find((m: any) => m.type === 'video')?.url
+          : null) ||
+        (Array.isArray(initialProduct.media_list)
+          ? initialProduct.media_list.find((m: any) => m.type === 'video')?.url
+          : null) ||
+        '';
+      if (existingVideo) {
+        setProductVideoUrl(existingVideo);
+        addMediaIfNew(existingVideo, 'all', 'Vídeo da Peça');
+      } else {
+        setProductVideoUrl('');
+      }
+
       const resolvedInitialCost = (initialProduct.cost_price !== undefined && initialProduct.cost_price !== null)
         ? initialProduct.cost_price
         : (initialProduct.costPrice !== undefined && initialProduct.costPrice !== null)
@@ -537,6 +561,7 @@ export function ProductVariantMatrixForm({
           }
           if (v.video_url) {
             addMediaIfNew(v.video_url, v.color || 'all', 'Vídeo da Peça');
+            setProductVideoUrl((prev) => prev || v.video_url);
           }
         });
       } else {
@@ -603,6 +628,8 @@ export function ProductVariantMatrixForm({
         setGeneralSku('');
         setComparePrice('');
         setIsOnSale(false);
+        setProductVideoUrl('');
+        setDirectVideoUrlInput('');
       }
     }
   }, [initialProduct]);
@@ -1024,6 +1051,12 @@ export function ProductVariantMatrixForm({
         setVariants((prev) =>
           prev.map((vr) => {
             if (defaultColor === 'all' || vr.color === defaultColor) {
+              if (isVid) {
+                return {
+                  ...vr,
+                  video_url: publicUrl,
+                };
+              }
               const currentImgs = Array.isArray(vr.images) ? vr.images : [];
               return {
                 ...vr,
@@ -1034,6 +1067,9 @@ export function ProductVariantMatrixForm({
             return vr;
           })
         );
+        if (isVid) {
+          setProductVideoUrl(publicUrl);
+        }
       } catch (err: any) {
         console.error('Erro no upload para Supabase Storage:', err);
         alert(`Falha no upload para o Storage: ${err?.message || 'Erro desconhecido'}`);
@@ -1060,11 +1096,20 @@ export function ProductVariantMatrixForm({
     };
 
     setMediaList((prev) => [...prev, newMedia]);
+    if (isVid) {
+      setProductVideoUrl(rawUrl);
+    }
     setDirectImageUrlInput('');
 
     setVariants((prev) =>
       prev.map((vr) => {
         if (defaultColor === 'all' || vr.color === defaultColor) {
+          if (isVid) {
+            return {
+              ...vr,
+              video_url: rawUrl,
+            };
+          }
           const currentImgs = Array.isArray(vr.images) ? vr.images : [];
           return {
             ...vr,
@@ -1074,6 +1119,100 @@ export function ProductVariantMatrixForm({
         }
         return vr;
       })
+    );
+  };
+
+  // Upload Exclusivo de Vídeo (Reels / MP4 / Demonstração Squat-Proof)
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingVideo(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || 'Falha no upload do vídeo');
+      }
+
+      const vidUrl = data.url;
+      setProductVideoUrl(vidUrl);
+
+      // Adiciona ou substitui na galeria de mídias
+      setMediaList((prev) => {
+        const withoutOldVid = prev.filter((m) => m.type !== 'video' && m.id !== 'product-main-video');
+        return [
+          ...withoutOldVid,
+          {
+            id: 'product-main-video',
+            url: vidUrl,
+            type: 'video',
+            associatedColor: 'all',
+            fileName: file.name || 'Vídeo da Peça',
+            isUploading: false,
+          },
+        ];
+      });
+
+      // Vincula o vídeo nas variações
+      setVariants((prev) =>
+        prev.map((vr) => ({
+          ...vr,
+          video_url: vidUrl,
+        }))
+      );
+    } catch (err: any) {
+      alert(`Erro ao subir vídeo: ${err?.message || 'Erro desconhecido'}`);
+    } finally {
+      setIsUploadingVideo(false);
+      if (videoFileInputRef.current) videoFileInputRef.current.value = '';
+    }
+  };
+
+  // Vínculo Direto de Vídeo por URL
+  const handleAddDirectVideoUrl = () => {
+    const rawUrl = directVideoUrlInput.trim();
+    if (!rawUrl) return;
+
+    setProductVideoUrl(rawUrl);
+    setMediaList((prev) => {
+      const withoutOldVid = prev.filter((m) => m.type !== 'video' && m.id !== 'product-main-video');
+      return [
+        ...withoutOldVid,
+        {
+          id: 'product-main-video',
+          url: rawUrl,
+          type: 'video',
+          associatedColor: 'all',
+          fileName: 'Vídeo via URL',
+          isUploading: false,
+        },
+      ];
+    });
+
+    setVariants((prev) =>
+      prev.map((vr) => ({
+        ...vr,
+        video_url: rawUrl,
+      }))
+    );
+    setDirectVideoUrlInput('');
+  };
+
+  // Remoção de Vídeo
+  const handleRemoveVideo = () => {
+    setProductVideoUrl('');
+    setMediaList((prev) => prev.filter((m) => m.type !== 'video' && m.id !== 'product-main-video'));
+    setVariants((prev) =>
+      prev.map((vr) => ({
+        ...vr,
+        video_url: '',
+      }))
     );
   };
 
@@ -1184,11 +1323,21 @@ export function ProductVariantMatrixForm({
         ...vr,
         images: orderedImages,
         image: finalPrimary,
+        video_url: vr.video_url || productVideoUrl || null,
       };
     });
 
     try {
-      const validMedia = mediaList.filter((m) => m.url && !m.url.startsWith('data:') && !m.isUploading);
+      let validMedia = mediaList.filter((m) => m.url && !m.url.startsWith('data:') && !m.isUploading);
+      if (productVideoUrl && !validMedia.some((m) => m.url === productVideoUrl)) {
+        validMedia.push({
+          id: 'product-main-video',
+          url: productVideoUrl,
+          type: 'video',
+          associatedColor: 'all',
+          fileName: 'video.mp4',
+        });
+      }
       const primaryCoverImg = validMedia[0]?.url || enrichedVariants[0]?.images?.[0] || enrichedVariants[0]?.image || '';
       const numCompare = isOnSale && comparePrice ? parseFloat(comparePrice) : null;
       const numPrice = parseFloat(defaultPrice) || 34.90;
@@ -1269,6 +1418,7 @@ export function ProductVariantMatrixForm({
           associatedColor: m.associatedColor,
           fileName: m.fileName,
         })),
+        video_url: productVideoUrl || null,
         colors,
         sizes: selectedSizes,
       };
@@ -1807,6 +1957,132 @@ export function ProductVariantMatrixForm({
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* CARD: VÍDEO DO PRODUTO (MP4 / REELS / DEMONSTRAÇÃO SQUAT-PROOF) */}
+          <div className="bg-white border-2 border-deep-black p-6 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-deep-black/10 pb-3">
+              <div className="flex items-center gap-2">
+                <Video className="w-4 h-4 text-gold" />
+                <h2 className="text-sm font-black uppercase tracking-wider text-deep-black">
+                  Vídeo do Produto (Reels / Demonstração Squat-Proof)
+                </h2>
+              </div>
+              {productVideoUrl ? (
+                <span className="text-[10px] font-black uppercase bg-emerald-600 text-white px-2.5 py-0.5 flex items-center gap-1">
+                  <Check className="w-3 h-3" /> VÍDEO ATIVO NO SITE
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold uppercase bg-deep-black/10 text-deep-black/70 px-2.5 py-0.5">
+                  NENHUM VÍDEO VINCULADO
+                </span>
+              )}
+            </div>
+
+            <p className="text-[11px] text-deep-black/70">
+              Suba um vídeo curto (MP4, MOV ou WebM) ou cole a URL direta de um vídeo demonstrando a peça no corpo, teste de agachamento (squat-proof) e elasticidade. O vídeo é exibido diretamente na galeria interativa do produto na loja.
+            </p>
+
+            {/* Input oculto para upload de vídeo */}
+            <input
+              ref={videoFileInputRef}
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime,video/*"
+              onChange={handleVideoUpload}
+              className="hidden"
+            />
+
+            {productVideoUrl ? (
+              <div className="border-2 border-deep-black bg-gray-50 p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row gap-4 items-start">
+                  <div className="w-full sm:w-48 aspect-[9/16] max-h-64 bg-black overflow-hidden border-2 border-deep-black shrink-0 relative group">
+                    <video
+                      src={productVideoUrl}
+                      controls
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black uppercase text-deep-black">Vídeo Vinculado:</span>
+                      <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200 truncate max-w-xs">
+                        {productVideoUrl}
+                      </span>
+                    </div>
+                    <p className="text-[10.5px] text-deep-black/70">
+                      ✓ Este vídeo está ativo e será reproduzido na página do produto no site e vitrine.
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => videoFileInputRef.current?.click()}
+                        className="px-3.5 py-2 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Substituir Vídeo</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveVideo}
+                        className="px-3.5 py-2 border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Remover Vídeo</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div
+                  onClick={() => videoFileInputRef.current?.click()}
+                  className="border-2 border-dashed border-deep-black/40 hover:border-gold hover:bg-gold/5 p-6 text-center cursor-pointer transition space-y-2 bg-gray-50/50"
+                >
+                  <div className="inline-flex p-2.5 bg-white border border-deep-black/20 text-gold shadow-xs">
+                    <Video className="w-5 h-5 text-gold" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-wider text-deep-black block">
+                      Subir Arquivo de Vídeo (MP4 / MOV / WEBM)
+                    </span>
+                    <span className="text-[10px] text-deep-black/60 font-medium">
+                      Clique aqui para selecionar o vídeo do seu celular ou computador.
+                    </span>
+                  </div>
+                  {isUploadingVideo && (
+                    <div className="flex items-center justify-center gap-2 p-2.5 bg-gold/15 border-2 border-gold text-xs font-black uppercase text-deep-black animate-pulse">
+                      <Loader2 className="w-4 h-4 animate-spin text-gold" />
+                      <span>Enviando vídeo para o Supabase Storage...</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    placeholder="Ou cole a URL direta de um vídeo (ex: https://.../video.mp4)"
+                    value={directVideoUrlInput}
+                    onChange={(e) => setDirectVideoUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddDirectVideoUrl();
+                      }
+                    }}
+                    className="flex-1 p-2 border-2 border-deep-black text-xs font-medium focus:border-gold focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddDirectVideoUrl}
+                    className="px-3.5 py-2 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition shrink-0"
+                  >
+                    + VINCULAR VÍDEO
+                  </button>
                 </div>
               </div>
             )}

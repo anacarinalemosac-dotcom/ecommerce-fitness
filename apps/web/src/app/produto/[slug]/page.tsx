@@ -42,6 +42,7 @@ import {
   User,
   Mail,
   Upload,
+  Video,
 } from 'lucide-react';
 
 interface Variant {
@@ -283,6 +284,22 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             color: m.associatedColor || 'all',
           });
         }
+      });
+    }
+
+    const resolvedVideoUrl =
+      (dynamicProduct as any).video_url ||
+      (dynamicProduct as any).meta?.video_url ||
+      (dynamicProduct as any).videoUrl ||
+      (Array.isArray(dynamicProduct.variants) ? dynamicProduct.variants.find((v: any) => v.video_url)?.video_url : null) ||
+      null;
+
+    if (resolvedVideoUrl && !mediaList.some((m) => m.url === resolvedVideoUrl)) {
+      mediaList.push({
+        type: 'video',
+        url: resolvedVideoUrl,
+        label: 'Vídeo da Peça',
+        color: 'all',
       });
     }
 
@@ -870,8 +887,9 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   }`}
                 >
                   {item.type === 'video' ? (
-                    <div className="w-full h-full bg-deep-black flex items-center justify-center text-gold text-[9px] font-bold">
-                      VIDEO
+                    <div className="w-full h-full bg-deep-black flex flex-col items-center justify-center text-gold gap-1 p-1 text-center">
+                      <Video className="w-5 h-5 text-gold shrink-0" />
+                      <span className="text-[7.5px] font-black uppercase tracking-wider">VÍDEO</span>
                     </div>
                   ) : (
                     <img src={item.url} alt={item.label} className="w-full h-full object-cover" />
@@ -882,14 +900,23 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
             <div className="flex-1 relative aspect-[3/4] bg-deep-black/5 overflow-hidden border border-deep-black/10 group">
               {productData.media[selectedMediaIdx]?.type === 'video' ? (
-                <video
-                  src={productData.media[selectedMediaIdx].url}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
+                <div className="relative w-full h-full bg-black flex items-center justify-center">
+                  <video
+                    src={productData.media[selectedMediaIdx].url}
+                    controls
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-4 left-4 pointer-events-none">
+                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm bg-deep-black/90 text-gold border border-gold/40 flex items-center gap-1.5">
+                      <Video className="w-3.5 h-3.5 text-gold" />
+                      <span>{lang === 'pt' ? 'VÍDEO DA PEÇA' : 'VIDEO PREVIEW'}</span>
+                    </span>
+                  </div>
+                </div>
               ) : (
                 <img
                   src={productData.media[selectedMediaIdx]?.url}

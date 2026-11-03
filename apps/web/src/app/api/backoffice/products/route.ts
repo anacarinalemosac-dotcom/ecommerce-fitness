@@ -134,6 +134,7 @@ export async function GET(req: NextRequest) {
         images: galleryImages,
         galleryImages: galleryImages,
         media_list: meta.media_list || [],
+        video_url: meta.video_url || effectiveVariants?.find((v: any) => v.video_url)?.video_url || null,
         colors: resolvedColors,
         sizes: resolvedSizes,
         price: resolvedPrice,
@@ -259,6 +260,7 @@ export async function GET(req: NextRequest) {
         images: galleryImages,
         galleryImages: galleryImages,
         media_list: meta.media_list || [],
+        video_url: meta.video_url || effectiveVariants?.find((v: any) => v.video_url)?.video_url || null,
         colors: resolvedColors,
         sizes: resolvedSizes,
         price: resolvedPrice,
@@ -338,6 +340,7 @@ export async function POST(req: NextRequest) {
       sizes,
       cost_price,
       costPrice,
+      video_url,
     } = body;
 
     if (!title) {
@@ -528,6 +531,7 @@ export async function POST(req: NextRequest) {
       images: finalGalleryImages,
       gallery: finalGalleryImages,
       media_list: Array.isArray(media_list) ? media_list : [],
+      video_url: video_url || (Array.isArray(media_list) ? media_list.find((m: any) => m.type === 'video')?.url : null) || null,
       colors: Array.isArray(colors) ? colors : [],
       sizes: Array.isArray(sizes) ? sizes : [],
       variants: Array.isArray(variants) ? variants : [], // Persistência dupla no JSON da descrição
@@ -678,7 +682,7 @@ export async function POST(req: NextRequest) {
           allow_backorder: Boolean(v.allow_backorder),
           estimated_production_days: parseInt(String(v.estimated_production_days ?? 7), 10) || 7,
           images: vImages,
-          video_url: v.video_url || null,
+          video_url: v.video_url || video_url || null,
         };
 
         return variantPayload;

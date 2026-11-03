@@ -224,6 +224,7 @@ export interface ProductItem {
   comparePrice?: number;
   productType?: string;
   media_list?: any[];
+  video_url?: string | null;
   description?: string;
   descriptionPt?: string;
   descriptionEn?: string;
@@ -1063,6 +1064,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             comparePrice: meta.compare_price ? Number(meta.compare_price) : undefined,
             productType: meta.product_type || 'physical',
             media_list: p.media_list || meta.media_list || [],
+            video_url: p.video_url || meta.video_url || firstVar.video_url || null,
           };
         });
 
