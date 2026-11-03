@@ -37,6 +37,7 @@ export interface CatalogVariationTile {
   stockMap: Record<string, number>;
   sortedSizes: string[];
   totalStock: number;
+  fabric?: string;
 }
 
 export default function PublicClientCatalogPage() {
@@ -45,6 +46,8 @@ export default function PublicClientCatalogPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedSizeFilter, setSelectedSizeFilter] = useState('ALL');
+  const [selectedColorFilter, setSelectedColorFilter] = useState('ALL');
+  const [selectedFabricFilter, setSelectedFabricFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [columnsCount, setColumnsCount] = useState<2 | 3 | 4>(3);
   const [onlyInStock, setOnlyInStock] = useState(true);
@@ -175,6 +178,26 @@ export default function PublicClientCatalogPage() {
             return a.localeCompare(b);
           });
 
+          const textToScan = [
+            product.title,
+            meta.composition,
+            meta.bio,
+            meta.description,
+            meta.description_pt,
+            meta.description_en,
+            ...(meta.tags || []),
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+
+          let detectedFabric = 'Outros';
+          if (textToScan.includes('suplex')) detectedFabric = 'Suplex';
+          else if (textToScan.includes('poliamida') || textToScan.includes('polyamide')) detectedFabric = 'Poliamida';
+          else if (textToScan.includes('canelado') || textToScan.includes('ribbed')) detectedFabric = 'Canelado';
+          else if (textToScan.includes('jacquard')) detectedFabric = 'Jacquard';
+          else if (textToScan.includes('dry') || textToScan.includes('tule') || textToScan.includes('mesh')) detectedFabric = 'Dry Fit / Tule';
+
           const varPrice = cVariants[0]?.price && !isNaN(Number(cVariants[0].price)) ? Number(cVariants[0].price) : promoPrice;
 
           tiles.push({
@@ -194,6 +217,7 @@ export default function PublicClientCatalogPage() {
             stockMap,
             sortedSizes,
             totalStock: colorStockTotal,
+            fabric: detectedFabric,
           });
         });
       } else {
@@ -219,6 +243,26 @@ export default function PublicClientCatalogPage() {
           return a.localeCompare(b);
         });
 
+        const textToScan = [
+          product.title,
+          meta.composition,
+          meta.bio,
+          meta.description,
+          meta.description_pt,
+          meta.description_en,
+          ...(meta.tags || []),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        let detectedFabric = 'Outros';
+        if (textToScan.includes('suplex')) detectedFabric = 'Suplex';
+        else if (textToScan.includes('poliamida') || textToScan.includes('polyamide')) detectedFabric = 'Poliamida';
+        else if (textToScan.includes('canelado') || textToScan.includes('ribbed')) detectedFabric = 'Canelado';
+        else if (textToScan.includes('jacquard')) detectedFabric = 'Jacquard';
+        else if (textToScan.includes('dry') || textToScan.includes('tule') || textToScan.includes('mesh')) detectedFabric = 'Dry Fit / Tule';
+
         tiles.push({
           tileId: product.id,
           productId: product.id,
@@ -236,6 +280,7 @@ export default function PublicClientCatalogPage() {
           stockMap,
           sortedSizes,
           totalStock: total,
+          fabric: detectedFabric,
         });
       }
     });
@@ -248,6 +293,15 @@ export default function PublicClientCatalogPage() {
     const set = new Set<string>();
     expandedVariations.forEach((item) => {
       if (item.category) set.add(item.category);
+    });
+    return Array.from(set).sort();
+  }, [expandedVariations]);
+
+  // Lista de tecidos disponíveis
+  const availableFabrics = useMemo(() => {
+    const set = new Set<string>();
+    expandedVariations.forEach((item) => {
+      if (item.fabric) set.add(item.fabric);
     });
     return Array.from(set).sort();
   }, [expandedVariations]);
@@ -266,18 +320,33 @@ export default function PublicClientCatalogPage() {
         if (qtyInSize <= 0) return false;
       }
 
+      // Filtro de cor
+      if (selectedColorFilter !== 'ALL') {
+        const q = selectedColorFilter.toLowerCase();
+        const matchesColor = item.colorName.toLowerCase().includes(q) || item.title.toLowerCase().includes(q);
+        if (!matchesColor) return false;
+      }
+
+      // Filtro de tecido
+      if (selectedFabricFilter !== 'ALL') {
+        if (!item.fabric || item.fabric.toLowerCase() !== selectedFabricFilter.toLowerCase()) {
+          return false;
+        }
+      }
+
       // Filtro de busca textual
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchesTitle = item.title.toLowerCase().includes(q);
         const matchesColor = item.colorName.toLowerCase().includes(q);
         const matchesCategory = item.category.toLowerCase().includes(q);
-        if (!matchesTitle && !matchesColor && !matchesCategory) return false;
+        const matchesFabric = (item.fabric || '').toLowerCase().includes(q);
+        if (!matchesTitle && !matchesColor && !matchesCategory && !matchesFabric) return false;
       }
 
       return true;
     });
-  }, [expandedVariations, selectedCategory, selectedSizeFilter, searchQuery]);
+  }, [expandedVariations, selectedCategory, selectedSizeFilter, selectedColorFilter, selectedFabricFilter, searchQuery]);
 
   // Agrupa itens filtrados por categoria para o lookbook
   const groupedByCategory = useMemo(() => {
@@ -420,6 +489,61 @@ export default function PublicClientCatalogPage() {
                 <option value="GG" className="text-black">GG</option>
               </select>
             </div>
+
+            {/* Filtro Rápido de Cor */}
+            <div className="flex items-center gap-1 bg-white/10 px-2 py-1 border border-white/20">
+              <span className="text-[10px] text-gold font-black uppercase">COR:</span>
+              <select
+                value={selectedColorFilter}
+                onChange={(e) => setSelectedColorFilter(e.target.value)}
+                className="bg-transparent text-white font-bold text-xs uppercase focus:outline-none cursor-pointer max-w-[120px]"
+              >
+                <option value="ALL" className="text-black">TODAS AS CORES</option>
+                <option value="Preto" className="text-black">Preto</option>
+                <option value="Branco" className="text-black">Branco / Off</option>
+                <option value="Azul" className="text-black">Azul</option>
+                <option value="Roxo" className="text-black">Roxo / Lilás</option>
+                <option value="Vinho" className="text-black">Vinho / Marsala</option>
+                <option value="Verde" className="text-black">Verde</option>
+                <option value="Amarelo" className="text-black">Amarelo / Dourado</option>
+                <option value="Rosa" className="text-black">Rosa / Goiaba</option>
+                <option value="Marrom" className="text-black">Marrom</option>
+                <option value="Vermelho" className="text-black">Vermelho</option>
+              </select>
+            </div>
+
+            {/* Filtro Rápido de Tecido */}
+            <div className="flex items-center gap-1 bg-white/10 px-2 py-1 border border-white/20">
+              <span className="text-[10px] text-gold font-black uppercase">TECIDO:</span>
+              <select
+                value={selectedFabricFilter}
+                onChange={(e) => setSelectedFabricFilter(e.target.value)}
+                className="bg-transparent text-white font-bold text-xs uppercase focus:outline-none cursor-pointer max-w-[130px]"
+              >
+                <option value="ALL" className="text-black">TODOS OS TECIDOS</option>
+                <option value="Suplex" className="text-black">Suplex</option>
+                <option value="Poliamida" className="text-black">Poliamida</option>
+                <option value="Canelado" className="text-black">Canelado</option>
+                <option value="Jacquard" className="text-black">Jacquard</option>
+                <option value="Dry Fit / Tule" className="text-black">Dry Fit / Tule</option>
+              </select>
+            </div>
+
+            {(selectedCategory !== 'ALL' || selectedSizeFilter !== 'ALL' || selectedColorFilter !== 'ALL' || selectedFabricFilter !== 'ALL' || searchQuery) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategory('ALL');
+                  setSelectedSizeFilter('ALL');
+                  setSelectedColorFilter('ALL');
+                  setSelectedFabricFilter('ALL');
+                  setSearchQuery('');
+                }}
+                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-wider transition cursor-pointer"
+              >
+                Limpar
+              </button>
+            )}
 
             {/* Colunas no Desktop */}
             <div className="hidden sm:inline-flex border border-white/20 bg-white/10">

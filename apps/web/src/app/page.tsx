@@ -23,6 +23,11 @@ import {
   SlidersHorizontal,
   Flame,
   Share2,
+  Filter,
+  X,
+  Palette,
+  Ruler,
+  Layers,
 } from 'lucide-react';
 
 interface ColorOption {
@@ -303,11 +308,47 @@ const TESTIMONIALS = [
   },
 ];
 
+const COLOR_FAMILIES = [
+  { id: 'all', namePt: 'Todas as Cores', nameEn: 'All Colors', hex: 'transparent', keywords: [] },
+  { id: 'black', namePt: 'Preto Ônix', nameEn: 'Black Onyx', hex: '#0A0A0A', keywords: ['preto', 'black', 'onix', 'ônix'] },
+  { id: 'white', namePt: 'Branco & Off', nameEn: 'White & Off', hex: '#FFFFFF', keywords: ['branco', 'white', 'off', 'bege', 'champagne'] },
+  { id: 'blue', namePt: 'Azul & Turquesa', nameEn: 'Blue & Turquoise', hex: '#008baf', keywords: ['azul', 'blue', 'turquesa', 'baby blue', 'navy', 'aqua'] },
+  { id: 'purple', namePt: 'Roxo & Lilás', nameEn: 'Purple & Lilac', hex: '#681A82', keywords: ['roxo', 'purple', 'lilás', 'lilas', 'violet'] },
+  { id: 'wine', namePt: 'Vinho & Marsala', nameEn: 'Wine & Marsala', hex: '#800020', keywords: ['vinho', 'wine', 'marsala', 'bordeaux'] },
+  { id: 'green', namePt: 'Verde', nameEn: 'Green', hex: '#2E4F4F', keywords: ['verde', 'green', 'moss', 'leaf', 'militar'] },
+  { id: 'yellow', namePt: 'Amarelo & Gold', nameEn: 'Yellow & Gold', hex: '#FBBF24', keywords: ['amarel', 'yellow', 'ouro', 'gold', 'butter'] },
+  { id: 'pink', namePt: 'Rosa & Goiaba', nameEn: 'Pink & Guava', hex: '#DB2777', keywords: ['rosa', 'pink', 'goiaba', 'guava', 'fúcsia', 'fucsia'] },
+  { id: 'brown', namePt: 'Marrom & Café', nameEn: 'Brown & Coffee', hex: '#4A2C2A', keywords: ['marrom', 'brown', 'café', 'cafe', 'chocolate', 'coffee'] },
+  { id: 'red', namePt: 'Vermelho', nameEn: 'Red', hex: '#DC2626', keywords: ['vermelh', 'red'] },
+];
+
+const FABRIC_FILTERS = [
+  { id: 'all', namePt: 'Todos os Tecidos', nameEn: 'All Fabrics', keywords: [] },
+  { id: 'suplex', namePt: 'Suplex Power / Premium', nameEn: 'Suplex Power / Premium', keywords: ['suplex'] },
+  { id: 'poliamida', namePt: 'Poliamida (Soft / Fit / Comfy)', nameEn: 'Polyamide (Soft / Fit)', keywords: ['poliamida', 'polyamide'] },
+  { id: 'canelado', namePt: 'Canelado (Ribbed)', nameEn: 'Ribbed Fabric', keywords: ['canelado', 'ribbed'] },
+  { id: 'jacquard', namePt: 'Jacquard 3D / Texturizado', nameEn: 'Jacquard 3D Textured', keywords: ['jacquard'] },
+  { id: 'dryfit', namePt: 'Dry Fit / Tule Mesh', nameEn: 'Dry Fit / Tulle Mesh', keywords: ['dry', 'tule', 'mesh'] },
+];
+
+const SIZE_FILTERS = [
+  { id: 'all', labelPt: 'Todos', labelEn: 'All', match: [] },
+  { id: 'P', labelPt: 'P (US 2-4)', labelEn: 'S (US 2-4)', match: ['P', 'S'] },
+  { id: 'M', labelPt: 'M (US 6-8)', labelEn: 'M (US 6-8)', match: ['M'] },
+  { id: 'G', labelPt: 'G (US 10-12)', labelEn: 'L (US 10-12)', match: ['G', 'L'] },
+  { id: 'GG', labelPt: 'GG (US 14)', labelEn: 'XL (US 14)', match: ['GG', 'XL'] },
+  { id: 'UN', labelPt: 'Tamanho Único', labelEn: 'One Size', match: ['UN', 'ONE SIZE', 'TAMANHO UNICO', 'TAMANHO ÚNICO'] },
+];
+
 export default function HomePage() {
   const { lang, t } = useLanguage();
   const { products: storeProducts, siteInfo, siteImages } = useStoreSettings();
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' | 'spoiler'>('all');
+  const [selectedColorFilter, setSelectedColorFilter] = useState<string>('all');
+  const [selectedSizeFilter, setSelectedSizeFilter] = useState<string>('all');
+  const [selectedFabricFilter, setSelectedFabricFilter] = useState<string>('all');
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState<boolean>(false);
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
   const [quickAddedItem, setQuickAddedItem] = useState<{ id: string; size: string } | null>(null);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -370,10 +411,23 @@ export default function HomePage() {
     }, 3000);
   };
 
+  const clearAllFilters = () => {
+    setActiveCategoryFilter('all');
+    setSelectedColorFilter('all');
+    setSelectedSizeFilter('all');
+    setSelectedFabricFilter('all');
+  };
+
+  const activeFiltersCount =
+    (activeCategoryFilter !== 'all' ? 1 : 0) +
+    (selectedColorFilter !== 'all' ? 1 : 0) +
+    (selectedSizeFilter !== 'all' ? 1 : 0) +
+    (selectedFabricFilter !== 'all' ? 1 : 0);
+
   // Vitrine exibe estritamente produtos com visibilidade online ativa
   const onlineProducts = storeProducts && storeProducts.length > 0
-    ? storeProducts.filter((p) => p.visibleOnline === true)
-    : FEATURED_PRODUCTS.filter((p) => p.visibleOnline === true);
+    ? storeProducts.filter((p) => p.visibleOnline !== false)
+    : FEATURED_PRODUCTS.filter((p) => p.visibleOnline !== false);
   const activeProducts = onlineProducts;
 
   // Função auxiliar: identifica se a peça é SPOILER (se zerou o estoque, categoria spoiler/preorder ou badge spoiler)
@@ -391,27 +445,91 @@ export default function HomePage() {
 
   const spoilerItemsCount = activeProducts.filter(isProductSpoiler).length;
 
-  // FILTRAGEM RIGOROSA DA VITRINE:
-  // "Não vamos deixar ele aparecendo no meio dos produtos. Vamos deixar uma aba só para o spoiler."
+  // Extrai estritamente os tamanhos que possuem estoque real (> 0) neste produto
+  const getProductInStockSizes = (p: ProductItem): string[] => {
+    const set = new Set<string>();
+    if (Array.isArray(p.variants) && p.variants.length > 0) {
+      p.variants.forEach((v: any) => {
+        const qty = Number(v.stock_quantity ?? v.stock ?? 0);
+        if (qty > 0 && v.size) {
+          set.add(v.size.trim().toUpperCase());
+        }
+      });
+    }
+    if (set.size === 0 && Number(p.stock) > 0) {
+      (p.sizes || []).forEach((s) => {
+        if (s) set.add(s.trim().toUpperCase());
+      });
+    }
+    const sizeOrder: Record<string, number> = { PP: 1, S: 2, P: 2, M: 3, L: 4, G: 4, XL: 5, GG: 5, 'ONE SIZE': 6, UN: 6 };
+    return Array.from(set).sort((a, b) => (sizeOrder[a] || 99) - (sizeOrder[b] || 99));
+  };
+
+  // FILTRAGEM MULTI-DIMENSIONAL DA VITRINE: CATEGORIA, TAMANHO, COR E TECIDO
   const filteredProducts = activeProducts.filter((p) => {
     const isSpoiler = isProductSpoiler(p);
 
     // 1. Aba "SPOILER": exibe EXCLUSIVAMENTE as peças spoiler (sem estoque / prévia)
     if (activeCategoryFilter === 'spoiler' || activeCategoryFilter === 'preorder') {
-      return isSpoiler;
+      if (!isSpoiler) return false;
+    } else {
+      // 2. QUALQUER OUTRA ABA: Peças spoiler NUNCA aparecem aqui no meio dos produtos com pronta entrega!
+      if (isSpoiler) return false;
+      if (activeCategoryFilter !== 'all' && p.categoryKey !== activeCategoryFilter) {
+        return false;
+      }
     }
 
-    // 2. QUALQUER OUTRA ABA (incluindo "TODAS AS PEÇAS" e categorias específicas):
-    // Peças spoiler NUNCA aparecem aqui no meio dos produtos com pronta entrega!
-    if (isSpoiler) {
-      return false;
+    // 3. Filtro por Tamanho Disponível em Estoque
+    if (selectedSizeFilter !== 'all') {
+      const targetSize = SIZE_FILTERS.find((f) => f.id === selectedSizeFilter);
+      if (targetSize && targetSize.match.length > 0) {
+        const inStockSizes = getProductInStockSizes(p);
+        const hasMatch = inStockSizes.some((sz) => targetSize.match.includes(sz));
+        if (!hasMatch) return false;
+      }
     }
 
-    if (activeCategoryFilter === 'all') {
-      return true;
+    // 4. Filtro por Cor da Peça
+    if (selectedColorFilter !== 'all') {
+      const targetColor = COLOR_FAMILIES.find((c) => c.id === selectedColorFilter);
+      if (targetColor && targetColor.keywords && targetColor.keywords.length > 0) {
+        const colorsText = [
+          p.title,
+          ...(p.colors || []).map((c) => c.name),
+          ...(Array.isArray(p.variants) ? p.variants.map((v: any) => v.color) : []),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        const hasMatch = targetColor.keywords.some((kw) => colorsText.includes(kw));
+        if (!hasMatch) return false;
+      }
     }
 
-    return p.categoryKey === activeCategoryFilter;
+    // 5. Filtro por Tecido & Tecnologia
+    if (selectedFabricFilter !== 'all') {
+      const targetFabric = FABRIC_FILTERS.find((f) => f.id === selectedFabricFilter);
+      if (targetFabric && targetFabric.keywords && targetFabric.keywords.length > 0) {
+        const fabricText = [
+          p.title,
+          (p as any).composition,
+          (p as any).description,
+          (p as any).descriptionPt,
+          (p as any).descriptionEn,
+          ...((p as any).tags || []),
+          p.fitPt,
+          p.fitEn,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        const hasMatch = targetFabric.keywords.some((kw) => fabricText.includes(kw));
+        if (!hasMatch) return false;
+      }
+    }
+
+    return true;
   });
 
   const categoriesData = [
@@ -739,6 +857,162 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Barra de Filtros Mobile (Aparece apenas em Telas Pequenas) */}
+        <div className="lg:hidden flex items-center justify-between gap-2 p-3 bg-gray-50 border border-gray-200">
+          <button
+            type="button"
+            onClick={() => setIsMobileFiltersOpen(true)}
+            className="flex-1 py-2.5 px-4 bg-deep-black text-gold font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+          >
+            <SlidersHorizontal className="w-4 h-4 text-gold" />
+            <span>{lang === 'pt' ? 'Filtros (Cor, Tamanho, Tecido)' : 'Filters (Color, Size, Fabric)'}</span>
+            {activeFiltersCount > 0 && (
+              <span className="bg-gold text-deep-black text-[10px] font-black px-2 py-0.5 rounded-full">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
+          {activeFiltersCount > 0 && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="p-2.5 bg-white border border-gray-300 text-red-600 hover:bg-red-50 text-xs font-bold cursor-pointer"
+              title={lang === 'pt' ? 'Limpar filtros' : 'Clear filters'}
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Modal Drawer de Filtros Mobile */}
+        {isMobileFiltersOpen && (
+          <div className="fixed inset-0 z-50 flex lg:hidden">
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+              onClick={() => setIsMobileFiltersOpen(false)}
+            />
+            <div className="relative w-full max-w-xs bg-white h-full shadow-2xl flex flex-col z-10 animate-slideRight overflow-hidden">
+              <div className="p-4 bg-deep-black text-white flex items-center justify-between border-b border-gold/40">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-gold" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-gold">
+                    {lang === 'pt' ? 'Filtros de Busca' : 'Search Filters'}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileFiltersOpen(false)}
+                  className="p-1 text-white hover:text-gold cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-5 flex-1 overflow-y-auto space-y-6">
+                {/* 1. Tamanho */}
+                <div className="space-y-2.5">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                    <Ruler className="w-3.5 h-3.5 text-gold" />
+                    <span>{lang === 'pt' ? 'Tamanho em Estoque' : 'In-Stock Size'}</span>
+                  </h4>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {SIZE_FILTERS.map((sf) => (
+                      <button
+                        key={sf.id}
+                        type="button"
+                        onClick={() => setSelectedSizeFilter(sf.id)}
+                        className={`py-2 px-1 text-center text-[10px] font-black uppercase border transition cursor-pointer ${
+                          selectedSizeFilter === sf.id
+                            ? 'bg-deep-black text-gold border-deep-black shadow-xs ring-1 ring-gold'
+                            : 'bg-white text-deep-black/80 border-gray-200'
+                        }`}
+                      >
+                        {lang === 'pt' ? sf.labelPt : sf.labelEn}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Cor */}
+                <div className="space-y-2.5 pt-4 border-t border-gray-100">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5 text-gold" />
+                    <span>{lang === 'pt' ? 'Cor da Peça' : 'Color'}</span>
+                  </h4>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {COLOR_FAMILIES.map((cf) => (
+                      <button
+                        key={cf.id}
+                        type="button"
+                        onClick={() => setSelectedColorFilter(cf.id)}
+                        className={`flex items-center gap-2 p-1.5 border text-left transition cursor-pointer ${
+                          selectedColorFilter === cf.id
+                            ? 'bg-deep-black text-white border-deep-black shadow-xs ring-1 ring-gold'
+                            : 'bg-white text-deep-black/80 border-gray-200'
+                        }`}
+                      >
+                        {cf.id === 'all' ? (
+                          <span className="w-3.5 h-3.5 rounded-full border border-gray-300 bg-gradient-to-r from-red-500 via-green-500 to-blue-500 shrink-0" />
+                        ) : (
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0 shadow-2xs"
+                            style={{ backgroundColor: cf.hex }}
+                          />
+                        )}
+                        <span className="text-[10px] font-bold uppercase truncate">
+                          {lang === 'pt' ? cf.namePt : cf.nameEn}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. Tecido */}
+                <div className="space-y-2.5 pt-4 border-t border-gray-100">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-gold" />
+                    <span>{lang === 'pt' ? 'Tecido & Tecnologia' : 'Fabric & Tech'}</span>
+                  </h4>
+                  <div className="space-y-1">
+                    {FABRIC_FILTERS.map((ff) => (
+                      <button
+                        key={ff.id}
+                        type="button"
+                        onClick={() => setSelectedFabricFilter(ff.id)}
+                        className={`w-full flex items-center justify-between p-2 text-left text-[10px] font-black uppercase tracking-wider border transition cursor-pointer ${
+                          selectedFabricFilter === ff.id
+                            ? 'bg-deep-black text-gold border-deep-black shadow-xs'
+                            : 'bg-white text-deep-black/75 border-gray-200'
+                        }`}
+                      >
+                        <span>{lang === 'pt' ? ff.namePt : ff.nameEn}</span>
+                        {selectedFabricFilter === ff.id && <Check className="w-3 h-3 text-gold" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-gray-200 bg-gray-50 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="py-2.5 px-3 bg-white border border-gray-300 text-deep-black text-xs font-bold uppercase tracking-wider"
+                >
+                  {lang === 'pt' ? 'Limpar' : 'Clear'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileFiltersOpen(false)}
+                  className="flex-1 py-2.5 px-4 bg-gold text-deep-black text-xs font-black uppercase tracking-wider shadow-sm"
+                >
+                  {lang === 'pt' ? `Ver ${filteredProducts.length} Peças` : `View ${filteredProducts.length} Pieces`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Banner Informativo Exclusivo da Aba Spoiler (Sem Reserva) */}
         {(activeCategoryFilter === 'spoiler' || activeCategoryFilter === 'preorder') && (
           <div className="p-5 bg-deep-black text-white border-2 border-gold flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn shadow-md">
@@ -766,281 +1040,512 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Grid de Produtos Gymshark: Aspect 4:5, Hover Swap, Quick Add Drawer */}
-        {filteredProducts.length === 0 ? (
-          <div className="py-20 text-center border-2 border-dashed border-deep-black/20 p-12 bg-deep-black/5 space-y-4">
-            <ShoppingBag className="w-12 h-12 text-gold mx-auto" />
-            <h3 className="text-base font-black uppercase tracking-wider text-deep-black">
-              {activeCategoryFilter === 'spoiler' || activeCategoryFilter === 'preorder'
-                ? (lang === 'pt' ? 'Nenhum spoiler publicado no momento' : 'No spoilers at the moment')
-                : (lang === 'pt' ? 'Nenhuma peça com pronta entrega nesta categoria' : 'No in-stock pieces in this category')}
-            </h3>
-            <p className="text-xs text-deep-black/60 max-w-md mx-auto uppercase">
-              {activeCategoryFilter === 'spoiler' || activeCategoryFilter === 'preorder'
-                ? (lang === 'pt'
-                    ? 'Fique atenta ao nosso Instagram @anafitnessweareua para saber dos novos drops antes de todos!'
-                    : 'Stay tuned to our Instagram @anafitnessweareua for upcoming drop announcements!')
-                : (lang === 'pt'
-                    ? 'Todas as nossas peças à pronta entrega contam com envio expresso via USPS para todos os EUA.'
-                    : 'All ready-to-ship styles include flat $9.99 USPS shipping across all 50 US states.')}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7">
-          {filteredProducts.map((product) => {
-            const isHovered = hoveredProduct === product.id;
-            const isSpoiler = isProductSpoiler(product);
-            const isFavorited = !!wishlist[product.id];
-            const wasJustAdded = quickAddedItem?.id === product.id;
+        {/* =========================================================================
+            LAYOUT PRINCIPAL: BARRA LATERAL ESQUERDA (DESKTOP) + COLUNA DO GRID
+           ========================================================================= */}
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
+          {/* BARRA LATERAL ESQUERDA DE FILTROS (DESKTOP) */}
+          <aside className="hidden lg:block w-72 shrink-0 sticky top-24 bg-white border border-deep-black/15 p-5 shadow-xs space-y-6">
+            {/* Cabeçalho do Filtro */}
+            <div className="flex items-center justify-between pb-3 border-b border-deep-black/10">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-gold" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-deep-black">
+                  {lang === 'pt' ? 'Filtros' : 'Filters'}
+                </h3>
+                {activeFiltersCount > 0 && (
+                  <span className="text-[10px] font-black bg-gold text-deep-black px-1.5 py-0.2 rounded-full">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </div>
+              {activeFiltersCount > 0 && (
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="text-[10px] font-black text-red-600 hover:text-red-700 uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>{lang === 'pt' ? 'Limpar' : 'Clear'}</span>
+                </button>
+              )}
+            </div>
 
-            // Badges promocionais: nunca exibe sobre spoiler
-            const showTopPromoBadge = !isSpoiler && Boolean(product.badgeEn && product.badgeEn !== 'PRE-ORDER' && product.badgePt !== 'PRÉ-VENDA' && product.badgePt !== 'SPOILER');
-
-            // Filtra estritamente os tamanhos com estoque disponível (> 0)
-            const inStockSizes = (product.sizes || []).filter((sz) => {
-              if (Array.isArray(product.variants) && product.variants.length > 0) {
-                const upper = sz.toUpperCase();
-                return product.variants.some((v: any) => {
-                  const vSz = (v.size || '').toUpperCase();
-                  const isMatch = vSz === upper || (upper === 'P' && vSz === 'S') || (upper === 'G' && vSz === 'L') || (upper === 'GG' && vSz === 'XL');
-                  return isMatch && Number(v.stock) > 0;
-                });
-              }
-              return Number(product.stock) > 0;
-            });
-
-            return (
-              <div
-                key={product.id}
-                onMouseEnter={() => setHoveredProduct(product.id)}
-                onMouseLeave={() => {
-                  setHoveredProduct(null);
-                  setCardImageOverrides((prev) => {
-                    if (!prev[product.id]) return prev;
-                    const next = { ...prev };
-                    delete next[product.id];
-                    return next;
-                  });
-                }}
-                className="group flex flex-col bg-white border border-deep-black/15 transition-all hover:border-deep-black hover:shadow-luxury"
-              >
-                {/* 1. Imagem do Produto em Proporção Atlética 4:5 */}
-                <div className="relative aspect-[4/5] bg-deep-black/5 overflow-hidden">
-                  <Link href={`/produto/${product.slug}`} className="block w-full h-full">
-                    {/* Imagem Frontal com Crossfade para Pose de Ação */}
-                    <img
-                      src={cardImageOverrides[product.id] || (isHovered ? product.secondaryImage : product.primaryImage)}
-                      alt={product.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-                  </Link>
-
-                  {/* Badges Promocionais no Topo Esquerdo (Apenas se NÃO for pré-venda, para não tampar o rosto) */}
-                  {showTopPromoBadge && (
-                    <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10 pointer-events-none">
-                      <span
-                        className={`text-[9px] uppercase tracking-widest px-2.5 py-1 font-black shadow-sm ${product.badgeStyle}`}
-                      >
-                        {lang === 'pt' ? product.badgePt : product.badgeEn}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Botões do Topo Direito (Favoritos e Compartilhar Peça) */}
-                  <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setShareModalProduct(product);
-                      }}
-                      className="p-2 bg-white/90 hover:bg-gold hover:text-deep-black text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
-                      title={lang === 'pt' ? 'Compartilhar produto' : 'Share product'}
-                      aria-label={lang === 'pt' ? 'Compartilhar produto' : 'Share product'}
-                    >
-                      <Share2 className="w-4 h-4" />
-                    </button>
-
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        toggleWishlist(product.id);
-                      }}
-                      className="p-2 bg-white/90 hover:bg-white text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
-                      aria-label="Save to Wishlist"
-                    >
-                      <Heart
-                        className={`w-4 h-4 transition ${
-                          isFavorited ? 'fill-gold text-gold' : 'text-deep-black'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* =========================================================
-                      ASSINATURA GYMSHARK: GAVETA DE QUICK ADD DE TAMANHOS NO HOVER
-                     ========================================================= */}
-                  <div
-                    className={`absolute bottom-0 left-0 right-0 z-20 bg-deep-black/95 backdrop-blur-md border-t border-gold/30 p-3 transition-all duration-300 transform ${
-                      isHovered || wasJustAdded
-                        ? 'translate-y-0 opacity-100'
-                        : 'translate-y-full opacity-0 pointer-events-none'
-                    }`}
+            {/* 1. FILTRO POR TAMANHO EM ESTOQUE */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <h4 className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <Ruler className="w-3.5 h-3.5 text-gold" />
+                  <span>{lang === 'pt' ? 'Tamanho em Estoque' : 'In-Stock Size'}</span>
+                </h4>
+                {selectedSizeFilter !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSizeFilter('all')}
+                    className="text-[9px] font-bold text-gray-500 hover:text-black uppercase cursor-pointer"
                   >
-                    {isSpoiler ? (
-                      <div className="text-center py-1">
-                        <Link
-                          href={`/produto/${product.slug}`}
-                          className="py-2.5 px-3 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition text-center cursor-pointer shadow-xs"
-                        >
-                          <span>{lang === 'pt' ? '👀 VER SPOILER DA PEÇA' : '👀 VIEW SPOILER'}</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
+                    {lang === 'pt' ? 'Todos' : 'All'}
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {SIZE_FILTERS.map((sf) => {
+                  const isSelected = selectedSizeFilter === sf.id;
+                  return (
+                    <button
+                      key={sf.id}
+                      type="button"
+                      onClick={() => setSelectedSizeFilter(sf.id)}
+                      className={`py-2 px-1 text-center text-[10px] font-black uppercase tracking-wider border transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-deep-black text-gold border-deep-black shadow-xs ring-1 ring-gold'
+                          : 'bg-white text-deep-black/80 border-gray-200 hover:border-deep-black hover:text-deep-black'
+                      }`}
+                    >
+                      {lang === 'pt' ? sf.labelPt : sf.labelEn}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. FILTRO POR COR DA PEÇA */}
+            <div className="space-y-2.5 pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <h4 className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5 text-gold" />
+                  <span>{lang === 'pt' ? 'Cor da Peça' : 'Color'}</span>
+                </h4>
+                {selectedColorFilter !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedColorFilter('all')}
+                    className="text-[9px] font-bold text-gray-500 hover:text-black uppercase cursor-pointer"
+                  >
+                    {lang === 'pt' ? 'Todas' : 'All'}
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
+                {COLOR_FAMILIES.map((cf) => {
+                  const isSelected = selectedColorFilter === cf.id;
+                  return (
+                    <button
+                      key={cf.id}
+                      type="button"
+                      onClick={() => setSelectedColorFilter(cf.id)}
+                      className={`flex items-center gap-2 p-1.5 border text-left transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-deep-black text-white border-deep-black shadow-xs ring-1 ring-gold'
+                          : 'bg-white text-deep-black/80 border-gray-200 hover:border-deep-black'
+                      }`}
+                    >
+                      {cf.id === 'all' ? (
+                        <span className="w-3.5 h-3.5 rounded-full border border-gray-300 bg-gradient-to-r from-red-500 via-green-500 to-blue-500 shrink-0" />
+                      ) : (
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0 shadow-2xs"
+                          style={{ backgroundColor: cf.hex }}
+                        />
+                      )}
+                      <span className="text-[10px] font-bold uppercase truncate">
+                        {lang === 'pt' ? cf.namePt : cf.nameEn}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. FILTRO POR TECIDO & TECNOLOGIA */}
+            <div className="space-y-2.5 pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <h4 className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-gold" />
+                  <span>{lang === 'pt' ? 'Tecido & Tecnologia' : 'Fabric & Tech'}</span>
+                </h4>
+                {selectedFabricFilter !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFabricFilter('all')}
+                    className="text-[9px] font-bold text-gray-500 hover:text-black uppercase cursor-pointer"
+                  >
+                    {lang === 'pt' ? 'Todos' : 'All'}
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1">
+                {FABRIC_FILTERS.map((ff) => {
+                  const isSelected = selectedFabricFilter === ff.id;
+                  return (
+                    <button
+                      key={ff.id}
+                      type="button"
+                      onClick={() => setSelectedFabricFilter(ff.id)}
+                      className={`w-full flex items-center justify-between p-2 text-left text-[10px] font-black uppercase tracking-wider border transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-deep-black text-gold border-deep-black shadow-xs'
+                          : 'bg-white text-deep-black/75 border-gray-200 hover:border-deep-black hover:text-deep-black'
+                      }`}
+                    >
+                      <span>{lang === 'pt' ? ff.namePt : ff.nameEn}</span>
+                      {isSelected && <Check className="w-3 h-3 text-gold" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Resumo de Peças Encontradas */}
+            <div className="pt-3 border-t border-gray-100 text-center">
+              <span className="text-[10px] font-bold text-gray-500 uppercase">
+                {filteredProducts.length} {filteredProducts.length === 1 ? (lang === 'pt' ? 'peça encontrada' : 'piece found') : (lang === 'pt' ? 'peças encontradas' : 'pieces found')}
+              </span>
+            </div>
+          </aside>
+
+          {/* COLUNA DIREITA: BARRA DE FILTROS ATIVOS + GRID DE PRODUTOS */}
+          <div className="flex-1 min-w-0 space-y-6 w-full">
+            {/* Chips de Filtros Ativos */}
+            {activeFiltersCount > 0 && (
+              <div className="flex items-center gap-2 flex-wrap p-3 bg-gold/10 border border-gold/40 animate-fadeIn">
+                <span className="text-[10px] font-black uppercase tracking-wider text-deep-black">
+                  {lang === 'pt' ? 'Filtros Ativos:' : 'Active Filters:'}
+                </span>
+                {selectedSizeFilter !== 'all' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-deep-black text-gold text-[10px] font-black uppercase">
+                    <span>{lang === 'pt' ? 'Tam' : 'Size'}: {SIZE_FILTERS.find((f) => f.id === selectedSizeFilter)?.labelPt}</span>
+                    <button type="button" onClick={() => setSelectedSizeFilter('all')} className="hover:text-white cursor-pointer">✕</button>
+                  </span>
+                )}
+                {selectedColorFilter !== 'all' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-deep-black text-gold text-[10px] font-black uppercase">
+                    <span>{lang === 'pt' ? 'Cor' : 'Color'}: {COLOR_FAMILIES.find((c) => c.id === selectedColorFilter)?.namePt}</span>
+                    <button type="button" onClick={() => setSelectedColorFilter('all')} className="hover:text-white cursor-pointer">✕</button>
+                  </span>
+                )}
+                {selectedFabricFilter !== 'all' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-deep-black text-gold text-[10px] font-black uppercase">
+                    <span>{lang === 'pt' ? 'Tecido' : 'Fabric'}: {FABRIC_FILTERS.find((f) => f.id === selectedFabricFilter)?.namePt}</span>
+                    <button type="button" onClick={() => setSelectedFabricFilter('all')} className="hover:text-white cursor-pointer">✕</button>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="ml-auto text-[10px] font-black text-red-600 hover:underline uppercase tracking-wider cursor-pointer"
+                >
+                  {lang === 'pt' ? 'Limpar Tudo' : 'Clear All'}
+                </button>
+              </div>
+            )}
+
+            {/* Grid de Produtos Gymshark: Aspect 4:5, Hover Swap, Quick Add Drawer */}
+            {filteredProducts.length === 0 ? (
+              <div className="py-20 text-center border-2 border-dashed border-deep-black/20 p-12 bg-deep-black/5 space-y-4">
+                <ShoppingBag className="w-12 h-12 text-gold mx-auto" />
+                <h3 className="text-base font-black uppercase tracking-wider text-deep-black">
+                  {lang === 'pt' ? 'Nenhuma peça encontrada com estes filtros' : 'No pieces found matching these filters'}
+                </h3>
+                <p className="text-xs text-deep-black/60 max-w-md mx-auto uppercase">
+                  {lang === 'pt'
+                    ? 'Tente remover alguns filtros ou selecionar outras cores e tamanhos para ver mais opções.'
+                    : 'Try clearing some filters or selecting different colors and sizes to view more options.'}
+                </p>
+                {activeFiltersCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearAllFilters}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-deep-black text-gold text-xs font-black uppercase tracking-wider hover:bg-gold hover:text-deep-black transition shadow-sm cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>{lang === 'pt' ? 'Limpar Todos os Filtros' : 'Clear All Filters'}</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-7">
+                {filteredProducts.map((product) => {
+                  const isHovered = hoveredProduct === product.id;
+                  const isSpoiler = isProductSpoiler(product);
+                  const isFavorited = !!wishlist[product.id];
+                  const wasJustAdded = quickAddedItem?.id === product.id;
+
+                  // Badges promocionais: nunca exibe sobre spoiler
+                  const showTopPromoBadge = !isSpoiler && Boolean(product.badgeEn && product.badgeEn !== 'PRE-ORDER' && product.badgePt !== 'PRÉ-VENDA' && product.badgePt !== 'SPOILER');
+
+                  // Extrai estritamente os tamanhos com estoque real disponível (> 0)
+                  const inStockSizes = getProductInStockSizes(product);
+
+                  return (
+                    <div
+                      key={product.id}
+                      onMouseEnter={() => setHoveredProduct(product.id)}
+                      onMouseLeave={() => {
+                        setHoveredProduct(null);
+                        setCardImageOverrides((prev) => {
+                          if (!prev[product.id]) return prev;
+                          const next = { ...prev };
+                          delete next[product.id];
+                          return next;
+                        });
+                      }}
+                      className="group flex flex-col bg-white border border-deep-black/15 transition-all hover:border-deep-black hover:shadow-luxury"
+                    >
+                      {/* 1. Imagem do Produto em Proporção Atlética 4:5 */}
+                      <div className="relative aspect-[4/5] bg-deep-black/5 overflow-hidden">
+                        <Link href={`/produto/${product.slug}`} className="block w-full h-full">
+                          {/* Imagem Frontal com Crossfade para Pose de Ação */}
+                          <img
+                            src={cardImageOverrides[product.id] || (isHovered ? product.secondaryImage : product.primaryImage)}
+                            alt={product.title}
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                          />
                         </Link>
-                      </div>
-                    ) : wasJustAdded ? (
-                      <div className="text-center py-1 space-y-1">
-                        <div className="flex items-center justify-center gap-1.5 text-gold text-xs font-black uppercase tracking-wider">
-                          <Check className="w-4 h-4 text-gold stroke-[3]" />
-                          <span>{quickAddedItem.size} {t('gymshark.addedToBag')}</span>
-                        </div>
-                        <Link
-                          href="/checkout"
-                          className="text-[9px] font-black uppercase tracking-widest text-white hover:text-gold block underline underline-offset-2"
-                        >
-                          {t('gymshark.viewBag')} →
-                        </Link>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-white/70">
-                          <span className="text-gold flex items-center gap-1">
-                            <Zap className="w-3 h-3 text-gold" /> {t('gymshark.quickAdd')}
-                          </span>
-                          <span>{lang === 'pt' ? 'GRADE EM ESTOQUE' : 'IN STOCK SIZES'}</span>
-                        </div>
 
-                        {/* Botões de Tamanhos Rápidos: SOMENTE TAMANHOS COM ESTOQUE */}
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {inStockSizes.map((size) => {
-                            const upperSz = size.toUpperCase();
-                            const displaySz = lang === 'pt'
-                              ? (upperSz === 'S' || upperSz === 'P' ? 'P' : upperSz === 'M' ? 'M' : upperSz === 'L' || upperSz === 'G' ? 'G' : upperSz === 'XL' || upperSz === 'GG' ? 'GG' : size)
-                              : size;
-                            return (
-                              <button
-                                key={size}
-                                onClick={(e) => handleQuickAdd(product.id, size, e)}
-                                className="py-1.5 text-xs font-black uppercase bg-white/10 hover:bg-gold hover:text-deep-black text-white border border-white/20 transition-all active:scale-95 flex items-center justify-center cursor-pointer"
-                                title={`Add size ${size} directly to bag`}
-                              >
-                                {displaySz}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* 2. Informações do Produto (Estilo Gymshark) */}
-                <div className="p-4 flex-1 flex flex-col justify-between space-y-3 bg-white">
-                  <div>
-                    {/* Swatches de Cores (Bolinhas) */}
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-1.5">
-                        {product.colors.map((color, cIdx) => {
-                          const matchingVar = Array.isArray(product.variants)
-                            ? product.variants.find(
-                                (v: any) =>
-                                  v.color?.toLowerCase() === color.name.toLowerCase() &&
-                                  (v.image || (Array.isArray(v.images) && v.images.length > 0))
-                              )
-                            : null;
-                          const colorImg = matchingVar
-                            ? (Array.isArray(matchingVar.images) && matchingVar.images.length > 0 ? matchingVar.images[0] : matchingVar.image)
-                            : null;
-
-                          return (
+                        {/* Badges Promocionais no Topo Esquerdo */}
+                        {showTopPromoBadge && (
+                          <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10 pointer-events-none">
                             <span
-                              key={cIdx}
-                              onMouseEnter={() => {
-                                if (colorImg) {
-                                  setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
-                                }
-                              }}
-                              onClick={(e) => {
-                                if (colorImg) {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
-                                }
-                              }}
-                              className="w-3.5 h-3.5 rounded-full border border-deep-black/30 shadow-xs cursor-pointer transition hover:scale-125"
-                              style={{ backgroundColor: color.hex }}
-                              title={color.name}
-                            />
-                          );
-                        })}
-                      </div>
-
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-deep-black/60">
-                        <Star className="w-3 h-3 fill-gold text-gold" />
-                        <span className="text-deep-black font-black">{product.rating.toFixed(1)}</span>
-                        <span>({product.reviewsCount})</span>
-                      </div>
-                    </div>
-
-                    {/* Título do Produto */}
-                    <Link href={`/produto/${product.slug}`}>
-                      <h3 className="text-sm font-black uppercase tracking-wider text-deep-black group-hover:text-gold transition line-clamp-1 mt-1">
-                        {product.title}
-                      </h3>
-                    </Link>
-                  </div>
-
-                  {/* Preço em Dólar ($) e Frete Fixo $9.99 */}
-                  <div className="pt-2.5 border-t border-deep-black/10 flex items-baseline justify-between">
-                    <div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-base font-black text-deep-black uppercase tracking-wider">
-                          ${product.price.toFixed(2)}
-                        </span>
-                        {product.originalPrice && product.originalPrice > product.price && (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-deep-black/40 line-through font-bold">
-                              ${product.originalPrice.toFixed(2)}
-                            </span>
-                            <span className="text-[8.5px] font-black bg-red-600 text-white px-1.5 py-0.5">
-                              -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+                              className={`text-[9px] uppercase tracking-widest px-2.5 py-1 font-black shadow-sm ${product.badgeStyle}`}
+                            >
+                              {lang === 'pt' ? product.badgePt : product.badgeEn}
                             </span>
                           </div>
                         )}
-                      </div>
-                      <span className="text-[9px] block text-deep-black/60 font-bold uppercase tracking-wider">
-                        $9.99 FLAT RATE US SHIPPING
-                      </span>
-                    </div>
 
-                    <span
-                      className={`text-[10px] font-bold tracking-wide px-2.5 py-1 border shrink-0 ${
-                        isSpoiler
-                          ? 'bg-deep-black text-gold border-gold shadow-sm font-black'
-                          : 'bg-white text-deep-black border-deep-black'
-                      }`}
-                    >
-                      {isSpoiler
-                        ? (lang === 'pt' ? '👀 Spoiler • Em breve' : '👀 Spoiler • Coming soon')
-                        : (lang === 'pt' ? 'Em estoque' : 'In stock')}
-                    </span>
-                  </div>
-                </div>
+                        {/* Botões do Topo Direito (Favoritos e Compartilhar Peça) */}
+                        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShareModalProduct(product);
+                            }}
+                            className="p-2 bg-white/90 hover:bg-gold hover:text-deep-black text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
+                            title={lang === 'pt' ? 'Compartilhar produto' : 'Share product'}
+                            aria-label={lang === 'pt' ? 'Compartilhar produto' : 'Share product'}
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              toggleWishlist(product.id);
+                            }}
+                            className="p-2 bg-white/90 hover:bg-white text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
+                            aria-label="Save to Wishlist"
+                          >
+                            <Heart
+                              className={`w-4 h-4 transition ${
+                                isFavorited ? 'fill-gold text-gold' : 'text-deep-black'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* ASSINATURA GYMSHARK: GAVETA DE QUICK ADD DE TAMANHOS NO HOVER */}
+                        <div
+                          className={`absolute bottom-0 left-0 right-0 z-20 bg-deep-black/95 backdrop-blur-md border-t border-gold/30 p-3 transition-all duration-300 transform ${
+                            isHovered || wasJustAdded
+                              ? 'translate-y-0 opacity-100'
+                              : 'translate-y-full opacity-0 pointer-events-none'
+                          }`}
+                        >
+                          {isSpoiler ? (
+                            <div className="text-center py-1">
+                              <Link
+                                href={`/produto/${product.slug}`}
+                                className="py-2.5 px-3 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition text-center cursor-pointer shadow-xs"
+                              >
+                                <span>{lang === 'pt' ? '👀 VER SPOILER DA PEÇA' : '👀 VIEW SPOILER'}</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </Link>
+                            </div>
+                          ) : wasJustAdded ? (
+                            <div className="text-center py-1 space-y-1">
+                              <div className="flex items-center justify-center gap-1.5 text-gold text-xs font-black uppercase tracking-wider">
+                                <Check className="w-4 h-4 text-gold stroke-[3]" />
+                                <span>{quickAddedItem.size} {t('gymshark.addedToBag')}</span>
+                              </div>
+                              <Link
+                                href="/checkout"
+                                className="text-[9px] font-black uppercase tracking-widest text-white hover:text-gold block underline underline-offset-2"
+                              >
+                                {t('gymshark.viewBag')} →
+                              </Link>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-white/70">
+                                <span className="text-gold flex items-center gap-1">
+                                  <Zap className="w-3 h-3 text-gold" /> {t('gymshark.quickAdd')}
+                                </span>
+                                <span>{lang === 'pt' ? 'GRADE EM ESTOQUE' : 'IN STOCK SIZES'}</span>
+                              </div>
+
+                              {/* Botões de Tamanhos Rápidos: SOMENTE TAMANHOS COM ESTOQUE */}
+                              <div className="grid grid-cols-3 gap-1.5">
+                                {inStockSizes.map((size) => {
+                                  const upperSz = size.toUpperCase();
+                                  const displaySz = lang === 'pt'
+                                    ? (upperSz === 'S' || upperSz === 'P' ? 'P' : upperSz === 'M' ? 'M' : upperSz === 'L' || upperSz === 'G' ? 'G' : upperSz === 'XL' || upperSz === 'GG' ? 'GG' : size)
+                                    : size;
+                                  return (
+                                    <button
+                                      key={size}
+                                      onClick={(e) => handleQuickAdd(product.id, size, e)}
+                                      className="py-1.5 text-xs font-black uppercase bg-white/10 hover:bg-gold hover:text-deep-black text-white border border-white/20 transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+                                      title={`Add size ${size} directly to bag`}
+                                    >
+                                      {displaySz}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 2. Informações do Produto com GRADE DE TAMANHO EM DESTAQUE */}
+                      <div className="p-4 flex-1 flex flex-col justify-between space-y-3 bg-white">
+                        <div>
+                          {/* Swatches de Cores (Bolinhas) */}
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-1.5">
+                              {product.colors.map((color, cIdx) => {
+                                const matchingVar = Array.isArray(product.variants)
+                                  ? product.variants.find(
+                                      (v: any) =>
+                                        v.color?.toLowerCase() === color.name.toLowerCase() &&
+                                        (v.image || (Array.isArray(v.images) && v.images.length > 0))
+                                    )
+                                  : null;
+                                const colorImg = matchingVar
+                                  ? (Array.isArray(matchingVar.images) && matchingVar.images.length > 0 ? matchingVar.images[0] : matchingVar.image)
+                                  : null;
+
+                                return (
+                                  <span
+                                    key={cIdx}
+                                    onMouseEnter={() => {
+                                      if (colorImg) {
+                                        setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
+                                      }
+                                    }}
+                                    onClick={(e) => {
+                                      if (colorImg) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
+                                      }
+                                    }}
+                                    className="w-3.5 h-3.5 rounded-full border border-deep-black/30 shadow-xs cursor-pointer transition hover:scale-125"
+                                    style={{ backgroundColor: color.hex }}
+                                    title={color.name}
+                                  />
+                                );
+                              })}
+                            </div>
+
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-deep-black/60">
+                              <Star className="w-3 h-3 fill-gold text-gold" />
+                              <span className="text-deep-black font-black">{product.rating.toFixed(1)}</span>
+                              <span>({product.reviewsCount})</span>
+                            </div>
+                          </div>
+
+                          {/* Título do Produto */}
+                          <Link href={`/produto/${product.slug}`}>
+                            <h3 className="text-sm font-black uppercase tracking-wider text-deep-black group-hover:text-gold transition line-clamp-1 mt-1">
+                              {product.title}
+                            </h3>
+                          </Link>
+
+                          {/* TAMANHOS DISPONÍVEIS EM ESTOQUE (Exibição Imediata na Vitrine) */}
+                          <div className="mt-2.5 pt-2 border-t border-deep-black/10 flex items-center justify-between gap-1 flex-wrap">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/60">
+                                {lang === 'pt' ? 'Tamanhos:' : 'Sizes:'}
+                              </span>
+                              {inStockSizes.length > 0 ? (
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  {inStockSizes.map((sz) => {
+                                    const displaySz = lang === 'pt'
+                                      ? (sz === 'S' ? 'P' : sz === 'L' ? 'G' : sz === 'XL' ? 'GG' : sz)
+                                      : sz;
+                                    return (
+                                      <span
+                                        key={sz}
+                                        className="text-[9.5px] font-black px-2 py-0.5 border border-deep-black bg-deep-black text-gold shadow-2xs uppercase tracking-wider rounded-xs"
+                                        title={`${lang === 'pt' ? 'Disponível no tamanho' : 'Available in size'} ${displaySz}`}
+                                      >
+                                        {displaySz}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <span className="text-[9px] font-bold text-red-600 uppercase">
+                                  {lang === 'pt' ? 'Esgotado' : 'Sold out'}
+                                </span>
+                              )}
+                            </div>
+
+                            {inStockSizes.length > 0 && !isSpoiler && (
+                              <span className="text-[8.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 border border-emerald-200 uppercase tracking-tight shrink-0">
+                                {lang === 'pt' ? 'Pronta Entrega' : 'In Stock'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Preço em Dólar ($) e Frete Fixo $9.99 */}
+                        <div className="pt-2.5 border-t border-deep-black/10 flex items-baseline justify-between">
+                          <div>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-base font-black text-deep-black uppercase tracking-wider">
+                                ${product.price.toFixed(2)}
+                              </span>
+                              {product.originalPrice && product.originalPrice > product.price && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-deep-black/40 line-through font-bold">
+                                    ${product.originalPrice.toFixed(2)}
+                                  </span>
+                                  <span className="text-[8.5px] font-black bg-red-600 text-white px-1.5 py-0.5">
+                                    -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-[9px] block text-deep-black/60 font-bold uppercase tracking-wider">
+                              $9.99 FLAT RATE US SHIPPING
+                            </span>
+                          </div>
+
+                          <span
+                            className={`text-[10px] font-bold tracking-wide px-2.5 py-1 border shrink-0 ${
+                              isSpoiler
+                                ? 'bg-deep-black text-gold border-gold shadow-sm font-black'
+                                : 'bg-white text-deep-black border-deep-black'
+                            }`}
+                          >
+                            {isSpoiler
+                              ? (lang === 'pt' ? '👀 Spoiler • Em breve' : '👀 Spoiler • Coming soon')
+                              : (lang === 'pt' ? 'Em estoque' : 'In stock')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            )}
+          </div>
         </div>
-        )}
       </section>
 
       {/* =========================================================================
