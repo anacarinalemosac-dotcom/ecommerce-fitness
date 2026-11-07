@@ -82,12 +82,32 @@ export async function GET(req: NextRequest) {
       order_number: orderId,
       seller_name: meta.seller_name || 'Loja Oficial Online',
       channel_detail: 'ONLINE',
-      payment_fee: Number(((totalAmountPaid * 0.029) + 0.30).toFixed(2)),
+      payment_fee: (meta.payment_method || '').toUpperCase() === 'AFTERPAY'
+        ? Number(((totalAmountPaid * 0.06) + 0.30).toFixed(2))
+        : (meta.payment_method || '').toUpperCase() === 'KLARNA' || (meta.payment_method || '').toUpperCase() === 'AFFIRM'
+        ? Number(((totalAmountPaid * 0.0599) + 0.30).toFixed(2))
+        : Number(((totalAmountPaid * 0.029) + 0.30).toFixed(2)),
       shipping_fee: 9.99,
       shipping_cost: 7.50,
       cost_of_goods: 16.00,
-      net_profit: Number((totalAmountPaid - 16.00 - ((totalAmountPaid * 0.029) + 0.30) - 7.50).toFixed(2)),
-      profit_margin_pct: totalAmountPaid > 0 ? Number((((totalAmountPaid - 16.00 - ((totalAmountPaid * 0.029) + 0.30) - 7.50) / totalAmountPaid) * 100).toFixed(1)) : 0,
+      net_profit: Number((
+        totalAmountPaid - 16.00 - (
+          (meta.payment_method || '').toUpperCase() === 'AFTERPAY'
+            ? ((totalAmountPaid * 0.06) + 0.30)
+            : (meta.payment_method || '').toUpperCase() === 'KLARNA' || (meta.payment_method || '').toUpperCase() === 'AFFIRM'
+            ? ((totalAmountPaid * 0.0599) + 0.30)
+            : ((totalAmountPaid * 0.029) + 0.30)
+        ) - 7.50
+      ).toFixed(2)),
+      profit_margin_pct: totalAmountPaid > 0 ? Number(((
+        (totalAmountPaid - 16.00 - (
+          (meta.payment_method || '').toUpperCase() === 'AFTERPAY'
+            ? ((totalAmountPaid * 0.06) + 0.30)
+            : (meta.payment_method || '').toUpperCase() === 'KLARNA' || (meta.payment_method || '').toUpperCase() === 'AFFIRM'
+            ? ((totalAmountPaid * 0.0599) + 0.30)
+            : ((totalAmountPaid * 0.029) + 0.30)
+        ) - 7.50) / totalAmountPaid
+      ) * 100).toFixed(1)) : 0,
       fulfillment_status: 'AWAITING_SEPARATION',
       payment_status: 'PAID',
       address: shippingAddress,
