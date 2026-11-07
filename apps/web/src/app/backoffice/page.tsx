@@ -1513,6 +1513,16 @@ export default function BackofficeDashboard() {
     }).length;
   }, [salesData]);
 
+  // Contagem total de TODOS os pedidos pendentes de envio (inclusive os de hoje)
+  const totalUnfulfilledSalesCount = useMemo(() => {
+    return (salesData?.sales || []).filter((s: any) => {
+      const fSt = (s.fulfillment_status || '').toUpperCase();
+      const st = (s.status || '').toUpperCase();
+      const isFulfilled = fSt === 'DELIVERED' || fSt === 'SHIPPED' || st === 'DELIVERED' || st === 'SHIPPED' || st === 'CANCELLED';
+      return !isFulfilled;
+    }).length;
+  }, [salesData]);
+
   // Contagem e valor total de vendas de crediário com saldo pendente
   const { pendingCrediarioSalesCount, pendingCrediarioSalesTotal } = useMemo(() => {
     const list = (salesData?.sales || []).filter((s: any) => {
@@ -4155,21 +4165,25 @@ export default function BackofficeDashboard() {
               <button
                 type="button"
                 onClick={() => {
-                  setSalesUnfulfilledOnly(!salesUnfulfilledOnly);
-                  setSalesSpecificDate('');
-                  setSalesCrediarioPendingOnly(false);
+                  const nextState = !salesUnfulfilledOnly;
+                  setSalesUnfulfilledOnly(nextState);
+                  if (nextState) {
+                    setSalesPeriodFilter('ALL');
+                    setSalesSpecificDate('');
+                    setSalesCrediarioPendingOnly(false);
+                  }
                 }}
                 className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider transition border flex items-center gap-1 ${
                   salesUnfulfilledOnly
                     ? 'bg-amber-600 text-white border-amber-700 shadow-sm'
-                    : unsentPastSalesCount > 0
+                    : totalUnfulfilledSalesCount > 0
                     ? 'bg-amber-100 text-amber-950 border-amber-400 animate-pulse'
                     : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
                 }`}
                 title="Filtrar pedidos pendentes de envio"
               >
                 <Truck className="w-3.5 h-3.5" />
-                <span>🚨 NÃO ENVIADOS (PENDENTES) {unsentPastSalesCount > 0 ? `(${unsentPastSalesCount})` : ''}</span>
+                <span>🚨 PENDENTES DE ENVIO {totalUnfulfilledSalesCount > 0 ? `(${totalUnfulfilledSalesCount})` : ''}</span>
               </button>
 
               <button
@@ -4832,7 +4846,7 @@ export default function BackofficeDashboard() {
                           }`}
                           title="Clique para atualizar a situação de entrega (Logística)"
                         >
-                          <option value="AWAITING_SEPARATION">🕒 1. AGUARDANDO SEPARAÇÃO</option>
+                          <option value="AWAITING_SEPARATION">🕒 1. PENDENTE DE ENVIO (AGUARDANDO SEPARAÇÃO)</option>
                           <option value="IN_PRODUCTION">✂️ 2. SEPARANDO MERCADORIA</option>
                           <option value="SHIPPED">📦 3. DESPACHADA (USPS)</option>
                           <option value="DELIVERED">🛍️ 4. MERCADORIA ENTREGUE</option>

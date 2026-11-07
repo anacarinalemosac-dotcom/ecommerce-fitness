@@ -631,7 +631,7 @@ export function EditSaleModal({
                   <option value="DELIVERED">🛍️ 4. MERCADORIA ENTREGUE</option>
                   <option value="SHIPPED">📦 3. MERCADORIA DESPACHADA</option>
                   <option value="IN_PRODUCTION">✂️ 2. SEPARANDO MERCADORIA</option>
-                  <option value="AWAITING_SEPARATION">🕒 1. AGUARDANDO SEPARAÇÃO</option>
+                  <option value="AWAITING_SEPARATION">🕒 1. PENDENTE DE ENVIO (AGUARDANDO SEPARAÇÃO)</option>
                 </select>
               </div>
 
