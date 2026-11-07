@@ -18,7 +18,10 @@ function StripeSuccessContent() {
     const oId = searchParams.get('order_id');
     const sId = searchParams.get('session_id');
     if (oId) setOrderId(oId);
-    if (sId) setSessionId(sId);
+    if (sId) {
+      setSessionId(sId);
+      fetch(`/api/checkout/stripe/verify?session_id=${encodeURIComponent(sId)}`).catch(() => {});
+    }
 
     // Dispara Purchase nos Pixels e limpa carrinho local
     try {
