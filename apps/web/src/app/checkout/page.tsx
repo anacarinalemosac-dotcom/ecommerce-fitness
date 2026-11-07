@@ -64,6 +64,7 @@ export default function CheckoutPage() {
   const [isCartLoaded, setIsCartLoaded] = useState(false);
   const [customerUser, setCustomerUser] = useState<any | null>(null);
   const [orderWasBackorder, setOrderWasBackorder] = useState(false);
+  const [isDirectCheckout, setIsDirectCheckout] = useState(false);
 
   // Link contextualizado para o cliente tirar dúvidas com a Ana Carina no WhatsApp
   const storePhoneFormatted = siteInfo?.phone || '+1 (978) 313-9452';
@@ -142,6 +143,127 @@ export default function CheckoutPage() {
   // Carrega o item real selecionado e a sessão do cliente
   useEffect(() => {
     try {
+      // 1. Verifica se a página foi aberta via Link Direto de Pagamento (ex: WhatsApp Afterpay)
+      const params = new URLSearchParams(window.location.search);
+      const isDirectParam =
+        params.get('direct') === '1' ||
+        params.get('pay') === 'afterpay' ||
+        !!params.get('slug') ||
+        !!params.get('productId') ||
+        !!params.get('sku');
+
+      if (isDirectParam) {
+        setIsDirectCheckout(true);
+        const directPay = params.get('pay')?.toUpperCase();
+        if (directPay === 'AFTERPAY' || directPay === 'AFFIRM') {
+          setPaymentMethod(directPay as any);
+        } else {
+          setPaymentMethod('AFTERPAY'); // Pré-seleciona Afterpay por padrão no link direto
+        }
+
+        const directSlug = params.get('slug');
+        const directId = params.get('productId') || params.get('id');
+        const directSku = params.get('sku');
+        const directSize = (params.get('size') || 'M').toUpperCase();
+        const directColor = params.get('color') || 'Preto Ônix';
+        const directQty = Number(params.get('qty')) || 1;
+        const directPrice = params.get('price') ? Number(params.get('price')) : undefined;
+        const directTitle = params.get('title');
+        const directImage = params.get('image');
+
+        // Pré-preenchimento de dados do cliente se informados
+        const paramEmail = params.get('email');
+        const paramName = params.get('name');
+        const paramPhone = params.get('phone');
+        const paramZip = params.get('zip');
+
+        if (paramEmail || paramName || paramPhone || paramZip) {
+          const nameParts = (paramName || '').trim().split(' ');
+          const fName = nameParts[0] || '';
+          const lName = nameParts.slice(1).join(' ') || '';
+          setShippingForm((prev) => ({
+            ...prev,
+            email: paramEmail || prev.email,
+            phone: paramPhone || prev.phone,
+            firstName: fName || prev.firstName,
+            lastName: lName || prev.lastName,
+            zip: paramZip || prev.zip,
+          }));
+        }
+
+        // Busca dados reais do produto para carregar na sacola instantaneamente
+        fetch(`/api/backoffice/products?t=${Date.now()}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            let foundProd: any = null;
+            if (data?.products && Array.isArray(data.products)) {
+              foundProd = data.products.find(
+                (p: any) =>
+                  (directSlug && p.slug === directSlug) ||
+                  (directId && p.id === directId) ||
+                  (directSku && p.variants?.some((v: any) => v.sku === directSku))
+              );
+            }
+
+            if (foundProd) {
+              const matchedVar =
+                (foundProd.variants || []).find(
+                  (v: any) =>
+                    (directSku && v.sku === directSku) ||
+                    (v.size?.toUpperCase() === directSize &&
+                      (!directColor || v.color?.toLowerCase() === directColor.toLowerCase()))
+                ) || (foundProd.variants || [])[0];
+
+              const firstImg =
+                matchedVar?.image ||
+                (Array.isArray(matchedVar?.images) ? matchedVar.images[0] : null) ||
+                foundProd.primary_image ||
+                foundProd.primaryImage ||
+                directImage ||
+                '';
+              const finalPrice = directPrice || matchedVar?.price || foundProd.price || 44.9;
+
+              const newItem: CartItem = {
+                title: foundProd.title || directTitle || 'PEÇA FITNESS EXCLUSIVA',
+                slug: foundProd.slug || directSlug || 'peca-fit',
+                size: matchedVar?.size?.toUpperCase() || directSize,
+                color: matchedVar?.color || directColor,
+                sku: matchedVar?.sku || directSku || `${foundProd.slug || 'ANA'}-${directSize}`,
+                price: Number(finalPrice),
+                quantity: directQty,
+                image: firstImg,
+                isBackorder: false,
+                productionDays: 0,
+              };
+
+              setCartItem(newItem);
+              localStorage.setItem('ana_cart_item', JSON.stringify(newItem));
+              localStorage.setItem('ana_cart_item_backup', JSON.stringify(newItem));
+              window.dispatchEvent(new Event('ana_cart_updated'));
+            } else if (directTitle || directSlug) {
+              const fallbackItem: CartItem = {
+                title:
+                  directTitle ||
+                  (directSlug ? directSlug.replace(/-/g, ' ').toUpperCase() : 'PEÇA FITNESS EXCLUSIVA'),
+                slug: directSlug || 'peca-fit',
+                size: directSize,
+                color: directColor,
+                sku: directSku || `${directSlug || 'ANA'}-${directSize}`,
+                price: directPrice || 44.9,
+                quantity: directQty,
+                image: directImage || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80',
+                isBackorder: false,
+                productionDays: 0,
+              };
+              setCartItem(fallbackItem);
+              localStorage.setItem('ana_cart_item', JSON.stringify(fallbackItem));
+              localStorage.setItem('ana_cart_item_backup', JSON.stringify(fallbackItem));
+              window.dispatchEvent(new Event('ana_cart_updated'));
+            }
+          })
+          .catch((e) => console.warn('Erro ao carregar dados do link direto:', e));
+      }
+
       let savedCart = localStorage.getItem('ana_cart_item');
       if (!savedCart) {
         // Se a sacola foi esvaziada acidentalmente por navegação, recupera do backup
@@ -171,7 +293,7 @@ export default function CheckoutPage() {
             },
           ],
         });
-      } else {
+      } else if (!isDirectParam) {
         setCartItem(null);
       }
 
@@ -875,6 +997,37 @@ export default function CheckoutPage() {
           <span>{lang === 'pt' ? 'CHECKOUT ONLINE 100% SEGURO' : '100% SECURE ONLINE CHECKOUT'}</span>
         </div>
       </div>
+
+      {/* Banner de Link de Pagamento Direto VIP (Afterpay 4x) */}
+      {isDirectCheckout && (
+        <div className="bg-gradient-to-r from-[#0D0D0D] via-[#1A1A1A] to-[#0D0D0D] border-2 border-gold rounded-xl p-4 sm:p-5 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in duration-300">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-gold/15 border border-gold/40 flex items-center justify-center text-gold shrink-0">
+              <Sparkles className="w-6 h-6 text-gold animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 bg-gold text-deep-black text-[10px] font-black uppercase tracking-wider rounded-xs font-mono">
+                  ⚡ {lang === 'pt' ? 'LINK DE PAGAMENTO DIRETO EXCLUSIVO' : 'EXCLUSIVE DIRECT PAYMENT LINK'}
+                </span>
+                <span className="px-2 py-0.5 bg-[#b2fce4] text-deep-black text-[9px] font-black uppercase rounded-xs font-mono">
+                  AFTERPAY 4X SEM JUROS
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-gray-200 mt-1">
+                {lang === 'pt'
+                  ? `Pedido VIP pré-selecionado por link direto! Apenas confirme seu endereço para receber via USPS e pague em 4x sem juros no Afterpay.`
+                  : `VIP order pre-configured via direct link! Simply verify your USPS shipping address and pay in 4 installments with Afterpay.`}
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 flex items-center gap-2 self-end sm:self-center">
+            <span className="text-gold font-mono font-black text-sm">
+              4x de ${cartItem ? (cartItem.price / 4).toFixed(2) : '11.23'}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Banner de Atendimento & Dúvidas no WhatsApp com a Ana Carina */}
       <div className="bg-gradient-to-r from-emerald-50 via-white to-gold/10 border-2 border-[#25D366]/40 p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">

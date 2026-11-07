@@ -35,6 +35,7 @@ export default function ProductShareModal({
   lang = 'pt',
 }: ProductShareModalProps) {
   const [copied, setCopied] = useState(false);
+  const [copiedDirect, setCopiedDirect] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
   const [origin, setOrigin] = useState('');
 
@@ -82,6 +83,33 @@ export default function ProductShareModal({
   )}`;
   const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(productUrl)}`;
   const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(productUrl)}`;
+  const directPaymentUrl = `${origin || 'https://anafitnesswear.com'}/checkout?direct=1&slug=${product.slug}&pay=afterpay`;
+
+  const directWhatsappMsg =
+    lang === 'pt'
+      ? `Olá! Segue seu link de pagamento direto para garantir seu *${product.title}* (${priceFormatted}) na Ana Fitness Wear.\n\n✨ Você pode parcelar em 4x sem juros de $${(Number(product.price) / 4).toFixed(2)} no Afterpay:\n\n${directPaymentUrl}`
+      : `Hello! Here is your direct checkout link for *${product.title}* (${priceFormatted}) at Ana Fitness Wear.\n\n✨ Pay in 4 interest-free installments of $${(Number(product.price) / 4).toFixed(2)} with Afterpay:\n\n${directPaymentUrl}`;
+
+  const whatsappDirectUrl = `https://wa.me/?text=${encodeURIComponent(directWhatsappMsg)}`;
+
+  const handleCopyDirectLink = async () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(directPaymentUrl);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = directPaymentUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopiedDirect(true);
+      setTimeout(() => setCopiedDirect(false), 2500);
+    } catch (err) {
+      console.error('Falha ao copiar link direto:', err);
+    }
+  };
 
   const handleCopyLink = async () => {
     try {
@@ -177,6 +205,58 @@ export default function ProductShareModal({
         </div>
 
         <div className="p-5 space-y-5 max-h-[75vh] overflow-y-auto">
+          {/* Link Especial de Pagamento Direto (Afterpay 1-Clique) */}
+          <div className="p-4 bg-gradient-to-r from-deep-black via-[#161616] to-deep-black border-2 border-gold rounded-xl text-white space-y-3 shadow-md">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black uppercase tracking-wider text-gold flex items-center gap-1.5 font-mono">
+                ⚡ {lang === 'pt' ? 'LINK DE PAGAMENTO DIRETO (AFTERPAY)' : 'DIRECT PAYMENT LINK (AFTERPAY)'}
+              </span>
+              <span className="px-2 py-0.5 bg-[#b2fce4] text-deep-black font-black text-[9px] uppercase rounded-xs">
+                4x ${(Number(product.price) / 4).toFixed(2)}
+              </span>
+            </div>
+
+            <p className="text-[11px] text-gray-300 font-medium leading-relaxed">
+              {lang === 'pt'
+                ? 'Envie este link direto para o cliente. Ele abre o checkout com a peça já selecionada e pronta para parcelar em 4x sem juros no Afterpay!'
+                : 'Send this direct link to the customer. It opens checkout with this piece pre-selected ready for Afterpay 4x interest-free!'}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={directPaymentUrl}
+                className="w-full text-xs font-mono bg-white/10 border border-gold/40 px-3 py-2 text-gold select-all focus:outline-none"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+              <button
+                type="button"
+                onClick={handleCopyDirectLink}
+                className={`px-4 py-2 text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 shadow-xs cursor-pointer ${
+                  copiedDirect
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-gold text-deep-black hover:bg-yellow-400'
+                }`}
+              >
+                {copiedDirect ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedDirect ? (lang === 'pt' ? 'COPIADO!' : 'COPIED!') : (lang === 'pt' ? 'COPIAR' : 'COPY')}</span>
+              </button>
+            </div>
+
+            <a
+              href={whatsappDirectUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-2.5 px-3 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 transition rounded shadow-sm"
+            >
+              <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+              </svg>
+              <span>{lang === 'pt' ? 'Enviar Link de Pagamento no WhatsApp' : 'Send Payment Link on WhatsApp'}</span>
+            </a>
+          </div>
+
           {/* Quick Copy Link Box */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-deep-black/70 flex items-center justify-between">

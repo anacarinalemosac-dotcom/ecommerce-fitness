@@ -99,6 +99,7 @@ import { SalesReportModal } from '../../components/backoffice/SalesReportModal';
 import CouponsManagerView from '../../components/backoffice/CouponsManagerView';
 import { TikTokCatalogModal } from '../../components/backoffice/TikTokCatalogModal';
 import { AIModelStudioModal } from '../../components/backoffice/AIModelStudioModal';
+import { DirectPaymentLinkModal } from '../../components/backoffice/DirectPaymentLinkModal';
 import { ConditionalsView } from '../../components/backoffice/ConditionalsView';
 import { ExecutiveFinancialSummary } from '../../components/backoffice/ExecutiveFinancialSummary';
 import {
@@ -273,6 +274,8 @@ export default function BackofficeDashboard() {
   const [copiedTikTokSlug, setCopiedTikTokSlug] = useState<string | null>(null);
   const [showAIStudioModal, setShowAIStudioModal] = useState(false);
   const [aiStudioTargetProduct, setAiStudioTargetProduct] = useState<any | null>(null);
+  const [showDirectPaymentModal, setShowDirectPaymentModal] = useState(false);
+  const [directPaymentProduct, setDirectPaymentProduct] = useState<any | null>(null);
 
   // Filtros e Busca Rápida no Catálogo de Produtos
   const [productSearch, setProductSearch] = useState('');
@@ -3511,6 +3514,20 @@ export default function BackofficeDashboard() {
                           >
                             <span>🎵</span>
                             <span>{copiedTikTokSlug === (item.slug || item.id) ? '✓ COPIADO!' : 'LINK TIKTOK'}</span>
+                          </button>
+
+                          {/* Botão Gerar Link de Pagamento Direto (Afterpay 4x) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDirectPaymentProduct(item);
+                              setShowDirectPaymentModal(true);
+                            }}
+                            className="p-1.5 border border-[#7ae3c0] bg-[#b2fce4]/30 hover:bg-[#b2fce4] text-deep-black transition flex items-center gap-1 text-[10px] font-black cursor-pointer shadow-xs"
+                            title="Gerar link de pagamento direto com 4x no Afterpay para enviar no WhatsApp do cliente"
+                          >
+                            <CreditCard className="w-3.5 h-3.5 text-emerald-800" />
+                            <span>LINK AFTERPAY</span>
                           </button>
 
                           {/* Botão Abrir Estúdio IA para esta Peça */}
@@ -7789,6 +7806,16 @@ export default function BackofficeDashboard() {
           fetchSupabaseProducts();
           if (refreshProducts) refreshProducts();
         }}
+      />
+
+      {/* Modal Gerador de Link de Pagamento Direto (Afterpay 4x) */}
+      <DirectPaymentLinkModal
+        isOpen={showDirectPaymentModal}
+        onClose={() => {
+          setShowDirectPaymentModal(false);
+          setDirectPaymentProduct(null);
+        }}
+        product={directPaymentProduct}
       />
     </div>
   );
