@@ -571,6 +571,22 @@ export default function CheckoutPage() {
 
         const stripeData = await stripeRes.json();
         if (stripeRes.ok && stripeData.configured && stripeData.url) {
+          try {
+            const customerToSave = {
+              name: `${shippingForm.firstName || ''} ${shippingForm.lastName || ''}`.trim() || 'Cliente Online',
+              email: shippingForm.email || '',
+              phone: shippingForm.phone || '',
+              shipping_address: {
+                address: shippingForm.address || '',
+                apt: shippingForm.apt || '',
+                city: shippingForm.city || '',
+                state: shippingForm.state || 'MA',
+                zip: shippingForm.zip || '',
+              },
+            };
+            localStorage.setItem('ana_customer_session', JSON.stringify(customerToSave));
+          } catch (_) {}
+
           // Redireciona imediatamente para o ambiente oficial de pagamento (Stripe / Afterpay / Affirm)
           window.location.href = stripeData.url;
           return;

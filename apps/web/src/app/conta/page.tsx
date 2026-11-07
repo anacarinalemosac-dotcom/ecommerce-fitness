@@ -153,10 +153,27 @@ export default function CustomerAccountPage() {
       if (saved) {
         const parsed = JSON.parse(saved);
         setCustomer(parsed);
-        if (parsed.shipping_address) {
+        if (parsed.shipping_address && parsed.shipping_address.address) {
           setAddressForm(parsed.shipping_address);
         }
-        fetchCustomerOrders(parsed.email);
+
+        // Sincroniza dados atualizados do servidor
+        if (parsed.email) {
+          fetch(`/api/customer/auth?email=${encodeURIComponent(parsed.email)}`)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+              if (data?.customer?.shipping_address?.address) {
+                setAddressForm(data.customer.shipping_address);
+                setCustomer((prev: any) => {
+                  const updated = { ...prev, ...data.customer };
+                  localStorage.setItem('ana_customer_session', JSON.stringify(updated));
+                  return updated;
+                });
+              }
+            })
+            .catch(() => {});
+          fetchCustomerOrders(parsed.email);
+        }
       }
     } catch (e) {
       console.warn('Erro ao carregar sessão do cliente:', e);
@@ -171,12 +188,42 @@ export default function CustomerAccountPage() {
       const res = await fetch(`/api/orders/lookup?query=${encodeURIComponent(email.trim().toLowerCase())}`);
       if (res.ok) {
         const data = await res.json();
-        if (data.orders) {
-          setOrders(data.orders);
-        } else if (data.order) {
-          setOrders([data.order]);
-        } else {
-          setOrders([]);
+        const ords = data.orders || (data.order ? [data.order] : []);
+        setOrders(ords);
+
+        // Se o endereço da conta estiver vazio, preenche automaticamente com o endereço do pedido informado
+        const orderWithAddr = ords.find((o: any) => o.shipping_address && o.shipping_address.address);
+        if (orderWithAddr) {
+          const addr = orderWithAddr.shipping_address;
+          setAddressForm((prev) => {
+            if (!prev.address || !prev.address.trim()) {
+              return {
+                address: addr.address || '',
+                apt: addr.apt || '',
+                city: addr.city || 'Leominster',
+                state: addr.state || 'MA',
+                zip: addr.zip || '',
+              };
+            }
+            return prev;
+          });
+          setCustomer((prev: any) => {
+            if (prev && (!prev.shipping_address || !prev.shipping_address.address)) {
+              const updated = {
+                ...prev,
+                shipping_address: {
+                  address: addr.address || '',
+                  apt: addr.apt || '',
+                  city: addr.city || 'Leominster',
+                  state: addr.state || 'MA',
+                  zip: addr.zip || '',
+                },
+              };
+              localStorage.setItem('ana_customer_session', JSON.stringify(updated));
+              return updated;
+            }
+            return prev;
+          });
         }
       } else {
         setOrders([]);
