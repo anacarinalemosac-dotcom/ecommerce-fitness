@@ -284,10 +284,10 @@ export const DEFAULT_HERO_BANNERS: HeroBannerSlide[] = [
 
 export const DEFAULT_ANNOUNCEMENT_BAR: AnnouncementBarConfig = {
   active: true,
-  textPt: '✨ FRETE FIXO DE $9.99 PARA TODOS OS 50 ESTADOS DOS EUA • FRETE GRÁTIS EM COMPRAS ACIMA DE $75 COM CUPOM FRETEGRATIS ✨',
-  textEn: '✨ FLAT RATE $9.99 SHIPPING ACROSS ALL 50 US STATES • FREE SHIPPING OVER $75 WITH CODE FRETEGRATIS ✨',
-  link: '#vitrine',
-  badgeText: 'PROMOÇÃO',
+  textPt: 'Não estamos conseguindo atualizar nossos produtos no site devido à alta demanda de venda. Entre em contato com nosso WhatsApp para saber mais sobre quais produtos temos disponível: (978) 313-9452',
+  textEn: 'Due to high order volume, we are unable to update all products on the site in real-time. Please contact our WhatsApp to check available inventory: (978) 313-9452',
+  link: 'https://wa.me/19783139452?text=Ol%C3%A1%21%20Gostaria%20de%20saber%20quais%20produtos%20est%C3%A3o%20dispon%C3%ADveis%20%C3%A0%20pronta%20entrega.',
+  badgeText: '⚠️ ALTA DEMANDA',
   bgColor: '#0A0A0A',
   textColor: '#D4AF37',
 };
@@ -1111,7 +1111,11 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const savedInfo = localStorage.getItem('ana_site_info');
       if (savedInfo) {
-        setSiteInfoState((prev) => ({ ...prev, ...JSON.parse(savedInfo) }));
+        const parsed = JSON.parse(savedInfo);
+        if (parsed?.announcementBar?.textPt?.includes('FRETE FIXO DE $9.99')) {
+          parsed.announcementBar = DEFAULT_ANNOUNCEMENT_BAR;
+        }
+        setSiteInfoState((prev) => ({ ...prev, ...parsed }));
       }
 
       const savedImages = localStorage.getItem('ana_site_images');

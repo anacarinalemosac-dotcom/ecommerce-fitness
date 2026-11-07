@@ -28,6 +28,7 @@ import {
   Palette,
   Ruler,
   Layers,
+  MessageCircle,
 } from 'lucide-react';
 
 interface ColorOption {
@@ -733,6 +734,72 @@ export default function HomePage() {
           </section>
         );
       })()}
+
+      {/* =========================================================================
+          COMUNICADO OFICIAL • BANNER DE ALTA DEMANDA NA FRENTE DO SITE
+          ========================================================================= */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-8 -mt-8 sm:-mt-12 relative z-20">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0D0D0D] via-[#1A1A1A] to-[#0D0D0D] border-2 border-gold/70 shadow-[0_16px_40px_rgba(0,0,0,0.85),0_0_35px_rgba(212,175,55,0.25)] p-6 sm:p-8">
+          {/* Subtle gold glow background */}
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-gold/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6">
+            <div className="flex items-start gap-4 sm:gap-5 w-full lg:w-auto">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gold/15 border border-gold/40 flex items-center justify-center shrink-0 text-gold shadow-inner">
+                <Flame className="w-6 h-6 sm:w-7 sm:h-7 animate-pulse text-gold" />
+              </div>
+              <div className="space-y-2 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-3 py-1 bg-gold/20 text-gold border border-gold/40 text-[10px] font-black uppercase tracking-widest rounded-full flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-gold" />
+                    {lang === 'pt' ? 'COMUNICADO OFICIAL' : 'OFFICIAL NOTICE'}
+                  </span>
+                  <span className="text-white/60 text-[11px] font-bold uppercase tracking-wider">
+                    {lang === 'pt' ? 'ESTOQUE ATELIER LEOMINSTER, MA' : 'LEOMINSTER, MA ATELIER INVENTORY'}
+                  </span>
+                </div>
+                <h4 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight">
+                  {lang === 'pt' ? 'Aviso Importante: Alta Demanda de Vendas' : 'Important Notice: High Order Volume'}
+                </h4>
+                <p className="text-sm sm:text-base font-semibold text-gray-200 max-w-3xl leading-relaxed">
+                  &ldquo;{lang === 'pt'
+                    ? 'Não estamos conseguindo atualizar nossos produtos no site devido à alta demanda de venda. Entre em contato com nosso WhatsApp para saber mais sobre quais produtos temos disponível: (978) 313-9452'
+                    : 'Due to high order volume, we are unable to update all products on the site in real-time. Please contact our WhatsApp to check available inventory: (978) 313-9452'
+                  }&rdquo;
+                </p>
+                <div className="flex items-center gap-4 pt-1 text-xs text-gold/90 font-bold flex-wrap">
+                  <span className="flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    {lang === 'pt' ? 'Peças exclusivas esgotam rapidamente' : 'Exclusive pieces sell out fast'}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    {lang === 'pt' ? 'Vídeos e fotos de estoque em tempo real' : 'Real-time photos & video previews'}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    {lang === 'pt' ? 'Envio imediato no mesmo dia' : 'Same-day US Priority shipping'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="shrink-0 w-full lg:w-auto flex flex-col sm:flex-row gap-3">
+              <a
+                href={lang === 'pt'
+                  ? 'https://wa.me/19783139452?text=Ol%C3%A1%21%20Vi%20o%20aviso%20no%20banner%20do%20site%20sobre%20a%20alta%20demanda.%20Gostaria%20de%20saber%20quais%20produtos%20est%C3%A3o%20dispon%C3%ADveis%20%C3%A0%20pronta%20entrega.'
+                  : 'https://wa.me/19783139452?text=Hello%21%20I%20saw%20the%20high-demand%20banner%20on%20the%20site.%20I%20would%20like%20to%20know%20which%20pieces%20are%20currently%20available.'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-[0_6px_25px_rgba(16,185,129,0.35)] transition-all hover:scale-[1.02] active:scale-[0.98] text-center"
+              >
+                <MessageCircle className="w-5 h-5 shrink-0" />
+                <span>{lang === 'pt' ? 'CONSULTAR NO WHATSAPP • (978) 313-9452' : 'CHECK ON WHATSAPP • (978) 313-9452'}</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* =========================================================================
           2. GYMSHARK CATEGORY VISUAL RAIL (TALL CARDS WITH GRADIENT & ATHLETIC POSE)

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "cust-001",
+    "name": "Mariana Salles",
+    "email": "mariana.salles@gmail.com",
+    "phone": "+1 (508) 492-8819",
+    "password": "123",
+    "shipping_address": {
+      "address": "742 Commonwealth Ave",
+      "apt": "Apt 4B",
+      "city": "Boston",
+      "state": "MA",
+      "zip": "02215"
+    },
+    "created_at": "2026-10-31T01:02:05.624Z"
+  },
+  {
+    "id": "cust-002",
+    "name": "Beatriz Figueiredo",
+    "email": "beatriz.fig@miamifit.com",
+    "phone": "+1 (305) 881-2299",
+    "password": "123",
+    "shipping_address": {
+      "address": "1200 Brickell Bay Dr",
+      "apt": "Suite 1205",
+      "city": "Miami",
+      "state": "FL",
+      "zip": "33131"
+    },
+    "created_at": "2026-10-24T01:02:05.624Z"
+  },
+  {
+    "id": "cust-003",
+    "name": "Ana Carina",
+    "email": "anafitweareua@gmail.com",
+    "phone": "+1 (978) 313-9452",
+    "password": "123",
+    "shipping_address": {
+      "address": "100 Main St",
+      "apt": "",
+      "city": "Leominster",
+      "state": "MA",
+      "zip": "01453"
+    },
+    "created_at": "2026-11-07T01:02:05.624Z"
+  },
+  {
+    "id": "cust-004",
+    "name": "Ana Lemos",
+    "email": "alexfragamiranda@gmail.com",
+    "phone": "+1 (978) 313-9452",
+    "password": "123",
+    "shipping_address": {
+      "address": "126 First St",
+      "apt": "Ap1",
+      "city": "Leominster",
+      "state": "MA",
+      "zip": "01453"
+    },
+    "created_at": "2026-11-07T01:02:05.624Z"
+  }
+]

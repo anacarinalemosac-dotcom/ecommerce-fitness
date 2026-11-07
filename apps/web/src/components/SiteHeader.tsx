@@ -79,26 +79,43 @@ export function SiteHeader() {
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-center sm:text-left flex-wrap justify-center font-black">
               {siteInfo.announcementBar.badgeText && (
-                <span className="px-2 py-0.5 bg-white/20 text-current text-[9px] font-black uppercase tracking-wider rounded-xs">
+                <span className="px-2.5 py-0.5 bg-gold/20 text-gold border border-gold/40 text-[9px] font-black uppercase tracking-wider rounded-xs animate-pulse shrink-0">
                   {siteInfo.announcementBar.badgeText}
                 </span>
               )}
               {siteInfo.announcementBar.link ? (
-                <Link
-                  href={siteInfo.announcementBar.link}
-                  className="hover:underline flex items-center gap-1.5 transition"
-                >
-                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                  <span>
-                    {lang === 'pt'
-                      ? siteInfo.announcementBar.textPt
-                      : siteInfo.announcementBar.textEn || siteInfo.announcementBar.textPt}
-                  </span>
-                  <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-                </Link>
+                siteInfo.announcementBar.link.startsWith('http') ? (
+                  <a
+                    href={siteInfo.announcementBar.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline flex items-center gap-1.5 transition text-center leading-normal"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 shrink-0 text-gold" />
+                    <span>
+                      {lang === 'pt'
+                        ? siteInfo.announcementBar.textPt
+                        : siteInfo.announcementBar.textEn || siteInfo.announcementBar.textPt}
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 shrink-0 text-gold" />
+                  </a>
+                ) : (
+                  <Link
+                    href={siteInfo.announcementBar.link}
+                    className="hover:underline flex items-center gap-1.5 transition text-center leading-normal"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 shrink-0 text-gold" />
+                    <span>
+                      {lang === 'pt'
+                        ? siteInfo.announcementBar.textPt
+                        : siteInfo.announcementBar.textEn || siteInfo.announcementBar.textPt}
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 shrink-0 text-gold" />
+                  </Link>
+                )
               ) : (
-                <span className="flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span className="flex items-center gap-1.5 text-center leading-normal">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0 text-gold" />
                   <span>
                     {lang === 'pt'
                       ? siteInfo.announcementBar.textPt
