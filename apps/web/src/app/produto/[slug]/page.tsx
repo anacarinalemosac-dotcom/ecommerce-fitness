@@ -1111,9 +1111,16 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
               {lang === 'pt' ? productData.categoryPt : productData.categoryEn}
             </span>
-            <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-deep-black leading-tight">
+            <div className="flex items-center gap-2 flex-wrap">
+              {isOutOfStock && (
+                <span className="px-2.5 py-1 bg-red-600 text-white text-[10px] font-black uppercase tracking-wider shadow-sm border border-red-700">
+                  {lang === 'pt' ? 'ESGOTADO' : 'SOLD OUT'}
+                </span>
+              )}
+              <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-deep-black leading-tight">
               {productData.title}
             </h1>
+          </div>
 
             <button
               type="button"

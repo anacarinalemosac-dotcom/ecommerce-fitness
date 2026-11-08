@@ -667,6 +667,13 @@ export default function PublicClientCatalogPage() {
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
 
+                      {/* Tag ESGOTADO em Vermelho */}
+                      {item.totalStock <= 0 && (
+                        <span className="absolute top-2 left-2 bg-red-600 text-white text-[9px] font-black px-2 py-0.5 uppercase shadow-md border border-red-700">
+                          ESGOTADO
+                        </span>
+                      )}
+
                       {/* Badge de Desconto */}
                       {item.hasDiscount && (
                         <span className="absolute top-2 right-2 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 uppercase shadow-sm">
@@ -690,9 +697,16 @@ export default function PublicClientCatalogPage() {
                     <div className="p-3.5 flex flex-col flex-1 justify-between gap-3">
                       <div>
                         {/* Título do Produto */}
-                        <h3 className="text-xs sm:text-sm font-black uppercase text-deep-black tracking-wide line-clamp-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {item.totalStock <= 0 && (
+                            <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] font-black uppercase tracking-wider shrink-0 shadow-xs">
+                              ESGOTADO
+                            </span>
+                          )}
+                          <h3 className="text-xs sm:text-sm font-black uppercase text-deep-black tracking-wide line-clamp-2">
                           {item.title}
                         </h3>
+                      </div>
 
                         {/* Preço */}
                         <div className="mt-1.5 flex items-baseline gap-2 flex-wrap">

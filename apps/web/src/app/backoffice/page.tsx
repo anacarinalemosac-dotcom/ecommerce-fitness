@@ -3446,6 +3446,11 @@ export default function BackofficeDashboard() {
 
                       <td className="p-4">
                         <div className="flex items-center gap-1.5 flex-wrap">
+                          {totalStock <= 0 && (
+                            <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] font-black uppercase border border-red-700 shadow-xs">
+                              ESGOTADO
+                            </span>
+                          )}
                           <span className="font-black text-deep-black block">{item.title}</span>
                           {isCreatedToday(item) && (
                             <span className="px-1.5 py-0.5 bg-amber-400 text-deep-black text-[8px] font-black uppercase border border-amber-600 flex items-center gap-0.5 animate-pulse shadow-xs">
@@ -3562,8 +3567,8 @@ export default function BackofficeDashboard() {
                             PRONTA ENTREGA
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 bg-deep-black text-gold text-[9px] font-black border border-gold inline-block">
-                            PRÉ-VENDA (30 DIAS)
+                          <span className="px-2 py-0.5 bg-red-600 text-white text-[9px] font-black border border-red-700 inline-block shadow-xs">
+                            ESGOTADO
                           </span>
                         )}
                       </td>

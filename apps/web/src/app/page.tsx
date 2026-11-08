@@ -1343,6 +1343,7 @@ export default function HomePage() {
 
                   // Extrai estritamente os tamanhos com estoque real disponível (> 0)
                   const inStockSizes = getProductInStockSizes(product);
+                  const isOutOfStock = !isSpoiler && inStockSizes.length === 0;
 
                   return (
                     <div
@@ -1370,8 +1371,15 @@ export default function HomePage() {
                           />
                         </Link>
 
-                        {/* Badges Promocionais no Topo Esquerdo */}
-                        {showTopPromoBadge && (
+                        {/* Tag ESGOTADO em Vermelho ou Badges Promocionais no Topo Esquerdo */}
+                        {isOutOfStock && (
+                          <div className="absolute top-3 left-3 z-10 pointer-events-none">
+                            <span className="text-[9.5px] uppercase tracking-widest px-2.5 py-1 font-black shadow-md bg-red-600 text-white border border-red-700">
+                              {lang === 'pt' ? 'ESGOTADO' : 'SOLD OUT'}
+                            </span>
+                          </div>
+                        )}
+                        {showTopPromoBadge && !isOutOfStock && (
                           <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10 pointer-events-none">
                             <span
                               className={`text-[9px] uppercase tracking-widest px-2.5 py-1 font-black shadow-sm ${product.badgeStyle}`}
@@ -1527,9 +1535,16 @@ export default function HomePage() {
 
                           {/* Título do Produto */}
                           <Link href={`/produto/${product.slug}`}>
-                            <h3 className="text-sm font-black uppercase tracking-wider text-deep-black group-hover:text-gold transition line-clamp-1 mt-1">
+                            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                              {isOutOfStock && (
+                                <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8.5px] font-black uppercase tracking-wider shrink-0 shadow-xs">
+                                  {lang === 'pt' ? 'ESGOTADO' : 'SOLD OUT'}
+                                </span>
+                              )}
+                              <h3 className="text-sm font-black uppercase tracking-wider text-deep-black group-hover:text-gold transition line-clamp-1">
                               {product.title}
-                            </h3>
+                              </h3>
+                            </div>
                           </Link>
 
                           {/* TAMANHOS DISPONÍVEIS EM ESTOQUE (Exibição Imediata na Vitrine) */}
