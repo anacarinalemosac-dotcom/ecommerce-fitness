@@ -1055,25 +1055,46 @@ export function ProductVariantMatrixForm({
       setMediaList((prev) => [...prev, initialMediaItem]);
 
       try {
-        // 2. Upload binário direto para o Supabase Storage (bucket 'products')
-        const fileExt = file.name.split('.').pop() || (isVid ? 'mp4' : 'jpg');
-        const filePath = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-        const { data, error } = await supabase.storage
-          .from('products')
-          .upload(filePath, file, { contentType: file.type });
-
-        if (error) {
-          console.error('Erro no upload para Supabase Storage:', error);
-          alert(`Erro ao enviar foto para o Supabase Storage: ${error.message}`);
+        const fileSizeMB = file.size / (1024 * 1024);
+        if (fileSizeMB > 50) {
+          alert(`⚠️ O arquivo "${file.name}" ultrapassa o limite de 50 MB (${fileSizeMB.toFixed(1)} MB). Para vídeos longos, use a opção "Vincular Vídeo por Link".`);
           setMediaList((prev) => prev.filter((m) => m.id !== tempId));
           continue;
         }
 
-        // 3. Obtenção da URL pública permanente
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from('products').getPublicUrl(filePath);
+        // 2. Upload binário direto para o Supabase Storage (bucket 'products')
+        const fileExt = file.name.split('.').pop()?.toLowerCase() || (isVid ? 'mp4' : 'jpg');
+        const filePath = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const resolvedType = file.type || (isVid ? (fileExt === 'mov' ? 'video/quicktime' : 'video/mp4') : 'image/jpeg');
+
+        let publicUrl = '';
+        try {
+          const { data, error } = await supabase.storage
+            .from('products')
+            .upload(filePath, file, { contentType: resolvedType, upsert: true });
+
+          if (!error && data) {
+            const { data: pData } = supabase.storage.from('products').getPublicUrl(filePath);
+            publicUrl = pData?.publicUrl || '';
+          } else if (error) {
+            console.warn('Upload direto Supabase falhou, tentando fallback:', error.message);
+          }
+        } catch (e: any) {
+          console.warn('Erro no upload direto Supabase:', e?.message);
+        }
+
+        // Fallback via /api/upload
+        if (!publicUrl) {
+          const formData = new FormData();
+          formData.append('file', file);
+          const res = await fetch('/api/upload', { method: 'POST', body: formData });
+          const d = await res.json();
+          if (res.ok && d.url) {
+            publicUrl = d.url;
+          } else {
+            throw new Error(d.error || 'Falha ao processar o arquivo no servidor');
+          }
+        }
 
         // 4. Salva unicamente a URL pública no estado da galeria
         setMediaList((prev) =>
@@ -1157,25 +1178,58 @@ export function ProductVariantMatrixForm({
     );
   };
 
-  // Upload Exclusivo de Vídeo (Reels / MP4 / Demonstração Squat-Proof)
+  // Upload Exclusivo de Vídeo (Reels / MP4 / Demonstração Squat-Proof) com Dual-Tier (Supabase direto + Fallback API)
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > 50) {
+      alert(`⚠️ O vídeo "${file.name}" tem ${fileSizeMB.toFixed(1)} MB e ultrapassa o limite máximo de 50 MB por arquivo.\n\nDica: Para vídeos longos ou em altíssima resolução (4K), comprima para 1080p ou use a opção "Vincular Vídeo por Link" logo abaixo.`);
+      if (videoFileInputRef.current) videoFileInputRef.current.value = '';
+      return;
+    }
+
     setIsUploadingVideo(true);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || 'Falha no upload do vídeo');
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'mp4';
+      const filePath = `videos/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const resolvedType = file.type || (fileExt === 'mov' ? 'video/quicktime' : fileExt === 'webm' ? 'video/webm' : 'video/mp4');
+
+      let vidUrl = '';
+
+      // Camada 1: Upload direto para o bucket Supabase CDN (rápido e sem limite de timeout de rota serverless)
+      try {
+        const { data, error } = await supabase.storage
+          .from('products')
+          .upload(filePath, file, { contentType: resolvedType, upsert: true });
+
+        if (!error && data) {
+          const { data: pData } = supabase.storage.from('products').getPublicUrl(filePath);
+          vidUrl = pData?.publicUrl || '';
+        } else if (error) {
+          console.warn('Upload direto Supabase falhou, usando rota fallback /api/upload:', error.message);
+        }
+      } catch (directErr: any) {
+        console.warn('Erro na tentativa direta de upload de vídeo no Supabase:', directErr?.message);
       }
 
-      const vidUrl = data.url;
+      // Camada 2: Fallback via rota serverless /api/upload com buffer estendido
+      if (!vidUrl) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok || !data.url) {
+          throw new Error(data.error || 'Falha no processamento do vídeo no servidor');
+        }
+        vidUrl = data.url;
+      }
+
       setProductVideoUrl(vidUrl);
 
       // Adiciona ou substitui na galeria de mídias
@@ -1202,6 +1256,7 @@ export function ProductVariantMatrixForm({
         }))
       );
     } catch (err: any) {
+      console.error('Erro ao enviar vídeo:', err);
       alert(`Erro ao subir vídeo: ${err?.message || 'Erro desconhecido'}`);
     } finally {
       setIsUploadingVideo(false);
@@ -2118,7 +2173,7 @@ export function ProductVariantMatrixForm({
             </div>
 
             <p className="text-[11px] text-deep-black/70">
-              Suba um vídeo curto (MP4, MOV ou WebM) ou cole a URL direta de um vídeo demonstrando a peça no corpo, teste de agachamento (squat-proof) e elasticidade. O vídeo é exibido diretamente na galeria interativa do produto na loja.
+              Suba um vídeo de até 50 MB (MP4, MOV de iPhone ou WebM) ou cole a URL direta de um vídeo demonstrando a peça no corpo, teste de agachamento (squat-proof) e elasticidade. O vídeo é exibido diretamente na galeria interativa do produto na loja.
             </p>
 
             {/* Input oculto para upload de vídeo */}
@@ -2186,7 +2241,7 @@ export function ProductVariantMatrixForm({
                       Subir Arquivo de Vídeo (MP4 / MOV / WEBM)
                     </span>
                     <span className="text-[10px] text-deep-black/60 font-medium">
-                      Clique aqui para selecionar o vídeo do seu celular ou computador.
+                      Clique aqui para selecionar o vídeo do seu celular ou computador (até 50 MB).
                     </span>
                   </div>
                   {isUploadingVideo && (

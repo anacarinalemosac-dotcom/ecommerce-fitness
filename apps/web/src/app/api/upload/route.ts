@@ -3,6 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import { supabaseServer } from '@/lib/supabaseServer';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const contentType = req.headers.get('content-type') || '';
@@ -42,8 +45,19 @@ export async function POST(req: NextRequest) {
       }
 
       originalName = file.name;
-      mimeType = file.type || 'image/jpeg';
-      fileExtension = path.extname(file.name) || (mimeType.startsWith('video/') ? '.mp4' : '.jpg');
+      const rawExt = (path.extname(file.name) || '').toLowerCase();
+      let resolvedMime = file.type;
+      if (!resolvedMime || resolvedMime === 'application/octet-stream') {
+        if (rawExt === '.mov') resolvedMime = 'video/quicktime';
+        else if (rawExt === '.mp4') resolvedMime = 'video/mp4';
+        else if (rawExt === '.webm') resolvedMime = 'video/webm';
+        else if (rawExt === '.png') resolvedMime = 'image/png';
+        else if (rawExt === '.webp') resolvedMime = 'image/webp';
+        else if (['.mov', '.mp4', '.webm', '.m4v', '.3gp'].includes(rawExt)) resolvedMime = 'video/mp4';
+        else resolvedMime = 'image/jpeg';
+      }
+      mimeType = resolvedMime;
+      fileExtension = rawExt || (mimeType.startsWith('video/') ? '.mp4' : '.jpg');
       const bytes = await file.arrayBuffer();
       buffer = Buffer.from(bytes);
     }
