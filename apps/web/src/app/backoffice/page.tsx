@@ -280,7 +280,7 @@ export default function BackofficeDashboard() {
   // Filtros e Busca Rápida no Catálogo de Produtos
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('ALL');
-  const [productStatusFilter, setProductStatusFilter] = useState<'ALL' | 'ACTIVE' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK'>('ALL');
+  const [productStatusFilter, setProductStatusFilter] = useState<'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK'>('ALL');
 
   // Relatório de Vendas e Lucro Real
   const [salesData, setSalesData] = useState<any | null>(null);
@@ -726,6 +726,55 @@ export default function BackofficeDashboard() {
     } catch (err: any) {
       alert(`Erro ao alterar visibilidade: ${err.message}`);
     }
+  };
+
+  // Duplicação inteligente de produto no ERP com 1 clique
+  const handleDuplicateProduct = (item: any) => {
+    const itemVariants = item.variants || (item.sizes ? item.sizes.map((sz: string) => ({
+      size: sz,
+      color: item.colorName || 'Preto Ônix',
+      sku: `${item.sku || 'PROD'}-${sz}-CP`,
+      stock_quantity: Math.round((item.stock || 0) / item.sizes.length),
+    })) : []);
+
+    const firstImage = item.meta?.primary_image || item.primary_image || item.primaryImage || itemVariants[0]?.images?.[0] || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
+    const basePrice = item.meta?.promotional_price ?? item.meta?.price ?? item.price ?? itemVariants[0]?.price ?? 44.9;
+    const baseCost = itemVariants[0]?.cost_price ?? item.costPrice ?? 16.0;
+
+    const originalSlug = item.slug || item.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'produto';
+    const cleanBaseSlug = originalSlug.replace(/-copia(-\w+)?$/, '');
+    const newSlug = `${cleanBaseSlug}-copia-${Math.random().toString(36).slice(2, 6)}`;
+
+    const duplicatedProduct = {
+      ...item,
+      id: undefined, // Remove ID para criar um novo registro no Supabase
+      _id: undefined,
+      _isDuplicate: true,
+      title: item.title ? (item.title.includes('(CÓPIA)') ? item.title : `${item.title} (CÓPIA)`) : 'PRODUTO (CÓPIA)',
+      slug: newSlug,
+      sku: item.sku ? `${item.sku}-CP` : '',
+      visible_online: false, // Inicia como rascunho por segurança
+      is_draft: true,
+      price: basePrice,
+      defaultPrice: basePrice,
+      cost_price: baseCost,
+      costPrice: baseCost,
+      primaryImage: firstImage,
+      primary_image: firstImage,
+      images: item.images || item.galleryImages || item.meta?.images || (firstImage ? [firstImage] : []),
+      gallery: item.images || item.galleryImages || item.meta?.images || (firstImage ? [firstImage] : []),
+      variants: itemVariants.map((v: any) => ({
+        ...v,
+        id: undefined,
+        product_id: undefined,
+        sku: v.sku ? `${v.sku}-CP` : '',
+        barcode: `789${Math.floor(100000000 + Math.random() * 900000000)}`,
+      })),
+    };
+
+    setEditingProduct(duplicatedProduct);
+    setShowAddForm(true);
+    window.scrollTo({ top: 300, behavior: 'smooth' });
   };
 
   const fetchSalesData = async () => {
@@ -1876,9 +1925,39 @@ export default function BackofficeDashboard() {
     )
   ).sort();
 
+  // Helpers para Abas e Rascunhos do Catálogo
+  const isCreatedToday = (item: any) => {
+    if (!item?.created_at) return false;
+    try {
+      const d = new Date(item.created_at);
+      if (isNaN(d.getTime())) return false;
+      const itemDate = d.toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      return itemDate === today;
+    } catch {
+      return false;
+    }
+  };
+
+  const isDraftProduct = (item: any) => {
+    if (!item) return false;
+    if (item.visible_online === false || item.meta?.visible_online === false) return true;
+    if (item.is_draft === true || item.meta?.is_draft === true || item.status === 'draft') return true;
+    if (item.created_at) {
+      const createdTime = new Date(item.created_at).getTime();
+      const fortyFiveDaysAgo = Date.now() - 45 * 24 * 60 * 60 * 1000;
+      if (!isNaN(createdTime) && createdTime < fortyFiveDaysAgo && !item.visible_online) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   const totalCatalogCount = baseCatalogList.length;
-  const activeCatalogCount = baseCatalogList.filter((p: any) => p.visible_online !== false).length;
-  const hiddenCatalogCount = baseCatalogList.filter((p: any) => p.visible_online === false).length;
+  const todayCatalogCount = baseCatalogList.filter(isCreatedToday).length;
+  const draftCatalogCount = baseCatalogList.filter(isDraftProduct).length;
+  const activeCatalogCount = baseCatalogList.filter((p: any) => p.visible_online !== false && !isDraftProduct(p)).length;
+  const hiddenCatalogCount = draftCatalogCount;
   const inStockCatalogCount = baseCatalogList.filter((p: any) => {
     const totalStock = p.total_stock ?? p.stock ?? (p.variants || []).reduce((s: number, v: any) => s + (v.stock_quantity || 0), 0);
     return totalStock > 0;
@@ -1897,9 +1976,10 @@ export default function BackofficeDashboard() {
     })) : []);
     const totalStock = item.total_stock ?? item.stock ?? itemVariants.reduce((s: number, v: any) => s + (v.stock_quantity || 0), 0);
 
-    // Filtro por Status
-    if (productStatusFilter === 'ACTIVE' && item.visible_online === false) return false;
-    if (productStatusFilter === 'HIDDEN' && item.visible_online !== false) return false;
+    // Filtro por Status / Aba
+    if (productStatusFilter === 'TODAY' && !isCreatedToday(item)) return false;
+    if (productStatusFilter === 'ACTIVE' && (item.visible_online === false || isDraftProduct(item))) return false;
+    if ((productStatusFilter === 'DRAFT' || productStatusFilter === 'HIDDEN') && !isDraftProduct(item)) return false;
     if (productStatusFilter === 'IN_STOCK' && totalStock <= 0) return false;
     if (productStatusFilter === 'OUT_OF_STOCK' && totalStock > 0) return false;
 
@@ -3016,10 +3096,18 @@ export default function BackofficeDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-deep-black/10 pb-4 gap-4">
                 <div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
-                    {editingProduct ? 'EDITANDO PRODUTO E MATRIZ SKU NO SUPABASE' : 'NOVO CADASTRO DE PRODUTO & GRADE DE VARIAÇÕES'}
+                    {editingProduct?._isDuplicate
+                      ? '📋 DUPLICANDO PRODUTO (NOVO CADASTRO BASEADO EM PRODUTO EXISTENTE)'
+                      : editingProduct
+                      ? 'EDITANDO PRODUTO E MATRIZ SKU NO SUPABASE'
+                      : 'NOVO CADASTRO DE PRODUTO & GRADE DE VARIAÇÕES'}
                   </span>
                   <h3 className="text-xl font-black uppercase tracking-wider text-deep-black mt-1">
-                    {editingProduct ? `EDITANDO: ${editingProduct.title}` : 'CADASTRO DE PRODUTO COM GRADE (MATRIZ COR × TAMANHO)'}
+                    {editingProduct?._isDuplicate
+                      ? `CÓPIA: ${editingProduct.title}`
+                      : editingProduct
+                      ? `EDITANDO: ${editingProduct.title}`
+                      : 'CADASTRO DE PRODUTO COM GRADE (MATRIZ COR × TAMANHO)'}
                   </h3>
                   <p className="text-xs text-deep-black/60 uppercase">
                     Gravação direta no banco de dados Supabase (tabelas <strong>'products'</strong> e <strong>'product_variants'</strong>).
@@ -3083,7 +3171,7 @@ export default function BackofficeDashboard() {
 
               {/* Componente Modular de Grade de Variações */}
               <ProductVariantMatrixForm
-                key={editingProduct?.id || 'new-product'}
+                key={editingProduct?.id || (editingProduct?._isDuplicate ? `dup-${editingProduct.slug}` : 'new-product')}
                 initialProduct={editingProduct}
                 onSaveSuccess={(saved) => {
                   setShowAddForm(false);
@@ -3163,64 +3251,96 @@ export default function BackofficeDashboard() {
               </div>
             </div>
 
-            {/* Pílulas de Filtro Rápido de Status */}
+            {/* Abas e Filtros Estruturados de Produtos */}
             <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-deep-black/10">
-              <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/50 mr-1">STATUS:</span>
+              <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/50 mr-1">ABAS DO CATÁLOGO:</span>
+
+              {/* Aba TODOS */}
               <button
                 type="button"
                 onClick={() => setProductStatusFilter('ALL')}
-                className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border transition ${
+                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border transition cursor-pointer ${
                   productStatusFilter === 'ALL'
-                    ? 'bg-deep-black text-white border-deep-black'
+                    ? 'bg-deep-black text-white border-deep-black shadow-xs'
                     : 'bg-white text-deep-black/70 border-deep-black/20 hover:border-deep-black'
                 }`}
               >
                 TODOS ({totalCatalogCount})
               </button>
+
+              {/* Aba CRIADOS HOJE */}
+              <button
+                type="button"
+                onClick={() => setProductStatusFilter('TODAY')}
+                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1.5 cursor-pointer ${
+                  productStatusFilter === 'TODAY'
+                    ? 'bg-amber-500 text-deep-black border-amber-600 shadow-xs font-black'
+                    : 'bg-amber-50 text-amber-900 border-amber-300 hover:border-amber-500'
+                }`}
+                title="Produtos cadastrados hoje no ERP"
+              >
+                <span>⚡</span>
+                <span>CRIADOS HOJE ({todayCatalogCount})</span>
+              </button>
+
+              {/* Aba NO AR NA LOJA */}
               <button
                 type="button"
                 onClick={() => setProductStatusFilter('ACTIVE')}
-                className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1 ${
+                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1.5 cursor-pointer ${
                   productStatusFilter === 'ACTIVE'
-                    ? 'bg-green-700 text-white border-green-800'
+                    ? 'bg-green-700 text-white border-green-800 shadow-xs'
                     : 'bg-white text-green-700 border-green-300 hover:border-green-700'
                 }`}
+                title="Produtos ativos e visíveis na loja virtual"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                 <span>NO AR NA LOJA ({activeCatalogCount})</span>
               </button>
+
+              {/* Aba RASCUNHOS / OCULTOS */}
               <button
                 type="button"
-                onClick={() => setProductStatusFilter('HIDDEN')}
-                className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1 ${
-                  productStatusFilter === 'HIDDEN'
-                    ? 'bg-gray-800 text-white border-gray-900'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-gray-700'
+                onClick={() => setProductStatusFilter('DRAFT')}
+                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1.5 cursor-pointer ${
+                  productStatusFilter === 'DRAFT' || productStatusFilter === 'HIDDEN'
+                    ? 'bg-gray-800 text-white border-gray-900 shadow-xs font-black'
+                    : 'bg-gray-100 text-gray-700 border-gray-300 hover:border-gray-700'
                 }`}
+                title="Produtos em rascunho, ocultos ou sem publicação ativa"
               >
-                <span>OCULTOS ({hiddenCatalogCount})</span>
+                <span>📝</span>
+                <span>RASCUNHOS / OCULTOS ({draftCatalogCount})</span>
               </button>
+
+              {/* Aba EM ESTOQUE */}
               <button
                 type="button"
                 onClick={() => setProductStatusFilter('IN_STOCK')}
-                className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border transition ${
+                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1.5 cursor-pointer ${
                   productStatusFilter === 'IN_STOCK'
-                    ? 'bg-deep-black text-white border-deep-black'
-                    : 'bg-white text-deep-black/70 border-deep-black/20 hover:border-deep-black'
+                    ? 'bg-blue-800 text-white border-blue-900 shadow-xs'
+                    : 'bg-white text-blue-900 border-blue-200 hover:border-blue-800'
                 }`}
+                title="Produtos com pronta entrega em estoque"
               >
-                EM ESTOQUE ({inStockCatalogCount})
+                <span>📦</span>
+                <span>EM ESTOQUE ({inStockCatalogCount})</span>
               </button>
+
+              {/* Aba SEM ESTOQUE / ESGOTADOS */}
               <button
                 type="button"
                 onClick={() => setProductStatusFilter('OUT_OF_STOCK')}
-                className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border transition ${
+                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1.5 cursor-pointer ${
                   productStatusFilter === 'OUT_OF_STOCK'
-                    ? 'bg-gold text-deep-black border-deep-black font-black'
+                    ? 'bg-gold text-deep-black border-deep-black font-black shadow-xs'
                     : 'bg-white text-gold border-gold/40 hover:border-gold'
                 }`}
+                title="Produtos com estoque zerado ou em pré-venda"
               >
-                PRÉ-VENDA / ZERADOS ({outOfStockCatalogCount})
+                <span>⚠️</span>
+                <span>SEM ESTOQUE ({outOfStockCatalogCount})</span>
               </button>
 
               {(productSearch || productCategoryFilter !== 'ALL' || productStatusFilter !== 'ALL') && (
@@ -3231,7 +3351,7 @@ export default function BackofficeDashboard() {
                     setProductCategoryFilter('ALL');
                     setProductStatusFilter('ALL');
                   }}
-                  className="ml-auto px-2 py-1 text-[9px] font-black uppercase text-red-600 hover:bg-red-50 border border-red-200 transition"
+                  className="ml-auto px-2 py-1 text-[9px] font-black uppercase text-red-600 hover:bg-red-50 border border-red-200 transition cursor-pointer"
                 >
                   ✕ LIMPAR FILTROS
                 </button>
@@ -3327,6 +3447,18 @@ export default function BackofficeDashboard() {
                       <td className="p-4">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-black text-deep-black block">{item.title}</span>
+                          {isCreatedToday(item) && (
+                            <span className="px-1.5 py-0.5 bg-amber-400 text-deep-black text-[8px] font-black uppercase border border-amber-600 flex items-center gap-0.5 animate-pulse shadow-xs">
+                              <span>⚡</span>
+                              <span>CRIADO HOJE</span>
+                            </span>
+                          )}
+                          {isDraftProduct(item) && (
+                            <span className="px-1.5 py-0.5 bg-gray-200 text-gray-800 text-[8px] font-black uppercase border border-gray-400 flex items-center gap-0.5">
+                              <span>📝</span>
+                              <span>RASCUNHO</span>
+                            </span>
+                          )}
                           {item.meta?.ribbon && (
                             <span className="px-1.5 py-0.5 bg-gold text-deep-black text-[8px] font-black uppercase border border-deep-black">
                               {item.meta.ribbon}
@@ -3445,23 +3577,23 @@ export default function BackofficeDashboard() {
                               <span>NO AR NA LOJA</span>
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 bg-gray-200 text-gray-700 text-[9px] font-black border border-gray-400 flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-                              <span>OCULTO / RASCUNHO</span>
+                            <span className="px-2 py-0.5 bg-gray-200 text-gray-800 text-[9px] font-black border border-gray-400 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-gray-600" />
+                              <span>📝 RASCUNHO / OCULTO</span>
                             </span>
                           )}
 
                           <button
                             type="button"
                             onClick={() => handleToggleVisibility(item.id, !item.visible_online)}
-                            className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 border transition flex items-center gap-1 ${
+                            className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 border transition flex items-center gap-1 cursor-pointer ${
                               item.visible_online
                                 ? 'border-red-300 text-red-600 hover:bg-red-600 hover:text-white'
                                 : 'border-deep-black bg-deep-black text-gold hover:bg-gold hover:text-deep-black shadow-xs'
                             }`}
-                            title={item.visible_online ? 'Ocultar da vitrine da loja virtual' : 'Publicar na vitrine da loja virtual'}
+                            title={item.visible_online ? 'Mover este produto para rascunho (ocultar da loja virtual)' : 'Publicar este produto no ar na loja virtual'}
                           >
-                            {item.visible_online ? '✕ Ocultar do Site' : '✓ Ativar na Vitrine'}
+                            {item.visible_online ? '✕ Mover p/ Rascunho' : '✓ Publicar no Ar'}
                           </button>
                         </div>
                       </td>
@@ -3485,11 +3617,22 @@ export default function BackofficeDashboard() {
                               setShowAddForm(true);
                               window.scrollTo({ top: 300, behavior: 'smooth' });
                             }}
-                            className="p-1.5 border border-deep-black hover:bg-deep-black hover:text-white transition flex items-center gap-1 text-[10px] font-black"
+                            className="p-1.5 border border-deep-black hover:bg-deep-black hover:text-white transition flex items-center gap-1 text-[10px] font-black cursor-pointer shadow-xs"
                             title="Editar Produto e Grade no Supabase"
                           >
                             <Edit3 className="w-3.5 h-3.5 text-gold" />
                             <span>EDITAR</span>
+                          </button>
+
+                          {/* Botão Duplicar Produto no ERP com 1 clique */}
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicateProduct(item)}
+                            className="p-1.5 border border-purple-500 bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-900 transition flex items-center gap-1 text-[10px] font-black cursor-pointer shadow-xs"
+                            title="Duplicar este produto para cadastrar outro similar com 1 clique"
+                          >
+                            <Copy className="w-3.5 h-3.5 text-purple-700 hover:text-white" />
+                            <span>DUPLICAR</span>
                           </button>
 
                           {/* Botão Copiar Link TikTok */}

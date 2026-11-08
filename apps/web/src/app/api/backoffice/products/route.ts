@@ -153,6 +153,7 @@ export async function GET(req: NextRequest) {
         cost_price: resolvedCost,
         costPrice: resolvedCost,
         visible_online: meta.visible_online === true,
+        is_draft: meta.is_draft === true || meta.visible_online === false,
         visible_pos: meta.visible_pos !== false,
         variants: (effectiveVariants || []).map((v: any) => {
           let varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
@@ -280,6 +281,7 @@ export async function GET(req: NextRequest) {
         cost_price: resolvedCost,
         costPrice: resolvedCost,
         visible_online: meta.visible_online === true,
+        is_draft: meta.is_draft === true || meta.visible_online === false,
         visible_pos: meta.visible_pos !== false,
         variants: effectiveVariants.map((v: any) => {
           let varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
@@ -338,6 +340,7 @@ export async function POST(req: NextRequest) {
       variants,
       visible_online,
       visible_pos,
+      is_draft,
       price,
       defaultPrice,
       promotional_price,
@@ -539,6 +542,7 @@ export async function POST(req: NextRequest) {
       general_sku: generalSku || '',
       product_type: 'physical',
       visible_online: visible_online === true,
+      is_draft: is_draft !== undefined ? Boolean(is_draft) : (visible_online !== true),
       visible_pos: visible_pos !== false,
       primary_image: primaryImg,
       images: finalGalleryImages,
@@ -866,6 +870,7 @@ export async function POST(req: NextRequest) {
         cost_price: parsedExplicitCost,
         costPrice: parsedExplicitCost,
         visible_online: visible_online === true,
+        is_draft: is_draft !== undefined ? Boolean(is_draft) : (visible_online !== true),
         visible_pos: visible_pos !== false,
       },
       cost_price: parsedExplicitCost,
@@ -909,6 +914,7 @@ export async function PATCH(req: NextRequest) {
       id,
       visible_online,
       visible_pos,
+      is_draft,
       cost_price,
       costPrice,
       price,
@@ -994,6 +1000,10 @@ export async function PATCH(req: NextRequest) {
 
     if (visible_online !== undefined) {
       meta.visible_online = Boolean(visible_online);
+      meta.is_draft = !Boolean(visible_online);
+    }
+    if (body.is_draft !== undefined) {
+      meta.is_draft = Boolean(body.is_draft);
     }
     if (visible_pos !== undefined) {
       meta.visible_pos = Boolean(visible_pos);

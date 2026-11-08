@@ -41,6 +41,7 @@ import {
   Link2,
   TrendingUp,
   Loader2,
+  Copy,
 } from 'lucide-react';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import { supabase } from '../lib/supabase';
@@ -85,6 +86,9 @@ export function ProductVariantMatrixForm({
   onCancel,
 }: ProductVariantMatrixFormProps) {
   const { refreshProducts } = useStoreSettings();
+
+  // Modo de Duplicação e Rascunho
+  const [isDuplicateMode, setIsDuplicateMode] = useState(Boolean(initialProduct?._isDuplicate));
 
   // 1. Dados Básicos do Produto
   const [title, setTitle] = useState('');
@@ -242,11 +246,22 @@ export function ProductVariantMatrixForm({
     fetchMeta();
   }, []);
 
-  // Preenche dados quando estiver no modo de EDIÇÃO
+  // Preenche dados quando estiver no modo de EDIÇÃO ou DUPLICAÇÃO
   useEffect(() => {
     if (initialProduct) {
-      setTitle(initialProduct.title || '');
-      setSlug(initialProduct.slug || '');
+      const isDup = Boolean(initialProduct._isDuplicate);
+      setIsDuplicateMode(isDup);
+
+      const dupTitle = isDup
+        ? (initialProduct.title?.includes('(CÓPIA)') ? initialProduct.title : `${initialProduct.title || 'PRODUTO'} (CÓPIA)`)
+        : (initialProduct.title || '');
+      setTitle(dupTitle);
+
+      const cleanBaseSlug = (initialProduct.slug || dupTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')).replace(/-copia(-\w+)?$/, '');
+      const dupSlug = isDup
+        ? (initialProduct.slug && initialProduct.slug.includes('-copia-') ? initialProduct.slug : `${cleanBaseSlug}-copia-${Math.random().toString(36).slice(2, 6)}`)
+        : (initialProduct.slug || '');
+      setSlug(dupSlug);
       setCategoryId(initialProduct.category_id || '');
       setSupplierId(initialProduct.supplier_id || '');
 
@@ -259,7 +274,7 @@ export function ProductVariantMatrixForm({
             setComposition(parsedMeta.composition || '');
             if (parsedMeta.ribbon) setRibbon(parsedMeta.ribbon);
             if (parsedMeta.brand) setBrand(parsedMeta.brand);
-            if (parsedMeta.general_sku) setGeneralSku(parsedMeta.general_sku);
+            if (parsedMeta.general_sku) setGeneralSku(isDup ? `${parsedMeta.general_sku}-CP` : parsedMeta.general_sku);
             if (parsedMeta.compare_price && parsedMeta.promotional_price) {
               const higher = Math.max(Number(parsedMeta.compare_price), Number(parsedMeta.promotional_price));
               const lower = Math.min(Number(parsedMeta.compare_price), Number(parsedMeta.promotional_price));
@@ -279,19 +294,39 @@ export function ProductVariantMatrixForm({
             } else if (parsedMeta.price || initialProduct.price) {
               setDefaultPrice(String(parsedMeta.price || initialProduct.price));
             }
-            setVisibleOnline(parsedMeta.visible_online === true || initialProduct.visible_online === true);
-            setVisiblePos(parsedMeta.visible_pos !== false && initialProduct.visible_pos !== false);
+            if (isDup) {
+              setVisibleOnline(false); // Inicia como rascunho por segurança
+              setVisiblePos(true);
+            } else {
+              setVisibleOnline(parsedMeta.visible_online === true || initialProduct.visible_online === true);
+              setVisiblePos(parsedMeta.visible_pos !== false && initialProduct.visible_pos !== false);
+            }
+          } else {
+            if (isDup) {
+              setVisibleOnline(false);
+              setVisiblePos(true);
+            } else {
+              setVisibleOnline(initialProduct.visible_online === true);
+              setVisiblePos(initialProduct.visible_pos !== false);
+            }
+          }
+        } catch {
+          if (isDup) {
+            setVisibleOnline(false);
+            setVisiblePos(true);
           } else {
             setVisibleOnline(initialProduct.visible_online === true);
             setVisiblePos(initialProduct.visible_pos !== false);
           }
-        } catch {
+        }
+      } else {
+        if (isDup) {
+          setVisibleOnline(false);
+          setVisiblePos(true);
+        } else {
           setVisibleOnline(initialProduct.visible_online === true);
           setVisiblePos(initialProduct.visible_pos !== false);
         }
-      } else {
-        setVisibleOnline(initialProduct.visible_online === true);
-        setVisiblePos(initialProduct.visible_pos !== false);
       }
 
       // 1. Extração do Bojo
@@ -342,7 +377,7 @@ export function ProductVariantMatrixForm({
         setDescriptionPt('');
         setDescriptionEn('');
       }
-      if (initialProduct.sku) setGeneralSku(initialProduct.sku);
+      if (initialProduct.sku) setGeneralSku(isDup ? `${initialProduct.sku}-CP` : initialProduct.sku);
 
       // Extrai todas as mídias já existentes (foto de capa, variantes, galeria)
       const existingMedia: MediaItem[] = [];
@@ -457,12 +492,12 @@ export function ProductVariantMatrixForm({
 
       if (rawVariants.length > 0) {
         const loadedVariants: VariantRow[] = rawVariants.map((v: any) => ({
-          id: v.id,
+          id: isDup ? undefined : v.id,
           color: v.color || 'Preto Ônix',
           colorHex: v.colorHex || (v.color === 'Amarelo Solar' ? '#F59E0B' : v.color === 'Verde Militar' ? '#4B5320' : '#0A0A0A'),
           size: v.size || 'M',
-          sku: v.sku,
-          barcode: v.barcode || '',
+          sku: isDup && v.sku ? `${v.sku}-CP` : v.sku,
+          barcode: isDup ? `789${Math.floor(100000000 + Math.random() * 900000000)}` : (v.barcode || ''),
           stock_quantity: v.stock_quantity ?? 0,
           price: v.price || 44.9,
           cost_price: (v.cost_price !== undefined && v.cost_price !== null && !isNaN(Number(v.cost_price))) ? Number(v.cost_price) : Number(resolvedInitialCost) || 16.0,
@@ -1216,11 +1251,41 @@ export function ProductVariantMatrixForm({
     );
   };
 
+  // Duplicar produto atual dentro do formulário
+  const handleDuplicateCurrentProduct = () => {
+    setIsDuplicateMode(true);
+    const newTitle = title.includes('(CÓPIA)') ? title : `${title} (CÓPIA)`;
+    const cleanBaseSlug = (slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-')).replace(/-copia(-\w+)?$/, '');
+    const newSlug = `${cleanBaseSlug}-copia-${Math.random().toString(36).slice(2, 6)}`;
+    setTitle(newTitle);
+    setSlug(newSlug);
+    if (generalSku) setGeneralSku(`${generalSku}-CP`);
+    setVisibleOnline(false); // Inicia como rascunho por segurança
+    setVariants((prev) =>
+      prev.map((v) => ({
+        ...v,
+        id: undefined,
+        sku: v.sku ? `${v.sku}-CP` : '',
+        barcode: `789${Math.floor(100000000 + Math.random() * 900000000)}`,
+      }))
+    );
+    if (initialProduct) {
+      initialProduct.id = undefined;
+      initialProduct._id = undefined;
+      initialProduct._isDuplicate = true;
+    }
+    setFeedback({
+      type: 'success',
+      message: `📋 Modo Duplicação ativado! Você está criando uma nova peça independente baseada em "${newTitle}". Altere o que desejar e clique em Salvar.`
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // =========================================================================
-  // 💾 GRAVAÇÃO FINAL NO SUPABASE
+  // 💾 GRAVAÇÃO FINAL NO SUPABASE (SUPORTA SALVAR OU SALVAR COMO RASCUNHO)
   // =========================================================================
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent, forceDraft = false) => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     if (!title.trim()) {
       alert('Por favor, informe o nome do produto.');
       return;
@@ -1391,8 +1456,12 @@ export function ProductVariantMatrixForm({
       const finalCatId = categoryId || categoriesList[0]?.id || null;
       const finalSupId = supplierId || suppliersList[0]?.id || null;
 
+      const isActuallyDuplicate = isDuplicateMode || Boolean(initialProduct?._isDuplicate);
+      const targetId = isActuallyDuplicate ? undefined : initialProduct?.id;
+      const isOnline = forceDraft ? false : visibleOnline;
+
       const payload = {
-        id: initialProduct?.id,
+        id: targetId,
         title,
         slug,
         category_id: finalCatId,
@@ -1411,9 +1480,13 @@ export function ProductVariantMatrixForm({
         costPrice: numCost,
         price: finalSellingPrice,
         defaultPrice: finalSellingPrice,
-        variants: variantsWithPromoPrice,
-        visible_online: visibleOnline,
+        variants: variantsWithPromoPrice.map((vr) => ({
+          ...vr,
+          id: isActuallyDuplicate ? undefined : vr.id,
+        })),
+        visible_online: isOnline,
         visible_pos: visiblePos,
+        is_draft: forceDraft || !isOnline,
         ribbon: ribbon.trim(),
         brand: brand.trim() || 'ANA Fitness Wear',
         sku: generalSku.trim() || enrichedVariants[0]?.sku || '',
@@ -1450,9 +1523,11 @@ export function ProductVariantMatrixForm({
 
       setFeedback({
         type: 'success',
-        message: `✓ Produto "${title}" gravado com sucesso no Supabase! (${Array.isArray(savedVariants) ? savedVariants.length : 0} variações persistidas). Status: ${
-          visibleOnline ? '🟢 No ar na vitrine' : '⚪ Oculto na loja'
-        }`,
+        message: forceDraft
+          ? `📝 Rascunho de "${title}" gravado com sucesso no Supabase! (${Array.isArray(savedVariants) ? savedVariants.length : 0} variações persistidas). Status: ⚪ Rascunho Oculto (não visível na loja)`
+          : `✓ Produto "${title}" gravado com sucesso no Supabase! (${Array.isArray(savedVariants) ? savedVariants.length : 0} variações persistidas). Status: ${
+              isOnline ? '🟢 No ar na vitrine' : '⚪ Rascunho / Oculto na loja'
+            }`,
       });
 
       try {
@@ -1593,20 +1668,46 @@ export function ProductVariantMatrixForm({
             <span>{visibleOnline ? '🟢 NO AR NA VITRINE (ATIVO)' : '⚪ OCULTO DO SITE (CLIQUE P/ ATIVAR)'}</span>
           </button>
 
+          {/* Botão Duplicar Produto (se editando produto existente) */}
+          {initialProduct?.id && !isDuplicateMode && (
+            <button
+              type="button"
+              onClick={handleDuplicateCurrentProduct}
+              className="px-3.5 py-2 bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-900 border-2 border-purple-600 font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+              title="Duplicar este produto para cadastrar outro similar com 1 clique"
+            >
+              <Copy className="w-3.5 h-3.5 text-purple-700 hover:text-white" />
+              <span>DUPLICAR PRODUTO</span>
+            </button>
+          )}
+
           {onCancel && (
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 border-2 border-deep-black hover:bg-deep-black hover:text-white text-deep-black font-black text-xs uppercase tracking-wider transition"
+              className="px-4 py-2 border-2 border-deep-black hover:bg-deep-black hover:text-white text-deep-black font-black text-xs uppercase tracking-wider transition cursor-pointer"
             >
               CANCELAR
             </button>
           )}
 
+          {/* Botão Salvar como Rascunho */}
           <button
-            type="submit"
+            type="button"
             disabled={isSaving}
-            className="px-6 py-2 bg-gold hover:bg-deep-black hover:text-gold text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 border-2 border-deep-black disabled:opacity-50 shadow-xs"
+            onClick={(e) => handleSubmit(e, true)}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-800 hover:text-white text-gray-800 border-2 border-gray-400 font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+            title="Salvar produto no banco de dados como rascunho (não visível na loja virtual)"
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>SALVAR RASCUNHO</span>
+          </button>
+
+          <button
+            type="button"
+            disabled={isSaving}
+            onClick={(e) => handleSubmit(e, false)}
+            className="px-6 py-2 bg-gold hover:bg-deep-black hover:text-gold text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 border-2 border-deep-black disabled:opacity-50 shadow-xs cursor-pointer"
           >
             {isSaving ? (
               <>
@@ -1622,6 +1723,30 @@ export function ProductVariantMatrixForm({
           </button>
         </div>
       </div>
+
+      {/* Banner de Modo de Duplicação Ativo */}
+      {(isDuplicateMode || initialProduct?._isDuplicate) && (
+        <div className="p-4 bg-purple-50 border-2 border-purple-600 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-purple-950 animate-fadeIn shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-purple-700 text-white rounded-none shrink-0 shadow-xs">
+              <Copy className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="font-black uppercase tracking-wider block text-purple-950 text-sm">
+                📋 MODO DUPLICAÇÃO DE PRODUTO ATIVO
+              </span>
+              <span className="text-xs text-purple-900 font-medium leading-relaxed">
+                Você está cadastrando um <strong>novo produto independente</strong> baseado nas fotos, tecidos e grade da peça original. Altere o que desejar (ex: nome, cores, fotos ou preço) e salve! O produto original não será modificado.
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] font-black uppercase px-2.5 py-1 bg-purple-200 text-purple-900 border border-purple-400">
+              NOVO ITEM NO ERP
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Alerta de Rascunho Recuperado Automaticamente */}
       {hasDraftRestored && !initialProduct && (
@@ -3418,23 +3543,37 @@ export function ProductVariantMatrixForm({
               Ao salvar, o produto e todas as suas variações serão atualizados imediatamente nas tabelas 'products' e 'product_variants'.
             </p>
 
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="w-full py-3.5 bg-gold hover:bg-white hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 border border-gold disabled:opacity-50"
-            >
-              {isSaving ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-deep-black" />
-                  <span>SALVANDO PRODUTO...</span>
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  <span>SALVAR PRODUTO NO SUPABASE</span>
-                </>
-              )}
-            </button>
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={(e) => handleSubmit(e, false)}
+                className="w-full py-3.5 bg-gold hover:bg-white hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 border border-gold disabled:opacity-50 cursor-pointer shadow-xs"
+              >
+                {isSaving ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin text-deep-black" />
+                    <span>SALVANDO PRODUTO...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>SALVAR PRODUTO NO SUPABASE</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={(e) => handleSubmit(e, true)}
+                className="w-full py-2.5 bg-white/10 hover:bg-white hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider transition flex items-center justify-center gap-1.5 border border-white/30 disabled:opacity-50 cursor-pointer"
+                title="Salva o produto no Supabase como rascunho oculto (não será exibido no site)"
+              >
+                <Clock className="w-3.5 h-3.5 text-gold" />
+                <span>SALVAR COMO RASCUNHO (OCULTO)</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
