@@ -1996,6 +1996,7 @@ export default function BackofficeDashboard() {
       const supplierMatch = (item.suppliers?.company_name || '').toLowerCase().includes(q);
       const catMatch = cat.toLowerCase().includes(q);
       const ribbonMatch = (item.meta?.ribbon || '').toLowerCase().includes(q);
+      const materialMatch = (item.material || item.meta?.material || '').toLowerCase().includes(q);
       const variantMatch = itemVariants.some((v: any) =>
         (v.sku || '').toLowerCase().includes(q) ||
         (v.color || '').toLowerCase().includes(q) ||
@@ -2003,7 +2004,7 @@ export default function BackofficeDashboard() {
         (v.barcode || '').toLowerCase().includes(q)
       );
 
-      if (!titleMatch && !skuMatch && !slugMatch && !supplierMatch && !catMatch && !ribbonMatch && !variantMatch) {
+      if (!titleMatch && !skuMatch && !slugMatch && !supplierMatch && !catMatch && !ribbonMatch && !materialMatch && !variantMatch) {
         return false;
       }
     }
@@ -3471,6 +3472,11 @@ export default function BackofficeDashboard() {
                           {item.meta?.ribbon && (
                             <span className="px-1.5 py-0.5 bg-gold text-deep-black text-[8px] font-black uppercase border border-deep-black">
                               {item.meta.ribbon}
+                            </span>
+                          )}
+                          {(item.material || item.meta?.material) && (
+                            <span className="px-1.5 py-0.5 bg-neutral-100 text-deep-black text-[8px] font-black uppercase border border-deep-black/30">
+                              🧵 {item.material || item.meta?.material}
                             </span>
                           )}
                         </div>
