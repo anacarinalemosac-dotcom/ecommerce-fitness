@@ -66,6 +66,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Arquivo vazio ou inválido.' }, { status: 400 });
     }
 
+    // Auto-conversão de fotos HEIC/HEIF de iPhone para JPEG universal
+    const isHeic =
+      fileExtension.toLowerCase() === '.heic' ||
+      fileExtension.toLowerCase() === '.heif' ||
+      mimeType.toLowerCase().includes('heic') ||
+      mimeType.toLowerCase().includes('heif') ||
+      (buffer.length > 12 && buffer.toString('ascii', 4, 12).includes('ftyphei'));
+
+    if (isHeic) {
+      try {
+        const decode = require('heic-decode');
+        const jpeg = require('jpeg-js');
+        const { width, height, data } = await decode({ buffer });
+        const encoded = jpeg.encode({ data, width, height }, 88);
+        buffer = Buffer.from(encoded.data);
+        mimeType = 'image/jpeg';
+        fileExtension = '.jpg';
+        originalName = originalName.replace(/\.(heic|heif)$/i, '.jpg');
+      } catch (convErr: any) {
+        console.warn('Erro ao converter HEIC para JPEG no upload:', convErr?.message);
+      }
+    }
+
     const cleanBaseName = path
       .basename(originalName, fileExtension)
       .replace(/[^\w-]/g, '')

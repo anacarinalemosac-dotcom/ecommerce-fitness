@@ -1073,11 +1073,12 @@ export function ProductVariantMatrixForm({
     if (fileInputRef.current) fileInputRef.current.value = '';
 
     for (const file of files) {
-      const isVid = file.type.startsWith('video/');
+      const isVid = file.type.startsWith('video/') || /\.(mp4|mov|webm|m4v|3gp)$/i.test(file.name);
+      const isHeic = /\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif';
       const tempId = `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const defaultColor = 'all';
 
-      // 1. Indicador visual imediato "Carregando imagem..." (0 Base64)
+      // 1. Indicador visual imediato "Carregando mídia..."
       const initialMediaItem: MediaItem = {
         id: tempId,
         url: '',
@@ -1097,28 +1098,31 @@ export function ProductVariantMatrixForm({
           continue;
         }
 
-        // 2. Upload binário direto para o Supabase Storage (bucket 'products')
-        const fileExt = file.name.split('.').pop()?.toLowerCase() || (isVid ? 'mp4' : 'jpg');
-        const filePath = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const resolvedType = file.type || (isVid ? (fileExt === 'mov' ? 'video/quicktime' : 'video/mp4') : 'image/jpeg');
-
         let publicUrl = '';
-        try {
-          const { data, error } = await supabase.storage
-            .from('products')
-            .upload(filePath, file, { contentType: resolvedType, upsert: true });
 
-          if (!error && data) {
-            const { data: pData } = supabase.storage.from('products').getPublicUrl(filePath);
-            publicUrl = pData?.publicUrl || '';
-          } else if (error) {
-            console.warn('Upload direto Supabase falhou, tentando fallback:', error.message);
+        // Se NÃO for HEIC, tenta upload binário direto para o Supabase Storage (bucket 'products')
+        if (!isHeic) {
+          const fileExt = file.name.split('.').pop()?.toLowerCase() || (isVid ? 'mp4' : 'jpg');
+          const filePath = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const resolvedType = file.type || (isVid ? (fileExt === 'mov' ? 'video/quicktime' : 'video/mp4') : 'image/jpeg');
+
+          try {
+            const { data, error } = await supabase.storage
+              .from('products')
+              .upload(filePath, file, { contentType: resolvedType, upsert: true });
+
+            if (!error && data) {
+              const { data: pData } = supabase.storage.from('products').getPublicUrl(filePath);
+              publicUrl = pData?.publicUrl || '';
+            } else if (error) {
+              console.warn('Upload direto Supabase falhou, tentando fallback:', error.message);
+            }
+          } catch (e: any) {
+            console.warn('Erro no upload direto Supabase:', e?.message);
           }
-        } catch (e: any) {
-          console.warn('Erro no upload direto Supabase:', e?.message);
         }
 
-        // Fallback via /api/upload
+        // Se for HEIC ou se o upload direto falhou, usa a rota /api/upload (com auto-conversão de HEIC para JPG)
         if (!publicUrl) {
           const formData = new FormData();
           formData.append('file', file);
@@ -1961,7 +1965,7 @@ export function ProductVariantMatrixForm({
               ref={fileInputRef}
               type="file"
               multiple
-              accept="image/*,video/mp4"
+              accept="image/*,.heic,.heif,video/mp4,video/quicktime,video/webm,video/*"
               onChange={handleMediaUpload}
               className="hidden"
             />
@@ -1969,6 +1973,15 @@ export function ProductVariantMatrixForm({
             {/* Dropzone de Upload */}
             <div
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  handleMediaUpload({ target: { files: e.dataTransfer.files } } as any);
+                }
+              }}
               className="border-2 border-dashed border-deep-black/40 hover:border-gold hover:bg-gold/5 p-6 text-center cursor-pointer transition space-y-2 bg-gray-50/50"
             >
               <div className="inline-flex p-2.5 bg-white border border-deep-black/20 text-gold shadow-xs">
@@ -1979,13 +1992,13 @@ export function ProductVariantMatrixForm({
                   Adicionar Imagens ou Vídeos
                 </span>
                 <span className="text-[10px] text-deep-black/60 font-medium">
-                  PNG, JPG, WEBP e vídeos MP4 (Demonstração de caimento e squat-proof).
+                  PNG, JPG, HEIC (iPhone), WEBP e vídeos MP4/MOV (Demonstração de caimento e squat-proof).
                 </span>
               </div>
               {isUploadingMedia && (
                 <div className="flex items-center justify-center gap-2 p-2.5 bg-gold/15 border-2 border-gold text-xs font-black uppercase text-deep-black animate-pulse">
                   <Loader2 className="w-4 h-4 animate-spin text-gold" />
-                  <span>Carregando imagem para o Supabase Storage...</span>
+                  <span>Carregando mídia para o Supabase Storage...</span>
                 </div>
               )}
             </div>
@@ -2069,7 +2082,7 @@ export function ProductVariantMatrixForm({
                                 {media.fileName || 'Storage'}
                               </span>
                             </div>
-                          ) : media.type === 'video' ? (
+                          ) : (media.type === 'video' || (typeof media.url === 'string' && (media.url.includes('.mp4') || media.url.includes('.mov') || media.url.includes('.webm')))) ? (
                             <video src={media.url} className="w-full h-full object-contain bg-black" />
                           ) : (
                             <img src={media.url} alt="Mídia" className="w-full h-full object-contain" />
@@ -2293,6 +2306,15 @@ export function ProductVariantMatrixForm({
               <div className="space-y-3">
                 <div
                   onClick={() => videoFileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      handleVideoUpload({ target: { files: e.dataTransfer.files } } as any);
+                    }
+                  }}
                   className="border-2 border-dashed border-deep-black/40 hover:border-gold hover:bg-gold/5 p-6 text-center cursor-pointer transition space-y-2 bg-gray-50/50"
                 >
                   <div className="inline-flex p-2.5 bg-white border border-deep-black/20 text-gold shadow-xs">
