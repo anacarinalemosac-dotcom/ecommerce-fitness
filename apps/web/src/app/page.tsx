@@ -61,6 +61,8 @@ interface ProductItem {
   galleryImages?: string[];
   variants?: any[];
   visibleOnline?: boolean;
+  isDraft?: boolean;
+  status?: string;
 }
 
 const FEATURED_PRODUCTS: ProductItem[] = [
@@ -425,11 +427,13 @@ export default function HomePage() {
     (selectedSizeFilter !== 'all' ? 1 : 0) +
     (selectedFabricFilter !== 'all' ? 1 : 0);
 
-  // Vitrine exibe estritamente produtos com visibilidade online ativa
-  const onlineProducts = storeProducts && storeProducts.length > 0
-    ? storeProducts.filter((p) => p.visibleOnline !== false)
-    : FEATURED_PRODUCTS.filter((p) => p.visibleOnline !== false);
-  const activeProducts = onlineProducts;
+  // Vitrine exibe estritamente produtos que estejam no ar (visibleOnline === true) E que tenham estoque real (> 0)
+  const onlineAndInStockProducts = (storeProducts && storeProducts.length > 0 ? storeProducts : FEATURED_PRODUCTS).filter((p) => {
+    const isOnline = p.visibleOnline === true && !p.isDraft && (p as any).status !== 'HIDDEN' && (p as any).status !== 'ARCHIVED';
+    const totalStock = Number(p.stock ?? (Array.isArray(p.variants) ? p.variants.reduce((acc: number, v: any) => acc + (v.stock_quantity || 0), 0) : 0));
+    return isOnline && totalStock > 0;
+  });
+  const activeProducts = onlineAndInStockProducts;
 
   // Função auxiliar: identifica se a peça é SPOILER (se zerou o estoque, categoria spoiler/preorder ou badge spoiler)
   const isProductSpoiler = (p: ProductItem) => {

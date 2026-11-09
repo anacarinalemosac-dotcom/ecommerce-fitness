@@ -230,6 +230,8 @@ export interface ProductItem {
   description?: string;
   descriptionPt?: string;
   descriptionEn?: string;
+  isDraft?: boolean;
+  status?: string;
 }
 
 interface StoreSettingsContextType {
@@ -1070,6 +1072,8 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             tags: meta.tags || [],
             visibleOnline: isOnline,
             visiblePos: isPos,
+            isDraft: meta.is_draft === true || p.is_draft === true || !isOnline,
+            status: p.status || (isOnline ? 'ACTIVE' : 'DRAFT'),
             ribbon: meta.ribbon || '',
             brand: meta.brand || 'ANA Fitness Wear',
             comparePrice: meta.compare_price ? Number(meta.compare_price) : undefined,

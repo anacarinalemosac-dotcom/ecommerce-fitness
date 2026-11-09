@@ -76,17 +76,33 @@ export default function PublicClientCatalogPage() {
     const tiles: CatalogVariationTile[] = [];
 
     (rawProducts || []).forEach((product) => {
-      // Filtra produtos que não estejam visíveis
-      const isOnline = product.visible_online === true || product.visibleOnline === true || product.meta?.visible_online === true;
-      if (product.status === 'HIDDEN' || product.status === 'ARCHIVED') return;
+      const meta = product.meta || {};
+
+      // 1. REGRA: Catálogo para cliente exibe SOMENTE itens no ar (não rascunho / não oculto)
+      const isOnline =
+        (product.visible_online === true || product.visibleOnline === true || meta.visible_online === true) &&
+        product.visible_online !== false &&
+        meta.visible_online !== false &&
+        product.visibleOnline !== false;
+      const isDraft =
+        product.is_draft === true ||
+        meta.is_draft === true ||
+        product.status === 'DRAFT' ||
+        product.status === 'HIDDEN' ||
+        product.status === 'ARCHIVED';
+
+      if (!isOnline || isDraft) return;
+
+      const variants = Array.isArray(product.variants) ? product.variants : [];
+      const totalStock = product.total_stock ?? product.stock ?? variants.reduce((s: number, v: any) => s + Number(v.stock_quantity ?? v.stock ?? 0), 0);
+
+      // 2. REGRA: Catálogo para cliente exibe SOMENTE itens que tenham estoque (> 0)
+      if (totalStock <= 0) return;
 
       const categoryName = (product.categories?.name || product.category || product.subcategory || 'CONJUNTOS')
         .toString()
         .trim()
         .toUpperCase();
-
-      const variants = Array.isArray(product.variants) ? product.variants : [];
-      const meta = product.meta || {};
 
       // Preço e promoção
       const basePrice = Number(product.price ?? variants[0]?.price ?? 44.9);
@@ -138,8 +154,8 @@ export default function PublicClientCatalogPage() {
             colorStockTotal += qty;
           });
 
-          // Se estiver filtrando apenas estoque > 0 e esta variação estiver zerada, pula
-          if (onlyInStock && colorStockTotal <= 0) return;
+          // REGRA: Variação de cor sem estoque (<= 0) não aparece para cliente
+          if (colorStockTotal <= 0) return;
 
           // Localiza a foto exata desta cor
           let varImage = '';
@@ -225,7 +241,8 @@ export default function PublicClientCatalogPage() {
         const stockMap: Record<string, number> = {};
         const total = Number(product.stock || product.total_stock || 0);
 
-        if (onlyInStock && total <= 0) return;
+        // REGRA: Produto sem estoque (<= 0) não aparece para cliente
+        if (total <= 0) return;
 
         if (Array.isArray(product.sizes) && product.sizes.length > 0) {
           const each = Math.round(total / product.sizes.length);
