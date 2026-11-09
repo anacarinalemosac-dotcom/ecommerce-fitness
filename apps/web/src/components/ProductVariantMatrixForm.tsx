@@ -105,10 +105,21 @@ export function ProductVariantMatrixForm({
   const [descriptionEn, setDescriptionEn] = useState('');
   const [descTab, setDescTab] = useState<'en' | 'pt'>('en');
   const [cupsType, setCupsType] = useState<'removable' | 'fixed' | 'none'>('removable');
-  const [composition, setComposition] = useState('88% Poliamida Nobre, 12% Elastano 4-way stretch');
-  const [sizeGuide, setSizeGuide] = useState(
-    'P: Busto 84-88cm, Cintura 66-70cm (US 2-4)\nM: Busto 89-94cm, Cintura 71-76cm (US 6-8)\nG: Busto 95-100cm, Cintura 77-82cm (US 10-12)\nGG: Busto 101-106cm, Cintura 83-88cm (US 14)'
-  );
+  const [composition, setComposition] = useState('');
+  const [sizeGuide, setSizeGuide] = useState('');
+
+  // Material / Tecido do Conjunto (Suplex, Poliamida, Canelado, Tule, Arrastão, Dry Fit + Personalizados)
+  const [material, setMaterial] = useState('');
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+  const [customMaterialInput, setCustomMaterialInput] = useState('');
+  const [customMaterialOptions, setCustomMaterialOptions] = useState<string[]>([
+    'Suplex',
+    'Poliamida',
+    'Canelado',
+    'Tule',
+    'Arrastão',
+    'Dry Fit',
+  ]);
 
   // Visibilidade / Canais de Venda (Online & PDV)
   const [visibleOnline, setVisibleOnline] = useState(false);
@@ -271,7 +282,19 @@ export function ProductVariantMatrixForm({
         try {
           if (initialProduct.description.startsWith('{')) {
             parsedMeta = JSON.parse(initialProduct.description);
-            setComposition(parsedMeta.composition || '');
+            setComposition(parsedMeta.composition || initialProduct.composition || '');
+            setSizeGuide(parsedMeta.sizeGuide || parsedMeta.size_guide || initialProduct.sizeGuide || initialProduct.size_guide || '');
+            const loadedMat = parsedMeta.material || initialProduct.material || '';
+            const loadedMats: string[] = Array.isArray(parsedMeta.materials)
+              ? parsedMeta.materials
+              : Array.isArray(initialProduct.materials)
+              ? initialProduct.materials
+              : (loadedMat ? loadedMat.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+            setMaterial(loadedMat || loadedMats.join(', '));
+            setSelectedMaterials(loadedMats);
+            if (loadedMats.length > 0) {
+              setCustomMaterialOptions((prev) => Array.from(new Set([...prev, ...loadedMats])));
+            }
             if (parsedMeta.ribbon) setRibbon(parsedMeta.ribbon);
             if (parsedMeta.brand) setBrand(parsedMeta.brand);
             if (parsedMeta.general_sku) setGeneralSku(isDup ? `${parsedMeta.general_sku}-CP` : parsedMeta.general_sku);
@@ -631,6 +654,12 @@ export function ProductVariantMatrixForm({
             if (draft.descriptionEn) setDescriptionEn(draft.descriptionEn);
             if (draft.cupsType) setCupsType(draft.cupsType);
             if (draft.composition) setComposition(draft.composition);
+            if (draft.sizeGuide !== undefined) setSizeGuide(draft.sizeGuide);
+            if (draft.material !== undefined) setMaterial(draft.material);
+            if (Array.isArray(draft.selectedMaterials)) {
+              setSelectedMaterials(draft.selectedMaterials);
+              setCustomMaterialOptions((prev) => Array.from(new Set([...prev, ...draft.selectedMaterials])));
+            }
             if (Array.isArray(draft.colors) && draft.colors.length > 0) setColors(draft.colors);
             if (Array.isArray(draft.selectedSizes) && draft.selectedSizes.length > 0) setSelectedSizes(draft.selectedSizes);
             if (Array.isArray(draft.variants) && draft.variants.length > 0) setVariants(draft.variants);
@@ -652,6 +681,9 @@ export function ProductVariantMatrixForm({
         setDescriptionEn('');
         setCupsType('removable');
         setComposition('');
+        setSizeGuide('');
+        setMaterial('');
+        setSelectedMaterials([]);
         setMediaList([]);
         setColors([{ name: 'Preto Ônix', hex: '#0A0A0A' }]);
         setSelectedSizes(['P', 'M', 'G']);
@@ -684,6 +716,9 @@ export function ProductVariantMatrixForm({
             descriptionEn,
             cupsType,
             composition,
+            material: selectedMaterials.length > 0 ? selectedMaterials.join(', ') : material,
+            selectedMaterials,
+            sizeGuide,
             colors,
             selectedSizes,
             variants,
@@ -1306,6 +1341,31 @@ export function ProductVariantMatrixForm({
     );
   };
 
+  // Gerenciamento de Materiais do Conjunto (Suplex, Poliamida, Canelado, Tule, Arrastão, Dry Fit + Personalizados)
+  const handleToggleMaterial = (mat: string) => {
+    setSelectedMaterials((prev) => {
+      const exists = prev.includes(mat);
+      const next = exists ? prev.filter((m) => m !== mat) : [...prev, mat];
+      setMaterial(next.join(', '));
+      return next;
+    });
+  };
+
+  const handleAddCustomMaterial = () => {
+    const trimmed = customMaterialInput.trim();
+    if (!trimmed) return;
+    const formatted = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+    if (!customMaterialOptions.includes(formatted)) {
+      setCustomMaterialOptions((prev) => [...prev, formatted]);
+    }
+    if (!selectedMaterials.includes(formatted)) {
+      const next = [...selectedMaterials, formatted];
+      setSelectedMaterials(next);
+      setMaterial(next.join(', '));
+    }
+    setCustomMaterialInput('');
+  };
+
   // Duplicar produto atual dentro do formulário
   const handleDuplicateCurrentProduct = () => {
     setIsDuplicateMode(true);
@@ -1530,7 +1590,9 @@ export function ProductVariantMatrixForm({
         description_en: finalDescEn || description,
         description_pt: finalDescPt || translateEnToPt(finalDescEn || description),
         composition,
-        sizeGuide,
+        material: selectedMaterials.length > 0 ? selectedMaterials.join(', ') : (material || ''),
+        materials: selectedMaterials,
+        sizeGuide: sizeGuide || '',
         cost_price: numCost,
         costPrice: numCost,
         price: finalSellingPrice,
@@ -1996,7 +2058,7 @@ export function ProductVariantMatrixForm({
                         </div>
 
                         {/* Visualizador da Mídia */}
-                        <div className="relative aspect-[4/5] bg-deep-black/10 overflow-hidden border border-deep-black/10 group">
+                        <div className="relative aspect-[3/4] bg-stone-100 overflow-hidden border border-deep-black/10 group flex items-center justify-center p-0.5">
                           {media.isUploading ? (
                             <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-deep-black text-white space-y-2">
                               <Loader2 className="w-6 h-6 text-gold animate-spin" />
@@ -2008,9 +2070,9 @@ export function ProductVariantMatrixForm({
                               </span>
                             </div>
                           ) : media.type === 'video' ? (
-                            <video src={media.url} className="w-full h-full object-cover" />
+                            <video src={media.url} className="w-full h-full object-contain bg-black" />
                           ) : (
-                            <img src={media.url} alt="Mídia" className="w-full h-full object-cover" />
+                            <img src={media.url} alt="Mídia" className="w-full h-full object-contain" />
                           )}
 
                           {/* Botão de Excluir Foto */}
@@ -3030,23 +3092,23 @@ export function ProductVariantMatrixForm({
                               <button
                                 type="button"
                                 onClick={() => setVariantPhotoModal({ variantIndex: idx, currentVariant: v })}
-                                className="w-8 h-10 border-2 border-deep-black/30 hover:border-gold hover:ring-2 hover:ring-gold/30 overflow-hidden bg-deep-black/10 shrink-0 relative group transition shadow-2xs"
+                                className="w-12 h-16 border-2 border-deep-black/30 hover:border-gold hover:ring-2 hover:ring-gold/30 overflow-hidden bg-stone-100 shrink-0 relative group transition shadow-2xs flex items-center justify-center p-0.5"
                                 title="Clique para vincular ou trocar foto desta variação"
                               >
                                 {v.image || v.images?.[0] ? (
                                   <img
                                     src={v.image || v.images[0]}
                                     alt={v.color}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-contain"
                                   />
                                 ) : (
-                                  <div className="w-full h-full flex flex-col items-center justify-center p-0.5 text-[6.5px] text-deep-black/40 font-bold leading-tight">
-                                    <Camera className="w-3 h-3 text-deep-black/30 mb-0.5" />
+                                  <div className="w-full h-full flex flex-col items-center justify-center p-1 text-[7.5px] text-deep-black/50 font-bold leading-tight">
+                                    <Camera className="w-4 h-4 text-deep-black/40 mb-0.5" />
                                     <span>+ FOTO</span>
                                   </div>
                                 )}
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
-                                  <Camera className="w-3.5 h-3.5 text-gold" />
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                                  <Camera className="w-4 h-4 text-gold" />
                                 </div>
                               </button>
 
@@ -3222,24 +3284,109 @@ export function ProductVariantMatrixForm({
             )}
           </div>
 
-          {/* CARD 5: INFORMAÇÕES ADICIONAIS (COMPOSIÇÃO & TABELA DE MEDIDAS) */}
-          <div className="bg-white border-2 border-deep-black p-6 space-y-5 shadow-sm">
+          {/* CARD 5: TIPO DE MATERIAL, COMPOSIÇÃO & MEDIDAS */}
+          <div className="bg-white border-2 border-deep-black p-6 space-y-6 shadow-sm">
             <div className="flex items-center gap-2 border-b border-deep-black/10 pb-3">
-              <Ruler className="w-4 h-4 text-gold" />
+              <Layers className="w-4 h-4 text-gold" />
               <h2 className="text-sm font-black uppercase tracking-wider text-deep-black">
-                Informações Adicionais (Atelier & Confecção)
+                Material, Tecido & Informações de Confecção
               </h2>
             </div>
 
+            {/* SEÇÃO 1: SELEÇÃO E CADASTRO DO TIPO DE MATERIAL */}
+            <div className="space-y-3 p-4 bg-gray-50 border border-deep-black/20">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label className="text-[11px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                  <Shirt className="w-4 h-4 text-gold" />
+                  <span>Tipo de Material do Conjunto / Peça:</span>
+                </label>
+                <span className="text-[10px] text-deep-black/60 font-medium">
+                  Marque um ou mais tecidos (ex: Poliamida + Tule)
+                </span>
+              </div>
+
+              {/* Botões / Chips de Materiais com 1 clique */}
+              <div className="flex flex-wrap gap-2">
+                {customMaterialOptions.map((mat) => {
+                  const isSelected = selectedMaterials.includes(mat);
+                  return (
+                    <button
+                      key={mat}
+                      type="button"
+                      onClick={() => handleToggleMaterial(mat)}
+                      className={`px-3.5 py-2 text-xs font-black uppercase tracking-wider border-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+                        isSelected
+                          ? 'border-deep-black bg-deep-black text-gold shadow-xs'
+                          : 'border-deep-black/30 bg-white text-deep-black hover:border-gold hover:bg-gold/10'
+                      }`}
+                    >
+                      <span className={`w-3.5 h-3.5 rounded-none flex items-center justify-center text-[10px] border ${
+                        isSelected ? 'bg-gold text-deep-black border-gold' : 'border-deep-black/40'
+                      }`}>
+                        {isSelected ? <Check className="w-3 h-3 stroke-[3]" /> : null}
+                      </span>
+                      <span>{mat}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Material Selecionado Resumo */}
+              {selectedMaterials.length > 0 && (
+                <div className="text-[11px] font-bold text-deep-black/80 flex items-center gap-1.5 pt-1">
+                  <span className="uppercase text-[10px] font-black text-gold bg-deep-black px-2 py-0.5">
+                    Tecido Selecionado:
+                  </span>
+                  <span className="font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 border border-emerald-300">
+                    {selectedMaterials.join(' • ')}
+                  </span>
+                </div>
+              )}
+
+              {/* Cadastro de Novo Tipo de Material */}
+              <div className="pt-2 border-t border-deep-black/10">
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70 block mb-1">
+                  Cadastrar outro tipo de material:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Digite um novo material (ex: Cirrê, Jacquard 3D, Algodão Pima...)"
+                    value={customMaterialInput}
+                    onChange={(e) => setCustomMaterialInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCustomMaterial();
+                      }
+                    }}
+                    className="flex-1 p-2 border-2 border-deep-black font-medium text-xs focus:outline-none focus:border-gold bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomMaterial}
+                    className="px-3.5 py-2 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-xs font-black uppercase tracking-wider transition shrink-0 cursor-pointer flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Cadastrar Material</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* SEÇÃO 2: COMPOSIÇÃO E GUIA DE MEDIDAS (EM BRANCO POR PADRÃO) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1">
-                  <Shirt className="w-3.5 h-3.5 text-gold" />
-                  <span>Composição do Tecido</span>
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Shirt className="w-3.5 h-3.5 text-gold" />
+                    <span>Composição Detalhada (Opcional)</span>
+                  </span>
+                  <span className="text-[9px] text-deep-black/40">Ex: 88% Poliamida, 12% Elastano</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="88% Poliamida Nobre, 12% Elastano"
+                  placeholder="Ex: 88% Poliamida Nobre, 12% Elastano 4-way stretch (opcional)"
                   value={composition}
                   onChange={(e) => setComposition(e.target.value)}
                   className="w-full p-2.5 border-2 border-deep-black font-bold text-xs focus:outline-none focus:border-gold"
@@ -3247,16 +3394,19 @@ export function ProductVariantMatrixForm({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center gap-1">
-                  <Ruler className="w-3.5 h-3.5 text-gold" />
-                  <span>Tabela de Medidas (Guia de Tamanhos)</span>
+                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Ruler className="w-3.5 h-3.5 text-gold" />
+                    <span>Tabela de Medidas (Guia de Tamanhos)</span>
+                  </span>
+                  <span className="text-[9px] text-deep-black/50 font-bold uppercase">Deixe em branco se preferir</span>
                 </label>
-                <input
-                  type="text"
-                  placeholder="P: 34-36 (US 2-4) | M: 38-40 (US 6-8) | G: 42-44 (US 10-12)"
+                <textarea
+                  rows={2}
+                  placeholder="Deixe em branco ou digite as medidas desta peça quando desejar (ex: P: 36-38 | M: 40-42)..."
                   value={sizeGuide}
                   onChange={(e) => setSizeGuide(e.target.value)}
-                  className="w-full p-2.5 border-2 border-deep-black font-medium text-xs focus:outline-none focus:border-gold"
+                  className="w-full p-2.5 border-2 border-deep-black font-medium text-xs focus:outline-none focus:border-gold resize-none"
                 />
               </div>
             </div>
@@ -3666,12 +3816,12 @@ export function ProductVariantMatrixForm({
             {/* Foto Atualmente Vinculada */}
             <div className="p-3 bg-stone-50 border border-deep-black/20 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-16 border-2 border-deep-black overflow-hidden bg-white shrink-0">
+                <div className="w-14 h-20 border-2 border-deep-black overflow-hidden bg-stone-100 shrink-0 flex items-center justify-center p-0.5">
                   {variantPhotoModal.currentVariant.image ? (
                     <img
                       src={variantPhotoModal.currentVariant.image}
                       alt="Foto Vinculada"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-[7px] text-deep-black/40 font-bold text-center p-1">
@@ -3754,13 +3904,13 @@ export function ProductVariantMatrixForm({
                               : null
                           );
                         }}
-                        className={`aspect-[4/5] border-2 relative cursor-pointer group overflow-hidden transition ${
+                        className={`aspect-[3/4] border-2 relative cursor-pointer group overflow-hidden transition bg-stone-100 flex items-center justify-center p-0.5 ${
                           isSelected
                             ? 'border-gold ring-3 ring-gold/40 scale-[0.98]'
                             : 'border-deep-black/30 hover:border-deep-black'
                         }`}
                       >
-                        <img src={m.url} alt={`Foto ${mIdx + 1}`} className="w-full h-full object-cover" />
+                        <img src={m.url} alt={`Foto ${mIdx + 1}`} className="w-full h-full object-contain" />
 
                         {/* Badges */}
                         <div className="absolute top-1 left-1 flex flex-col gap-0.5">

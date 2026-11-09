@@ -155,6 +155,10 @@ export async function GET(req: NextRequest) {
         visible_online: meta.visible_online === true,
         is_draft: meta.is_draft === true || meta.visible_online === false,
         visible_pos: meta.visible_pos !== false,
+        composition: meta.composition || '',
+        material: meta.material || '',
+        materials: Array.isArray(meta.materials) ? meta.materials : (meta.material ? [meta.material] : []),
+        sizeGuide: meta.sizeGuide || meta.size_guide || '',
         variants: (effectiveVariants || []).map((v: any) => {
           let varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
           if (!varImg && Array.isArray(meta.media_list) && v.color) {
@@ -283,6 +287,10 @@ export async function GET(req: NextRequest) {
         visible_online: meta.visible_online === true,
         is_draft: meta.is_draft === true || meta.visible_online === false,
         visible_pos: meta.visible_pos !== false,
+        composition: meta.composition || '',
+        material: meta.material || '',
+        materials: Array.isArray(meta.materials) ? meta.materials : (meta.material ? [meta.material] : []),
+        sizeGuide: meta.sizeGuide || meta.size_guide || '',
         variants: effectiveVariants.map((v: any) => {
           let varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
           if (!varImg && Array.isArray(meta.media_list) && v.color) {
@@ -329,6 +337,8 @@ export async function POST(req: NextRequest) {
       description_pt,
       description_en,
       composition,
+      material,
+      materials,
       cups_type,
       removable_cups,
       has_cups,
@@ -529,6 +539,8 @@ export async function POST(req: NextRequest) {
       removable_cups: finalCupsType === 'removable',
       has_cups: finalCupsType === 'removable' || finalCupsType === 'fixed',
       composition: composition || '',
+      material: material || (Array.isArray(materials) ? materials.join(', ') : ''),
+      materials: Array.isArray(materials) ? materials : (material ? material.split(',').map((s: string) => s.trim()).filter(Boolean) : []),
       sizeGuide: sizeGuide || '',
       tags: Array.isArray(tags) ? tags : [],
       subcategory: subcategory || '',

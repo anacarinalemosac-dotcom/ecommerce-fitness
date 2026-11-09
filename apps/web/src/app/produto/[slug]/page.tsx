@@ -43,6 +43,7 @@ import {
   Mail,
   Upload,
   Video,
+  Shirt,
 } from 'lucide-react';
 
 interface Variant {
@@ -479,6 +480,19 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       dynamicProduct.cupsType ||
       (dynamicProduct.removableCups ? 'removable' : dynamicProduct.hasCups ? 'fixed' : 'none');
 
+    const resolvedMaterial =
+      dynamicProduct.material ||
+      dynamicProduct.meta?.material ||
+      (Array.isArray(dynamicProduct.materials) ? dynamicProduct.materials.join(', ') : '') ||
+      (Array.isArray(dynamicProduct.meta?.materials) ? dynamicProduct.meta.materials.join(', ') : '');
+
+    const resolvedSizeGuide =
+      dynamicProduct.sizeGuide ||
+      dynamicProduct.size_guide ||
+      dynamicProduct.meta?.sizeGuide ||
+      dynamicProduct.meta?.size_guide ||
+      '';
+
     productData = {
       title: dynamicProduct.title,
       categoryPt: `${dynamicProduct.categoryPt} • ALTA PERFORMANCE`,
@@ -490,6 +504,10 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       badgeEn: dynamicProduct.badgeEn || 'BEST SELLER',
       badgeStyle: dynamicProduct.badgeStyle || 'bg-gold text-deep-black',
       cupsType: resolvedCupsType,
+      material: resolvedMaterial,
+      materials: dynamicProduct.materials || dynamicProduct.meta?.materials || (resolvedMaterial ? [resolvedMaterial] : []),
+      composition: dynamicProduct.composition || dynamicProduct.meta?.composition || '',
+      sizeGuide: resolvedSizeGuide,
       descriptionPt: finalPt || `${dynamicProduct.title} com modelagem de alta compressão e corte anatômico da Ana Fitness Wear. Tecido testado e aprovado com 100% zero transparência e toque amanteigado.`,
       descriptionEn: finalEn || `${dynamicProduct.title} crafted with anatomical contour support and 4-way stretch fabric. Lab-verified zero see-through athletic luxury fit.`,
       media: mediaList,
@@ -1217,6 +1235,22 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             </span>
           </div>
 
+          {/* Indicador Oficial de Material / Tecido */}
+          {productData.material && (
+            <div className="p-3 bg-neutral-50 border-2 border-deep-black/15 flex items-center justify-between gap-3 text-xs uppercase tracking-wider shadow-2xs">
+              <div className="flex items-center gap-2">
+                <Shirt className="w-4 h-4 text-gold shrink-0" />
+                <span className="font-bold text-deep-black/60">{lang === 'pt' ? 'MATERIAL / TECIDO:' : 'FABRIC / MATERIAL:'}</span>
+                <span className="font-black text-deep-black">
+                  {productData.material}
+                </span>
+              </div>
+              <span className="text-[9px] font-black px-2 py-0.5 bg-deep-black text-gold uppercase">
+                {productData.material}
+              </span>
+            </div>
+          )}
+
           {/* Seletor de Cores com Swatches Hexadecimais e Nome da Cor */}
           <div className="space-y-3">
             <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider">
@@ -1716,16 +1750,70 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             </div>
           )}
 
-          {/* ABA 2: TABELA DE MEDIDAS SEPARADA (P, M, G, GG) */}
+          {/* ABA 2: TABELA DE MEDIDAS (EM BRANCO SE NÃO PREENCHIDA / PERSONALIZADA PELA LOJISTA) */}
           {activeTab === 'sizing' && (
             <div className="pt-2">
-              <ProductSizeGuide
-                selectedSize={selectedSize}
-                onSelectSize={handleSelectSize}
-                availableSizes={availableSizes}
-                variants={productData.variants}
-                selectedColor={selectedColor}
-              />
+              {productData.sizeGuide && productData.sizeGuide.trim() ? (
+                <div className="p-6 sm:p-8 bg-white border-2 border-deep-black space-y-5">
+                  <div className="flex items-center gap-2 border-b border-deep-black/10 pb-4">
+                    <Ruler className="w-5 h-5 text-gold" />
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                        GUIA DE MEDIDAS DA PEÇA
+                      </span>
+                      <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-deep-black">
+                        {lang === 'pt' ? 'MEDIDAS OFICIAIS' : 'OFFICIAL MEASUREMENTS'}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-stone-50 border border-deep-black/10 text-xs sm:text-sm font-mono whitespace-pre-wrap leading-relaxed text-deep-black">
+                    {productData.sizeGuide}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-deep-black/10 text-xs">
+                    <span className="text-deep-black/70">
+                      {lang === 'pt' ? 'Ficou com dúvida sobre qual tamanho veste melhor em você?' : 'Need personalized advice on sizing?'}
+                    </span>
+                    <a
+                      href={`https://wa.me/19783139452?text=${encodeURIComponent(`Olá Ana! Gostaria de confirmar as medidas do produto: ${productData.title}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-[#25D366] hover:bg-[#1ebe5b] text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-2 shrink-0"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>{lang === 'pt' ? 'Tirar Dúvida no WhatsApp' : 'Ask Sizing on WhatsApp'}</span>
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-8 sm:p-10 bg-white border-2 border-deep-black text-center space-y-4 max-w-2xl mx-auto">
+                  <div className="w-12 h-12 rounded-full bg-deep-black text-gold flex items-center justify-center mx-auto shadow-sm">
+                    <Ruler className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-deep-black">
+                      {lang === 'pt' ? 'MEDIDAS SOB CONSULTA' : 'MEASUREMENTS ON REQUEST'}
+                    </h3>
+                    <p className="text-xs text-deep-black/70 max-w-md mx-auto leading-relaxed">
+                      {lang === 'pt'
+                        ? 'As medidas desta peça estão disponíveis para confirmação rápida com nossa consultora no WhatsApp. Auxiliamos na escolha do caimento perfeito para o seu corpo!'
+                        : 'Detailed measurements for this piece can be checked directly with our fit consultant on WhatsApp. We ensure your flawless silhouette!'}
+                    </p>
+                  </div>
+                  <div className="pt-2">
+                    <a
+                      href={`https://wa.me/19783139452?text=${encodeURIComponent(`Olá Ana! Gostaria de saber as medidas do produto: ${productData.title}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-[#25D366] hover:bg-[#1ebe5b] text-white text-xs font-black uppercase tracking-wider transition shadow-sm"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>{lang === 'pt' ? 'Consultar Medidas no WhatsApp' : 'Check Measurements on WhatsApp'}</span>
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -2146,6 +2234,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           availableSizes={availableSizes}
           variants={productData.variants}
           selectedColor={selectedColor}
+          customSizeGuide={productData.sizeGuide}
+          productTitle={productData.title}
         />
       )}
     </div>

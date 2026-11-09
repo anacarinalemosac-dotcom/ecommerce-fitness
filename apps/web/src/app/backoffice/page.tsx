@@ -3434,10 +3434,14 @@ export default function BackofficeDashboard() {
                   return (
                     <tr key={item.id} className="hover:bg-deep-black/5">
                       <td className="p-4">
-                        <div className="w-12 aspect-[4/5] bg-deep-black/10 overflow-hidden border border-deep-black/20 relative">
-                          <img src={firstImage} alt={item.title} className="w-full h-full object-cover" />
+                        <div className="w-14 h-18 sm:w-16 sm:h-20 bg-stone-100 overflow-hidden border-2 border-deep-black/20 relative shrink-0 flex items-center justify-center p-0.5 group shadow-2xs">
+                          <img
+                            src={firstImage}
+                            alt={item.title}
+                            className="w-full h-full object-contain transition-transform group-hover:scale-105"
+                          />
                           {itemVariants.length > 1 && (
-                            <span className="absolute bottom-0 right-0 bg-deep-black text-gold text-[7px] font-black px-1">
+                            <span className="absolute bottom-0 right-0 bg-deep-black text-gold text-[7px] font-black px-1 shadow-xs">
                               {itemVariants.length}v
                             </span>
                           )}

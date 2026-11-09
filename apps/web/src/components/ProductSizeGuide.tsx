@@ -159,6 +159,8 @@ interface ProductSizeGuideProps {
   selectedColor?: string;
   isModal?: boolean;
   onClose?: () => void;
+  customSizeGuide?: string;
+  productTitle?: string;
 }
 
 export function ProductSizeGuide({
@@ -169,6 +171,8 @@ export function ProductSizeGuide({
   selectedColor = '',
   isModal = false,
   onClose,
+  customSizeGuide,
+  productTitle,
 }: ProductSizeGuideProps) {
   const { lang } = useLanguage();
   const { siteInfo } = useStoreSettings();
@@ -218,7 +222,85 @@ export function ProductSizeGuide({
       : 'Hello! I need assistance choosing the best size at Ana Fitness Wear.'
   )}`;
 
-  const content = (
+  const content = (customSizeGuide !== undefined) ? (
+    customSizeGuide && customSizeGuide.trim() ? (
+      <div className="space-y-6 text-deep-black">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-deep-black/10 pb-5">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 bg-gold text-deep-black text-[10px] font-black uppercase tracking-widest">
+                ATELIER OFICIAL
+              </span>
+              <span className="text-[11px] font-black uppercase tracking-wider text-deep-black/60">
+                GUIA DE MEDIDAS DA PEÇA
+              </span>
+            </div>
+            <h3 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-deep-black">
+              {lang === 'pt' ? 'TABELA DE MEDIDAS' : 'SIZE GUIDE'}
+            </h3>
+            {productTitle && (
+              <p className="text-xs text-deep-black/60 font-medium uppercase tracking-wide">
+                {productTitle}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="p-5 sm:p-6 bg-stone-50 border-2 border-deep-black/20 text-xs sm:text-sm font-mono whitespace-pre-wrap leading-relaxed text-deep-black">
+          {customSizeGuide}
+        </div>
+
+        <div className="p-5 bg-deep-black text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="space-y-1 text-center sm:text-left">
+            <span className="text-xs font-black uppercase tracking-wider text-gold block">
+              {lang === 'pt' ? 'DÚVIDA SOBRE SEU TAMANHO?' : 'SIZING QUESTIONS?'}
+            </span>
+            <span className="text-[11px] text-white/70 block">
+              {lang === 'pt'
+                ? 'Nossa consultora auxilia na escolha das medidas ideais para o seu corpo via WhatsApp.'
+                : 'Our fit specialist can confirm the exact measurements for your silhouette.'}
+            </span>
+          </div>
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="px-5 py-2.5 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shrink-0 border border-gold"
+          >
+            <Phone className="w-3.5 h-3.5" />
+            <span>{lang === 'pt' ? 'FALAR NO WHATSAPP' : 'WHATSAPP SIZING HELP'}</span>
+          </a>
+        </div>
+      </div>
+    ) : (
+      <div className="py-8 px-4 text-center space-y-5 max-w-lg mx-auto">
+        <div className="w-14 h-14 rounded-full bg-deep-black text-gold flex items-center justify-center mx-auto shadow-sm">
+          <Ruler className="w-7 h-7" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-lg font-black uppercase tracking-wider text-deep-black">
+            {lang === 'pt' ? 'MEDIDAS SOB CONSULTA' : 'MEASUREMENTS ON REQUEST'}
+          </h3>
+          <p className="text-xs text-deep-black/70 leading-relaxed">
+            {lang === 'pt'
+              ? 'As medidas desta peça estão disponíveis para confirmação rápida diretamente com nossa consultora no WhatsApp. Tiramos todas as dúvidas antes do seu envio!'
+              : 'Detailed measurements for this piece are available directly from our consultant via WhatsApp.'}
+          </p>
+        </div>
+        <div className="pt-2">
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#25D366] hover:bg-[#1ebe5b] text-white text-xs font-black uppercase tracking-wider transition shadow-sm"
+          >
+            <Phone className="w-4 h-4" />
+            <span>{lang === 'pt' ? 'Consultar Medidas no WhatsApp' : 'Check Measurements on WhatsApp'}</span>
+          </a>
+        </div>
+      </div>
+    )
+  ) : (
     <div className="space-y-8 text-deep-black">
       {/* Cabeçalho da Seção */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-deep-black/10 pb-6">

@@ -216,6 +216,8 @@ export interface ProductItem {
   variants?: any[];
   composition?: string;
   sizeGuide?: string;
+  material?: string;
+  materials?: string[];
   tags?: string[];
   visibleOnline?: boolean;
   visiblePos?: boolean;
