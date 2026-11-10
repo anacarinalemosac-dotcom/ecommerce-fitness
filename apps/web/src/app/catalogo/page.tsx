@@ -333,8 +333,16 @@ export default function PublicClientCatalogPage() {
 
       // Filtro de tamanho (se selecionado, precisa ter estoque > 0 naquele tamanho específico)
       if (selectedSizeFilter !== 'ALL') {
-        const qtyInSize = item.stockMap[selectedSizeFilter.toUpperCase()] || 0;
-        if (qtyInSize <= 0) return false;
+        const target = selectedSizeFilter.toUpperCase();
+        let matchKeys = [target];
+        if (target === 'P') matchKeys = ['P', 'S', 'SMALL'];
+        else if (target === 'M') matchKeys = ['M', 'MEDIUM'];
+        else if (target === 'G') matchKeys = ['G', 'L', 'LARGE'];
+        else if (target === 'GG') matchKeys = ['GG', 'XL', 'XG', 'EXTRA LARGE'];
+        else if (target === 'UN') matchKeys = ['UN', 'ONE SIZE', 'TAMANHO UNICO', 'TAMANHO ÚNICO'];
+
+        const hasStock = matchKeys.some((k) => (item.stockMap[k] || 0) > 0);
+        if (!hasStock) return false;
       }
 
       // Filtro de cor
@@ -479,31 +487,16 @@ export default function PublicClientCatalogPage() {
             <div className="flex items-center gap-1 bg-white/10 px-2 py-1 border border-white/20">
               <Filter className="w-3.5 h-3.5 text-gold shrink-0" />
               <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-transparent text-white font-bold text-xs uppercase focus:outline-none cursor-pointer"
-              >
-                <option value="ALL" className="text-black">TODAS AS CATEGORIAS</option>
-                {availableCategories.map((c) => (
-                  <option key={c} value={c} className="text-black">{c}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filtro Rápido de Tamanho */}
-            <div className="flex items-center gap-1 bg-white/10 px-2 py-1 border border-white/20">
-              <span className="text-[10px] text-gold font-black uppercase">TAMANHO:</span>
-              <select
                 value={selectedSizeFilter}
                 onChange={(e) => setSelectedSizeFilter(e.target.value)}
                 className="bg-transparent text-white font-bold text-xs uppercase focus:outline-none cursor-pointer"
               >
-                <option value="ALL" className="text-black">TODOS</option>
-                <option value="PP" className="text-black">PP</option>
-                <option value="P" className="text-black">P</option>
-                <option value="M" className="text-black">M</option>
-                <option value="G" className="text-black">G</option>
-                <option value="GG" className="text-black">GG</option>
+                <option value="ALL" className="text-black">TODOS OS TAMANHOS</option>
+                <option value="P" className="text-black">P (S)</option>
+                <option value="M" className="text-black">M (M)</option>
+                <option value="G" className="text-black">G (L)</option>
+                <option value="GG" className="text-black">GG (XL)</option>
+                <option value="UN" className="text-black">TAMANHO ÚNICO</option>
               </select>
             </div>
 

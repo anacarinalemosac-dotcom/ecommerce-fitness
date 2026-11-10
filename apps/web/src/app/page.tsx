@@ -337,10 +337,10 @@ const FABRIC_FILTERS = [
 
 const SIZE_FILTERS = [
   { id: 'all', labelPt: 'Todos', labelEn: 'All', match: [] },
-  { id: 'P', labelPt: 'P (US 2-4)', labelEn: 'S (US 2-4)', match: ['P', 'S'] },
-  { id: 'M', labelPt: 'M (US 6-8)', labelEn: 'M (US 6-8)', match: ['M'] },
-  { id: 'G', labelPt: 'G (US 10-12)', labelEn: 'L (US 10-12)', match: ['G', 'L'] },
-  { id: 'GG', labelPt: 'GG (US 14)', labelEn: 'XL (US 14)', match: ['GG', 'XL'] },
+  { id: 'P', labelPt: 'P (S)', labelEn: 'P (S)', match: ['P', 'S', 'SMALL'] },
+  { id: 'M', labelPt: 'M (M)', labelEn: 'M (M)', match: ['M', 'MEDIUM'] },
+  { id: 'G', labelPt: 'G (L)', labelEn: 'G (L)', match: ['G', 'L', 'LARGE'] },
+  { id: 'GG', labelPt: 'GG (XL)', labelEn: 'GG (XL)', match: ['GG', 'XL', 'XG', 'EXTRA LARGE'] },
   { id: 'UN', labelPt: 'Tamanho Único', labelEn: 'One Size', match: ['UN', 'ONE SIZE', 'TAMANHO UNICO', 'TAMANHO ÚNICO'] },
 ];
 

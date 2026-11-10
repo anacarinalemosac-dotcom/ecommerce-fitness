@@ -20,6 +20,7 @@ import {
   PlusCircle,
   Image as ImageIcon,
   Tag,
+  Ruler,
   Barcode,
   Check,
   Truck,
@@ -281,6 +282,7 @@ export default function BackofficeDashboard() {
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('ALL');
   const [productStatusFilter, setProductStatusFilter] = useState<'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK'>('ALL');
+  const [productSizeFilter, setProductSizeFilter] = useState<'ALL' | 'P' | 'M' | 'G' | 'GG'>('ALL');
 
   // Seleção e Edição em Massa (Bulk Update) de Produtos
   const [selectedCatalogIds, setSelectedCatalogIds] = useState<string[]>([]);
@@ -2106,6 +2108,23 @@ export default function BackofficeDashboard() {
     if (productStatusFilter === 'IN_STOCK' && totalStock <= 0) return false;
     if (productStatusFilter === 'OUT_OF_STOCK' && totalStock > 0) return false;
 
+    // Filtro por Tamanho P (S), M (M), G (L), GG (XL)
+    if (productSizeFilter !== 'ALL') {
+      const targetSize = productSizeFilter.toUpperCase();
+      let matchKeys = [targetSize];
+      if (targetSize === 'P') matchKeys = ['P', 'S', 'SMALL'];
+      else if (targetSize === 'M') matchKeys = ['M', 'MEDIUM'];
+      else if (targetSize === 'G') matchKeys = ['G', 'L', 'LARGE'];
+      else if (targetSize === 'GG') matchKeys = ['GG', 'XL', 'XG', 'EXTRA LARGE'];
+
+      const hasSize = itemVariants.some((v: any) => {
+        const sz = (v.size || '').trim().toUpperCase();
+        return matchKeys.includes(sz);
+      }) || (item.sizes || []).some((sz: string) => matchKeys.includes(sz.trim().toUpperCase()));
+
+      if (!hasSize) return false;
+    }
+
     // Filtro por Categoria
     const cat = (item.categories?.name || item.category || '').toString().trim().toUpperCase();
     if (productCategoryFilter !== 'ALL' && cat !== productCategoryFilter) return false;
@@ -3349,6 +3368,23 @@ export default function BackofficeDashboard() {
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
+              </div>
+
+              {/* Filtro de Tamanho P (S), M (M), G (L), GG (XL) */}
+              <div className="flex items-center gap-1.5 border border-deep-black/30 px-3 py-2 bg-warm-light/20 shrink-0">
+                <Ruler className="w-3.5 h-3.5 text-gold" />
+                <span className="text-[10px] font-black uppercase text-deep-black/60">TAMANHO:</span>
+                <select
+                  value={productSizeFilter}
+                  onChange={(e) => setProductSizeFilter(e.target.value as any)}
+                  className="text-xs font-black uppercase bg-transparent border-0 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">TODOS OS TAMANHOS</option>
+                  <option value="P">P (S)</option>
+                  <option value="M">M (M)</option>
+                  <option value="G">G (L)</option>
+                  <option value="GG">GG (XL)</option>
+                </select>
               </div>
 
               {/* Filtro de Categoria */}
