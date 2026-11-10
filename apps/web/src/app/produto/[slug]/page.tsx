@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLanguage } from '../../../context/LanguageContext';
 import { useStoreSettings } from '../../../context/StoreSettingsContext';
 import { trackEvent } from '../../../lib/tracking';
+import { addToCart } from '@/lib/cart';
 import ProductShareModal from '../../../components/ProductShareModal';
 import { ProductSizeGuide } from '../../../components/ProductSizeGuide';
 import { FormattedDescription } from '../../../components/FormattedDescription';
@@ -625,6 +626,25 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [currentUrl, setCurrentUrl] = useState('');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSizeGuideModalOpen, setIsSizeGuideModalOpen] = useState(false);
+  const [comboPromo, setComboPromo] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/backoffice/combo-promo')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.comboPromo) setComboPromo(data.comboPromo);
+      })
+      .catch(() => {});
+  }, []);
+
+  const isParticipatingInCombo = Boolean(
+    comboPromo?.active && (
+      (comboPromo.product_ids || []).some((id: string) => String(id).toLowerCase() === String(productData?.id || '').toLowerCase()) ||
+      (comboPromo.product_slugs || []).some((s: string) => String(s).toLowerCase() === String(slug || '').toLowerCase()) ||
+      (productData?.title || '').toUpperCase().includes('SET') ||
+      (productData?.title || '').toUpperCase().includes('CONJUNTO')
+    )
+  );
 
   useEffect(() => {
     async function loadReviews() {
@@ -942,6 +962,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     if (stockQty <= 0) return; // Bloqueio estrito: sem estoque não adiciona à sacola
 
     const cartItemToSave = {
+      id: productData.id,
       title: productData.title,
       slug: slug,
       size: selectedSize,
@@ -952,12 +973,15 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       image: matchedVariant?.image || productData.media[selectedMediaIdx]?.url || productData.media[0]?.url,
       isBackorder: false,
       productionDays: 0,
+      is_combo_item: isParticipatingInCombo,
     };
 
     try {
+      addToCart(cartItemToSave);
+    } catch (e) {
       localStorage.setItem('ana_cart_item', JSON.stringify(cartItemToSave));
       window.dispatchEvent(new Event('ana_cart_updated'));
-    } catch (e) {}
+    }
 
     // Dispara evento de AddToCart nos Pixels de Rastreamento (Meta, Google, TikTok, Pinterest)
     trackEvent.addToCart({
@@ -1204,11 +1228,34 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             <UrgencyCountdownTimer mode="product" />
           </div>
 
-          {/* Banner de Frete Fixo $9.99 */}
+          {/* Banner de Participação no Combo 3 por $X */}
+          {isParticipatingInCombo && (
+            <div className="p-3.5 bg-amber-500/10 border-2 border-amber-500 text-deep-black flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
+                <div>
+                  <span className="text-xs font-black uppercase tracking-wide block text-deep-black">
+                    🔥 {comboPromo?.badge_text || '3 POR $99'}: ESTA PEÇA PARTICIPA DA PROMOÇÃO!
+                  </span>
+                  <span className="text-[10px] text-deep-black/70 uppercase">
+                    Adicione 3 conjuntos na sacola e pague apenas ${(comboPromo?.bundle_price || 99).toFixed(2)} no total.
+                  </span>
+                </div>
+              </div>
+              <Link
+                href="/combo"
+                className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-deep-black text-[10px] font-black uppercase tracking-wider transition shrink-0 border border-deep-black shadow-2xs text-center"
+              >
+                MONTAR COMBO 3 PEÇAS →
+              </Link>
+            </div>
+          )}
+
+          {/* Banner de Frete Fixo $9.90 ou Retirada */}
           <div className="p-3.5 bg-deep-black text-white border border-gold flex items-center justify-between text-xs font-bold uppercase tracking-wider">
             <div className="flex items-center gap-2 text-gold">
               <Truck className="w-4 h-4 text-gold shrink-0" />
-              <span>{lang === 'pt' ? 'FRETE FIXO: $9.99 (TODOS OS EUA)' : 'FLAT RATE SHIPPING: $9.99 (ALL US)'}</span>
+              <span>{lang === 'pt' ? 'FRETE FIXO: $9.90 OU RETIRADA GRÁTIS NO SHOWROOM' : 'FLAT RATE SHIPPING: $9.99 (ALL US)'}</span>
             </div>
             <Link href="/politica-de-envio" className="text-[10px] text-white/70 hover:text-gold underline">
               {lang === 'pt' ? 'VER REGRAS' : 'DETAILS'}
@@ -1492,14 +1539,20 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 </button>
 
                 {cartFeedback && (
-                  <div className="p-3.5 bg-deep-black text-white border-2 border-gold text-xs font-bold uppercase tracking-wider flex items-center justify-between animate-fadeIn">
-                    <span>
-                      {lang === 'pt' ? '✓ Peça adicionada com sucesso!' : '✓ Item added to bag!'}
+                  <div className="p-3.5 bg-deep-black text-white border-2 border-gold text-xs font-bold uppercase tracking-wider flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-fadeIn">
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>{lang === 'pt' ? '✓ Peça adicionada à sacola!' : '✓ Item added to bag!'}</span>
                     </span>
-                    <Link href="/checkout" className="text-gold underline hover:text-white font-black flex items-center gap-1">
-                      <span>IR P/ CHECKOUT</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link href="/combo" className="text-amber-400 underline hover:text-white text-[10px] font-black uppercase">
+                        {lang === 'pt' ? 'MONTAR COMBO (3 POR $99)' : 'BUILD 3-SET COMBO'}
+                      </Link>
+                      <Link href="/checkout" className="text-gold underline hover:text-white font-black flex items-center gap-1 text-[11px]">
+                        <span>CHECKOUT</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
                   </div>
                 )}
               </>

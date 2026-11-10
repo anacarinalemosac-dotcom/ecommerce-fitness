@@ -7,6 +7,14 @@ import { useStoreSettings } from '../../context/StoreSettingsContext';
 import { trackEvent } from '../../lib/tracking';
 import { UrgencyCountdownTimer } from '../../components/UrgencyCountdownTimer';
 import {
+  getCartItems,
+  saveCartItems,
+  removeCartItem,
+  updateCartItemQuantity,
+  calculateComboDiscount,
+  CartItem as BaseCartItem,
+} from '../../lib/cart';
+import {
   ShieldCheck,
   Truck,
   CreditCard,
@@ -64,6 +72,8 @@ export default function CheckoutPage() {
 
   // Dados do Item no Carrinho (Inicia como null para não forçar item estático)
   const [cartItem, setCartItem] = useState<CartItem | null>(null);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [comboPromo, setComboPromo] = useState<any>(null);
   const [isCartLoaded, setIsCartLoaded] = useState(false);
   const [customerUser, setCustomerUser] = useState<any | null>(null);
   const [orderWasBackorder, setOrderWasBackorder] = useState(false);
@@ -267,21 +277,26 @@ export default function CheckoutPage() {
           .catch((e) => console.warn('Erro ao carregar dados do link direto:', e));
       }
 
+      const loadedMulti = getCartItems();
+      setCartItems(loadedMulti);
+
       let savedCart = localStorage.getItem('ana_cart_item');
-      if (!savedCart) {
-        // Se a sacola foi esvaziada acidentalmente por navegação, recupera do backup
+      if (!savedCart && loadedMulti.length > 0) {
+        savedCart = JSON.stringify(loadedMulti[0]);
+      } else if (!savedCart) {
         const backupCart = localStorage.getItem('ana_cart_item_backup');
         if (backupCart) {
           savedCart = backupCart;
           localStorage.setItem('ana_cart_item', backupCart);
         }
-      } else {
-        localStorage.setItem('ana_cart_item_backup', savedCart);
       }
 
-      if (savedCart) {
+      if (loadedMulti.length > 0) {
+        setCartItem(loadedMulti[0]);
+      } else if (savedCart) {
         const parsed = JSON.parse(savedCart);
         setCartItem(parsed);
+        setCartItems([parsed]);
 
         // Dispara evento de InitiateCheckout / begin_checkout nos Pixels
         trackEvent.initiateCheckout({
@@ -481,27 +496,60 @@ export default function CheckoutPage() {
   const [couponFeedback, setCouponFeedback] = useState<string>('');
 
   // Status de Finalização
+  useEffect(() => {
+    fetch('/api/backoffice/combo-promo')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.comboPromo) setComboPromo(data.comboPromo);
+      })
+      .catch(() => {});
+  }, []);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState<null | string>(null);
 
-  // Cálculos Financeiros
-  const subtotal = cartItem ? cartItem.price * cartItem.quantity : 0;
+  // Cálculos Financeiros (Suporte a Sacola Multi-Itens e Promoção de Combo 3 por $99)
+  const effectiveItems = cartItems.length > 0 ? cartItems : (cartItem ? [cartItem] : []);
+  const subtotal = effectiveItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+
+  // Desconto Automático da Promoção de Combo (se tiver 3 ou múltiplos de 3 participantes)
+  const comboResult = calculateComboDiscount(effectiveItems, comboPromo);
+  const comboDiscount = comboResult.discount;
+
+  // Desconto de Cupom (aplicado sobre o valor restante)
+  const subtotalAfterCombo = Math.max(0, subtotal - comboDiscount);
   const discountAmount = appliedCoupon
     ? (couponType === 'FIXED'
-        ? Math.min(subtotal, fixedDiscountAmount)
-        : (subtotal * discountPercent) / 100)
+        ? Math.min(subtotalAfterCombo, fixedDiscountAmount)
+        : (subtotalAfterCombo * discountPercent) / 100)
     : 0;
+
+  const totalDiscount = comboDiscount + discountAmount;
   // Opção de Entrega / Retirada no Showroom
   const [deliveryMethod, setDeliveryMethod] = useState<'DELIVERY' | 'PICKUP'>('DELIVERY');
   const [copiedAddress, setCopiedAddress] = useState(false);
-  const shippingRate = deliveryMethod === 'PICKUP' ? 0 : (isFreeShipping ? 0 : 9.90); // $9.90 ou Grátis no Showroom / cupom
-  const total = subtotal > 0 ? Math.max(0, subtotal - discountAmount) + shippingRate : 0;
+  const shippingRate = deliveryMethod === 'PICKUP' ? 0 : (isFreeShipping ? 0 : 9.90);
+  const total = subtotal > 0 ? Math.max(0, subtotal - totalDiscount) + shippingRate : 0;
 
-  const handleRemoveCartItem = () => {
-    localStorage.removeItem('ana_cart_item');
-    localStorage.removeItem('ana_cart_item_backup');
-    window.dispatchEvent(new Event('ana_cart_updated'));
-    setCartItem(null);
+  const handleRemoveCartItem = (targetIdx?: number) => {
+    if (typeof targetIdx === 'number' && cartItems.length > 0) {
+      const updated = removeCartItem(targetIdx);
+      setCartItems(updated);
+      setCartItem(updated[0] || null);
+    } else {
+      localStorage.removeItem('ana_cart_items');
+      localStorage.removeItem('ana_cart_item');
+      localStorage.removeItem('ana_cart_item_backup');
+      window.dispatchEvent(new Event('ana_cart_updated'));
+      setCartItems([]);
+      setCartItem(null);
+    }
+  };
+
+  const handleUpdateItemQuantity = (targetIdx: number, newQty: number) => {
+    const updated = updateCartItemQuantity(targetIdx, newQty);
+    setCartItems(updated);
+    setCartItem(updated[0] || null);
   };
 
   // Auto-aplica cupom vindo de link de indicação / vendedora ou promoção
@@ -601,7 +649,7 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cartItem) return;
+    if (effectiveItems.length === 0) return;
 
     // Garante que o cliente esteja cadastrado/logado para salvar no histórico
     if (!customerUser) {
@@ -719,19 +767,17 @@ export default function CheckoutPage() {
             shipping_fee: shippingRate,
             shipping_address: effectiveShippingAddress,
             coupon_code: appliedCoupon,
-            discount_amount: discountAmount,
             seller_name: couponSellerInfo ? couponSellerInfo.name : 'Loja Oficial Online',
-            items: [
-              {
-                title: cartItem.title,
-                size: cartItem.size,
-                color: cartItem.color,
-                sku: (cartItem as any).sku || 'ANA-ITEM',
-                quantity: cartItem.quantity,
-                unit_price: cartItem.price,
-                image: cartItem.image,
-              },
-            ],
+            discount_amount: totalDiscount,
+            items: effectiveItems.map((it) => ({
+              title: it.title,
+              size: it.size,
+              color: it.color,
+              sku: (it as any).sku || 'ANA-ITEM',
+              quantity: it.quantity,
+              unit_price: it.price,
+              image: it.image,
+            })),
           }),
         });
 
@@ -797,20 +843,18 @@ export default function CheckoutPage() {
           coupon_code: appliedCoupon,
           payment_method: paymentMethod,
           subtotal_products: subtotal,
-          discount_amount: discountAmount,
+          discount_amount: totalDiscount,
           shipping_fee: shippingRate,
           shipping_cost: deliveryMethod === 'PICKUP' ? 0 : 7.50,
-          items: [
-            {
-              title: cartItem.title,
-              size: cartItem.size,
-              color: cartItem.color,
-              sku: (cartItem as any).sku || 'ANA-ITEM',
-              quantity: cartItem.quantity,
-              unit_price: cartItem.price,
-              cost_price: 15.0,
-            },
-          ],
+          items: effectiveItems.map((it) => ({
+            title: it.title,
+            size: it.size,
+            color: it.color,
+            sku: (it as any).sku || 'ANA-ITEM',
+            quantity: it.quantity,
+            unit_price: it.price,
+            cost_price: 15.0,
+          })),
         }),
       });
     } catch (err) {
@@ -966,7 +1010,7 @@ export default function CheckoutPage() {
   }
 
   // 2. TELA DE SACOLA VAZIA (QUANDO NÃO HÁ ITENS)
-  if (isCartLoaded && !cartItem) {
+  if (isCartLoaded && effectiveItems.length === 0) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center space-y-8 animate-fadeIn">
         <div className="w-20 h-20 bg-deep-black/5 text-deep-black rounded-full flex items-center justify-center mx-auto border-2 border-dashed border-deep-black/20">
@@ -2179,50 +2223,106 @@ export default function CheckoutPage() {
             </span>
           </div>
 
-          {/* Item no Carrinho */}
-          <div className="flex gap-4 items-center border-b border-deep-black/10 pb-4 relative">
-            <img
-              src={cartItem.image}
-              alt={cartItem.title}
-              className="w-16 h-20 object-cover border border-deep-black/20"
-            />
-            <div className="flex-1 space-y-1">
-              <h4 className="text-xs font-black uppercase tracking-wider text-deep-black">
-                {cartItem.title}
-              </h4>
-              <p className="text-[10px] text-deep-black/60 uppercase font-mono font-bold">
-                {lang === 'pt' ? 'TAMANHO' : 'SIZE'}: {cartItem.size} • {cartItem.color}
-              </p>
-              <span className="text-[10px] text-gold font-black uppercase block">
-                {lang === 'pt' ? 'ZERO TRANSPARÊNCIA' : 'ZERO SEE-THROUGH'}
-              </span>
-              {cartItem.isBackorder && (
-                <div className="p-2.5 bg-amber-50 border border-gold/60 text-deep-black space-y-1 mt-1">
-                  <span className="text-[9.5px] font-black text-amber-900 uppercase flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-amber-600" />
-                    {lang === 'pt' ? 'PRÉ-VENDA • PRAZO DE 30 DIAS' : 'PRE-ORDER • ~30 DAYS DELIVERY'}
-                  </span>
-                  <p className="text-[9.5px] text-deep-black/80 font-medium leading-relaxed">
-                    {lang === 'pt'
-                      ? 'Nós vamos entrar em contato com você para esclarecer e confirmar todas as informações com relação ao prazo.'
-                      : 'Our team will contact you directly to confirm and clarify all details regarding your delivery timeframe.'}
+          {/* Itens na Sacola (Suporte a múltiplos itens e combos) */}
+          <div className="space-y-3 border-b border-deep-black/10 pb-4">
+            {effectiveItems.map((item, idx) => (
+              <div key={idx} className="flex gap-3 items-center pb-3 border-b border-deep-black/5 last:border-b-0 last:pb-0 relative">
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="w-14 h-18 object-cover border border-deep-black/20 shrink-0"
+                />
+                <div className="flex-1 space-y-1 min-w-0">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-deep-black truncate">
+                    {item.title}
+                  </h4>
+                  <p className="text-[10px] text-deep-black/60 uppercase font-mono font-bold">
+                    {lang === 'pt' ? 'TAM' : 'SIZE'}: <span className="text-gold font-black">{item.size}</span> • {item.color}
                   </p>
+
+                  <div className="flex items-center gap-3 pt-1">
+                    {/* Stepper de Quantidade */}
+                    <div className="flex items-center border border-deep-black/20 bg-stone-50">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateItemQuantity(idx, (item.quantity || 1) - 1)}
+                        className="px-2 py-0.5 text-xs font-bold text-deep-black hover:bg-gold/20"
+                      >
+                        -
+                      </button>
+                      <span className="px-2 text-xs font-mono font-bold">{item.quantity || 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateItemQuantity(idx, (item.quantity || 1) + 1)}
+                        className="px-2 py-0.5 text-xs font-bold text-deep-black hover:bg-gold/20"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCartItem(idx)}
+                      className="text-[10px] text-red-600 hover:text-red-800 uppercase font-bold flex items-center gap-1 transition"
+                      title="Remover peça"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>{lang === 'pt' ? 'REMOVER' : 'REMOVE'}</span>
+                    </button>
+                  </div>
                 </div>
-              )}
-              <button
-                type="button"
-                onClick={handleRemoveCartItem}
-                className="text-[10px] text-red-600 hover:text-red-800 uppercase font-bold flex items-center gap-1 pt-1 transition"
-                title="Remover item da sacola"
-              >
-                <Trash2 className="w-3 h-3" />
-                <span>{lang === 'pt' ? 'REMOVER DA SACOLA' : 'REMOVE ITEM'}</span>
-              </button>
-            </div>
-            <span className="text-sm font-black text-deep-black font-mono">
-              ${(cartItem.price * cartItem.quantity).toFixed(2)}
-            </span>
+
+                <div className="text-right shrink-0">
+                  <span className="text-xs font-black text-deep-black font-mono">
+                    ${(item.price * item.quantity).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
+
+          {/* Destaque da Promoção de Combo */}
+          {comboResult.hasCombo && comboResult.discount > 0 ? (
+            <div className="p-3.5 bg-emerald-50 border-2 border-emerald-500 text-emerald-950 space-y-1 animate-fadeIn">
+              <div className="flex items-center justify-between text-xs font-black uppercase">
+                <span className="flex items-center gap-1.5 text-emerald-800">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <span>{comboResult.promoTitle || 'PROMOÇÃO DE COMBO ATIVA!'}</span>
+                </span>
+                <span className="font-mono text-emerald-700 bg-emerald-100 px-2 py-0.5 border border-emerald-300">
+                  -${comboResult.discount.toFixed(2)} OFF
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-900 font-medium">
+                {comboResult.completedCombos}x combo ({comboResult.completedCombos * (comboPromo?.required_quantity || 3)} conjuntos fechados pelo valor especial de ${comboResult.bundleTargetPrice.toFixed(2)})!
+              </p>
+            </div>
+          ) : comboResult.participatingCount > 0 && !comboResult.hasCombo && comboPromo?.active ? (
+            <div className="p-3 bg-amber-50 border border-amber-300 text-amber-950 space-y-1.5 animate-fadeIn">
+              <div className="flex items-center justify-between text-xs font-black uppercase">
+                <span className="flex items-center gap-1.5 text-amber-800">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <span>{comboPromo?.title || 'PROMOÇÃO 3 CONJUNTOS'}</span>
+                </span>
+                <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 font-bold font-mono">
+                  {comboPromo?.badge_text || '3 POR $99'}
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
+                {lang === 'pt'
+                  ? `Você tem ${comboResult.participatingCount} conjunto participante na sacola. Adicione mais ${comboResult.neededForNextCombo} para fechar o combo por apenas ${(comboPromo?.bundle_price || 99).toFixed(2)}!`
+                  : `You have ${comboResult.participatingCount} eligible set. Add ${comboResult.neededForNextCombo} more to get the combo for only ${(comboPromo?.bundle_price || 99).toFixed(2)}!`}
+              </p>
+              <div className="pt-1">
+                <Link
+                  href="/combo"
+                  className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-amber-900 underline hover:text-black"
+                >
+                  <span>{lang === 'pt' ? 'ESCOLHER PEÇAS DO COMBO →' : 'ADD PIECES TO COMBO →'}</span>
+                </Link>
+              </div>
+            </div>
+          ) : null}
 
           {/* Inserção de Cupom da Vendedora */}
           <div className="space-y-2 border-b border-deep-black/10 pb-4">

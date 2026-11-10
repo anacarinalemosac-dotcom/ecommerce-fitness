@@ -286,6 +286,19 @@ export default function BackofficeDashboard() {
 
   // Seleção e Edição em Massa (Bulk Update) de Produtos
   const [selectedCatalogIds, setSelectedCatalogIds] = useState<string[]>([]);
+  // Configuração da Promoção de Combo (3 por $X)
+  const [comboPromo, setComboPromo] = useState<any>({
+    active: true,
+    title: 'Promoção Especial: 3 Conjuntos por $99',
+    required_quantity: 3,
+    bundle_price: 99.0,
+    badge_text: '3 POR $99',
+    description: 'Selecione quaisquer 3 conjuntos participantes e feche o combo por apenas $99.00 no total!',
+    product_ids: [],
+    product_slugs: [],
+  });
+  const [showComboPromoModal, setShowComboPromoModal] = useState(false);
+  const [isComboSaving, setIsComboSaving] = useState(false);
   const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
   const [showBulkSizeGuideModal, setShowBulkSizeGuideModal] = useState(false);
   const [showBulkDescModal, setShowBulkDescModal] = useState(false);
@@ -819,6 +832,80 @@ export default function BackofficeDashboard() {
       if (refreshProducts) refreshProducts();
     } catch (err: any) {
       alert(`Erro: ${err.message}`);
+    } finally {
+      setIsBulkSubmitting(false);
+    }
+  };
+
+  const handleSaveComboPromo = async (updatedConfig: any) => {
+    setIsComboSaving(true);
+    try {
+      const res = await fetch('/api/backoffice/combo-promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comboPromo: updatedConfig }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setComboPromo(data.comboPromo);
+        alert('✓ Promoção de Combo salva com sucesso!');
+      }
+    } catch (e: any) {
+      alert('Erro ao salvar promoção de combo: ' + e?.message);
+    } finally {
+      setIsComboSaving(false);
+    }
+  };
+
+  const handleBulkAddToCombo = async () => {
+    if (selectedCatalogIds.length === 0) return;
+    setIsBulkSubmitting(true);
+    try {
+      const selectedProds = (supabaseProducts.length > 0 ? supabaseProducts : products).filter((p: any) =>
+        selectedCatalogIds.includes(p.id)
+      );
+      const res = await fetch('/api/backoffice/combo-promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'ADD_PRODUCTS',
+          product_ids: selectedCatalogIds,
+          product_slugs: selectedProds.map((p: any) => p.slug).filter(Boolean),
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setComboPromo(data.comboPromo);
+        alert(`✓ ${selectedCatalogIds.length} produto(s) adicionados à promoção de Combo (${data.comboPromo.badge_text})!`);
+        setSelectedCatalogIds([]);
+      }
+    } catch (e: any) {
+      alert('Erro: ' + e?.message);
+    } finally {
+      setIsBulkSubmitting(false);
+    }
+  };
+
+  const handleBulkRemoveFromCombo = async () => {
+    if (selectedCatalogIds.length === 0) return;
+    setIsBulkSubmitting(true);
+    try {
+      const res = await fetch('/api/backoffice/combo-promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'REMOVE_PRODUCTS',
+          product_ids: selectedCatalogIds,
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setComboPromo(data.comboPromo);
+        alert(`✓ ${selectedCatalogIds.length} produto(s) removidos do Combo!`);
+        setSelectedCatalogIds([]);
+      }
+    } catch (e: any) {
+      alert('Erro: ' + e?.message);
     } finally {
       setIsBulkSubmitting(false);
     }
@@ -3201,6 +3288,18 @@ export default function BackofficeDashboard() {
               </button>
 
               <button
+                type="button"
+                onClick={() => setShowComboPromoModal(true)}
+                className="px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border-2 border-deep-black cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-deep-black" />
+                <span>PROMOÇÃO DE COMBO (3 POR $X)</span>
+                <span className="px-1.5 py-0.5 bg-deep-black text-gold text-[9px] font-mono">
+                  {comboPromo?.active ? `${comboPromo?.product_ids?.length || 0} PEÇAS` : 'PAUSADA'}
+                </span>
+              </button>
+
+              <button
                 onClick={() => {
                   setEditingProduct(null);
                   setShowAddForm(!showAddForm);
@@ -3521,6 +3620,75 @@ export default function BackofficeDashboard() {
             </div>
           </div>
 
+          {/* BARRA DE AÇÕES EM MASSA FLUTUANTE / FIXA */}
+          {selectedCatalogIds.length > 0 && (
+            <div className="sticky top-4 z-40 p-4 bg-deep-black text-white border-2 border-gold shadow-2xl flex flex-wrap items-center justify-between gap-3 animate-fadeIn">
+              <div className="flex items-center gap-2.5">
+                <span className="w-3 h-3 rounded-full bg-gold animate-pulse" />
+                <span className="text-xs font-black uppercase text-gold font-mono">
+                  {selectedCatalogIds.length} PRODUTO(S) SELECIONADO(S)
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkPriceModal(true)}
+                  className="px-3 py-2 bg-white/10 hover:bg-gold hover:text-deep-black text-white text-[11px] font-black uppercase tracking-wider transition border border-white/20 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>💵</span>
+                  <span>MUDAR PREÇO</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowBulkSizeGuideModal(true)}
+                  className="px-3 py-2 bg-white/10 hover:bg-gold hover:text-deep-black text-white text-[11px] font-black uppercase tracking-wider transition border border-white/20 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>📐</span>
+                  <span>ADICIONAR MEDIDAS</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowBulkDescModal(true)}
+                  className="px-3 py-2 bg-white/10 hover:bg-gold hover:text-deep-black text-white text-[11px] font-black uppercase tracking-wider transition border border-white/20 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>📝</span>
+                  <span>MUDAR DESCRIÇÃO</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleBulkAddToCombo}
+                  disabled={isBulkSubmitting}
+                  className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-deep-black text-[11px] font-black uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <span>⚡</span>
+                  <span>INCLUIR NO COMBO ({comboPromo?.badge_text || '3 POR $99'})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleBulkRemoveFromCombo}
+                  disabled={isBulkSubmitting}
+                  className="px-3 py-2 bg-white/10 hover:bg-red-600 text-white text-[11px] font-black uppercase tracking-wider transition border border-white/20 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>✕</span>
+                  <span>REMOVER DO COMBO</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedCatalogIds([])}
+                  className="px-2.5 py-2 text-white/60 hover:text-white text-[10px] font-bold uppercase transition cursor-pointer"
+                >
+                  LIMPAR SELEÇÃO
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Tabela de Produtos Cadastrados no Catálogo */}
           <div className="bg-white border-2 border-deep-black overflow-x-auto shadow-sm">
             <div className="p-4 bg-deep-black/5 border-b border-deep-black/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -3540,6 +3708,18 @@ export default function BackofficeDashboard() {
             <table className="w-full text-left text-xs uppercase tracking-wider">
               <thead className="bg-deep-black text-white text-[10px] font-black">
                 <tr>
+                  <th className="p-4 w-12 text-center">
+                    <input
+                      type="checkbox"
+                      checked={
+                        filteredCatalogProducts.length > 0 &&
+                        filteredCatalogProducts.every((p: any) => selectedCatalogIds.includes(p.id))
+                      }
+                      onChange={handleToggleSelectAllFiltered}
+                      className="w-4 h-4 accent-gold cursor-pointer rounded"
+                      title="Selecionar todos os produtos filtrados"
+                    />
+                  </th>
                   <th className="p-4">FOTO</th>
                   <th className="p-4">PRODUTO & FORNECEDOR</th>
                   <th className="p-4">GRADE DE VARIAÇÕES (COR × TAMANHO)</th>
@@ -3642,6 +3822,15 @@ export default function BackofficeDashboard() {
                           {item.meta?.ribbon && (
                             <span className="px-1.5 py-0.5 bg-gold text-deep-black text-[8px] font-black uppercase border border-deep-black">
                               {item.meta.ribbon}
+                            </span>
+                          )}
+                          {comboPromo?.active && (
+                            (comboPromo.product_ids || []).includes(item.id) ||
+                            (comboPromo.product_slugs || []).includes(item.slug)
+                          ) && (
+                            <span className="px-1.5 py-0.5 bg-amber-500 text-deep-black text-[8px] font-black uppercase border border-deep-black shadow-xs flex items-center gap-0.5">
+                              <span>🔥</span>
+                              <span>{comboPromo?.badge_text || '3 POR $99'}</span>
                             </span>
                           )}
                           {(item.material || item.meta?.material) && (

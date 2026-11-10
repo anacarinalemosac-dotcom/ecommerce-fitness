@@ -822,6 +822,14 @@ export default function HomePage() {
                 <span>{lang === 'pt' ? 'VER PRODUTOS EM PROMOÇÃO' : 'SHOP BLACK FRIDAY DEALS'}</span>
               </a>
 
+              <Link
+                href="/combo"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 bg-amber-400 hover:bg-amber-300 text-deep-black font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-[0_6px_20px_rgba(251,191,36,0.35)] transition-all hover:scale-[1.03] active:scale-[0.98] text-center"
+              >
+                <Sparkles className="w-5 h-5 text-deep-black shrink-0" />
+                <span>{lang === 'pt' ? '⚡ MONTE SEU COMBO (3 CONJUNTOS POR $99) →' : '⚡ BUILD YOUR COMBO (3 SETS FOR $99) →'}</span>
+              </Link>
+
               <a
                 href={lang === 'pt'
                   ? 'https://wa.me/19783139452?text=Ol%C3%A1%21%20Quero%20aproveitar%20a%20Black%20Friday%20de%20Novembro%20da%20Ana%20Fitness%21%20Quais%20produtos%20est%C3%A3o%20na%20promo%C3%A7%C3%A3o%3F'

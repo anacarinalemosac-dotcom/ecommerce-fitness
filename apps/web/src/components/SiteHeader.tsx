@@ -27,12 +27,23 @@ export function SiteHeader() {
 
   const updateCartAndUser = () => {
     try {
-      const savedCart = localStorage.getItem('ana_cart_item');
-      if (savedCart) {
-        const parsed = JSON.parse(savedCart);
-        setCartCount(Number(parsed.quantity) || 1);
+      const rawMulti = localStorage.getItem('ana_cart_items');
+      if (rawMulti) {
+        const parsed = JSON.parse(rawMulti);
+        if (Array.isArray(parsed)) {
+          const total = parsed.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 1), 0);
+          setCartCount(total);
+        } else {
+          setCartCount(0);
+        }
       } else {
-        setCartCount(0);
+        const savedCart = localStorage.getItem('ana_cart_item');
+        if (savedCart) {
+          const parsed = JSON.parse(savedCart);
+          setCartCount(Number(parsed.quantity) || 1);
+        } else {
+          setCartCount(0);
+        }
       }
 
       const savedCust = localStorage.getItem('ana_customer_session');

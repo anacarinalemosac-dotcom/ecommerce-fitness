@@ -46,6 +46,27 @@ export async function POST(req: NextRequest) {
       };
     });
 
+    // Se houver desconto de combo ou cupom, distribui proporcionalmente entre os itens para atender à exigência da Stripe (unit_amount >= 0)
+    const totalDiscountInCents = Math.round(Number(discount_amount || 0) * 100);
+    if (totalDiscountInCents > 0 && lineItems.length > 0) {
+      const totalItemsGrossCents = lineItems.reduce((acc, it) => acc + (it.price_data.unit_amount * it.quantity), 0);
+      if (totalItemsGrossCents > 0) {
+        const targetNetCents = Math.max(0, totalItemsGrossCents - totalDiscountInCents);
+        const ratio = targetNetCents / totalItemsGrossCents;
+        let runningSum = 0;
+        lineItems.forEach((it, idx) => {
+          if (idx === lineItems.length - 1) {
+            const remaining = targetNetCents - runningSum;
+            it.price_data.unit_amount = Math.max(0, Math.round(remaining / it.quantity));
+          } else {
+            const adjustedUnit = Math.round(it.price_data.unit_amount * ratio);
+            it.price_data.unit_amount = adjustedUnit;
+            runningSum += adjustedUnit * it.quantity;
+          }
+        });
+      }
+    }
+
     const isPickup = delivery_method === 'PICKUP' || shipping_address?.delivery_method === 'PICKUP';
     const finalShippingFee = isPickup ? 0 : (shipping_fee !== undefined ? Number(shipping_fee) : 9.90);
 
