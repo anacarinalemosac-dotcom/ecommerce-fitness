@@ -5984,12 +5984,23 @@ export default function BackofficeDashboard() {
                           const [y, m, d] = (inst.due_date || '').split('-');
                           const dateFormatted = d && m && y ? `${d}/${m}/${y}` : inst.due_date;
                           const isPaid = inst.status === 'PAID';
+                          const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+                          const isOverdue = !isPaid && inst.due_date && inst.due_date < todayStr;
+                          let daysLate = 0;
+                          if (isOverdue) {
+                            const diffTime = Math.abs(new Date(todayStr).getTime() - new Date(inst.due_date).getTime());
+                            daysLate = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+                          }
 
                           return (
                             <div
                               key={inst.number}
                               className={`p-2.5 border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs ${
-                                isPaid ? 'bg-green-50 border-green-300' : 'bg-white border-amber-200'
+                                isPaid
+                                  ? 'bg-green-50 border-green-300'
+                                  : isOverdue
+                                  ? 'bg-red-50 border-red-300'
+                                  : 'bg-white border-amber-200'
                               }`}
                             >
                               <div className="space-y-0.5">
@@ -6003,6 +6014,10 @@ export default function BackofficeDashboard() {
                                   {isPaid ? (
                                     <span className="text-[9px] bg-green-200 text-green-900 font-black px-1.5 py-0.5 rounded">
                                       ✓ PAGA ({inst.paid_method || inst.payment_method || 'CASH'})
+                                    </span>
+                                  ) : isOverdue ? (
+                                    <span className="text-[9px] bg-red-600 text-white font-black px-1.5 py-0.5 rounded border border-red-700 animate-pulse">
+                                      🚨 ATRASADA HÁ {daysLate} DIAS (VENCEU EM {dateFormatted})
                                     </span>
                                   ) : (
                                     <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.5 rounded border border-amber-300">
@@ -6018,7 +6033,7 @@ export default function BackofficeDashboard() {
                               </div>
 
                               {!isPaid && (
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                   {/* Botão Baixa Dinheiro */}
                                   <button
                                     type="button"
@@ -6055,23 +6070,42 @@ export default function BackofficeDashboard() {
                                   >
                                     + VENMO
                                   </button>
-                                  {/* Lembrete WhatsApp */}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const cleanPhone = (selectedSaleDetail.customer_phone || '').replace(/\D/g, '');
-                                      const reminderMsg = `Olá *${selectedSaleDetail.customer_name}*! Lembrete amigável da Ana Fitness Wear 💕\nA sua Parcela *${inst.number}/${selectedSaleDetail.crediario?.installments_count || selectedSaleDetail.crediario?.installments?.length}* no valor de *$${Number(inst.amount).toFixed(2)} USD* vence no dia *${dateFormatted}*.\n\nPara pagar via Zelle: *anafitweareua@gmail.com*\nQualquer dúvida estamos à disposição! ✨`;
-                                      const url = cleanPhone
-                                        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(reminderMsg)}`
-                                        : `https://wa.me/?text=${encodeURIComponent(reminderMsg)}`;
-                                      window.open(url, '_blank');
-                                    }}
-                                    className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-[9px] font-black uppercase flex items-center gap-1 transition cursor-pointer"
-                                    title="Enviar lembrete amigável no WhatsApp"
-                                  >
-                                    <Send className="w-2.5 h-2.5" />
-                                    <span>LEMBRETE</span>
-                                  </button>
+                                  {/* Botão de Cobrança / Lembrete WhatsApp */}
+                                  {isOverdue ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const cleanPhone = (selectedSaleDetail.customer_phone || '').replace(/\D/g, '');
+                                        const overdueMsg = `Olá *${selectedSaleDetail.customer_name}*, tudo bem? Aqui é da Ana Fitness Wear! 💕\n\nPassando com carinho para te lembrar que a sua Parcela *${inst.number}/${selectedSaleDetail.crediario?.installments_count || selectedSaleDetail.crediario?.installments?.length}* no valor de *$${Number(inst.amount).toFixed(2)} USD* venceu no dia *${dateFormatted}* e consta pendente em nosso sistema (${daysLate} dias).\n\nSabemos como a rotina é corrida! Você consegue regularizar hoje para mantermos seu crediário 100% em dia e seu limite liberado? ✨\n\n📱 *Chaves para Pagamento:*\n• Zelle: *anafitweareua@gmail.com*\n• Venmo: *@Accleaningproservices*\n\nAssim que realizar o pagamento, por favor nos envie o comprovante por aqui. Muito obrigada! 🙏`;
+                                        const url = cleanPhone
+                                          ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(overdueMsg)}`
+                                          : `https://wa.me/?text=${encodeURIComponent(overdueMsg)}`;
+                                        window.open(url, '_blank');
+                                      }}
+                                      className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-[9px] font-black uppercase flex items-center gap-1 transition cursor-pointer shadow-xs"
+                                      title="Enviar cobrança de parcela em atraso via WhatsApp"
+                                    >
+                                      <Send className="w-2.5 h-2.5" />
+                                      <span>🚨 COBRAR ATRASO</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const cleanPhone = (selectedSaleDetail.customer_phone || '').replace(/\D/g, '');
+                                        const reminderMsg = `Olá *${selectedSaleDetail.customer_name}*! Lembrete amigável da Ana Fitness Wear 💕\nA sua Parcela *${inst.number}/${selectedSaleDetail.crediario?.installments_count || selectedSaleDetail.crediario?.installments?.length}* no valor de *$${Number(inst.amount).toFixed(2)} USD* vence no dia *${dateFormatted}*.\n\nPara pagar via Zelle: *anafitweareua@gmail.com*\nQualquer dúvida estamos à disposição! ✨`;
+                                        const url = cleanPhone
+                                          ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(reminderMsg)}`
+                                          : `https://wa.me/?text=${encodeURIComponent(reminderMsg)}`;
+                                        window.open(url, '_blank');
+                                      }}
+                                      className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-[9px] font-black uppercase flex items-center gap-1 transition cursor-pointer"
+                                      title="Enviar lembrete amigável no WhatsApp"
+                                    >
+                                      <Send className="w-2.5 h-2.5" />
+                                      <span>LEMBRETE</span>
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>
