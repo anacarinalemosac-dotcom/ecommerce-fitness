@@ -81,22 +81,22 @@ function StripeSuccessContent() {
         </p>
       </div>
 
-      {/* Cartão de Detalhes do Envio */}
+      {/* Cartão de Detalhes do Recebimento */}
       <div className="p-6 bg-white border-2 border-deep-black text-left space-y-4 max-w-xl mx-auto shadow-sm">
         <h3 className="text-xs font-black uppercase tracking-wider text-deep-black border-b border-deep-black/10 pb-2 flex items-center justify-between">
-          <span>{lang === 'pt' ? 'DETALHES DO ENVIO DOMÉSTICO (USPS)' : 'DOMESTIC US SHIPPING DETAILS'}</span>
-          <span className="text-[10px] text-gold font-mono font-bold">FLAT RATE $9.99</span>
+          <span>{lang === 'pt' ? 'DETALHES DO RECEBIMENTO DO PEDIDO' : 'ORDER FULFILLMENT DETAILS'}</span>
+          <span className="text-[10px] text-gold font-mono font-bold">SHOWROOM OU USPS</span>
         </h3>
-        <div className="text-xs space-y-1.5 text-deep-black/80 uppercase font-medium">
+        <div className="text-xs space-y-2 text-deep-black/80 uppercase font-medium">
           <p><strong>{lang === 'pt' ? 'Status' : 'Status'}:</strong> <span className="text-green-700 font-bold">✓ PAGO & EM PREPARAÇÃO</span></p>
-          <p><strong>{lang === 'pt' ? 'Transportadora' : 'Carrier'}:</strong> USPS Priority Mail / Ground Advantage</p>
-          <p><strong>{lang === 'pt' ? 'Prazo Estimado' : 'Estimated Time'}:</strong> 1 a 5 dias úteis com código de rastreamento</p>
+          <p><strong>{lang === 'pt' ? 'Retirada no Showroom' : 'Showroom Pickup'}:</strong> 126 First St, Apt 01, Leominster, MA 01453 (Sem frete)</p>
+          <p><strong>{lang === 'pt' ? 'Entrega no Endereço' : 'Home Delivery'}:</strong> USPS Priority Mail / Ground Advantage (1 a 5 dias úteis)</p>
           <div className="pt-2 border-t border-deep-black/10 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5">
             <span>✉</span>
             <span>
               {lang === 'pt'
-                ? 'E-mail de confirmação enviado para sua caixa de entrada! Assim que o pacote for despachado nos correios, você receberá outro e-mail com o código de rastreamento USPS.'
-                : 'Confirmation email sent! As soon as your order is dispatched, you will receive an email with your USPS tracking link.'}
+                ? 'E-mail de confirmação enviado para você! Se escolheu retirada no showroom, avisaremos no WhatsApp (+1 978 313-9452) assim que suas peças estiverem prontas. Se escolheu entrega, você receberá o código de rastreamento USPS.'
+                : 'Confirmation email sent! If you selected showroom pickup, we will notify you on WhatsApp (+1 978 313-9452) when ready. If delivery was selected, your USPS tracking code will follow.'}
             </span>
           </div>
         </div>

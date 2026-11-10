@@ -15,6 +15,8 @@ export async function POST(req: NextRequest) {
       discount_amount = 0,
       seller_name,
       payment_method = 'card',
+      delivery_method = 'DELIVERY',
+      shipping_fee,
     } = body;
 
     const origin = req.headers.get('origin') || 'https://anafitwear.com';
@@ -44,18 +46,35 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    // Adiciona o Frete Fixo USPS ($9.99 = 999 centavos)
-    lineItems.push({
-      price_data: {
-        currency: 'usd',
-        product_data: {
-          name: 'USPS Domestic Priority Shipping (Flat Rate)',
-          description: 'Entrega rápida para todos os Estados Unidos (1 a 5 dias úteis com rastreamento)',
+    const isPickup = delivery_method === 'PICKUP' || shipping_address?.delivery_method === 'PICKUP';
+    const finalShippingFee = isPickup ? 0 : (shipping_fee !== undefined ? Number(shipping_fee) : 9.90);
+
+    // Se for retirada no showroom, não cobra frete ($0.00). Se for entrega, cobra $9.90 (ou grátis via cupom)
+    if (isPickup) {
+      lineItems.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'Retirada no Showroom (Grátis)',
+            description: '126 First St, Apt 01, Leominster, MA 01453 • Sem cobrança de frete ($0.00)',
+          },
+          unit_amount: 0,
         },
-        unit_amount: 999, // $9.99
-      },
-      quantity: 1,
-    });
+        quantity: 1,
+      });
+    } else if (finalShippingFee > 0) {
+      lineItems.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'USPS Domestic Priority Shipping (Flat Rate)',
+            description: 'Entrega expressa para todos os Estados Unidos (1 a 5 dias úteis com rastreamento)',
+          },
+          unit_amount: Math.round(finalShippingFee * 100),
+        },
+        quantity: 1,
+      });
+    }
 
     // Se houver cupom com desconto, podemos aplicar ou abater
     const generatedOrderId = order_id || `ANA-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -69,9 +88,16 @@ export async function POST(req: NextRequest) {
       // Fornece obrigatoriamente os dados de entrega física nos EUA exigidos pelo Afterpay e Affirm
       payment_intent_data: {
         shipping: {
-          name: customer_name || 'Cliente VIP',
+          name: customer_name || (isPickup ? 'Cliente Showroom' : 'Cliente VIP'),
           phone: customer_phone || undefined,
-          address: {
+          address: isPickup ? {
+            line1: '126 First St',
+            line2: 'Apt 01',
+            city: 'Leominster',
+            state: 'MA',
+            postal_code: '01453',
+            country: 'US',
+          } : {
             line1: shipping_address?.address || '742 Commonwealth Ave',
             line2: shipping_address?.apt || undefined,
             city: shipping_address?.city || 'Boston',
@@ -84,16 +110,19 @@ export async function POST(req: NextRequest) {
       metadata: {
         order_id: generatedOrderId,
         payment_method: paymentMethodChoice.toUpperCase(),
+        delivery_method: isPickup ? 'PICKUP' : 'DELIVERY',
+        showroom_address: isPickup ? '126 First St, Apt 01, Leominster, MA 01453' : '',
         customer_name: customer_name || 'Cliente VIP',
         customer_email: customer_email || '',
         customer_phone: customer_phone || '',
         coupon_code: coupon_code || '',
         seller_name: seller_name || 'Loja Oficial Online',
-        shipping_street: shipping_address?.address || '',
-        shipping_apt: shipping_address?.apt || '',
-        shipping_city: shipping_address?.city || '',
-        shipping_state: shipping_address?.state || '',
-        shipping_zip: shipping_address?.zip || '',
+        shipping_street: isPickup ? '126 First St' : (shipping_address?.address || ''),
+        shipping_apt: isPickup ? 'Apt 01' : (shipping_address?.apt || ''),
+        shipping_city: isPickup ? 'Leominster' : (shipping_address?.city || ''),
+        shipping_state: isPickup ? 'MA' : (shipping_address?.state || ''),
+        shipping_zip: isPickup ? '01453' : (shipping_address?.zip || ''),
+        shipping_fee: String(finalShippingFee),
         discount_amount: String(discount_amount || 0),
       },
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_id=${generatedOrderId}`,

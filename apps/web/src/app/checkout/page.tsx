@@ -26,6 +26,9 @@ import {
   AlertCircle,
   MessageCircle,
   Copy,
+  Store,
+  MapPin,
+  ExternalLink,
 } from 'lucide-react';
 
 const US_STATES = [
@@ -488,7 +491,10 @@ export default function CheckoutPage() {
         ? Math.min(subtotal, fixedDiscountAmount)
         : (subtotal * discountPercent) / 100)
     : 0;
-  const shippingRate = isFreeShipping ? 0 : 9.99; // Taxa fixa de frete para todos os EUA (ou Grátis via cupom)
+  // Opção de Entrega / Retirada no Showroom
+  const [deliveryMethod, setDeliveryMethod] = useState<'DELIVERY' | 'PICKUP'>('DELIVERY');
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  const shippingRate = deliveryMethod === 'PICKUP' ? 0 : (isFreeShipping ? 0 : 9.90); // $9.90 ou Grátis no Showroom / cupom
   const total = subtotal > 0 ? Math.max(0, subtotal - discountAmount) + shippingRate : 0;
 
   const handleRemoveCartItem = () => {
@@ -614,39 +620,81 @@ export default function CheckoutPage() {
     setAddressErrors([]);
     setAddressWarnings([]);
 
-    // 0. Validação e Padronização Estrita do Endereço de Envio nos EUA
-    try {
-      const valRes = await fetch('/api/shipping/validate-address', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(shippingForm),
-      });
+    // 0. Validação de Entrega vs Retirada no Showroom
+    if (deliveryMethod === 'DELIVERY') {
+      try {
+        const valRes = await fetch('/api/shipping/validate-address', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(shippingForm),
+        });
 
-      const valData = await valRes.json();
-      if (!valData.valid) {
-        setAddressErrors(valData.errors || ['Endereço de entrega inválido. Verifique os campos.']);
+        const valData = await valRes.json();
+        if (!valData.valid) {
+          setAddressErrors(valData.errors || ['Endereço de entrega inválido. Verifique os campos.']);
+          setIsSubmitting(false);
+          const box = document.getElementById('shipping-address-box');
+          if (box) box.scrollIntoView({ behavior: 'smooth' });
+          return;
+        }
+
+        if (valData.warnings && valData.warnings.length > 0) {
+          setAddressWarnings(valData.warnings);
+        }
+
+        if (valData.normalized) {
+          setShippingForm((prev) => ({
+            ...prev,
+            address: valData.normalized.address,
+            city: valData.normalized.city,
+            state: valData.normalized.state,
+            zip: valData.normalized.zip,
+          }));
+        }
+      } catch (valErr) {
+        console.warn('Erro ao validar endereço via API, prosseguindo com dados informados:', valErr);
+      }
+    } else {
+      // Validação simplificada para Retirada no Showroom (apenas dados de identificação e contato)
+      if (!shippingForm.firstName.trim()) {
+        setAddressErrors([lang === 'pt' ? 'Por favor, informe seu primeiro nome para identificação no showroom.' : 'Please enter your first name for showroom pickup.']);
         setIsSubmitting(false);
         const box = document.getElementById('shipping-address-box');
         if (box) box.scrollIntoView({ behavior: 'smooth' });
         return;
       }
-
-      if (valData.warnings && valData.warnings.length > 0) {
-        setAddressWarnings(valData.warnings);
+      if (!shippingForm.email.trim() || !shippingForm.email.includes('@')) {
+        setAddressErrors([lang === 'pt' ? 'Por favor, informe um e-mail válido para confirmação do pedido.' : 'Please enter a valid email for order confirmation.']);
+        setIsSubmitting(false);
+        const box = document.getElementById('shipping-address-box');
+        if (box) box.scrollIntoView({ behavior: 'smooth' });
+        return;
       }
-
-      if (valData.normalized) {
-        setShippingForm((prev) => ({
-          ...prev,
-          address: valData.normalized.address,
-          city: valData.normalized.city,
-          state: valData.normalized.state,
-          zip: valData.normalized.zip,
-        }));
+      if (!shippingForm.phone.trim()) {
+        setAddressErrors([lang === 'pt' ? 'Por favor, informe seu telefone/WhatsApp para avisarmos quando seu pedido estiver pronto.' : 'Please enter your phone/WhatsApp for pickup notification.']);
+        setIsSubmitting(false);
+        const box = document.getElementById('shipping-address-box');
+        if (box) box.scrollIntoView({ behavior: 'smooth' });
+        return;
       }
-    } catch (valErr) {
-      console.warn('Erro ao validar endereço via API, prosseguindo com dados informados:', valErr);
     }
+
+    const effectiveShippingAddress = deliveryMethod === 'PICKUP' ? {
+      address: '126 First St',
+      apt: 'Apt 01',
+      city: 'Leominster',
+      state: 'MA',
+      zip: '01453',
+      delivery_method: 'PICKUP',
+      showroom_address: '126 First St, Apt 01, Leominster, MA 01453',
+    } : {
+      address: shippingForm.address || '742 Commonwealth Ave',
+      apt: shippingForm.apt || '',
+      city: shippingForm.city || 'Boston',
+      state: shippingForm.state || 'MA',
+      zip: shippingForm.zip || '02215',
+      delivery_method: 'DELIVERY',
+    };
 
     const generatedOrderId = `ANA-${Math.floor(100000 + Math.random() * 900000)}`;
     const isStripeMethod =
@@ -667,13 +715,9 @@ export default function CheckoutPage() {
             customer_name: `${shippingForm.firstName || 'Cliente'} ${shippingForm.lastName || 'Online'}`,
             customer_email: shippingForm.email || 'cliente@exemplo.com',
             customer_phone: shippingForm.phone || '+1 978 313-9452',
-            shipping_address: {
-              address: shippingForm.address || '742 Commonwealth Ave',
-              apt: shippingForm.apt || '',
-              city: shippingForm.city || 'Boston',
-              state: shippingForm.state || 'MA',
-              zip: shippingForm.zip || '02215',
-            },
+            delivery_method: deliveryMethod,
+            shipping_fee: shippingRate,
+            shipping_address: effectiveShippingAddress,
             coupon_code: appliedCoupon,
             discount_amount: discountAmount,
             seller_name: couponSellerInfo ? couponSellerInfo.name : 'Loja Oficial Online',
@@ -698,13 +742,7 @@ export default function CheckoutPage() {
               name: `${shippingForm.firstName || ''} ${shippingForm.lastName || ''}`.trim() || 'Cliente Online',
               email: shippingForm.email || '',
               phone: shippingForm.phone || '',
-              shipping_address: {
-                address: shippingForm.address || '',
-                apt: shippingForm.apt || '',
-                city: shippingForm.city || '',
-                state: shippingForm.state || 'MA',
-                zip: shippingForm.zip || '',
-              },
+              shipping_address: effectiveShippingAddress,
             };
             localStorage.setItem('ana_customer_session', JSON.stringify(customerToSave));
           } catch (_) {}
@@ -753,20 +791,15 @@ export default function CheckoutPage() {
           customer_name: `${shippingForm.firstName || 'Cliente'} ${shippingForm.lastName || 'Online'}`,
           customer_email: shippingForm.email || 'cliente@exemplo.com',
           customer_phone: shippingForm.phone || '+1 978 313-9452',
-          shipping_address: {
-            address: shippingForm.address || '742 Commonwealth Ave',
-            apt: shippingForm.apt || '',
-            city: shippingForm.city || 'Boston',
-            state: shippingForm.state || 'MA',
-            zip: shippingForm.zip || '02215',
-          },
+          delivery_method: deliveryMethod,
+          shipping_address: effectiveShippingAddress,
           seller_name: couponSellerInfo ? couponSellerInfo.name : 'Loja Oficial Online',
           coupon_code: appliedCoupon,
           payment_method: paymentMethod,
           subtotal_products: subtotal,
           discount_amount: discountAmount,
           shipping_fee: shippingRate,
-          shipping_cost: 7.50, // Custo real USPS Ground Advantage
+          shipping_cost: deliveryMethod === 'PICKUP' ? 0 : 7.50,
           items: [
             {
               title: cartItem.title,
@@ -845,12 +878,26 @@ export default function CheckoutPage() {
 
         <div className="p-6 bg-white border-2 border-deep-black text-left space-y-4 max-w-xl mx-auto shadow-sm">
           <h3 className="text-xs font-black uppercase tracking-wider text-deep-black border-b border-deep-black/10 pb-2">
-            {lang === 'pt' ? 'DETALHES DO ENVIO DOMÉSTICO (EUA)' : 'DOMESTIC US SHIPPING DETAILS'}
+            {deliveryMethod === 'PICKUP'
+              ? (lang === 'pt' ? 'DETALHES DA RETIRADA NO SHOWROOM' : 'SHOWROOM PICKUP DETAILS')
+              : (lang === 'pt' ? 'DETALHES DO ENVIO DOMÉSTICO (EUA)' : 'DOMESTIC US SHIPPING DETAILS')}
           </h3>
           <div className="text-xs space-y-2 text-deep-black/80 uppercase font-medium">
             <p><strong>{lang === 'pt' ? 'Cliente' : 'Customer'}:</strong> {shippingForm.firstName || 'Cliente'} {shippingForm.lastName}</p>
             <p><strong>{lang === 'pt' ? 'E-mail de Notificação' : 'Notification Email'}:</strong> {shippingForm.email || 'cliente@exemplo.com'}</p>
-            <p><strong>{lang === 'pt' ? 'Destino' : 'Destination'}:</strong> {shippingForm.address || '742 Commonwealth Ave'}, {shippingForm.city || 'Boston'} {shippingForm.state} {shippingForm.zip || '02215'}</p>
+            {deliveryMethod === 'PICKUP' ? (
+              <>
+                <p><strong>{lang === 'pt' ? 'Local de Retirada' : 'Pickup Location'}:</strong> 126 First St, Apt 01, Leominster, MA 01453</p>
+                <p><strong>{lang === 'pt' ? 'Frete' : 'Shipping'}:</strong> <span className="text-emerald-700 font-bold">{lang === 'pt' ? 'GRÁTIS ($0.00)' : 'FREE ($0.00)'}</span></p>
+                <p className="text-[11px] text-amber-800 font-bold">
+                  {lang === 'pt'
+                    ? '✓ Seu pedido está sendo separado no atelier. Avisaremos via WhatsApp no (978) 313-9452 quando estiver pronto para retirada!'
+                    : '✓ Your order is being prepared at the atelier. We will notify you via WhatsApp at (978) 313-9452 when ready!'}
+                </p>
+              </>
+            ) : (
+              <p><strong>{lang === 'pt' ? 'Destino' : 'Destination'}:</strong> {shippingForm.address || '742 Commonwealth Ave'}, {shippingForm.city || 'Boston'} {shippingForm.state} {shippingForm.zip || '02215'}</p>
+            )}
             <p>
               <strong>{lang === 'pt' ? 'Prazo de Entrega' : 'Delivery Estimate'}:</strong>{' '}
               {orderWasBackorder ? (
@@ -935,8 +982,8 @@ export default function CheckoutPage() {
           </h1>
           <p className="text-xs uppercase tracking-wider text-deep-black/60 font-medium leading-relaxed">
             {lang === 'pt'
-              ? 'Você ainda não selecionou nenhuma peça. Escolha seu modelo favorito na vitrine para finalizar sua compra com frete fixo de $9.99 para todos os EUA.'
-              : 'You haven\'t added any items to your bag yet. Explore our zero-transparency sets and rompers with flat $9.99 shipping anywhere in the US.'}
+              ? 'Você ainda não selecionou nenhuma peça. Escolha seu modelo favorito na vitrine para finalizar sua compra com frete fixo de $9.90 para todos os EUA ou retirada grátis no showroom.'
+              : 'You haven\'t added any items to your bag yet. Explore our zero-transparency sets and rompers with flat $9.90 shipping anywhere in the US or free showroom pickup.'}
           </p>
         </div>
 
@@ -1304,15 +1351,21 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* 2. Endereço de Envio nos EUA com Validação USPS */}
-          <div id="shipping-address-box" className={`bg-white border-2 border-deep-black p-6 sm:p-8 space-y-5 transition ${!customerUser ? 'opacity-60 pointer-events-none' : ''}`}>
+          {/* 2. Opções de Entrega ou Retirada no Showroom */}
+          <div id="shipping-address-box" className={`bg-white border-2 border-deep-black p-6 sm:p-8 space-y-6 transition ${!customerUser ? 'opacity-60 pointer-events-none' : ''}`}>
             <div className="flex items-center justify-between border-b border-deep-black/10 pb-3">
               <h2 className="text-sm font-black uppercase tracking-wider text-deep-black flex items-center gap-2">
-                <Truck className="w-4 h-4 text-gold" />
-                <span>{lang === 'pt' ? '2. ENDEREÇO DE ENTREGA NOS ESTADOS UNIDOS' : '2. DOMESTIC US SHIPPING ADDRESS'}</span>
+                {deliveryMethod === 'PICKUP' ? (
+                  <Store className="w-4 h-4 text-gold" />
+                ) : (
+                  <Truck className="w-4 h-4 text-gold" />
+                )}
+                <span>{lang === 'pt' ? '2. ENTREGA OU RETIRADA NO SHOWROOM' : '2. DELIVERY OR SHOWROOM PICKUP'}</span>
               </h2>
-              <span className="text-[10px] font-black uppercase tracking-wider text-gold">
-                FLAT RATE $9.99
+              <span className="text-[10px] font-black uppercase tracking-wider text-gold font-mono">
+                {deliveryMethod === 'PICKUP'
+                  ? (lang === 'pt' ? 'RETIRADA GRÁTIS' : 'FREE PICKUP')
+                  : (isFreeShipping ? (lang === 'pt' ? 'FRETE GRÁTIS' : 'FREE SHIPPING') : 'FLAT RATE $9.90')}
               </span>
             </div>
 
@@ -1323,12 +1376,182 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* Mensagens de Erro de Validação de Endereço */}
+            {/* SELEÇÃO DO MÉTODO: Entregar no meu endereço vs Retirar no showroom */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70 block">
+                {lang === 'pt' ? 'SELECIONE COMO DESEJA RECEBER SEU PEDIDO:' : 'SELECT HOW YOU WANT TO RECEIVE YOUR ORDER:'}
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Opção A: Entregar no meu endereço */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeliveryMethod('DELIVERY');
+                    setAddressErrors([]);
+                  }}
+                  className={`p-4 border-2 text-left transition flex flex-col justify-between relative cursor-pointer ${
+                    deliveryMethod === 'DELIVERY'
+                      ? 'border-deep-black bg-stone-50 shadow-sm ring-1 ring-deep-black'
+                      : 'border-deep-black/20 hover:border-deep-black/60 bg-white'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition ${
+                        deliveryMethod === 'DELIVERY' ? 'bg-deep-black text-gold' : 'bg-stone-100 text-stone-500'
+                      }`}>
+                        <Truck className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black uppercase text-deep-black tracking-wide">
+                          {lang === 'pt' ? 'Entregar no meu endereço' : 'Deliver to my address'}
+                        </p>
+                        <p className="text-[10px] text-deep-black/60 font-medium">
+                          {lang === 'pt' ? 'Envio expresso USPS para todos os EUA' : 'USPS Priority express to all 50 US states'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-mono font-black text-deep-black">
+                        {isFreeShipping ? (lang === 'pt' ? 'GRÁTIS' : 'FREE') : '$9.90'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px] font-bold">
+                    <span className="text-deep-black/60">
+                      {lang === 'pt' ? 'Prazo:' : 'Time:'} 1 a 5 {lang === 'pt' ? 'dias úteis' : 'business days'}
+                    </span>
+                    {deliveryMethod === 'DELIVERY' && (
+                      <span className="text-emerald-700 uppercase font-black flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>SELECIONADO</span>
+                      </span>
+                    )}
+                  </div>
+                </button>
+
+                {/* Opção B: Retirar no showroom */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeliveryMethod('PICKUP');
+                    setAddressErrors([]);
+                  }}
+                  className={`p-4 border-2 text-left transition flex flex-col justify-between relative cursor-pointer ${
+                    deliveryMethod === 'PICKUP'
+                      ? 'border-deep-black bg-amber-50/60 shadow-sm ring-1 ring-deep-black'
+                      : 'border-deep-black/20 hover:border-deep-black/60 bg-white'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition ${
+                        deliveryMethod === 'PICKUP' ? 'bg-gold text-deep-black shadow' : 'bg-stone-100 text-stone-500'
+                      }`}>
+                        <Store className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black uppercase text-deep-black tracking-wide">
+                          {lang === 'pt' ? 'Retirar no showroom' : 'Pick up at showroom'}
+                        </p>
+                        <p className="text-[10px] text-deep-black/60 font-medium">
+                          {lang === 'pt' ? 'Retirada presencial gratuita no atelier' : 'Free in-person pickup at official atelier'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-[11px] font-mono font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 border border-emerald-300">
+                        {lang === 'pt' ? 'GRÁTIS ($0.00)' : 'FREE ($0.00)'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px] font-bold">
+                    <span className="text-deep-black/60 font-medium truncate max-w-[140px] sm:max-w-[170px]">
+                      126 First St, Leominster
+                    </span>
+                    {deliveryMethod === 'PICKUP' && (
+                      <span className="text-emerald-700 uppercase font-black flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>SELECIONADO</span>
+                      </span>
+                    )}
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* SE O CLIENTE ESCOLHER RETIRAR NO SHOWROOM: CARTÃO DESTACADO COM ENDEREÇO E INSTRUÇÕES */}
+            {deliveryMethod === 'PICKUP' && (
+              <div className="p-5 bg-stone-900 text-white border-2 border-gold space-y-4 shadow-luxury animate-fadeIn">
+                <div className="flex items-center justify-between border-b border-gold/30 pb-3">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-gold shrink-0" />
+                    <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-gold">
+                      {lang === 'pt' ? 'ENDEREÇO DO SHOWROOM OFICIAL' : 'OFFICIAL SHOWROOM ADDRESS'}
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-gold text-deep-black font-mono">
+                    {lang === 'pt' ? 'FRETE $0.00' : 'FREE PICKUP'}
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-base sm:text-lg font-black tracking-wide text-white">
+                    126 First St, Apt 01
+                  </p>
+                  <p className="text-sm font-bold text-white/90">
+                    Leominster, MA 01453
+                  </p>
+                  <p className="text-[11px] text-white/60 uppercase">
+                    Estados Unidos • Ana Fitness Showroom & Atelier Oficial
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText('126 First St, Apt 01, Leominster, MA 01453');
+                      setCopiedAddress(true);
+                      setTimeout(() => setCopiedAddress(false), 3000);
+                    }}
+                    className="px-3.5 py-2 bg-gold text-deep-black hover:bg-white text-[11px] font-black uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>{copiedAddress ? (lang === 'pt' ? '✓ ENDEREÇO COPIADO!' : '✓ COPIED!') : (lang === 'pt' ? 'COPIAR ENDEREÇO' : 'COPY ADDRESS')}</span>
+                  </button>
+
+                  <a
+                    href="https://www.google.com/maps/search/?api=1&query=126+First+St+Apt+01+Leominster+MA+01453"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold uppercase tracking-wider transition flex items-center gap-1.5 border border-white/20"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-gold" />
+                    <span>{lang === 'pt' ? 'VER NO GOOGLE MAPS' : 'VIEW ON GOOGLE MAPS'}</span>
+                  </a>
+                </div>
+
+                <div className="p-3.5 bg-stone-800/90 border border-gold/30 text-white/90 text-xs space-y-1.5">
+                  <p className="font-bold text-gold text-[11px] uppercase flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{lang === 'pt' ? 'COMO FUNCIONA A RETIRADA:' : 'HOW PICKUP WORKS:'}</span>
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-white/80">
+                    {lang === 'pt'
+                      ? 'Não há custo de frete. Seu pedido será preparado no showroom assim que o pagamento for confirmado. Entraremos em contato via WhatsApp no (978) 313-9452 para combinar o melhor horário para você buscar suas peças com tranquilidade!'
+                      : 'No shipping fee. Your order is prepared at the showroom as soon as payment is confirmed. We will contact you via WhatsApp at (978) 313-9452 to arrange the most convenient time for your pickup!'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Mensagens de Erro de Validação */}
             {addressErrors.length > 0 && (
               <div className="p-4 bg-red-50 border-2 border-red-500 text-red-950 space-y-2 animate-fadeIn">
                 <div className="flex items-center gap-2 font-black uppercase text-xs text-red-700">
                   <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                  <span>CORRIJA OS DADOS DE ENTREGA PARA FINALIZAR O PEDIDO:</span>
+                  <span>{lang === 'pt' ? 'CORRIJA OS DADOS PARA FINALIZAR O PEDIDO:' : 'PLEASE CORRECT THE REQUIRED FIELDS:'}</span>
                 </div>
                 <ul className="list-disc list-inside text-[11px] font-bold text-red-800 space-y-1">
                   {addressErrors.map((err, i) => (
@@ -1338,8 +1561,8 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* Avisos não-bloqueantes da agência postal */}
-            {addressWarnings.length > 0 && (
+            {/* Avisos não-bloqueantes da agência postal (Apenas no modo entrega) */}
+            {deliveryMethod === 'DELIVERY' && addressWarnings.length > 0 && (
               <div className="p-3 bg-amber-50 border border-amber-300 text-amber-900 text-xs space-y-1 animate-fadeIn">
                 <div className="flex items-center gap-1.5 font-bold uppercase text-[10px] text-amber-700">
                   <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
@@ -1351,167 +1574,193 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                  {lang === 'pt' ? 'E-MAIL (PARA RASTREIO E CONTA):' : 'EMAIL (FOR TRACKING & ACCOUNT):'}
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={shippingForm.email}
-                  onChange={(e) => setShippingForm({ ...shippingForm, email: e.target.value })}
-                  placeholder="yourname@gmail.com"
-                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                />
+            {/* Dados de Contato e Identificação (Sempre necessários) */}
+            <div className="space-y-4">
+              <div className="border-b border-deep-black/10 pb-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-deep-black flex items-center gap-2">
+                  <User className="w-3.5 h-3.5 text-gold" />
+                  <span>
+                    {deliveryMethod === 'PICKUP'
+                      ? (lang === 'pt' ? 'DADOS DE IDENTIFICAÇÃO PARA RETIRADA NO SHOWROOM' : 'IDENTIFICATION FOR SHOWROOM PICKUP')
+                      : (lang === 'pt' ? 'DADOS DO DESTINATÁRIO' : 'RECIPIENT CONTACT')}
+                  </span>
+                </h3>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                  {lang === 'pt' ? 'TELEFONE (NOTIFICAÇÕES SMS):' : 'PHONE (SMS NOTIFICATIONS):'}
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={shippingForm.phone}
-                  onChange={(e) => setShippingForm({ ...shippingForm, phone: e.target.value })}
-                  placeholder="+1 (978) 000-0000"
-                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                />
-              </div>
-            </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                    {lang === 'pt' ? 'E-MAIL (PARA CONFIRMAÇÃO DO PEDIDO):' : 'EMAIL (FOR ORDER CONFIRMATION):'}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={shippingForm.email}
+                    onChange={(e) => setShippingForm({ ...shippingForm, email: e.target.value })}
+                    placeholder="yourname@gmail.com"
+                    className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                  />
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                  {lang === 'pt' ? 'PRIMEIRO NOME:' : 'FIRST NAME:'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={shippingForm.firstName}
-                  onChange={(e) => setShippingForm({ ...shippingForm, firstName: e.target.value })}
-                  placeholder="Ex: Amanda"
-                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                  {lang === 'pt' ? 'SOBRENOME:' : 'LAST NAME:'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={shippingForm.lastName}
-                  onChange={(e) => setShippingForm({ ...shippingForm, lastName: e.target.value })}
-                  placeholder="Ex: Silva"
-                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                />
-              </div>
-            </div>
-
-            {/* Rua e Complemento (Apt/Suite) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="sm:col-span-2 space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70 flex items-center justify-between">
-                  <span>{lang === 'pt' ? 'ENDEREÇO (COM NÚMERO):' : 'STREET ADDRESS (WITH NUMBER):'}</span>
-                  <span className="text-[9px] text-deep-black/40 font-mono">Ex: 100 Main St</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={shippingForm.address}
-                  onChange={(e) => {
-                    setShippingForm({ ...shippingForm, address: e.target.value });
-                    setAddressErrors((prev) => prev.filter((er) => !er.includes('número') && !er.includes('Endereço')));
-                  }}
-                  placeholder="Ex: 100 Main St"
-                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                />
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                    {lang === 'pt' ? 'TELEFONE / WHATSAPP (AVISO DE RETIRADA / RASTREIO):' : 'PHONE / WHATSAPP (NOTIFICATIONS):'}
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={shippingForm.phone}
+                    onChange={(e) => setShippingForm({ ...shippingForm, phone: e.target.value })}
+                    placeholder="+1 (978) 000-0000"
+                    className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                  APT / SUITE / UNIT:
-                </label>
-                <input
-                  type="text"
-                  value={shippingForm.apt}
-                  onChange={(e) => setShippingForm({ ...shippingForm, apt: e.target.value })}
-                  placeholder="Apt 4B (opcional)"
-                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                    {lang === 'pt' ? 'PRIMEIRO NOME:' : 'FIRST NAME:'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={shippingForm.firstName}
+                    onChange={(e) => setShippingForm({ ...shippingForm, firstName: e.target.value })}
+                    placeholder="Ex: Amanda"
+                    className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                    {lang === 'pt' ? 'SOBRENOME:' : 'LAST NAME:'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={shippingForm.lastName}
+                    onChange={(e) => setShippingForm({ ...shippingForm, lastName: e.target.value })}
+                    placeholder="Ex: Silva"
+                    className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Linha ZIP, Cidade e Estado com Autovalidação USPS */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70 flex items-center justify-between">
-                  <span>ZIP CODE (USPS):</span>
-                  {validatingZip && <span className="text-[9px] text-gold font-bold animate-pulse">VERIFICANDO...</span>}
-                </label>
-                <input
-                  type="text"
-                  required
-                  maxLength={5}
-                  value={shippingForm.zip}
-                  onChange={(e) => handleZipChange(e.target.value)}
-                  placeholder="01453"
-                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                />
-              </div>
+            {/* SE ENTREGA SELECIONADA: FORMULÁRIO DE ENDEREÇO RESIDENCIAL COM VALIDAÇÃO USPS */}
+            {deliveryMethod === 'DELIVERY' && (
+              <div className="space-y-4 pt-2 border-t border-deep-black/10 animate-fadeIn">
+                <div className="flex items-center justify-between pb-1">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-deep-black flex items-center gap-2">
+                    <Truck className="w-3.5 h-3.5 text-gold" />
+                    <span>{lang === 'pt' ? 'ENDEREÇO FÍSICO NOS ESTADOS UNIDOS' : 'DOMESTIC US PHYSICAL ADDRESS'}</span>
+                  </h3>
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                  {lang === 'pt' ? 'CIDADE:' : 'CITY:'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={shippingForm.city}
-                  onChange={(e) => setShippingForm({ ...shippingForm, city: e.target.value })}
-                  placeholder="Ex: Leominster"
-                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
-                />
-              </div>
+                {/* Rua e Complemento (Apt/Suite) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70 flex items-center justify-between">
+                      <span>{lang === 'pt' ? 'ENDEREÇO (COM NÚMERO):' : 'STREET ADDRESS (WITH NUMBER):'}</span>
+                      <span className="text-[9px] text-deep-black/40 font-mono">Ex: 100 Main St</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={shippingForm.address}
+                      onChange={(e) => {
+                        setShippingForm({ ...shippingForm, address: e.target.value });
+                        setAddressErrors((prev) => prev.filter((er) => !er.includes('número') && !er.includes('Endereço')));
+                      }}
+                      placeholder="Ex: 100 Main St"
+                      className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                    />
+                  </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
-                  {lang === 'pt' ? 'ESTADO (US STATE):' : 'STATE:'}
-                </label>
-                <select
-                  value={shippingForm.state}
-                  onChange={(e) => setShippingForm({ ...shippingForm, state: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black bg-white"
-                >
-                  {US_STATES.map((st) => (
-                    <option key={st} value={st}>{st}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                      APT / SUITE / UNIT:
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingForm.apt}
+                      onChange={(e) => setShippingForm({ ...shippingForm, apt: e.target.value })}
+                      placeholder="Apt 4B (opcional)"
+                      className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                    />
+                  </div>
+                </div>
 
-            {/* Feedback Visual de Validação do ZIP no USPS */}
-            {zipVerifiedStatus && (
-              <div
-                className={`p-3 text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 border animate-fadeIn ${
-                  zipVerifiedStatus.valid
-                    ? 'bg-green-50 text-green-900 border-green-300'
-                    : 'bg-red-50 text-red-900 border-red-300'
-                }`}
-              >
-                {zipVerifiedStatus.valid ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                    <span>✓ CEP AMERICANO VERIFICADO (USPS): {zipVerifiedStatus.city}, {zipVerifiedStatus.state}</span>
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                    <span>⚠️ {zipVerifiedStatus.message}</span>
-                  </>
+                {/* Linha ZIP, Cidade e Estado com Autovalidação USPS */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70 flex items-center justify-between">
+                      <span>ZIP CODE (USPS):</span>
+                      {validatingZip && <span className="text-[9px] text-gold font-bold animate-pulse">VERIFICANDO...</span>}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={5}
+                      value={shippingForm.zip}
+                      onChange={(e) => handleZipChange(e.target.value)}
+                      placeholder="01453"
+                      className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider font-mono border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                      {lang === 'pt' ? 'CIDADE:' : 'CITY:'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={shippingForm.city}
+                      onChange={(e) => setShippingForm({ ...shippingForm, city: e.target.value })}
+                      placeholder="Ex: Leominster"
+                      className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-deep-black/70">
+                      {lang === 'pt' ? 'ESTADO (US STATE):' : 'STATE:'}
+                    </label>
+                    <select
+                      value={shippingForm.state}
+                      onChange={(e) => setShippingForm({ ...shippingForm, state: e.target.value })}
+                      className="w-full px-3.5 py-2.5 text-xs uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-deep-black bg-white"
+                    >
+                      {US_STATES.map((st) => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Feedback Visual de Validação do ZIP no USPS */}
+                {zipVerifiedStatus && (
+                  <div
+                    className={`p-3 text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 border animate-fadeIn ${
+                      zipVerifiedStatus.valid
+                        ? 'bg-green-50 text-green-900 border-green-300'
+                        : 'bg-red-50 text-red-900 border-red-300'
+                    }`}
+                  >
+                    {zipVerifiedStatus.valid ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                        <span>✓ CEP AMERICANO VERIFICADO (USPS): {zipVerifiedStatus.city}, {zipVerifiedStatus.state}</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                        <span>⚠️ {zipVerifiedStatus.message}</span>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             )}

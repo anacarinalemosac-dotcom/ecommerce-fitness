@@ -42,9 +42,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, message: 'Order already recorded', orderId });
     }
 
+    const isPickup = (meta.delivery_method || '').toUpperCase() === 'PICKUP';
+    const effectiveShippingFee = isPickup ? 0 : Number(meta.shipping_fee || 9.90);
+    const effectiveShippingCost = isPickup ? 0 : 7.50;
+
     // Itens comprados
     const items = (session.line_items?.data || [])
-      .filter((li: any) => !li.description?.toLowerCase().includes('shipping'))
+      .filter((li: any) => {
+        const desc = (li.description || '').toLowerCase();
+        return !desc.includes('shipping') && !desc.includes('frete') && !desc.includes('retirada') && !desc.includes('showroom');
+      })
       .map((li: any) => ({
         title: li.description || 'PEDIDO STRIPE ONLINE',
         size: meta.size || 'M',
@@ -62,7 +69,7 @@ export async function GET(req: NextRequest) {
         color: 'Preto Ônix',
         sku: 'STRIPE-ORDER',
         quantity: 1,
-        unit_price: Math.max(0, totalAmountPaid - 9.99),
+        unit_price: Math.max(0, totalAmountPaid - effectiveShippingFee),
         cost_price: 16.00,
       });
     }
@@ -71,24 +78,27 @@ export async function GET(req: NextRequest) {
     const customerEmail = meta.customer_email || session.customer_details?.email || 'cliente@anafitwear.com';
     const customerPhone = meta.customer_phone || session.customer_details?.phone || '';
     const shippingAddress = {
-      address: meta.shipping_street || session.customer_details?.address?.line1 || 'Leominster, MA',
-      apt: meta.shipping_apt || session.customer_details?.address?.line2 || '',
-      city: meta.shipping_city || session.customer_details?.address?.city || 'Leominster',
-      state: meta.shipping_state || session.customer_details?.address?.state || 'MA',
-      zip: meta.shipping_zip || session.customer_details?.address?.postal_code || '01453',
+      address: isPickup ? '126 First St' : (meta.shipping_street || session.customer_details?.address?.line1 || 'Leominster, MA'),
+      apt: isPickup ? 'Apt 01' : (meta.shipping_apt || session.customer_details?.address?.line2 || ''),
+      city: isPickup ? 'Leominster' : (meta.shipping_city || session.customer_details?.address?.city || 'Leominster'),
+      state: isPickup ? 'MA' : (meta.shipping_state || session.customer_details?.address?.state || 'MA'),
+      zip: isPickup ? '01453' : (meta.shipping_zip || session.customer_details?.address?.postal_code || '01453'),
+      delivery_method: isPickup ? 'PICKUP' : 'DELIVERY',
+      showroom_address: isPickup ? '126 First St, Apt 01, Leominster, MA 01453' : undefined,
     };
 
     const metadataPayload = {
       order_number: orderId,
       seller_name: meta.seller_name || 'Loja Oficial Online',
       channel_detail: 'ONLINE',
+      delivery_method: isPickup ? 'PICKUP' : 'DELIVERY',
       payment_fee: (meta.payment_method || '').toUpperCase() === 'AFTERPAY'
         ? Number(((totalAmountPaid * 0.06) + 0.30).toFixed(2))
         : (meta.payment_method || '').toUpperCase() === 'KLARNA' || (meta.payment_method || '').toUpperCase() === 'AFFIRM'
         ? Number(((totalAmountPaid * 0.0599) + 0.30).toFixed(2))
         : Number(((totalAmountPaid * 0.029) + 0.30).toFixed(2)),
-      shipping_fee: 9.99,
-      shipping_cost: 7.50,
+      shipping_fee: effectiveShippingFee,
+      shipping_cost: effectiveShippingCost,
       cost_of_goods: 16.00,
       net_profit: Number((
         totalAmountPaid - 16.00 - (
@@ -97,7 +107,7 @@ export async function GET(req: NextRequest) {
             : (meta.payment_method || '').toUpperCase() === 'KLARNA' || (meta.payment_method || '').toUpperCase() === 'AFFIRM'
             ? ((totalAmountPaid * 0.0599) + 0.30)
             : ((totalAmountPaid * 0.029) + 0.30)
-        ) - 7.50
+        ) - effectiveShippingCost
       ).toFixed(2)),
       profit_margin_pct: totalAmountPaid > 0 ? Number(((
         (totalAmountPaid - 16.00 - (
@@ -106,7 +116,7 @@ export async function GET(req: NextRequest) {
             : (meta.payment_method || '').toUpperCase() === 'KLARNA' || (meta.payment_method || '').toUpperCase() === 'AFFIRM'
             ? ((totalAmountPaid * 0.0599) + 0.30)
             : ((totalAmountPaid * 0.029) + 0.30)
-        ) - 7.50) / totalAmountPaid
+        ) - effectiveShippingCost) / totalAmountPaid
       ) * 100).toFixed(1)) : 0,
       fulfillment_status: 'AWAITING_SEPARATION',
       payment_status: 'PAID',
