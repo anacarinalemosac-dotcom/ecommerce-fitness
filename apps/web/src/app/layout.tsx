@@ -5,7 +5,6 @@ import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
 import { FloatingLanguageSwitcher } from '../components/FloatingLanguageSwitcher';
 import { CustomerChatWidget } from '../components/CustomerChatWidget';
-import { HighDemandPopup } from '../components/HighDemandPopup';
 import { LiveVisitorTracker } from '../components/LiveVisitorTracker';
 import { AffiliateLinkTracker } from '../components/AffiliateLinkTracker';
 import { TrackingScripts } from '../components/TrackingScripts';
@@ -46,7 +45,6 @@ export default function RootLayout({
             <SiteFooter />
             <FloatingLanguageSwitcher />
             <CustomerChatWidget />
-            <HighDemandPopup />
           </StoreMaintenanceGuard>
         </Providers>
       </body>

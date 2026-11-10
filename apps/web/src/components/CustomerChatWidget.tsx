@@ -247,10 +247,10 @@ export function CustomerChatWidget() {
           <button
             type="button"
             onClick={handleOpenChat}
-            className="hidden sm:flex items-center gap-2 bg-deep-black text-white px-3.5 py-2 border border-gold shadow-luxury hover:bg-gold hover:text-deep-black transition cursor-pointer text-xs font-black uppercase tracking-wider animate-bounce"
+            className="flex items-center gap-1.5 sm:gap-2 bg-deep-black text-white px-3 py-2 border border-gold shadow-luxury hover:bg-gold hover:text-deep-black transition cursor-pointer text-[10.5px] sm:text-xs font-black uppercase tracking-wider animate-bounce rounded-xs max-w-[180px] sm:max-w-none"
           >
             <Sparkles className="w-3.5 h-3.5 text-gold group-hover:text-deep-black" />
-            <span>{lang === 'pt' ? 'Dúvidas? Fale com a Ana' : 'Questions? Chat with Ana'}</span>
+            <span>{lang === 'pt' ? 'Qualquer dúvida chame no WhatsApp' : 'Any questions? Chat on WhatsApp'}</span>
           </button>
 
           {/* Botão de Ícone Principal do Chat */}
