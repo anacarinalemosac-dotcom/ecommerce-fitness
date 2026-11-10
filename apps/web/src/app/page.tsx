@@ -27,6 +27,7 @@ import {
   X,
   Palette,
   Ruler,
+  Tag,
   Layers,
   MessageCircle,
 } from 'lucide-react';
@@ -354,6 +355,8 @@ export default function HomePage() {
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState<boolean>(false);
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
   const [quickAddedItem, setQuickAddedItem] = useState<{ id: string; size: string } | null>(null);
+  const [recentSoldProducts, setRecentSoldProducts] = useState<any[]>([]);
+  const [loadingRecentSold, setLoadingRecentSold] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [shareModalProduct, setShareModalProduct] = useState<any | null>(null);
   const [cardImageOverrides, setCardImageOverrides] = useState<Record<string, string>>({});
@@ -740,65 +743,95 @@ export default function HomePage() {
       })()}
 
       {/* =========================================================================
-          COMUNICADO OFICIAL • BANNER DE ALTA DEMANDA NA FRENTE DO SITE
+          BANNER OFICIAL • BLACK FRIDAY NOVEMBRO (TODOS OS PRODUTOS NA PROMOÇÃO)
           ========================================================================= */}
       <section className="max-w-7xl mx-auto px-4 sm:px-8 -mt-8 sm:-mt-12 relative z-20">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0D0D0D] via-[#1A1A1A] to-[#0D0D0D] border-2 border-gold/70 shadow-[0_16px_40px_rgba(0,0,0,0.85),0_0_35px_rgba(212,175,55,0.25)] p-6 sm:p-8">
-          {/* Subtle gold glow background */}
-          <div className="absolute -right-20 -top-20 w-64 h-64 bg-gold/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-black via-[#111111] to-[#1a1202] border-2 border-gold/80 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_45px_rgba(212,175,55,0.35)] p-6 sm:p-10">
+          {/* Subtle animated ambient gold and red glows */}
+          <div className="absolute -right-24 -top-24 w-80 h-80 bg-gold/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -left-20 -bottom-20 w-72 h-72 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6">
-            <div className="flex items-start gap-4 sm:gap-5 w-full lg:w-auto">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gold/15 border border-gold/40 flex items-center justify-center shrink-0 text-gold shadow-inner">
-                <Flame className="w-6 h-6 sm:w-7 sm:h-7 animate-pulse text-gold" />
+          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div className="space-y-4 flex-1 w-full">
+              {/* Badges de Destaque */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-3.5 py-1.5 bg-gradient-to-r from-red-600 to-amber-600 text-white text-[11px] font-black uppercase tracking-widest rounded-full flex items-center gap-2 shadow-lg animate-pulse">
+                  <Flame className="w-4 h-4 text-white fill-white" />
+                  <span>BLACK FRIDAY NOVEMBRO</span>
+                </span>
+                <span className="px-3 py-1 bg-gold/20 text-gold border border-gold/50 text-[10px] font-black uppercase tracking-widest rounded-full flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-gold" />
+                  {lang === 'pt' ? 'OFERTA POR TEMPO LIMITADO' : 'LIMITED TIME OFFER'}
+                </span>
+                <span className="text-white/60 text-[11px] font-mono font-bold uppercase tracking-wider">
+                  {lang === 'pt' ? 'ESTOQUE ATELIER LEOMINSTER, MA' : 'LEOMINSTER, MA'}
+                </span>
               </div>
-              <div className="space-y-2 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-3 py-1 bg-gold/20 text-gold border border-gold/40 text-[10px] font-black uppercase tracking-widest rounded-full flex items-center gap-1.5">
-                    <Sparkles className="w-3 h-3 text-gold" />
-                    {lang === 'pt' ? 'COMUNICADO OFICIAL' : 'OFFICIAL NOTICE'}
-                  </span>
-                  <span className="text-white/60 text-[11px] font-bold uppercase tracking-wider">
-                    {lang === 'pt' ? 'ESTOQUE ATELIER LEOMINSTER, MA' : 'LEOMINSTER, MA ATELIER INVENTORY'}
-                  </span>
-                </div>
-                <h4 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight">
-                  {lang === 'pt' ? 'Aviso Importante: Alta Demanda de Vendas' : 'Important Notice: High Order Volume'}
+
+              {/* Título Principal de Impacto */}
+              <div className="space-y-2">
+                <h3 className="text-3xl sm:text-5xl font-black text-white uppercase tracking-tighter leading-none">
+                  BLACK FRIDAY <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-amber-200 to-gold">NOVEMBRO</span>
+                </h3>
+                <h4 className="text-lg sm:text-2xl font-black text-amber-400 uppercase tracking-tight">
+                  {lang === 'pt'
+                    ? 'TODOS OS PRODUTOS NA PROMOÇÃO POR TEMPO LIMITADO OU ENQUANTO DURAR O ESTOQUE!'
+                    : 'ALL PRODUCTS ON SALE FOR A LIMITED TIME OR WHILE SUPPLIES LAST!'}
                 </h4>
-                <p className="text-sm sm:text-base font-semibold text-gray-200 max-w-3xl leading-relaxed">
-                  &ldquo;{lang === 'pt'
-                    ? 'Não estamos conseguindo atualizar nossos produtos no site devido à alta demanda de venda. Entre em contato com nosso WhatsApp para saber mais sobre quais produtos temos disponível: (978) 313-9452'
-                    : 'Due to high order volume, we are unable to update all products on the site in real-time. Please contact our WhatsApp to check available inventory: (978) 313-9452'
-                  }&rdquo;
-                </p>
-                <div className="flex items-center gap-4 pt-1 text-xs text-gold/90 font-bold flex-wrap">
-                  <span className="flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-emerald-400" />
-                    {lang === 'pt' ? 'Peças exclusivas esgotam rapidamente' : 'Exclusive pieces sell out fast'}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-emerald-400" />
-                    {lang === 'pt' ? 'Vídeos e fotos de estoque em tempo real' : 'Real-time photos & video previews'}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-emerald-400" />
-                    {lang === 'pt' ? 'Envio imediato no mesmo dia' : 'Same-day US Priority shipping'}
-                  </span>
+              </div>
+
+              <p className="text-sm sm:text-base font-medium text-gray-300 max-w-3xl leading-relaxed">
+                {lang === 'pt'
+                  ? 'Aproveite descontos especiais em todos os nossos conjuntos fitness de compressão anatômica, macacões sem costura e tops. Peças exclusivas com estoque limitado e envio expresso para todos os EUA.'
+                  : 'Take advantage of special discounts on all our anatomical compression fitness sets, seamless jumpsuits, and sports bras. Exclusive pieces with limited stock and fast express shipping across the US.'}
+              </p>
+
+              {/* Pilares com Ícones */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs font-bold text-white/90">
+                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-2.5">
+                  <Tag className="w-4 h-4 text-gold shrink-0" />
+                  <span>{lang === 'pt' ? 'Até 50% OFF' : 'Up to 50% OFF'}</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-2.5">
+                  <Truck className="w-4 h-4 text-gold shrink-0" />
+                  <span>{lang === 'pt' ? 'Frete Fixo $9.99' : 'Flat $9.99 Shipping'}</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-2.5">
+                  <Zap className="w-4 h-4 text-gold shrink-0" />
+                  <span>{lang === 'pt' ? '4x Sem Juros' : '4x Interest-Free'}</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-2.5">
+                  <ShieldCheck className="w-4 h-4 text-gold shrink-0" />
+                  <span>{lang === 'pt' ? 'Zero Transparência' : '100% Squat-Proof'}</span>
                 </div>
               </div>
             </div>
 
-            <div className="shrink-0 w-full lg:w-auto flex flex-col sm:flex-row gap-3">
+            {/* Ações / Botões */}
+            <div className="shrink-0 w-full lg:w-auto flex flex-col sm:flex-row lg:flex-col gap-3">
+              <a
+                href="#vitrine"
+                onClick={(e) => {
+                  e.preventDefault();
+                  const el = document.getElementById('vitrine');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-gold via-amber-400 to-gold text-deep-black font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-[0_8px_30px_rgba(212,175,55,0.4)] transition-all hover:scale-[1.03] active:scale-[0.98] text-center cursor-pointer"
+              >
+                <Flame className="w-5 h-5 text-deep-black fill-deep-black" />
+                <span>{lang === 'pt' ? 'VER PRODUTOS EM PROMOÇÃO' : 'SHOP BLACK FRIDAY DEALS'}</span>
+              </a>
+
               <a
                 href={lang === 'pt'
-                  ? 'https://wa.me/19783139452?text=Ol%C3%A1%21%20Vi%20o%20aviso%20no%20banner%20do%20site%20sobre%20a%20alta%20demanda.%20Gostaria%20de%20saber%20quais%20produtos%20est%C3%A3o%20dispon%C3%ADveis%20%C3%A0%20pronta%20entrega.'
-                  : 'https://wa.me/19783139452?text=Hello%21%20I%20saw%20the%20high-demand%20banner%20on%20the%20site.%20I%20would%20like%20to%20know%20which%20pieces%20are%20currently%20available.'}
+                  ? 'https://wa.me/19783139452?text=Ol%C3%A1%21%20Quero%20aproveitar%20a%20Black%20Friday%20de%20Novembro%20da%20Ana%20Fitness%21%20Quais%20produtos%20est%C3%A3o%20na%20promo%C3%A7%C3%A3o%3F'
+                  : 'https://wa.me/19783139452?text=Hello%21%20I%20want%20to%20take%20advantage%20of%20the%20November%20Black%20Friday%20sale%21%20Which%20items%20are%20available%3F'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-[0_6px_25px_rgba(16,185,129,0.35)] transition-all hover:scale-[1.02] active:scale-[0.98] text-center"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-[0_6px_25px_rgba(16,185,129,0.35)] transition-all hover:scale-[1.03] active:scale-[0.98] text-center"
               >
                 <MessageCircle className="w-5 h-5 shrink-0" />
-                <span>{lang === 'pt' ? 'CONSULTAR NO WHATSAPP • (978) 313-9452' : 'CHECK ON WHATSAPP • (978) 313-9452'}</span>
+                <span>{lang === 'pt' ? 'PEDIR NO WHATSAPP • (978) 313-9452' : 'ORDER ON WHATSAPP • (978) 313-9452'}</span>
               </a>
             </div>
           </div>
@@ -1766,16 +1799,19 @@ export default function HomePage() {
       )}
 
       {/* =========================================================================
-          5. GYMSHARK COMMUNITY ATHLETES GRID ("#ANAFITNESSWEAR")
-         ========================================================================= */}
+          5. SEÇÃO ATLETAS ANA FITNESS • ÚLTIMOS PRODUTOS VENDIDOS
+          ========================================================================= */}
       <section className="max-w-7xl mx-auto px-4 sm:px-8 space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b-2 border-deep-black pb-3">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-ultra text-gold block">
-              {t('gymshark.communitySubtitle')}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-ultra text-gold block">
+                {lang === 'pt' ? 'PROVA SOCIAL • VENDAS EM TEMPO REAL NOS EUA' : 'SOCIAL PROOF • REAL-TIME US DELIVERIES'}
+              </span>
+            </div>
             <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-deep-black mt-0.5">
-              {t('gymshark.communityTitle')}
+              {lang === 'pt' ? 'ATLETAS ANA FITNESS • ÚLTIMOS PRODUTOS VENDIDOS' : 'ANA FITNESS ATHLETES • RECENTLY SOLD'}
             </h2>
           </div>
 
@@ -1791,43 +1827,67 @@ export default function HomePage() {
           </a>
         </div>
 
-        {/* Grid de Fotos dos Atletas da Comunidade Dinâmico */}
+        {/* Grid dos Últimos Produtos Vendidos */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-          {communityPostsData.map((post, idx) => (
-            <a
-              key={idx}
-              href={siteInfo.instagramUrl || "https://www.instagram.com/anafitnessweareua"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group relative aspect-square overflow-hidden bg-deep-black border border-deep-black/15 hover:border-gold transition-all"
-            >
-              <img
-                src={post.image}
-                alt={post.user}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-deep-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3 text-white">
-                <Instagram className="w-4 h-4 text-gold mb-1" />
-                <span className="text-[10px] font-black uppercase tracking-wider block text-white">
-                  {post.user}
-                </span>
-                <span className="text-[9px] font-bold text-gold uppercase block">
-                  {post.piece}
-                </span>
-              </div>
-            </a>
-          ))}
+          {(recentSoldProducts.length > 0 ? recentSoldProducts.slice(0, 12) : communityPostsData).map((post: any, idx: number) => {
+            const isSoldProduct = Boolean(post.soldAt || post.slug);
+            const productHref = post.slug ? `/produto/${post.slug}` : (siteInfo.instagramUrl || "https://www.instagram.com/anafitnessweareua");
+            const customerLabel = post.customerName ? `Comprado por ${post.customerName}` : post.user;
+            const locationLabel = post.location || 'EUA';
+            const sizeLabel = post.size ? `TAM ${post.size}` : '';
+
+            return (
+              <Link
+                key={post.id || idx}
+                href={productHref}
+                className="group relative aspect-square overflow-hidden bg-stone-100 border border-deep-black/15 hover:border-gold hover:shadow-xl transition-all block"
+              >
+                <img
+                  src={post.image}
+                  alt={post.title || post.user || 'Produto Vendido'}
+                  className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-700"
+                />
+
+                {/* Badge Superior "Vendido" */}
+                <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-deep-black/90 text-gold border border-gold/40 text-[9px] font-black uppercase tracking-wider shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>{lang === 'pt' ? 'VENDIDO' : 'SOLD'} {sizeLabel ? `• ${sizeLabel}` : ''}</span>
+                </div>
+
+                {/* Overlay Inferior com Detalhes */}
+                <div className="absolute inset-0 bg-gradient-to-t from-deep-black via-deep-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3 text-white">
+                  <span className="text-[10px] font-black uppercase tracking-wider block text-white line-clamp-1">
+                    {post.title || post.piece}
+                  </span>
+                  <div className="flex items-center justify-between text-[9px] font-bold text-gold mt-0.5">
+                    <span>{customerLabel}</span>
+                    {post.price && <span>${post.price.toFixed(2)}</span>}
+                  </div>
+                  <span className="text-[8px] text-white/70 uppercase block">
+                    📍 {locationLabel}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
 
-        {/* Botão de Seguir no Instagram */}
-        <div className="text-center pt-2">
+        {/* Botão de Ver Todo o Catálogo / Seguir */}
+        <div className="text-center pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            href="/catalogo"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-deep-black hover:bg-gold text-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition shadow-md border border-deep-black"
+          >
+            <ShoppingBag className="w-4 h-4 text-gold group-hover:text-deep-black" />
+            <span>{lang === 'pt' ? 'EXPLORAR CATÁLOGO COMPLETO' : 'EXPLORE FULL CATALOG'}</span>
+          </Link>
           <a
             href={siteInfo.instagramUrl || "https://www.instagram.com/anafitnessweareua"}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-deep-black hover:bg-gold text-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition shadow-md border border-deep-black"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-deep-black text-deep-black hover:text-white text-xs font-black uppercase tracking-widest transition shadow-sm border border-deep-black"
           >
-            <Instagram className="w-4 h-4 text-gold group-hover:text-deep-black" />
+            <Instagram className="w-4 h-4 text-gold" />
             <span>{t('gymshark.followInsta')}</span>
           </a>
         </div>

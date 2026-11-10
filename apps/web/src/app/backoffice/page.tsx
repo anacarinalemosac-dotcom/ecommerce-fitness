@@ -282,6 +282,19 @@ export default function BackofficeDashboard() {
   const [productCategoryFilter, setProductCategoryFilter] = useState('ALL');
   const [productStatusFilter, setProductStatusFilter] = useState<'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK'>('ALL');
 
+  // Seleção e Edição em Massa (Bulk Update) de Produtos
+  const [selectedCatalogIds, setSelectedCatalogIds] = useState<string[]>([]);
+  const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
+  const [showBulkSizeGuideModal, setShowBulkSizeGuideModal] = useState(false);
+  const [showBulkDescModal, setShowBulkDescModal] = useState(false);
+  const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
+  const [bulkPriceInput, setBulkPriceInput] = useState('');
+  const [bulkComparePriceInput, setBulkComparePriceInput] = useState('');
+  const [bulkSizeGuideInput, setBulkSizeGuideInput] = useState('');
+  const [bulkDescInput, setBulkDescInput] = useState('');
+  const [bulkDescEnInput, setBulkDescEnInput] = useState('');
+  const [bulkDescMode, setBulkDescMode] = useState<'replace' | 'prepend' | 'append'>('replace');
+
   // Relatório de Vendas e Lucro Real
   const [salesData, setSalesData] = useState<any | null>(null);
   const [loadingSales, setLoadingSales] = useState(false);
@@ -729,6 +742,116 @@ export default function BackofficeDashboard() {
   };
 
   // Duplicação inteligente de produto no ERP com 1 clique
+  // Handlers para Seleção e Edição em Massa de Produtos
+  const handleToggleSelectProduct = (id: string) => {
+    setSelectedCatalogIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAllFiltered = () => {
+    const allFilteredIds = filteredCatalogProducts.map((p: any) => p.id);
+    const isAllSelected =
+      allFilteredIds.length > 0 &&
+      allFilteredIds.every((id: string) => selectedCatalogIds.includes(id));
+    if (isAllSelected) {
+      setSelectedCatalogIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
+    } else {
+      setSelectedCatalogIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
+    }
+  };
+
+  const handleExecuteBulkPrice = async () => {
+    if (selectedCatalogIds.length === 0) return;
+    const num = parseFloat(bulkPriceInput);
+    if (isNaN(num) || num < 0) {
+      alert('Por favor, informe um preço de venda válido.');
+      return;
+    }
+    setIsBulkSubmitting(true);
+    try {
+      const res = await fetch('/api/backoffice/products', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedCatalogIds,
+          price: num,
+          compare_price: bulkComparePriceInput ? parseFloat(bulkComparePriceInput) : null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao atualizar preços');
+      alert(`Sucesso! ${data.updatedCount || selectedCatalogIds.length} produtos tiveram seus preços atualizados para $${num.toFixed(2)}.`);
+      setShowBulkPriceModal(false);
+      setBulkPriceInput('');
+      setBulkComparePriceInput('');
+      setSelectedCatalogIds([]);
+      await fetchSupabaseProducts();
+      if (refreshProducts) refreshProducts();
+    } catch (err: any) {
+      alert(`Erro: ${err.message}`);
+    } finally {
+      setIsBulkSubmitting(false);
+    }
+  };
+
+  const handleExecuteBulkSizeGuide = async () => {
+    if (selectedCatalogIds.length === 0) return;
+    setIsBulkSubmitting(true);
+    try {
+      const res = await fetch('/api/backoffice/products', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedCatalogIds,
+          sizeGuide: bulkSizeGuideInput,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao atualizar medidas');
+      alert(`Sucesso! Tabela de medidas atualizada em ${data.updatedCount || selectedCatalogIds.length} produtos.`);
+      setShowBulkSizeGuideModal(false);
+      setBulkSizeGuideInput('');
+      setSelectedCatalogIds([]);
+      await fetchSupabaseProducts();
+      if (refreshProducts) refreshProducts();
+    } catch (err: any) {
+      alert(`Erro: ${err.message}`);
+    } finally {
+      setIsBulkSubmitting(false);
+    }
+  };
+
+  const handleExecuteBulkDescription = async () => {
+    if (selectedCatalogIds.length === 0) return;
+    setIsBulkSubmitting(true);
+    try {
+      const res = await fetch('/api/backoffice/products', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedCatalogIds,
+          description: bulkDescInput,
+          description_en: bulkDescEnInput,
+          description_mode: bulkDescMode,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao atualizar descrições');
+      alert(`Sucesso! Descrições atualizadas em ${data.updatedCount || selectedCatalogIds.length} produtos.`);
+      setShowBulkDescModal(false);
+      setBulkDescInput('');
+      setBulkDescEnInput('');
+      setSelectedCatalogIds([]);
+      await fetchSupabaseProducts();
+      if (refreshProducts) refreshProducts();
+    } catch (err: any) {
+      alert(`Erro: ${err.message}`);
+    } finally {
+      setIsBulkSubmitting(false);
+    }
+  };
+
   const handleDuplicateProduct = (item: any) => {
     const itemVariants = item.variants || (item.sizes ? item.sizes.map((sz: string) => ({
       size: sz,
@@ -3393,7 +3516,7 @@ export default function BackofficeDashboard() {
               <tbody className="divide-y divide-deep-black/10">
                 {filteredCatalogProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="p-10 text-center bg-warm-light/10">
+                    <td colSpan={10} className="p-10 text-center bg-warm-light/10">
                       <div className="max-w-md mx-auto space-y-2">
                         <Search className="w-8 h-8 text-deep-black/30 mx-auto" />
                         <p className="text-sm font-black uppercase text-deep-black">
@@ -3432,8 +3555,17 @@ export default function BackofficeDashboard() {
                   const basePrice = item.meta?.promotional_price ?? item.meta?.price ?? item.price ?? itemVariants[0]?.price ?? 44.9;
                   const baseCost = itemVariants[0]?.cost_price ?? item.costPrice ?? 16.0;
 
+                  const isRowSelected = selectedCatalogIds.includes(item.id);
                   return (
-                    <tr key={item.id} className="hover:bg-deep-black/5">
+                    <tr key={item.id} className={isRowSelected ? "bg-amber-500/10 border-l-4 border-l-amber-500 hover:bg-amber-500/15 transition" : "hover:bg-deep-black/5 transition"}>
+                      <td className="p-4 w-12 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isRowSelected}
+                          onChange={() => handleToggleSelectProduct(item.id)}
+                          className="w-4 h-4 accent-gold cursor-pointer rounded"
+                        />
+                      </td>
                       <td className="p-4">
                         <div className="w-14 h-18 sm:w-16 sm:h-20 bg-stone-100 overflow-hidden border-2 border-deep-black/20 relative shrink-0 flex items-center justify-center p-0.5 group shadow-2xs">
                           <img

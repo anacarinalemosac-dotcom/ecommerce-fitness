@@ -922,6 +922,116 @@ export async function DELETE(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
+
+    // SUPORTE A ATUALIZAÇÃO EM MASSA (BULK UPDATE)
+    if (Array.isArray(body.ids) && body.ids.length > 0) {
+      const targetIds = body.ids.filter((tid: any) => typeof tid === 'string' && tid.trim());
+      if (targetIds.length === 0) {
+        return NextResponse.json({ error: 'Nenhum ID válido fornecido para atualização em massa.' }, { status: 400 });
+      }
+
+      const { data: productsToUpdate, error: fetchErr } = await supabaseServer
+        .from('products')
+        .select('id, title, slug, description')
+        .in('id', targetIds);
+
+      if (fetchErr) {
+        return NextResponse.json({ error: `Erro ao buscar produtos: ${fetchErr.message}` }, { status: 500 });
+      }
+
+      let updatedCount = 0;
+
+      for (const prod of (productsToUpdate || [])) {
+        let meta: any = {};
+        try {
+          if (prod.description && prod.description.startsWith('{')) {
+            meta = JSON.parse(prod.description);
+          } else if (prod.description) {
+            meta = { bio: prod.description };
+          }
+        } catch {
+          meta = {};
+        }
+
+        // 1. Atualização em Massa de Preço
+        if (body.price !== undefined && body.price !== null && body.price !== '') {
+          const numPrice = parseFloat(String(body.price));
+          if (!isNaN(numPrice)) {
+            meta.price = numPrice;
+            meta.promotional_price = numPrice;
+            if (Array.isArray(meta.variants)) {
+              meta.variants = meta.variants.map((v: any) => ({ ...v, price: numPrice }));
+            }
+            await supabaseServer
+              .from('product_variants')
+              .update({ price: numPrice })
+              .eq('product_id', prod.id);
+          }
+        }
+
+        if (body.compare_price !== undefined) {
+          meta.compare_price = body.compare_price ? parseFloat(String(body.compare_price)) : null;
+        }
+
+        // 2. Atualização em Massa de Medidas / Size Guide
+        if (body.sizeGuide !== undefined || body.size_guide !== undefined) {
+          const newSizeGuide = body.sizeGuide !== undefined ? String(body.sizeGuide) : String(body.size_guide);
+          meta.sizeGuide = newSizeGuide;
+          meta.size_guide = newSizeGuide;
+        }
+
+        // 3. Atualização em Massa de Descrição
+        if (body.description !== undefined || body.description_pt !== undefined || body.bio !== undefined) {
+          const newDesc = String(body.description || body.description_pt || body.bio || '');
+          const newDescEn = body.description_en !== undefined ? String(body.description_en) : '';
+          const mode = body.description_mode || 'replace';
+
+          if (mode === 'append') {
+            meta.bio = ((meta.bio || meta.description_pt || '') + '\n\n' + newDesc).trim();
+            meta.description_pt = meta.bio;
+            if (newDescEn) {
+              meta.description_en = ((meta.description_en || '') + '\n\n' + newDescEn).trim();
+            }
+          } else if (mode === 'prepend') {
+            meta.bio = (newDesc + '\n\n' + (meta.bio || meta.description_pt || '')).trim();
+            meta.description_pt = meta.bio;
+            if (newDescEn) {
+              meta.description_en = (newDescEn + '\n\n' + (meta.description_en || '')).trim();
+            }
+          } else {
+            meta.bio = newDesc;
+            meta.description_pt = newDesc;
+            meta.description_en = newDescEn || newDesc;
+          }
+        }
+
+        // 4. Visibilidade / Rascunho
+        if (body.visible_online !== undefined) {
+          meta.visible_online = Boolean(body.visible_online);
+          meta.is_draft = !Boolean(body.visible_online);
+        }
+        if (body.is_draft !== undefined) {
+          meta.is_draft = Boolean(body.is_draft);
+        }
+
+        const { error: updErr } = await supabaseServer
+          .from('products')
+          .update({ description: JSON.stringify(meta) })
+          .eq('id', prod.id);
+
+        if (!updErr) {
+          updatedCount++;
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        updatedCount,
+        totalRequested: targetIds.length,
+        message: `${updatedCount} produtos atualizados com sucesso em massa!`
+      });
+    }
+
     const {
       id,
       visible_online,
