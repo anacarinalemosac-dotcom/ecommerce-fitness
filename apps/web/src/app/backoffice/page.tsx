@@ -282,7 +282,7 @@ export default function BackofficeDashboard() {
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('ALL');
   const [productStatusFilter, setProductStatusFilter] = useState<'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK'>('ALL');
-  const [productSizeFilter, setProductSizeFilter] = useState<'ALL' | 'P' | 'M' | 'G' | 'GG'>('ALL');
+  const [productSizeFilter, setProductSizeFilter] = useState<'ALL' | 'P' | 'M' | 'G' | 'GG' | 'UN'>('ALL');
 
   // Seleção e Edição em Massa (Bulk Update) de Produtos
   const [selectedCatalogIds, setSelectedCatalogIds] = useState<string[]>([]);
@@ -2116,6 +2116,7 @@ export default function BackofficeDashboard() {
       else if (targetSize === 'M') matchKeys = ['M', 'MEDIUM'];
       else if (targetSize === 'G') matchKeys = ['G', 'L', 'LARGE'];
       else if (targetSize === 'GG') matchKeys = ['GG', 'XL', 'XG', 'EXTRA LARGE'];
+      else if (targetSize === 'UN') matchKeys = ['UN', 'ONE SIZE', 'TAMANHO UNICO', 'TAMANHO ÚNICO', 'U'];
 
       const hasSize = itemVariants.some((v: any) => {
         const sz = (v.size || '').trim().toUpperCase();
@@ -3384,6 +3385,7 @@ export default function BackofficeDashboard() {
                   <option value="M">M (M)</option>
                   <option value="G">G (L)</option>
                   <option value="GG">GG (XL)</option>
+                  <option value="UN">TAMANHO ÚNICO (ONE SIZE)</option>
                 </select>
               </div>
 

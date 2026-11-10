@@ -341,7 +341,7 @@ const SIZE_FILTERS = [
   { id: 'M', labelPt: 'M (M)', labelEn: 'M (M)', match: ['M', 'MEDIUM'] },
   { id: 'G', labelPt: 'G (L)', labelEn: 'G (L)', match: ['G', 'L', 'LARGE'] },
   { id: 'GG', labelPt: 'GG (XL)', labelEn: 'GG (XL)', match: ['GG', 'XL', 'XG', 'EXTRA LARGE'] },
-  { id: 'UN', labelPt: 'Tamanho Único', labelEn: 'One Size', match: ['UN', 'ONE SIZE', 'TAMANHO UNICO', 'TAMANHO ÚNICO'] },
+  { id: 'UN', labelPt: 'Tamanho Único (One Size)', labelEn: 'Tamanho Único (One Size)', match: ['UN', 'ONE SIZE', 'TAMANHO UNICO', 'TAMANHO ÚNICO', 'U'] },
 ];
 
 export default function HomePage() {

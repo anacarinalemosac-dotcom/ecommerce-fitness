@@ -496,7 +496,7 @@ export default function PublicClientCatalogPage() {
                 <option value="M" className="text-black">M (M)</option>
                 <option value="G" className="text-black">G (L)</option>
                 <option value="GG" className="text-black">GG (XL)</option>
-                <option value="UN" className="text-black">TAMANHO ÚNICO</option>
+                <option value="UN" className="text-black">TAMANHO ÚNICO (ONE SIZE)</option>
               </select>
             </div>
 
@@ -763,7 +763,7 @@ export default function PublicClientCatalogPage() {
                                 }`}
                                 title={isZero ? `Tamanho ${sz} esgotado nesta cor` : `${qty} unidades disponíveis no tamanho ${sz}`}
                               >
-                                <span className="font-bold">{sz}:</span>
+                                <span className="font-bold">{(sz === "UN" || sz === "ONE SIZE" || sz === "TAMANHO UNICO" || sz === "TAMANHO ÚNICO") ? "ÚNICO (ONE SIZE)" : sz}:</span>
                                 <span>{isZero ? '0' : qty}</span>
                               </span>
                             );
