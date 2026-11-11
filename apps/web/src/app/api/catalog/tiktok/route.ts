@@ -239,7 +239,8 @@ export async function GET(req: NextRequest) {
         const color = v.color || prod.color || 'Onyx Black';
         const sku = v.sku || `${prod.slug}-${size}-${color.replace(/[^a-zA-Z0-9]/g, '')}`;
         const stock = v.stock_quantity !== undefined ? Number(v.stock_quantity) : (v.stock !== undefined ? Number(v.stock) : 0);
-        const availability = stock > 0 ? 'in stock' : 'preorder';
+        if (stock <= 0) return;
+        const availability = 'in stock';
         const itemUrl = `${origin}/produto/${prod.slug}?size=${encodeURIComponent(size)}&color=${encodeURIComponent(color)}&utm_source=tiktok_shop&utm_medium=catalog_feed&utm_campaign=product_showcase`;
         const variantImg = v.image || (Array.isArray(v.images) && v.images[0]) || prod.primaryImage;
         const addImg = prod.images?.find((img: string) => img !== variantImg) || prod.primaryImage;

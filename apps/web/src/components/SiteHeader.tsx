@@ -367,12 +367,20 @@ export function SiteHeader() {
               <span>{lang === 'pt' ? 'RASTREAR' : 'TRACK'}</span>
             </Link>
 
-            {/* Sacola de Compras */}
-            <Link
-              href="/checkout"
-              className="relative p-2.5 bg-deep-black text-white hover:bg-gold hover:text-deep-black transition shadow-sm"
-              aria-label="Shopping Bag"
-              title="Sacola de Compras"
+            {/* Sacola de Compras (Abre gaveta lateral sem sair da tela) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (pathname?.startsWith('/checkout')) {
+                  return;
+                }
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new Event('ana_toggle_cart_drawer'));
+                }
+              }}
+              className="relative p-2.5 bg-deep-black text-white hover:bg-gold hover:text-deep-black transition shadow-sm cursor-pointer"
+              aria-label={lang === 'pt' ? 'Ver carrinho lateral' : 'Open Shopping Bag'}
+              title={lang === 'pt' ? 'Ver tudo no carrinho' : 'View Shopping Bag'}
             >
               <ShoppingBag className="w-4 h-4" />
               {cartCount > 0 && (
@@ -380,7 +388,7 @@ export function SiteHeader() {
                   {cartCount}
                 </span>
               )}
-            </Link>
+            </button>
           </div>
         </div>
 

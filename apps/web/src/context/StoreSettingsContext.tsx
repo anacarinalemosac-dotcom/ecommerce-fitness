@@ -960,8 +960,8 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             p.allow_backorder === true ||
             isPreorder;
 
-          // Se zerar o estoque ou for pré-venda/spoiler, a peça vai automaticamente para spoiler!
-          if (totalStock <= 0 || isPreorder) {
+          // Apenas peças explicitamente marcadas como pré-venda/spoiler vão para a aba spoiler
+          if (isPreorder) {
             categoryKey = 'spoiler';
           }
 
@@ -1040,15 +1040,15 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             price: sellingPrice,
             originalPrice: regularPrice,
             costPrice: Number(firstVar.cost_price) || 15.0,
-            badgePt: (meta.ribbon || (totalStock > 0 ? 'LANÇAMENTO' : 'SPOILER')) as any,
-            badgeEn: (meta.ribbon || (totalStock > 0 ? 'NEW ARRIVAL' : 'SPOILER')) as any,
+            badgePt: (meta.ribbon || (totalStock > 0 ? 'LANÇAMENTO' : 'ESGOTADO')) as any,
+            badgeEn: (meta.ribbon || (totalStock > 0 ? 'NEW ARRIVAL' : 'OUT OF STOCK')) as any,
             badgeStyle: meta.ribbon
               ? (meta.ribbon.toLowerCase().includes('ofert') || meta.ribbon.toLowerCase().includes('sale')
                   ? 'bg-red-600 text-white font-black'
                   : meta.ribbon.toLowerCase().includes('best') || meta.ribbon.toLowerCase().includes('mais vendido')
                   ? 'bg-gold text-deep-black font-black'
                   : 'bg-deep-black text-white font-black')
-              : (totalStock > 0 ? 'bg-gold text-deep-black font-black' : 'bg-deep-black text-gold border border-gold font-black'),
+              : (totalStock > 0 ? 'bg-gold text-deep-black font-black' : 'bg-red-600 text-white font-black'),
             rating: 5.0,
             reviewsCount: 32,
             primaryImage: (!isVideoUrl(meta.primary_image) ? meta.primary_image : '') || allImages[0] || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80',

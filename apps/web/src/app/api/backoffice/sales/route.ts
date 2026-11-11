@@ -7,6 +7,7 @@ import {
   enrichOrderItemsWithCatalog,
   loadCatalogProductsForOrderMatch,
 } from '@/lib/orderItemEnricher';
+import { upsertMarketingContactAndPersist } from '@/lib/marketingContactsStore';
 import fs from 'fs';
 import path from 'path';
 
@@ -728,6 +729,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 7. Registra automaticamente na Lista de Contatos VIP para Marketing
+    try {
+      await upsertMarketingContactAndPersist({
+        name: newSale.customer_name,
+        phone: newSale.customer_phone,
+        email: newSale.customer_email,
+        city: newSale.shipping_address?.city,
+        state: newSale.shipping_address?.state,
+        sizes: formattedItems.map((it) => it.size).filter(Boolean),
+        last_product: formattedItems[0]?.title || '',
+        order_value: Math.max(0, newSale.subtotal_products + newSale.shipping_fee - newSale.discount_amount),
+        count_order: true,
+        source: isPOS ? 'BALCAO_PDV' : 'SITE',
+        created_at: newSale.created_at,
+      });
+    } catch (_) {}
+
     return NextResponse.json({ success: true, sale: newSale });
   } catch (err: any) {
     console.error('Erro no POST de vendas:', err);
@@ -750,6 +768,7 @@ export async function PATCH(req: NextRequest) {
       payment_method,
       amount,
       notes,
+      customer_phone: inputCustomerPhone,
     } = body;
 
     const chosenPaymentMethod = (payment_method || installment_payment_method || 'CASH').toUpperCase();
@@ -949,6 +968,21 @@ export async function PATCH(req: NextRequest) {
 
       writeSavedSales(updated);
 
+      // Atualiza também na Lista de Contatos de Marketing caso telefone/e-mail/tamanho tenham sido alterados
+      try {
+        await upsertMarketingContactAndPersist({
+          name: customer_name,
+          phone: customer_phone,
+          email: customer_email,
+          city: shipping_address?.city,
+          state: shipping_address?.state,
+          sizes: formattedItems.map((it) => it.size).filter(Boolean),
+          last_product: formattedItems[0]?.title || '',
+          count_order: false,
+          source: 'EDICAO',
+        });
+      } catch (_) {}
+
       return NextResponse.json({ success: true, message: 'Venda atualizada com sucesso!', sales: updated });
     }
 
@@ -1081,7 +1115,7 @@ export async function PATCH(req: NextRequest) {
 
     // 1. Atualiza no Supabase 'orders'
     try {
-      const { data: dbOrders } = await supabaseServer.from('orders').select('id, shipping_address, status');
+      const { data: dbOrders } = await supabaseServer.from('orders').select('id, shipping_address, status, customer_name, customer_email, customer_phone');
       if (dbOrders) {
         const target = dbOrders.find((o: any) => {
           const meta = typeof o.shipping_address === 'object' && o.shipping_address ? o.shipping_address : {};
@@ -1240,6 +1274,7 @@ export async function PATCH(req: NextRequest) {
             payments: updatedPaymentsList,
             amount_paid: updatedAmountPaid,
             remaining_balance: updatedRemainingBalance,
+            ...(inputCustomerPhone ? { customer_phone: String(inputCustomerPhone).trim() } : {}),
             ...(tracking_code !== undefined ? { tracking_code } : {}),
             ...(isShipped ? { shipped_at: currentMeta.shipped_at || new Date().toISOString(), shipping_email_sent: true } : {}),
             ...(updatedCrediario ? { crediario: updatedCrediario } : {}),
@@ -1249,9 +1284,24 @@ export async function PATCH(req: NextRequest) {
             .from('orders')
             .update({
               status: nextPayment === 'PAID' ? (nextFulfillment === 'DELIVERED' ? 'DELIVERED' : 'COMPLETED') : (nextFulfillment || nextPayment || 'PENDING'),
+              ...(inputCustomerPhone ? { customer_phone: String(inputCustomerPhone).trim() } : {}),
               shipping_address: updatedMeta,
             })
             .eq('id', target.id);
+
+          if (inputCustomerPhone) {
+            try {
+              await upsertMarketingContactAndPersist({
+                name: (target as any).customer_name,
+                phone: String(inputCustomerPhone).trim(),
+                email: (target as any).customer_email,
+                sizes: Array.isArray(currentMeta.items) ? currentMeta.items.map((it: any) => it.size).filter(Boolean) : [],
+                last_product: currentMeta.items?.[0]?.title || '',
+                count_order: false,
+                source: 'WHATSAPP_RECIBO',
+              });
+            } catch (_) {}
+          }
         }
       }
     } catch (e) {
@@ -1415,6 +1465,7 @@ export async function PATCH(req: NextRequest) {
           amount_paid: localAmountPaid,
           remaining_balance: localRemainingBalance,
           tracking_code: finalTracking,
+          customer_phone: inputCustomerPhone ? String(inputCustomerPhone).trim() : s.customer_phone,
           shipped_at: isShipped ? (s.shipped_at || new Date().toISOString()) : s.shipped_at,
           shipping_email_sent: isShipped ? true : s.shipping_email_sent,
           delivered_at: isDelivered ? (s.delivered_at || new Date().toISOString()) : s.delivered_at,
@@ -1455,6 +1506,35 @@ export async function PATCH(req: NextRequest) {
     }
 
     writeSavedSales(updated);
+
+    // Garante captura na lista de Contatos & Marketing mesmo para pedidos salvos apenas no backup local
+    if (inputCustomerPhone && String(inputCustomerPhone).trim()) {
+      const lookupId = String(body.order_id || body.id || '').trim();
+      const localTargetSale = lookupId
+        ? updated.find((u: any) =>
+            String(u.id || '') === lookupId || String(u.order_id || '') === lookupId
+          )
+        : null;
+      if (localTargetSale) {
+        const localSizes = Array.isArray(localTargetSale.items)
+          ? localTargetSale.items.map((it: any) => String(it?.size || '').trim().toUpperCase()).filter(Boolean)
+          : [];
+        const localLastProduct = Array.isArray(localTargetSale.items) && localTargetSale.items.length > 0
+          ? String(localTargetSale.items[0]?.name || localTargetSale.items[0]?.title || '').trim()
+          : '';
+        await upsertMarketingContactAndPersist({
+          name: localTargetSale.customer_name,
+          phone: String(inputCustomerPhone).trim(),
+          email: localTargetSale.customer_email || localTargetSale.shipping_address?.customer_email,
+          sizes: localSizes,
+          last_product: localLastProduct,
+          order_value: Number(localTargetSale.total || 0),
+          count_order: false,
+          source: localTargetSale.origin === 'POS' || String(localTargetSale.order_id || '').startsWith('POS') ? 'pos_sale' : 'backoffice_edit',
+          created_at: localTargetSale.created_at,
+        });
+      }
+    }
 
     return NextResponse.json({ success: true, sales: updated });
   } catch (err: any) {

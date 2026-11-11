@@ -1109,4 +1109,80 @@ export async function sendPostDeliveryReviewEmail(order: any) {
   });
 }
 
+export async function sendMarketingLaunchEmail(opts: {
+  to: string;
+  customerName?: string;
+  subject: string;
+  introText: string;
+  featuredProducts?: Array<{ title: string; slug?: string; price?: number; image?: string }>;
+}) {
+  const { to, customerName, subject, introText, featuredProducts = [] } = opts;
+  const firstName = (customerName || 'Cliente VIP').trim().split(' ')[0];
+
+  const cardsHtml = featuredProducts
+    .slice(0, 4)
+    .map((p) => {
+      const link = p.slug ? `https://anafitwear.com/produto/${p.slug}` : 'https://anafitwear.com';
+      const priceText = p.price ? `$${Number(p.price).toFixed(2)}` : '';
+      return `
+        <td width="48%" valign="top" style="padding: 8px; border: 1px solid #eee; background-color: #fafafa;">
+          <a href="${link}" style="text-decoration: none; color: #111;">
+            ${p.image ? `<img src="${p.image}" alt="${p.title}" style="width: 100%; height: 220px; object-fit: cover; display: block; margin-bottom: 8px;" />` : ''}
+            <div style="font-weight: 900; font-size: 12px; text-transform: uppercase;">${p.title}</div>
+            ${priceText ? `<div style="font-family: monospace; font-weight: 900; color: #b8860b; font-size: 13px; margin-top: 2px;">${priceText}</div>` : ''}
+            <div style="margin-top: 6px; display: inline-block; background-color: #0b0b0b; color: #d4af37; padding: 5px 10px; font-size: 10px; font-weight: 900; text-transform: uppercase;">VER PEÇA &rarr;</div>
+          </a>
+        </td>
+      `;
+    })
+    .join('');
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8" /><title>${subject}</title></head>
+<body style="margin:0; padding:0; background-color:#f6f6f8; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; color:#111;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:24px 10px; background-color:#f6f6f8;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background:#fff; border:2px solid #0b0b0b;">
+          <tr>
+            <td style="background:#0b0b0b; padding:28px; text-align:center; border-bottom:3px solid #d4af37;">
+              <div style="color:#d4af37; font-size:11px; font-weight:900; letter-spacing:2px; text-transform:uppercase;">NOVIDADES NA ANA FITNESS WEAR</div>
+              <h1 style="color:#fff; font-size:22px; font-weight:900; text-transform:uppercase; margin:8px 0 0 0;">CHEGARAM CONJUNTOS NOVOS ✨</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px;">
+              <p style="font-size:15px; font-weight:700; margin:0 0 12px 0;">Oi, ${firstName}! 💕</p>
+              <p style="font-size:13px; color:#333; line-height:1.6; margin:0 0 20px 0; white-space:pre-line;">${introText}</p>
+              ${cardsHtml ? `<table width="100%" cellpadding="0" cellspacing="6" style="margin-bottom:20px;"><tr>${cardsHtml}</tr></table>` : ''}
+              <div style="text-align:center; margin-top:20px;">
+                <a href="https://anafitwear.com" style="display:inline-block; background:#0b0b0b; color:#d4af37; padding:14px 28px; font-size:12px; font-weight:900; letter-spacing:1.5px; text-transform:uppercase; text-decoration:none; border:2px solid #d4af37;">VER TODOS OS LANÇAMENTOS &rarr;</a>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f2f2f2; padding:18px; text-align:center; font-size:11px; color:#666; border-top:1px solid #e5e5e5;">
+              ANA FITNESS WEAR LLC &bull; Leominster, MA<br/>
+              WhatsApp VIP: <a href="https://wa.me/19783139452" style="color:#111; font-weight:700;">+1 (978) 313-9452</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  return sendEmail({
+    to,
+    subject,
+    html,
+    order_id: `MKT-${Date.now()}`,
+    type: 'GENERAL',
+  });
+}
+
 

@@ -585,83 +585,150 @@ export function StockWriteOffModal({
             </h4>
 
             {/* Campo de Busca Rápida */}
-            <div className="relative">
-              <Search className="w-4 h-4 text-deep-black/40 absolute left-3 top-3" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="PESQUISAR PRODUTO POR NOME OU SKU..."
-                className="w-full pl-9 pr-3.5 py-2.5 text-xs uppercase border border-deep-black/20 focus:border-deep-black"
-              />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-deep-black/40 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="BUSCAR POR NOME, COR OU SKU (OPCIONAL — OU ROLE ABAIXO)..."
+                  className="w-full pl-9 pr-14 py-2.5 text-xs uppercase border border-deep-black/20 focus:border-deep-black"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-2 text-[10px] font-black uppercase px-2 py-0.5 bg-deep-black/10 hover:bg-deep-black hover:text-white transition"
+                  >
+                    LIMPAR
+                  </button>
+                )}
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-deep-black/60 shrink-0">
+                Mostrando {filteredProducts.length} de {catalogProducts.length} produtos • Role para ver todos
+              </span>
             </div>
 
-            {/* Seletor de Produto e Variantes */}
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-gray-50 p-4 border border-deep-black/15">
-              <div className="sm:col-span-5 space-y-1">
-                <label className="text-[10px] font-black uppercase text-deep-black/70">PRODUTO:</label>
-                <select
-                  value={selectedProduct?.id || ''}
-                  onChange={(e) => {
-                    const prod = catalogProducts.find((p) => p.id === e.target.value);
-                    setSelectedProduct(prod || null);
-                    const vars = getProductVariants(prod);
-                    setSelectedVariant(vars?.[0] || null);
-                  }}
-                  className="w-full px-3 py-2 text-xs uppercase border border-deep-black/30 bg-white"
-                >
-                  <option value="">Selecione o produto...</option>
-                  {filteredProducts.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.title}
-                    </option>
-                  ))}
-                </select>
+            {/* Lista Rolável com Todos os Produtos + Seletor de Variação */}
+            <div className="bg-gray-50 p-4 border border-deep-black/15 space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-deep-black/70 block">
+                  PRODUTO ({filteredProducts.length} disponíveis na lista abaixo — role a barrinha para encontrar qualquer peça):
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto pr-1.5 p-1.5 bg-white border border-deep-black/25">
+                  {filteredProducts.length === 0 ? (
+                    <div className="col-span-full py-6 text-center text-[11px] font-bold uppercase text-deep-black/50 space-y-2">
+                      <p>Nenhum produto encontrado para &ldquo;{searchQuery}&rdquo;.</p>
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="px-3 py-1 bg-deep-black text-white text-[10px] font-black uppercase tracking-wider hover:bg-gold hover:text-deep-black transition"
+                      >
+                        Mostrar Todos os {catalogProducts.length} Produtos
+                      </button>
+                    </div>
+                  ) : (
+                    filteredProducts.map((p) => {
+                      const vars = getProductVariants(p);
+                      const totalStock = vars.reduce(
+                        (acc: number, v: any) => acc + Math.max(0, Number(v.stock_quantity ?? v.stock ?? 0)),
+                        0
+                      );
+                      const isSelected = selectedProduct?.id === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedProduct(p);
+                            setSelectedVariant(vars?.[0] || null);
+                          }}
+                          className={`p-2 border text-left flex items-center gap-2.5 transition cursor-pointer ${
+                            isSelected
+                              ? 'border-2 border-gold bg-amber-50/70 shadow-sm'
+                              : 'border-deep-black/15 bg-white hover:border-deep-black hover:bg-deep-black/5'
+                          }`}
+                        >
+                          {p.primaryImage ? (
+                            <img
+                              src={p.primaryImage}
+                              alt={p.title}
+                              className="w-10 h-12 object-cover border border-deep-black/15 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-12 bg-deep-black/10 shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-black uppercase text-deep-black truncate" title={p.title}>
+                              {p.title}
+                            </p>
+                            <div className="flex items-center justify-between gap-1 text-[9px] font-mono mt-0.5">
+                              <span className="text-deep-black/60 truncate">{p.sku || vars[0]?.sku || 'S/SKU'}</span>
+                              <span className={totalStock > 0 ? 'text-emerald-700 font-black shrink-0' : 'text-red-600 font-black shrink-0'}>
+                                {totalStock} un
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               </div>
 
-              <div className="sm:col-span-4 space-y-1">
-                <label className="text-[10px] font-black uppercase text-deep-black/70">VARIAÇÃO (COR & TAM):</label>
-                <select
-                  disabled={!selectedProduct}
-                  value={selectedVariant?.id || selectedVariant?.sku || ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const vars = getProductVariants(selectedProduct);
-                    const v = vars.find((x: any) => x.id === val || x.sku === val);
-                    setSelectedVariant(v || null);
-                  }}
-                  className="w-full px-3 py-2 text-xs uppercase border border-deep-black/30 bg-white disabled:opacity-50 font-mono"
-                >
-                  <option value="">Selecione o tamanho/cor...</option>
-                  {getProductVariants(selectedProduct).map((v: any, idx: number) => (
-                    <option key={v.id || idx} value={v.id || v.sku}>
-                      {v.color} • Tam {v.size} (Estoque: {v.stock_quantity ?? v.stock ?? 0} un) - SKU: {v.sku}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-1">
+                <div className="sm:col-span-4 space-y-1">
+                  <label className="text-[10px] font-black uppercase text-deep-black/70">PRODUTO SELECIONADO:</label>
+                  <div className="px-3 py-2 text-xs uppercase border border-deep-black/20 bg-white font-bold truncate">
+                    {selectedProduct ? selectedProduct.title : 'Clique em um produto acima...'}
+                  </div>
+                </div>
 
-              <div className="sm:col-span-1 space-y-1">
-                <label className="text-[10px] font-black uppercase text-deep-black/70">QTD:</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={selectedQty}
-                  onChange={(e) => setSelectedQty(Math.max(1, parseInt(e.target.value) || 1))}
+                <div className="sm:col-span-5 space-y-1">
+                  <label className="text-[10px] font-black uppercase text-deep-black/70">VARIAÇÃO (COR & TAM):</label>
+                  <select
+                    disabled={!selectedProduct}
+                    value={selectedVariant?.id || selectedVariant?.sku || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const vars = getProductVariants(selectedProduct);
+                      const v = vars.find((x: any) => x.id === val || x.sku === val);
+                      setSelectedVariant(v || null);
+                    }}
+                    className="w-full px-3 py-2 text-xs uppercase border border-deep-black/30 bg-white disabled:opacity-50 font-mono"
+                  >
+                    <option value="">Selecione o tamanho/cor...</option>
+                    {getProductVariants(selectedProduct).map((v: any, idx: number) => (
+                      <option key={v.id || idx} value={v.id || v.sku}>
+                        {v.color} • Tam {v.size} (Estoque: {v.stock_quantity ?? v.stock ?? 0} un) - SKU: {v.sku}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="sm:col-span-1 space-y-1">
+                  <label className="text-[10px] font-black uppercase text-deep-black/70">QTD:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={selectedQty}
+                    onChange={(e) => setSelectedQty(Math.max(1, parseInt(e.target.value) || 1))}
                   className="w-full px-2 py-2 text-xs font-mono font-bold text-center border border-deep-black/30 bg-white"
                 />
               </div>
 
-              <div className="sm:col-span-2 flex items-end">
-                <button
-                  type="button"
-                  disabled={!selectedVariant}
-                  onClick={handleAddItem}
-                  className="w-full py-2 bg-deep-black hover:bg-gold text-white hover:text-deep-black disabled:opacity-50 text-[10px] font-black uppercase tracking-widest transition flex items-center justify-center gap-1 shadow"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>ADICIONAR</span>
-                </button>
+                <div className="sm:col-span-2 flex items-end">
+                  <button
+                    type="button"
+                    disabled={!selectedVariant}
+                    onClick={handleAddItem}
+                    className="w-full py-2 bg-deep-black hover:bg-gold text-white hover:text-deep-black disabled:opacity-50 text-[10px] font-black uppercase tracking-widest transition flex items-center justify-center gap-1 shadow cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>ADICIONAR</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

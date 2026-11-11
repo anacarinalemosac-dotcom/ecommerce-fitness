@@ -362,6 +362,8 @@ export default function HomePage() {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [shareModalProduct, setShareModalProduct] = useState<any | null>(null);
   const [cardImageOverrides, setCardImageOverrides] = useState<Record<string, string>>({});
+  const [cardSelectedSizes, setCardSelectedSizes] = useState<Record<string, string>>({});
+  const [cardSelectedColors, setCardSelectedColors] = useState<Record<string, string>>({});
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
   const [comboPromo, setComboPromo] = useState<any>(null);
 
@@ -434,28 +436,39 @@ export default function HomePage() {
     setWishlist((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleQuickAdd = (id: string, size: string, e: React.MouseEvent) => {
+  const handleQuickAdd = (id: string, size: string, e: React.MouseEvent, preferredColor?: string) => {
     e.preventDefault();
     e.stopPropagation();
     const prod = activeProducts.find((p) => p.id === id);
     if (prod) {
+      const targetColor = (preferredColor || cardSelectedColors[id] || '').trim().toLowerCase();
       const matchedVariant = Array.isArray(prod.variants)
         ? prod.variants.find(
             (v: any) =>
               String(v.size || '').toUpperCase() === size.toUpperCase() &&
+              (!targetColor || String(v.color || '').toLowerCase() === targetColor) &&
               Number(v.stock_quantity ?? v.stock ?? 0) > 0
-          ) || prod.variants[0]
+          ) ||
+          prod.variants.find(
+            (v: any) =>
+              String(v.size || '').toUpperCase() === size.toUpperCase() &&
+              Number(v.stock_quantity ?? v.stock ?? 0) > 0
+          ) ||
+          prod.variants[0]
+        : null;
+      const variantImg = matchedVariant
+        ? (Array.isArray(matchedVariant.images) && matchedVariant.images.length > 0 ? matchedVariant.images[0] : matchedVariant.image)
         : null;
       addToCart({
         id: prod.id,
         title: prod.title,
         slug: prod.slug,
         size,
-        color: matchedVariant?.color || prod.colors?.[0]?.name || 'Padrão',
+        color: matchedVariant?.color || preferredColor || cardSelectedColors[id] || prod.colors?.[0]?.name || 'Padrão',
         sku: matchedVariant?.sku || `${prod.slug}-${size}`,
         price: Number(matchedVariant?.price || prod.price) || 44.9,
         quantity: 1,
-        image: cardImageOverrides[prod.id] || matchedVariant?.image || prod.primaryImage,
+        image: cardImageOverrides[prod.id] || variantImg || prod.primaryImage,
         isBackorder: false,
         productionDays: 0,
         is_combo_item: isProductInCombo(prod),
@@ -497,7 +510,7 @@ export default function HomePage() {
       p.badgePt === 'PRÉ-VENDA' ||
       p.badgeEn === 'SPOILER' ||
       p.badgeEn === 'PRE-ORDER' ||
-      Number(p.stock) <= 0
+      false
     );
   };
 
@@ -1438,6 +1451,26 @@ export default function HomePage() {
 
                   // Extrai estritamente os tamanhos com estoque real disponível (> 0)
                   const inStockSizes = getProductInStockSizes(product);
+                  const activeColor = cardSelectedColors[product.id] || product.colors?.[0]?.name || 'Padrão';
+                  const colorSpecificSizes = Array.isArray(product.variants) && product.variants.length > 0 && activeColor
+                    ? Array.from(
+                        new Set(
+                          product.variants
+                            .filter(
+                              (v: any) =>
+                                String(v.color || '').toLowerCase() === activeColor.toLowerCase() &&
+                                Number(v.stock_quantity ?? v.stock ?? 0) > 0
+                            )
+                            .map((v: any) => String(v.size || '').toUpperCase().trim())
+                            .filter(Boolean)
+                        )
+                      )
+                    : [];
+                  const selectableSizes = colorSpecificSizes.length > 0 ? colorSpecificSizes : inStockSizes;
+                  const selectedCardSize =
+                    cardSelectedSizes[product.id] && selectableSizes.includes(cardSelectedSizes[product.id])
+                      ? cardSelectedSizes[product.id]
+                      : selectableSizes[0] || '';
                   const isOutOfStock = !isSpoiler && inStockSizes.length === 0;
 
                   return (
@@ -1446,12 +1479,14 @@ export default function HomePage() {
                       onMouseEnter={() => setHoveredProduct(product.id)}
                       onMouseLeave={() => {
                         setHoveredProduct(null);
-                        setCardImageOverrides((prev) => {
-                          if (!prev[product.id]) return prev;
-                          const next = { ...prev };
-                          delete next[product.id];
-                          return next;
-                        });
+                        if (!cardSelectedColors[product.id]) {
+                          setCardImageOverrides((prev) => {
+                            if (!prev[product.id]) return prev;
+                            const next = { ...prev };
+                            delete next[product.id];
+                            return next;
+                          });
+                        }
                       }}
                       className="group flex flex-col bg-white border border-deep-black/15 transition-all hover:border-deep-black hover:shadow-luxury"
                     >
@@ -1558,7 +1593,7 @@ export default function HomePage() {
 
                               {/* Botões de Tamanhos Rápidos: SOMENTE TAMANHOS COM ESTOQUE */}
                               <div className="grid grid-cols-3 gap-1.5">
-                                {inStockSizes.map((size) => {
+                                {selectableSizes.map((size) => {
                                   const upperSz = size.toUpperCase();
                                   const displaySz = lang === 'pt'
                                     ? (upperSz === 'S' || upperSz === 'P' ? 'P' : upperSz === 'M' ? 'M' : upperSz === 'L' || upperSz === 'G' ? 'G' : upperSz === 'XL' || upperSz === 'GG' ? 'GG' : size)
@@ -1566,7 +1601,10 @@ export default function HomePage() {
                                   return (
                                     <button
                                       key={size}
-                                      onClick={(e) => handleQuickAdd(product.id, size, e)}
+                                      onClick={(e) => {
+                                        setCardSelectedSizes((prev) => ({ ...prev, [product.id]: size }));
+                                        handleQuickAdd(product.id, size, e, activeColor);
+                                      }}
                                       className="py-1.5 text-xs font-black uppercase bg-white/10 hover:bg-gold hover:text-deep-black text-white border border-white/20 transition-all active:scale-95 flex items-center justify-center cursor-pointer"
                                       title={`Add size ${size} directly to bag`}
                                     >
@@ -1597,9 +1635,11 @@ export default function HomePage() {
                                 const colorImg = matchingVar
                                   ? (Array.isArray(matchingVar.images) && matchingVar.images.length > 0 ? matchingVar.images[0] : matchingVar.image)
                                   : null;
+                                const isColorSelected = activeColor.toLowerCase() === color.name.toLowerCase();
 
                                 return (
-                                  <span
+                                  <button
+                                    type="button"
                                     key={cIdx}
                                     onMouseEnter={() => {
                                       if (colorImg) {
@@ -1607,15 +1647,19 @@ export default function HomePage() {
                                       }
                                     }}
                                     onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setCardSelectedColors((prev) => ({ ...prev, [product.id]: color.name }));
                                       if (colorImg) {
-                                        e.preventDefault();
-                                        e.stopPropagation();
                                         setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
                                       }
                                     }}
-                                    className="w-3.5 h-3.5 rounded-full border border-deep-black/30 shadow-xs cursor-pointer transition hover:scale-125"
+                                    className={`w-4 h-4 rounded-full border border-deep-black/40 shadow-xs cursor-pointer transition hover:scale-125 ${
+                                      isColorSelected ? 'ring-2 ring-offset-1 ring-deep-black scale-110' : ''
+                                    }`}
                                     style={{ backgroundColor: color.hex }}
                                     title={translateColorName(color.name, lang)}
+                                    aria-label={translateColorName(color.name, lang)}
                                   />
                                 );
                               })}
@@ -1648,20 +1692,31 @@ export default function HomePage() {
                               <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/60">
                                 {lang === 'pt' ? 'Tamanhos:' : 'Sizes:'}
                               </span>
-                              {inStockSizes.length > 0 ? (
-                                <div className="flex items-center gap-1 flex-wrap">
-                                  {inStockSizes.map((sz) => {
+                              {selectableSizes.length > 0 ? (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {selectableSizes.map((sz) => {
                                     const displaySz = lang === 'pt'
                                       ? (sz === 'S' ? 'P' : sz === 'L' ? 'G' : sz === 'XL' ? 'GG' : sz)
                                       : sz;
+                                    const isSzActive = selectedCardSize === sz;
                                     return (
-                                      <span
+                                      <button
+                                        type="button"
                                         key={sz}
-                                        className="text-[9.5px] font-black px-2 py-0.5 border border-deep-black bg-deep-black text-gold shadow-2xs uppercase tracking-wider rounded-xs"
-                                        title={`${lang === 'pt' ? 'Disponível no tamanho' : 'Available in size'} ${displaySz}`}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setCardSelectedSizes((prev) => ({ ...prev, [product.id]: sz }));
+                                        }}
+                                        className={`text-[10px] font-black px-2.5 py-1 border uppercase tracking-wider rounded-xs transition cursor-pointer ${
+                                          isSzActive
+                                            ? 'border-deep-black bg-deep-black text-gold shadow-xs ring-1 ring-gold'
+                                            : 'border-deep-black/25 bg-neutral-50 text-deep-black hover:border-deep-black'
+                                        }`}
+                                        title={`${lang === 'pt' ? 'Selecionar tamanho' : 'Select size'} ${displaySz}`}
                                       >
                                         {displaySz}
-                                      </span>
+                                      </button>
                                     );
                                   })}
                                 </div>
@@ -1716,7 +1771,7 @@ export default function HomePage() {
                               )}
                             </div>
                             <span className="text-[9px] block text-deep-black/60 font-bold uppercase tracking-wider">
-                              $9.90 FLAT RATE US SHIPPING
+                            $9.90 FLAT RATE US SHIPPING
                             </span>
                           </div>
 
@@ -1732,6 +1787,40 @@ export default function HomePage() {
                               : (lang === 'pt' ? 'Em estoque' : 'In stock')}
                           </span>
                         </div>
+
+                        {/* Botão Direto ADICIONAR NO CARRINHO sem precisar abrir o produto */}
+                        {!isSpoiler && selectedCardSize && (() => {
+                          const displaySelectedSz = lang === 'pt'
+                            ? (selectedCardSize === 'S' ? 'P' : selectedCardSize === 'L' ? 'G' : selectedCardSize === 'XL' ? 'GG' : selectedCardSize)
+                            : selectedCardSize;
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => handleQuickAdd(product.id, selectedCardSize, e, activeColor)}
+                              className={`w-full py-2.5 px-3 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer shadow-sm border-2 ${
+                                wasJustAdded
+                                  ? 'bg-emerald-600 text-white border-emerald-700'
+                                  : 'bg-deep-black hover:bg-gold text-white hover:text-deep-black border-deep-black'
+                              }`}
+                            >
+                              {wasJustAdded ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                  <span>{lang === 'pt' ? 'ADICIONADO NO CARRINHO!' : 'ADDED TO BAG!'}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ShoppingBag className="w-3.5 h-3.5" />
+                                  <span>
+                                    {lang === 'pt'
+                                      ? `ADICIONAR NO CARRINHO • ${displaySelectedSz}`
+                                      : `ADD TO BAG • ${selectedCardSize}`}
+                                  </span>
+                                </>
+                              )}
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
                   );

@@ -1199,18 +1199,49 @@ export async function PATCH(req: NextRequest) {
         if (variant_id) {
           await supabaseServer
             .from('product_variants')
-            .update({ stock_quantity: numStock })
+            .update({ stock_quantity: numStock, ...(numStock <= 0 ? { allow_backorder: false } : {}) })
             .eq('id', variant_id);
         } else if (sku) {
           await supabaseServer
             .from('product_variants')
-            .update({ stock_quantity: numStock })
+            .update({ stock_quantity: numStock, ...(numStock <= 0 ? { allow_backorder: false } : {}) })
             .eq('sku', sku);
         } else {
           await supabaseServer
             .from('product_variants')
-            .update({ stock_quantity: numStock })
+            .update({ stock_quantity: numStock, ...(numStock <= 0 ? { allow_backorder: false } : {}) })
             .eq('product_id', targetId);
+        }
+
+        if (Array.isArray(meta.variants)) {
+          meta.variants = meta.variants.map((mv: any) => {
+            const matchThis =
+              (!variant_id && !sku) ||
+              (variant_id && mv.id === variant_id) ||
+              (sku && mv.sku === sku);
+            return matchThis
+              ? { ...mv, stock_quantity: numStock, ...(numStock <= 0 ? { allow_backorder: false } : {}) }
+              : mv;
+          });
+        }
+
+        const { data: currentVars } = await supabaseServer
+          .from('product_variants')
+          .select('stock_quantity')
+          .eq('product_id', targetId);
+        const totalRemaining = Array.isArray(currentVars)
+          ? currentVars.reduce((acc: number, v: any) => acc + (Number(v.stock_quantity) || 0), 0)
+          : numStock;
+
+        if (totalRemaining <= 0) {
+          meta.visible_online = false;
+          meta.is_draft = false;
+          meta.allow_backorder = false;
+          meta.out_of_stock_auto = true;
+        } else if (numStock > 0 && meta.out_of_stock_auto) {
+          meta.visible_online = true;
+          meta.is_draft = false;
+          meta.out_of_stock_auto = false;
         }
       }
     }

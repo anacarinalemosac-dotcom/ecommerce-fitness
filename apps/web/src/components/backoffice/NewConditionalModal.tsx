@@ -61,14 +61,21 @@ export function NewConditionalModal({
 
   if (!isOpen) return null;
 
-  // Filtragem dos produtos do catálogo
+  // Filtragem dos produtos do catálogo (sem limite artificial — permite rolar e ver todos)
   const filteredProducts = (products || []).filter((p) => {
-    if (!searchProductQuery) return true;
-    const q = searchProductQuery.toLowerCase();
+    if (!searchProductQuery.trim()) return true;
+    const q = searchProductQuery.toLowerCase().trim();
     return (
       (p.title && p.title.toLowerCase().includes(q)) ||
       (p.sku && p.sku.toLowerCase().includes(q)) ||
-      (p.category && p.category.toLowerCase().includes(q))
+      (p.category && p.category.toLowerCase().includes(q)) ||
+      (p.colorName && p.colorName.toLowerCase().includes(q)) ||
+      (Array.isArray(p.variants) &&
+        p.variants.some(
+          (v: any) =>
+            (v.sku || '').toLowerCase().includes(q) ||
+            (v.color || '').toLowerCase().includes(q)
+        ))
     );
   });
 
@@ -458,70 +465,104 @@ export function NewConditionalModal({
             )}
 
             {/* SELETOR RÁPIDO DO CATÁLOGO DE PRODUTOS */}
-            <div className="border border-deep-black/30 p-3 bg-gray-50 space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-deep-black">
-                  Buscar Peças no Catálogo para Incluir na Mala:
-                </span>
-                <div className="relative w-64">
+            <div className="border border-deep-black/30 p-3 bg-gray-50 space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-deep-black block">
+                    Catálogo Completo ({filteredProducts.length} de {(products || []).length} produtos — role a barrinha para ver todos):
+                  </span>
+                </div>
+                <div className="relative w-full sm:w-64">
                   <Search className="w-3.5 h-3.5 text-deep-black/50 absolute left-2 top-2.5" />
                   <input
                     type="text"
                     value={searchProductQuery}
                     onChange={(e) => setSearchProductQuery(e.target.value)}
-                    placeholder="Buscar nome, modelo ou SKU..."
-                    className="w-full pl-7 pr-2 py-1.5 border border-deep-black/30 text-xs focus:outline-none focus:border-gold bg-white"
+                    placeholder="Buscar nome, cor, modelo ou SKU..."
+                    className="w-full pl-7 pr-12 py-1.5 border border-deep-black/30 text-xs focus:outline-none focus:border-gold bg-white"
                   />
+                  {searchProductQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchProductQuery('')}
+                      className="absolute right-1.5 top-1 text-[9px] font-black uppercase px-1.5 py-0.5 bg-deep-black/10 hover:bg-deep-black hover:text-white transition"
+                    >
+                      Limpar
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Grid de produtos rápidos */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
-                {filteredProducts.slice(0, 18).map((prod: any) => {
-                  const hasVars = Array.isArray(prod.variants) && prod.variants.length > 0;
-                  return (
-                    <div
-                      key={prod.id}
-                      className="p-2 bg-white border border-deep-black/20 hover:border-gold flex items-center justify-between gap-2 transition"
+              {/* Grid rolável com TODOS os produtos */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto pr-1.5 p-0.5">
+                {filteredProducts.length === 0 ? (
+                  <div className="col-span-full py-6 text-center space-y-2">
+                    <p className="text-xs font-bold uppercase text-deep-black/50">
+                      Nenhum produto encontrado para &ldquo;{searchProductQuery}&rdquo;.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setSearchProductQuery('')}
+                      className="px-3 py-1 bg-deep-black text-white text-[10px] font-black uppercase tracking-wider hover:bg-gold hover:text-deep-black transition"
                     >
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        {prod.primaryImage ? (
-                          <img src={prod.primaryImage} alt={prod.title} className="w-9 h-9 object-cover shrink-0" />
-                        ) : (
-                          <div className="w-9 h-9 bg-gold/20 shrink-0" />
-                        )}
-                        <div className="overflow-hidden">
-                          <span className="font-bold text-[11px] text-deep-black block truncate" title={prod.title}>
-                            {prod.title}
-                          </span>
-                          <span className="font-mono text-[9px] text-gold font-bold block">
-                            ${Number(prod.price || 39.90).toFixed(2)} USD
-                          </span>
+                      Mostrar Todos os {(products || []).length} Produtos
+                    </button>
+                  </div>
+                ) : (
+                  filteredProducts.map((prod: any) => {
+                    const hasVars = Array.isArray(prod.variants) && prod.variants.length > 0;
+                    const totalStock = hasVars
+                      ? prod.variants.reduce((acc: number, v: any) => acc + Math.max(0, Number(v.stock_quantity ?? v.stock ?? 0)), 0)
+                      : Math.max(0, Number(prod.stock ?? 0));
+                    return (
+                      <div
+                        key={prod.id}
+                        className="p-2 bg-white border border-deep-black/20 hover:border-gold flex items-center justify-between gap-2 transition"
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          {prod.primaryImage ? (
+                            <img src={prod.primaryImage} alt={prod.title} className="w-10 h-11 object-cover shrink-0 border border-deep-black/10" />
+                          ) : (
+                            <div className="w-10 h-11 bg-gold/20 shrink-0" />
+                          )}
+                          <div className="overflow-hidden">
+                            <span className="font-bold text-[11px] text-deep-black block truncate" title={prod.title}>
+                              {prod.title}
+                            </span>
+                            <span className="font-mono text-[9.5px] text-gold font-bold block">
+                              ${Number(prod.price || 39.90).toFixed(2)} USD • <span className={totalStock > 0 ? 'text-emerald-700' : 'text-red-600'}>{totalStock} un</span>
+                            </span>
+                            {prod.sku && (
+                              <span className="font-mono text-[8.5px] text-deep-black/50 block truncate">
+                                {prod.sku}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      {hasVars ? (
-                        <div className="flex flex-col gap-1 shrink-0">
+                        {hasVars ? (
+                          <div className="flex flex-col gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleAddItem(prod, prod.variants[0])}
+                              className="px-2 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black uppercase tracking-wider border border-deep-black transition shadow-xs cursor-pointer"
+                            >
+                              + ADD
+                            </button>
+                          </div>
+                        ) : (
                           <button
                             type="button"
-                            onClick={() => handleAddItem(prod, prod.variants[0])}
-                            className="px-2 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black uppercase tracking-wider border border-deep-black transition shadow-xs cursor-pointer"
+                            onClick={() => handleAddItem(prod)}
+                            className="px-2 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black uppercase tracking-wider border border-deep-black transition shadow-xs cursor-pointer shrink-0"
                           >
                             + ADD
                           </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleAddItem(prod)}
-                          className="px-2 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black uppercase tracking-wider border border-deep-black transition shadow-xs cursor-pointer shrink-0"
-                        >
-                          + ADD
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>

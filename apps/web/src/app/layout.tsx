@@ -9,6 +9,7 @@ import { LiveVisitorTracker } from '../components/LiveVisitorTracker';
 import { AffiliateLinkTracker } from '../components/AffiliateLinkTracker';
 import { TrackingScripts } from '../components/TrackingScripts';
 import { StoreMaintenanceGuard } from '../components/StoreMaintenanceGuard';
+import { SideCartDrawer } from '../components/SideCartDrawer';
 
 export const metadata: Metadata = {
   title: 'ANA FITNESS WEAR | ✨Wear Your Strength✨ | Official US Store',
@@ -44,6 +45,7 @@ export default function RootLayout({
             </main>
             <SiteFooter />
             <FloatingLanguageSwitcher />
+            <SideCartDrawer />
             <CustomerChatWidget />
           </StoreMaintenanceGuard>
         </Providers>

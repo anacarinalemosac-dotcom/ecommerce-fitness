@@ -88,6 +88,9 @@ export function addToCart(newItem: CartItem): { items: CartItem[]; totalCount: n
   }
 
   saveCartItems(updated);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('ana_cart_item_added', { detail: newItem }));
+  }
   const totalCount = updated.reduce((sum, it) => sum + (it.quantity || 1), 0);
   return { items: updated, totalCount };
 }

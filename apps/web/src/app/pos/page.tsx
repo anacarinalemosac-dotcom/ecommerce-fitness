@@ -180,12 +180,23 @@ export default function PosTerminalPage() {
 
   // Filtragem de catálogo para seleção rápida no PDV
   const filteredProducts = products.filter((p) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    const rawCat = String((p as any).category || p.categoryPt || p.categoryEn || '').toLowerCase();
+    const rawColor = String((p as any).colorName || '').toLowerCase();
     return (
-      p.title.toLowerCase().includes(q) ||
-      p.sku.toLowerCase().includes(q) ||
-      (p.variants && p.variants.some((v: any) => v.sku?.toLowerCase().includes(q)))
+      (p.title || '').toLowerCase().includes(q) ||
+      (p.sku || '').toLowerCase().includes(q) ||
+      rawCat.includes(q) ||
+      rawColor.includes(q) ||
+      (Array.isArray(p.colors) && p.colors.some((c: any) => (c?.name || '').toLowerCase().includes(q))) ||
+      (Array.isArray(p.variants) &&
+        p.variants.some(
+          (v: any) =>
+            (v.sku || '').toLowerCase().includes(q) ||
+            (v.color || '').toLowerCase().includes(q) ||
+            (v.barcode || '').toLowerCase().includes(q)
+        ))
     );
   });
 
@@ -869,11 +880,23 @@ export default function PosTerminalPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      const typedPhone = (completedSalePhone || completedSale.customer_phone || '').trim();
+                      if (typedPhone && typedPhone !== completedSale.customer_phone) {
+                        fetch('/api/backoffice/sales', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            order_id: completedSale.order_id || completedSale.id,
+                            customer_phone: typedPhone,
+                          }),
+                        }).catch(() => {});
+                        setCompletedSale((prev: any) => (prev ? { ...prev, customer_phone: typedPhone } : prev));
+                      }
                       const msg = generateCrediarioWhatsAppMessage({
                         ...completedSale,
-                        customer_phone: completedSalePhone || completedSale.customer_phone,
+                        customer_phone: typedPhone,
                       });
-                      let cleanPhone = (completedSalePhone || completedSale.customer_phone || '').replace(/\D/g, '');
+                      let cleanPhone = typedPhone.replace(/\D/g, '');
                       if (cleanPhone.length === 10) cleanPhone = `1${cleanPhone}`;
                       const url = cleanPhone
                         ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
@@ -928,11 +951,23 @@ export default function PosTerminalPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      const typedPhone = (completedSalePhone || completedSale.customer_phone || '').trim();
+                      if (typedPhone && typedPhone !== completedSale.customer_phone) {
+                        fetch('/api/backoffice/sales', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            order_id: completedSale.order_id || completedSale.id,
+                            customer_phone: typedPhone,
+                          }),
+                        }).catch(() => {});
+                        setCompletedSale((prev: any) => (prev ? { ...prev, customer_phone: typedPhone } : prev));
+                      }
                       const msg = generateReceiptWhatsAppMessage({
                         ...completedSale,
-                        customer_phone: completedSalePhone || completedSale.customer_phone,
+                        customer_phone: typedPhone,
                       });
-                      let cleanPhone = (completedSalePhone || completedSale.customer_phone || '').replace(/\D/g, '');
+                      let cleanPhone = typedPhone.replace(/\D/g, '');
                       if (cleanPhone.length === 10) cleanPhone = `1${cleanPhone}`;
                       const url = cleanPhone
                         ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
@@ -1398,48 +1433,87 @@ export default function PosTerminalPage() {
           {/* Seleção Rápida de Peças do Catálogo Oficial */}
           <div className="bg-white border-2 border-deep-black p-5 space-y-3 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-deep-black/10 pb-2">
-              <div className="flex items-center gap-2">
-                <Package className="w-4 h-4 text-gold" />
-                <span className="text-xs font-black uppercase tracking-wider text-deep-black">
-                  CATÁLOGO INTEGRADO ({products.length} PRODUTOS)
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4 text-gold" />
+                  <span className="text-xs font-black uppercase tracking-wider text-deep-black">
+                    CATÁLOGO INTEGRADO ({filteredProducts.length} DE {products.length} PRODUTOS)
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold uppercase text-deep-black/55 mt-0.5">
+                  Role a barrinha abaixo para ver todos os modelos ou filtre por nome, cor ou SKU
                 </span>
               </div>
-              <div className="relative w-full sm:w-60">
+              <div className="relative w-full sm:w-64">
                 <input
                   type="text"
-                  placeholder="BUSCAR PEÇA OU MODELO..."
+                  placeholder="BUSCAR PEÇA, COR OU SKU..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-7 pr-2 py-1.5 text-[11px] uppercase tracking-wider border border-deep-black/20 focus:outline-none"
+                  className="w-full pl-7 pr-12 py-1.5 text-[11px] uppercase tracking-wider border border-deep-black/20 focus:outline-none focus:border-gold"
                 />
                 <Search className="w-3.5 h-3.5 text-deep-black/40 absolute left-2 top-2" />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-1.5 top-1 text-[9px] font-black uppercase px-1.5 py-0.5 bg-deep-black/10 hover:bg-deep-black hover:text-white transition"
+                  >
+                    LIMPAR
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto p-1">
-              {filteredProducts.slice(0, 9).map((prod) => (
-                <button
-                  key={prod.id}
-                  type="button"
-                  onClick={() => handleSelectProductModal(prod)}
-                  className="p-2 border border-deep-black/15 hover:border-deep-black hover:bg-deep-black/5 transition text-left flex items-center gap-2 group"
-                >
-                  <div className="w-10 h-12 bg-deep-black/10 shrink-0 overflow-hidden">
-                    <img src={prod.primaryImage} alt={prod.title} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-tight text-deep-black truncate group-hover:text-gold">
-                      {prod.title}
-                    </p>
-                    <p className="text-[9px] font-mono text-gold font-black">
-                      ${Number(prod.price).toFixed(2)}
-                    </p>
-                    <span className="text-[8px] text-deep-black/50 uppercase font-bold block">
-                      + Escolher grade
-                    </span>
-                  </div>
-                </button>
-              ))}
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[340px] overflow-y-auto p-1 pr-2">
+              {filteredProducts.length === 0 ? (
+                <div className="col-span-full py-8 text-center space-y-2">
+                  <p className="text-xs font-bold uppercase text-deep-black/50">
+                    Nenhum produto encontrado para &ldquo;{searchQuery}&rdquo;.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="px-3 py-1.5 bg-deep-black text-white text-[10px] font-black uppercase tracking-wider hover:bg-gold hover:text-deep-black transition"
+                  >
+                    VER TODOS OS {products.length} PRODUTOS
+                  </button>
+                </div>
+              ) : (
+                filteredProducts.map((prod) => {
+                  const totalStock = Array.isArray(prod.variants) && prod.variants.length > 0
+                    ? prod.variants.reduce((acc: number, v: any) => acc + Math.max(0, Number(v.stock_quantity ?? v.stock ?? 0)), 0)
+                    : Math.max(0, Number(prod.stock ?? 0));
+                  return (
+                    <button
+                      key={prod.id}
+                      type="button"
+                      onClick={() => handleSelectProductModal(prod)}
+                      className="p-2 border border-deep-black/15 hover:border-deep-black hover:bg-deep-black/5 transition text-left flex items-center gap-2.5 group cursor-pointer"
+                    >
+                      <div className="w-11 h-14 bg-deep-black/10 shrink-0 overflow-hidden border border-deep-black/10">
+                        <img src={prod.primaryImage} alt={prod.title} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10.5px] font-black uppercase tracking-tight text-deep-black truncate group-hover:text-gold" title={prod.title}>
+                          {prod.title}
+                        </p>
+                        <div className="flex items-center justify-between gap-1 mt-0.5">
+                          <span className="text-[10px] font-mono text-gold font-black">
+                            ${Number(prod.price).toFixed(2)}
+                          </span>
+                          <span className={`text-[9px] font-mono font-bold ${totalStock > 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                            {totalStock > 0 ? `${totalStock} un` : '0 un'}
+                          </span>
+                        </div>
+                        <span className="text-[8.5px] font-mono text-deep-black/50 uppercase font-bold block truncate">
+                          {prod.sku || 'S/SKU'} • + Escolher grade
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
 

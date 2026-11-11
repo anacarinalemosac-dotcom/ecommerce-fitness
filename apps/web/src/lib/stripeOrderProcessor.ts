@@ -4,6 +4,7 @@ import { stripe } from '@/lib/stripe';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { recordOrderEvent } from '@/lib/liveStore';
 import { sendOrderConfirmationEmail, sendOwnerSaleNotificationEmail } from '@/lib/emailService';
+import { upsertMarketingContactAndPersist } from '@/lib/marketingContactsStore';
 import {
   decrementProductStockAfterSale,
   enrichOrderItemsWithCatalog,
@@ -298,6 +299,23 @@ async function executeProcessCompletedStripeSession(
   } catch (ownerEmailErr) {
     console.warn('Erro ao enviar e-mail de venda para lojista:', ownerEmailErr);
   }
+
+  // 3. Salva automaticamente na Lista de Contatos para Marketing Futuro
+  try {
+    await upsertMarketingContactAndPersist({
+      name: customerName,
+      phone: customerPhone,
+      email: customerEmail,
+      city: shippingAddress.city,
+      state: shippingAddress.state,
+      sizes: items.map((i: any) => i.size).filter(Boolean),
+      last_product: items[0]?.title || '',
+      order_value: totalAmountPaid,
+      count_order: true,
+      source: 'SITE',
+      created_at: fullOrderRecord.created_at,
+    });
+  } catch (_) {}
 
   return { success: true, orderId, inserted: Boolean(inserted) };
 }

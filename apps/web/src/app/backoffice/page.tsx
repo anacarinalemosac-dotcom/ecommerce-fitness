@@ -106,6 +106,7 @@ import { ComboPromoModal } from '../../components/backoffice/ComboPromoModal';
 import { ConditionalsView } from '../../components/backoffice/ConditionalsView';
 import { ExecutiveFinancialSummary } from '../../components/backoffice/ExecutiveFinancialSummary';
 import { PendingOrdersSpotlight } from '../../components/backoffice/PendingOrdersSpotlight';
+import { OutOfStockProductsView } from '../../components/backoffice/OutOfStockProductsView';
 import { sortOrdersPendingFirst } from '@/lib/orderPriority';
 import {
   generateReceiptWhatsAppMessage,
@@ -249,7 +250,7 @@ export default function BackofficeDashboard() {
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'catalog' | 'sales' | 'conditionals' | 'commissions' | 'finances' | 'invoices' | 'coupons' | 'reports' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
+    'dashboard' | 'catalog' | 'out-of-stock' | 'sales' | 'conditionals' | 'commissions' | 'finances' | 'invoices' | 'coupons' | 'reports' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
   >('dashboard');
   const [cmsSubTab, setCmsSubTab] = useState<CmsSubTab>('categories');
   const [reportsSubTab, setReportsSubTab] = useState<'inventory' | 'accesses'>('inventory');
@@ -2205,8 +2206,18 @@ export default function BackofficeDashboard() {
     }
   };
 
+  const getProductTotalStock = (p: any) => {
+    const vars = Array.isArray(p?.variants) ? p.variants : [];
+    if (vars.length > 0) {
+      return vars.reduce((s: number, v: any) => s + (Number(v.stock_quantity ?? v.stock ?? 0) || 0), 0);
+    }
+    return Number(p?.total_stock ?? p?.stock ?? 0) || 0;
+  };
+
   const isDraftProduct = (item: any) => {
     if (!item) return false;
+    // Itens zerados vão exclusivamente para a aba PRODUTO ESGOTADO (nunca para Rascunho)
+    if (getProductTotalStock(item) <= 0) return false;
     if (item.visible_online === false || item.meta?.visible_online === false) return true;
     if (item.is_draft === true || item.meta?.is_draft === true || item.status === 'draft') return true;
     if (item.created_at) {
@@ -2222,16 +2233,12 @@ export default function BackofficeDashboard() {
   const totalCatalogCount = baseCatalogList.length;
   const todayCatalogCount = baseCatalogList.filter(isCreatedToday).length;
   const draftCatalogCount = baseCatalogList.filter(isDraftProduct).length;
-  const activeCatalogCount = baseCatalogList.filter((p: any) => p.visible_online !== false && !isDraftProduct(p)).length;
+  const activeCatalogCount = baseCatalogList.filter(
+    (p: any) => getProductTotalStock(p) > 0 && p.visible_online !== false && !isDraftProduct(p)
+  ).length;
   const hiddenCatalogCount = draftCatalogCount;
-  const inStockCatalogCount = baseCatalogList.filter((p: any) => {
-    const totalStock = p.total_stock ?? p.stock ?? (p.variants || []).reduce((s: number, v: any) => s + (v.stock_quantity || 0), 0);
-    return totalStock > 0;
-  }).length;
-  const outOfStockCatalogCount = baseCatalogList.filter((p: any) => {
-    const totalStock = p.total_stock ?? p.stock ?? (p.variants || []).reduce((s: number, v: any) => s + (v.stock_quantity || 0), 0);
-    return totalStock <= 0;
-  }).length;
+  const inStockCatalogCount = baseCatalogList.filter((p: any) => getProductTotalStock(p) > 0).length;
+  const outOfStockCatalogCount = baseCatalogList.filter((p: any) => getProductTotalStock(p) <= 0).length;
 
   const filteredCatalogProducts = baseCatalogList.filter((item: any) => {
     const itemVariants = item.variants || (item.sizes ? item.sizes.map((sz: string) => ({
@@ -2240,11 +2247,11 @@ export default function BackofficeDashboard() {
       sku: `${item.sku || 'PROD'}-${sz}`,
       stock_quantity: Math.round((item.stock || 0) / item.sizes.length),
     })) : []);
-    const totalStock = item.total_stock ?? item.stock ?? itemVariants.reduce((s: number, v: any) => s + (v.stock_quantity || 0), 0);
+    const totalStock = getProductTotalStock(item);
 
     // Filtro por Status / Aba
     if (productStatusFilter === 'TODAY' && !isCreatedToday(item)) return false;
-    if (productStatusFilter === 'ACTIVE' && (item.visible_online === false || isDraftProduct(item))) return false;
+    if (productStatusFilter === 'ACTIVE' && (totalStock <= 0 || item.visible_online === false || isDraftProduct(item))) return false;
     if ((productStatusFilter === 'DRAFT' || productStatusFilter === 'HIDDEN') && !isDraftProduct(item)) return false;
     if (productStatusFilter === 'IN_STOCK' && totalStock <= 0) return false;
     if (productStatusFilter === 'OUT_OF_STOCK' && totalStock > 0) return false;
@@ -2870,6 +2877,15 @@ export default function BackofficeDashboard() {
 
             <button
               type="button"
+              onClick={() => setActiveTab('customers')}
+              className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 hover:text-white text-emerald-300 font-black text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-emerald-500/40 cursor-pointer"
+            >
+              <Users className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Contatos & Marketing</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('instagram-direct')}
               className="px-3 py-1.5 bg-pink-500/10 hover:bg-pink-600 hover:text-white text-pink-300 font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-pink-500/30 cursor-pointer"
             >
@@ -2926,6 +2942,24 @@ export default function BackofficeDashboard() {
         >
           <Package className="w-4 h-4 text-gold" />
           <span>2. CATÁLOGO & PRODUTOS ({supabaseProducts.length || products.length})</span>
+        </button>
+
+        {/* Aba Exclusiva: PRODUTO ESGOTADO (fora do site) */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('out-of-stock')}
+          className={`pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 cursor-pointer ${
+            activeTab === 'out-of-stock'
+              ? 'border-red-600 text-red-700 font-black'
+              : 'border-transparent text-red-700/80 hover:text-red-700'
+          }`}
+        >
+          <span>🚫 PRODUTO ESGOTADO</span>
+          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
+            outOfStockCatalogCount > 0 ? 'bg-red-600 text-white' : 'bg-deep-black/10 text-deep-black'
+          }`}>
+            {outOfStockCatalogCount}
+          </span>
         </button>
 
         {/* 3. Vendas, Pedidos e Omnichannel */}
@@ -3078,7 +3112,7 @@ export default function BackofficeDashboard() {
           <span>6. APARÊNCIA DA LOJA (CMS)</span>
         </button>
 
-        {/* 7. Clientes e Prova Social (Reviews) */}
+        {/* 7. Contatos, Marketing e Prova Social (Reviews) */}
         <button
           onClick={() => setActiveTab('customers')}
           className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
@@ -3088,7 +3122,7 @@ export default function BackofficeDashboard() {
           }`}
         >
           <Star className="w-4 h-4 text-gold" />
-          <span>7. CLIENTES & REVIEWS</span>
+          <span>7. CONTATOS, MARKETING & REVIEWS</span>
         </button>
 
         {/* 8. Configurações Técnicas e Acessos */}
@@ -3659,19 +3693,19 @@ export default function BackofficeDashboard() {
                 <span>EM ESTOQUE ({inStockCatalogCount})</span>
               </button>
 
-              {/* Aba SEM ESTOQUE / ESGOTADOS */}
+              {/* Aba PRODUTO ESGOTADO */}
               <button
                 type="button"
                 onClick={() => setProductStatusFilter('OUT_OF_STOCK')}
                 className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1.5 cursor-pointer ${
                   productStatusFilter === 'OUT_OF_STOCK'
-                    ? 'bg-gold text-deep-black border-deep-black font-black shadow-xs'
-                    : 'bg-white text-gold border-gold/40 hover:border-gold'
+                    ? 'bg-red-600 text-white border-red-700 font-black shadow-xs'
+                    : 'bg-red-50 text-red-800 border-red-300 hover:border-red-600'
                 }`}
-                title="Produtos com estoque zerado ou em pré-venda"
+                title="Produtos com estoque zerado (ocultos do site)"
               >
-                <span>⚠️</span>
-                <span>SEM ESTOQUE ({outOfStockCatalogCount})</span>
+                <span>🚫</span>
+                <span>PRODUTO ESGOTADO ({outOfStockCatalogCount})</span>
               </button>
 
               {(productSearch || productCategoryFilter !== 'ALL' || productStatusFilter !== 'ALL') && (
@@ -4025,7 +4059,11 @@ export default function BackofficeDashboard() {
                       {/* VISIBILIDADE NA VITRINE / CONTROLE RÁPIDO */}
                       <td className="p-4">
                         <div className="flex flex-col gap-1.5 items-start">
-                          {item.visible_online ? (
+                          {totalStock <= 0 ? (
+                            <span className="px-2 py-0.5 bg-red-600 text-white text-[9px] font-black border border-red-800 flex items-center gap-1 shadow-xs">
+                              <span>🚫 PRODUTO ESGOTADO (FORA DO SITE)</span>
+                            </span>
+                          ) : item.visible_online ? (
                             <span className="px-2 py-0.5 bg-green-700 text-white text-[9px] font-black border border-green-800 flex items-center gap-1 shadow-xs">
                               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                               <span>NO AR NA LOJA</span>
@@ -4206,6 +4244,45 @@ export default function BackofficeDashboard() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* =========================================================================
+          ABA EXCLUSIVA: PRODUTO ESGOTADO (FORA DO SITE)
+         ========================================================================= */}
+      {activeTab === 'out-of-stock' && (
+        <OutOfStockProductsView
+          products={baseCatalogList}
+          onRefresh={() => {
+            fetchSupabaseProducts();
+            if (refreshProducts) refreshProducts();
+          }}
+          onEditProduct={(item) => {
+            const vars = item.variants || [];
+            const firstImg =
+              item.meta?.primary_image ||
+              item.primary_image ||
+              item.primaryImage ||
+              vars[0]?.images?.[0] ||
+              vars[0]?.image ||
+              '';
+            const basePrice = Number(item.meta?.price ?? item.price ?? vars[0]?.price ?? 44.9);
+            const baseCost = Number(vars[0]?.cost_price ?? item.cost_price ?? item.costPrice ?? 0);
+            setEditingProduct({
+              ...item,
+              price: basePrice,
+              defaultPrice: basePrice,
+              cost_price: baseCost,
+              costPrice: baseCost,
+              variants: vars,
+              primaryImage: firstImg,
+              primary_image: firstImg,
+              images: item.images || item.galleryImages || item.meta?.images || (firstImg ? [firstImg] : []),
+            });
+            setActiveTab('catalog');
+            setShowAddForm(true);
+            window.scrollTo({ top: 300, behavior: 'smooth' });
+          }}
+        />
       )}
 
       {/* =========================================================================

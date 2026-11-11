@@ -576,17 +576,18 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   });
   const availableColors = Array.from(availableColorsMap.values());
 
-  // 1. Identifica se a peça é SPOILER (exclusiva para prévia, sem reserva)
+  // 1. Identifica separadamente se a peça está ESGOTADA (estoque 0) vs SPOILER explícito
   const totalStock =
     (productData.variants || []).reduce((acc: number, v: Variant) => acc + (Number(v.stock) || 0), 0) +
     (Number(productData.stock) || 0);
 
-  const isSpoilerProduct =
-    totalStock <= 0 ||
+  const isZeroStock = totalStock <= 0;
+  const isExplicitSpoiler =
     productData.categoryKey === 'spoiler' ||
     productData.categoryKey === 'preorder' ||
     productData.badgePt === 'PRÉ-VENDA' ||
     productData.badgePt === 'SPOILER';
+  const isSpoilerProduct = isExplicitSpoiler;
 
   // Identifica a primeira variação com estoque real (> 0) para selecionar automaticamente na abertura
   const inStockVariant = (productData.variants || []).find((v: Variant) => Number(v.stock) > 0);
@@ -1513,9 +1514,28 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             </div>
           )}
 
-          {/* Botões de Ação Principal (ADD TO BAG + FAVORITOS) */}
+          {/* Botões de Ação Principal (ESGOTADO / SPOILER / ADD TO BAG) */}
           <div className="space-y-3 pt-2">
-            {isSpoilerProduct ? (
+            {isZeroStock && !isExplicitSpoiler ? (
+              <div className="space-y-2.5 p-4 bg-red-50 border-2 border-red-600 text-center">
+                <div className="text-xs font-black uppercase tracking-wider text-red-800">
+                  {lang === 'pt'
+                    ? '🚫 PRODUTO ESGOTADO • FORA DE ESTOQUE'
+                    : '🚫 SOLD OUT • NO LONGER AVAILABLE'}
+                </div>
+                <p className="text-[11px] text-red-900 font-medium">
+                  {lang === 'pt'
+                    ? 'A última unidade deste conjunto acabou de ser vendida e ele não está mais disponível no site.'
+                    : 'The last unit of this set was just sold and it is no longer available on our storefront.'}
+                </p>
+                <Link
+                  href="/catalogo"
+                  className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-black hover:bg-gold hover:text-black text-white font-black text-xs uppercase tracking-widest transition"
+                >
+                  <span>{lang === 'pt' ? 'VER PEÇAS DISPONÍVEIS NO CATÁLOGO →' : 'BROWSE AVAILABLE SETS →'}</span>
+                </Link>
+              </div>
+            ) : isSpoilerProduct ? (
               <a
                 href={`https://wa.me/19788608822?text=${encodeURIComponent(
                   `Olá Ana! Vi o SPOILER da peça *${productData.title}* no site e gostaria de ser avisada assim que estiver à pronta entrega!`

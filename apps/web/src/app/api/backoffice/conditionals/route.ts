@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { recordOrderEvent } from '@/lib/liveStore';
+import { upsertMarketingContactAndPersist } from '@/lib/marketingContactsStore';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -166,7 +167,21 @@ export async function POST(req: NextRequest) {
     all.unshift(newRecord);
     saveConditionals(all);
 
-    // Registra evento no radar ao vivo do Backoffice
+    // Registra evento no radar ao vivo do Backoffice e adiciona à Lista de Marketing
+    try {
+      await upsertMarketingContactAndPersist({
+        name: newRecord.customer_name,
+        phone: newRecord.customer_phone,
+        email: newRecord.customer_email,
+        sizes: formattedItems.map((it) => it.size).filter(Boolean),
+        last_product: formattedItems[0]?.title || '',
+        order_value: 0,
+        count_order: false,
+        source: 'CONDICIONAL',
+        created_at: newRecord.created_at,
+      });
+    } catch (_) {}
+
     try {
       await recordOrderEvent({
         orderId: condNumber,

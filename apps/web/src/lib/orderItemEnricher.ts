@@ -384,6 +384,9 @@ export async function decrementProductStockAfterSale(
               const totalRemaining = meta.variants.reduce((acc: number, mv: any) => acc + (Number(mv.stock_quantity) || 0), 0);
               if (totalRemaining <= 0) {
                 meta.allow_backorder = false;
+                meta.visible_online = false;
+                meta.is_draft = false;
+                meta.out_of_stock_auto = true;
               }
 
               await supabaseServer
