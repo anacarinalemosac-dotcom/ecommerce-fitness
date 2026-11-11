@@ -30,6 +30,7 @@ import {
   CalendarDays,
 } from 'lucide-react';
 import { computeSaleFinancials } from '@/lib/salesFinancials';
+import { isOrderPendingShipping, sortOrdersPendingFirst } from '@/lib/orderPriority';
 
 interface DashboardMetricsViewProps {
   salesData: any;
@@ -60,7 +61,7 @@ export function DashboardMetricsView({
 }: DashboardMetricsViewProps) {
   const sales = salesData?.sales || [];
   const [salesMode, setSalesMode] = useState<'today' | 'all'>('today');
-  const [orderFilterMode, setOrderFilterMode] = useState<'today' | 'yesterday' | 'unfulfilled' | 'all' | 'specific_date'>('today');
+  const [orderFilterMode, setOrderFilterMode] = useState<'today' | 'yesterday' | 'unfulfilled' | 'all' | 'specific_date'>('all');
   const [orderSpecificDate, setOrderSpecificDate] = useState<string>('');
   const [copiedAddressId, setCopiedAddressId] = useState<string | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
@@ -209,8 +210,8 @@ export function DashboardMetricsView({
     return orderDateStr < todayDateStr;
   });
 
-  // Pedidos a exibir conforme o filtro selecionado no dashboard
-  const displayedDashboardOrders = (() => {
+  // Pedidos a exibir conforme o filtro selecionado no dashboard (sempre pendentes de envio primeiro!)
+  const displayedDashboardOrders = sortOrdersPendingFirst((() => {
     switch (orderFilterMode) {
       case 'today':
         return todayOrders;
@@ -224,9 +225,9 @@ export function DashboardMetricsView({
         if (!orderSpecificDate) return sales;
         return sales.filter((s: any) => getNYDateStr(s.created_at) === orderSpecificDate);
       default:
-        return todayOrders;
+        return sales;
     }
-  })();
+  })());
 
   const getOrderItems = (order: any) => {
     if (Array.isArray(order.items) && order.items.length > 0) return order.items;
@@ -388,84 +389,10 @@ export function DashboardMetricsView({
           </div>
         </div>
 
-        {/* 1. CARD: SE TEM ALGUÉM ONLINE NO SITE AGORA */}
-        <div className="bg-deep-black text-white border-2 border-gold p-5 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-3.5 w-3.5">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${liveVisitors > 0 ? 'bg-emerald-400 opacity-75' : 'bg-gold opacity-30'}`} />
-                <span className={`relative inline-flex rounded-full h-3.5 w-3.5 ${liveVisitors > 0 ? 'bg-emerald-500' : 'bg-gold'}`} />
-              </span>
-              <h3 className="text-xs font-black uppercase tracking-wider text-gold flex items-center gap-1.5">
-                <Radio className="w-4 h-4 text-gold animate-pulse" />
-                <span>RADAR AO VIVO • QUEM ESTÁ ONLINE NO SITE AGORA</span>
-              </h3>
-            </div>
-            <span className={`px-2 py-0.5 text-[9px] font-black uppercase ${liveVisitors > 0 ? 'bg-emerald-500 text-deep-black' : 'bg-white/10 text-white/70'}`}>
-              {liveVisitors > 0 ? 'CLIENTES ATIVOS' : 'RADAR EM ESPERA'}
-            </span>
-          </div>
-
-          {liveVisitors > 0 ? (
-            <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="text-2xl sm:text-3xl font-black text-white font-mono flex items-baseline gap-2">
-                  <span className="text-emerald-400">{liveVisitors}</span>
-                  <span className="text-xs sm:text-sm font-bold text-white/90 uppercase">
-                    {liveVisitors === 1 ? 'Pessoa navegando no site agora!' : 'Pessoas navegando no site agora!'}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onNavigateTab('live')}
-                  className="text-xs font-black uppercase text-gold hover:underline flex items-center gap-1 self-start sm:self-auto"
-                >
-                  <span>Abrir Tela do Radar</span>
-                  <ArrowUpRight className="w-3.5 h-3.5 text-gold" />
-                </button>
-              </div>
-
-              {/* Lista dos visitantes ativos no radar */}
-              {liveFeed?.activeVisitors && liveFeed.activeVisitors.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
-                  {liveFeed.activeVisitors.slice(0, 3).map((vis: any, idx: number) => (
-                    <div key={idx} className="p-2.5 bg-white/5 border border-white/15 space-y-1">
-                      <div className="flex items-center justify-between text-xs font-bold text-white">
-                        <span className="flex items-center gap-1.5 truncate">
-                          <MapPin className="w-3.5 h-3.5 text-gold shrink-0" />
-                          <span className="uppercase">{vis.city}, {vis.region}</span>
-                        </span>
-                        <span className="text-[10px] text-emerald-400 font-mono shrink-0">ONLINE</span>
-                      </div>
-                      <div className="text-[10px] text-gold/90 font-mono truncate" title={vis.pageTitle || vis.page}>
-                        👀 {vis.pageTitle || vis.page}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="p-4 bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2 text-white/80 font-medium">
-                <span className="w-2 h-2 rounded-full bg-white/40" />
-                <span>Nenhum visitante navegando neste instante. O radar continua monitorando em tempo real.</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => onNavigateTab('reports')}
-                className="text-[10px] font-black uppercase text-gold hover:underline shrink-0"
-              >
-                Ver Relatório de Visitas Anteriores →
-              </button>
-            </div>
-          )}
-        </div>
-
         {/* 2. CARD: PEDIDOS PARA LOGÍSTICA / ENVIO */}
         <div className="space-y-4">
           {/* Alerta de Pedidos Pendentes de Ontem ou Dias Anteriores */}
-          {unfulfilledPastOrders.length > 0 && (
+          {unfulfilledOrders.length > 0 && (
             <div className="bg-gradient-to-r from-amber-500/15 via-red-500/15 to-amber-500/15 border-2 border-amber-600 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
               <div className="flex items-center gap-3">
                 <span className="p-2 bg-amber-600 text-white rounded-full shrink-0">
@@ -473,7 +400,7 @@ export function DashboardMetricsView({
                 </span>
                 <div>
                   <h4 className="text-sm font-black text-amber-950 uppercase tracking-wide">
-                    ⚠️ ATENÇÃO: VOCÊ TEM {unfulfilledPastOrders.length} PEDIDO(S) PENDENTE(S) DE ENVIO DE ONTEM OU DIAS ANTERIORES!
+                    ⚠️ ATENÇÃO: VOCÊ TEM {unfulfilledOrders.length} PEDIDO(S) PENDENTE(S) DE ENVIO!
                   </h4>
                   <p className="text-xs text-amber-900 font-medium">
                     Essas clientes já compraram e os pedidos ainda não foram despachados. Clique ao lado para conferir e não atrasar o envio.
@@ -489,7 +416,7 @@ export function DashboardMetricsView({
                 className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black uppercase tracking-wider shrink-0 shadow flex items-center gap-1.5"
               >
                 <Truck className="w-4 h-4" />
-                <span>VER NÃO ENVIADOS ({unfulfilledPastOrders.length})</span>
+                <span>VER NÃO ENVIADOS ({unfulfilledOrders.length})</span>
               </button>
             </div>
           )}
@@ -623,7 +550,7 @@ export function DashboardMetricsView({
                         <span>PEÇAS A DESPACHAR / SEPARAR ({items.length}):</span>
                       </span>
 
-                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                         {items.length === 0 ? (
                           <div className="text-xs text-deep-black/60 uppercase">
                             1x Peça do Pedido
@@ -632,17 +559,31 @@ export function DashboardMetricsView({
                           items.map((it: any, idx: number) => (
                             <div
                               key={idx}
-                              className="flex items-center justify-between text-xs py-1 border-b border-deep-black/5"
+                              className="flex items-center justify-between gap-2 text-xs py-1.5 border-b border-deep-black/5"
                             >
-                              <div className="flex items-center gap-2 truncate">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {it.image && (
+                                  <img
+                                    src={it.image}
+                                    alt={it.title}
+                                    className="w-8 h-10 object-cover rounded border border-deep-black/20 shrink-0 bg-white"
+                                  />
+                                )}
                                 <span className="font-mono font-black text-deep-black bg-gold/40 px-1.5 py-0.2 text-[10px] shrink-0">
                                   {it.quantity || 1}x
                                 </span>
-                                <span className="font-bold text-deep-black uppercase truncate" title={it.title}>
-                                  {it.title}
-                                </span>
+                                <div className="min-w-0">
+                                  <span className="font-bold text-deep-black uppercase block truncate" title={it.title}>
+                                    {it.title}
+                                  </span>
+                                  {it.sku && (
+                                    <span className="text-[9px] font-mono font-bold text-amber-900 bg-amber-100 border border-amber-300 px-1 py-0.2 inline-block">
+                                      SKU: {it.sku}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-[10px] font-mono text-deep-black/70 shrink-0 pl-2">
+                              <div className="text-[10px] font-mono text-deep-black/70 shrink-0 pl-2 text-right">
                                 {it.size ? `Tam: ${it.size}` : ''} {it.color ? `• ${it.color}` : ''}
                               </div>
                             </div>
@@ -773,7 +714,7 @@ export function DashboardMetricsView({
 
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {/* Passo 1 -> Passo 2: De Pago para Separando Mercadoria */}
-                        {onUpdateOrderStatus && (!order.status || order.status === 'PAID' || order.status === 'COMPLETED') && (
+                        {onUpdateOrderStatus && !['IN_PRODUCTION', 'SHIPPED', 'DELIVERED', 'CANCELLED'].includes(String(order.fulfillment_status || order.status || '').toUpperCase()) && (
                           <button
                             type="button"
                             onClick={() => onUpdateOrderStatus(order.order_id || order.id, 'IN_PRODUCTION')}
@@ -786,7 +727,7 @@ export function DashboardMetricsView({
                         )}
 
                         {/* Passo 2 ou 1 -> Passo 3: Despachar nos Correios (USPS) */}
-                        {onUpdateOrderStatus && order.status !== 'SHIPPED' && order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
+                        {onUpdateOrderStatus && !['SHIPPED', 'DELIVERED', 'CANCELLED'].includes(String(order.fulfillment_status || '').toUpperCase()) && !['SHIPPED', 'DELIVERED', 'CANCELLED'].includes(String(order.status || '').toUpperCase()) && (
                           <button
                             type="button"
                             onClick={() => handleOpenShippingModal(order)}
@@ -799,7 +740,7 @@ export function DashboardMetricsView({
                         )}
 
                         {/* Passo 3 -> Passo 4: Marcar como Entregue */}
-                        {order.status === 'SHIPPED' && onUpdateOrderStatus && (
+                        {(order.fulfillment_status === 'SHIPPED' || order.status === 'SHIPPED') && onUpdateOrderStatus && (
                           <>
                             <button
                               type="button"
@@ -900,6 +841,81 @@ export function DashboardMetricsView({
             </div>
           </div>
         </div>
+
+        {/* 1. CARD: SE TEM ALGUÉM ONLINE NO SITE AGORA */}
+        <div className="bg-deep-black text-white border-2 border-gold p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-3.5 w-3.5">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${liveVisitors > 0 ? 'bg-emerald-400 opacity-75' : 'bg-gold opacity-30'}`} />
+                <span className={`relative inline-flex rounded-full h-3.5 w-3.5 ${liveVisitors > 0 ? 'bg-emerald-500' : 'bg-gold'}`} />
+              </span>
+              <h3 className="text-xs font-black uppercase tracking-wider text-gold flex items-center gap-1.5">
+                <Radio className="w-4 h-4 text-gold animate-pulse" />
+                <span>RADAR AO VIVO • QUEM ESTÁ ONLINE NO SITE AGORA</span>
+              </h3>
+            </div>
+            <span className={`px-2 py-0.5 text-[9px] font-black uppercase ${liveVisitors > 0 ? 'bg-emerald-500 text-deep-black' : 'bg-white/10 text-white/70'}`}>
+              {liveVisitors > 0 ? 'CLIENTES ATIVOS' : 'RADAR EM ESPERA'}
+            </span>
+          </div>
+
+          {liveVisitors > 0 ? (
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="text-2xl sm:text-3xl font-black text-white font-mono flex items-baseline gap-2">
+                  <span className="text-emerald-400">{liveVisitors}</span>
+                  <span className="text-xs sm:text-sm font-bold text-white/90 uppercase">
+                    {liveVisitors === 1 ? 'Pessoa navegando no site agora!' : 'Pessoas navegando no site agora!'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('live')}
+                  className="text-xs font-black uppercase text-gold hover:underline flex items-center gap-1 self-start sm:self-auto"
+                >
+                  <span>Abrir Tela do Radar</span>
+                  <ArrowUpRight className="w-3.5 h-3.5 text-gold" />
+                </button>
+              </div>
+
+              {/* Lista dos visitantes ativos no radar */}
+              {liveFeed?.activeVisitors && liveFeed.activeVisitors.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
+                  {liveFeed.activeVisitors.slice(0, 3).map((vis: any, idx: number) => (
+                    <div key={idx} className="p-2.5 bg-white/5 border border-white/15 space-y-1">
+                      <div className="flex items-center justify-between text-xs font-bold text-white">
+                        <span className="flex items-center gap-1.5 truncate">
+                          <MapPin className="w-3.5 h-3.5 text-gold shrink-0" />
+                          <span className="uppercase">{vis.city}, {vis.region}</span>
+                        </span>
+                        <span className="text-[10px] text-emerald-400 font-mono shrink-0">ONLINE</span>
+                      </div>
+                      <div className="text-[10px] text-gold/90 font-mono truncate" title={vis.pageTitle || vis.page}>
+                        👀 {vis.pageTitle || vis.page}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-4 bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-white/80 font-medium">
+                <span className="w-2 h-2 rounded-full bg-white/40" />
+                <span>Nenhum visitante navegando neste instante. O radar continua monitorando em tempo real.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigateTab('reports')}
+                className="text-[10px] font-black uppercase text-gold hover:underline shrink-0"
+              >
+                Ver Relatório de Visitas Anteriores →
+              </button>
+            </div>
+          )}
+        </div>
+
       </section>
 
       {/* Banner de Boas-Vindas e Resumo Geral */}

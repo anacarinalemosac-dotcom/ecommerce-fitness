@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useStoreSettings, ProductItem } from '../../context/StoreSettingsContext';
 import { ImageUploadBox } from '../../components/ImageUploadBox';
+import { PendingOrdersSpotlight } from '../../components/backoffice/PendingOrdersSpotlight';
 import {
   ShieldCheck,
   Lock,
@@ -51,6 +52,46 @@ export default function AdminPortalPage() {
   const [loginPass, setLoginPass] = useState('');
   const [loginError, setLoginError] = useState('');
   const [savedSuccessMessage, setSavedSuccessMessage] = useState<string | null>(null);
+  const [adminSales, setAdminSales] = useState<any[]>([]);
+
+  const loadAdminSales = async () => {
+    try {
+      const res = await fetch('/api/backoffice/sales', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        setAdminSales(Array.isArray(data?.sales) ? data.sales : []);
+      }
+    } catch (_) {}
+  };
+
+  useEffect(() => {
+    if (adminUser.isLoggedIn) {
+      loadAdminSales();
+    }
+  }, [adminUser.isLoggedIn]);
+
+  const handleAdminUpdateFulfillment = async (orderId: string, newFulfillment: string, trackingCode?: string) => {
+    let finalTracking = trackingCode;
+    if (newFulfillment === 'SHIPPED' && !finalTracking) {
+      const entered = window.prompt(
+        `📦 Despachar Pedido #${orderId}\n\nInforme o Código de Rastreamento (USPS):`,
+        ''
+      );
+      if (entered === null) return;
+      finalTracking = entered.trim() || ('9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000));
+    }
+    try {
+      const res = await fetch('/api/backoffice/sales', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, fulfillment_status: newFulfillment, tracking_code: finalTracking }),
+      });
+      if (res.ok) {
+        await loadAdminSales();
+        triggerSuccess(`Status do pedido #${orderId} atualizado com sucesso!`);
+      }
+    } catch (_) {}
+  };
 
   // Estado local para edição de Informações
   const [tempInfo, setTempInfo] = useState(siteInfo);
@@ -210,6 +251,12 @@ export default function AdminPortalPage() {
           </button>
         </div>
       </div>
+
+      {/* PRIMEIRO LUGAR (CELULAR E COMPUTADOR): PEDIDOS PENDENTES DE ENVIO */}
+      <PendingOrdersSpotlight
+        sales={adminSales}
+        onUpdateFulfillmentStatus={handleAdminUpdateFulfillment}
+      />
 
       {/* Banner de Destaque: Acesso aos Pedidos dos Clientes */}
       <div className="p-5 bg-gold text-deep-black border-2 border-deep-black flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-luxury">

@@ -105,6 +105,8 @@ import { BulkPriceModal, BulkSizeGuideModal, BulkDescModal } from '../../compone
 import { ComboPromoModal } from '../../components/backoffice/ComboPromoModal';
 import { ConditionalsView } from '../../components/backoffice/ConditionalsView';
 import { ExecutiveFinancialSummary } from '../../components/backoffice/ExecutiveFinancialSummary';
+import { PendingOrdersSpotlight } from '../../components/backoffice/PendingOrdersSpotlight';
+import { sortOrdersPendingFirst } from '@/lib/orderPriority';
 import {
   generateReceiptWhatsAppMessage,
   generateCrediarioWhatsAppMessage,
@@ -1665,8 +1667,9 @@ export default function BackofficeDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Filtragem da lista de vendas (Multiperíodos e Filtros Operacionais)
-  const filteredSalesList = (salesData?.sales || []).filter((s: any) => {
+  // Filtragem da lista de vendas + ordenação com PENDENTES DE ENVIO sempre em 1º lugar
+  const filteredSalesList = sortOrdersPendingFirst(
+    (salesData?.sales || []).filter((s: any) => {
     // Filtro por Canal
     if (salesChannelFilter !== 'ALL' && s.channel !== salesChannelFilter) {
       return false;
@@ -1767,7 +1770,8 @@ export default function BackofficeDashboard() {
       if (!matchOrder && !matchCustomer && !matchPhone && !matchDoc && !matchItem) return false;
     }
     return true;
-  });
+    })
+  );
 
   // Totais matemáticos consolidados do relatório (todas as vendas ativas filtradas)
   const filteredSalesTotals = useMemo(() => {
@@ -2569,6 +2573,20 @@ export default function BackofficeDashboard() {
         </div>
       )}
 
+      {/* DESTAQUE #1 NO COMPUTADOR E CELULAR: PEDIDOS PENDENTES DE ENVIO SEMPRE EM PRIMEIRO LUGAR */}
+      <PendingOrdersSpotlight
+        sales={salesData?.sales || []}
+        onUpdateFulfillmentStatus={handleUpdateFulfillmentStatus}
+        onSelectOrder={(ord) => {
+          setSelectedSaleDetail(ord);
+        }}
+        onViewAllSales={() => {
+          setActiveTab('sales');
+          setSalesUnfulfilledOnly(true);
+          fetchSalesData();
+        }}
+      />
+
       {/* Banner de Ativação de Notificações Push para Celular */}
       {!browserNotificationsActive && (
         <div className="bg-amber-50 border-2 border-gold p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fadeIn">
@@ -3176,11 +3194,6 @@ export default function BackofficeDashboard() {
          ========================================================================= */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
-          <ExecutiveFinancialSummary
-            sales={salesData?.sales || []}
-            onOpenPaymentModal={handleOpenCrediarioPayModal}
-            onSelectSale={setSelectedSaleDetail}
-          />
           <DashboardMetricsView
             salesData={salesData}
             products={supabaseProducts.length > 0 ? supabaseProducts : products}
@@ -3188,12 +3201,17 @@ export default function BackofficeDashboard() {
             liveVisitors={liveFeed?.activeCount || onlineCount}
             liveFeed={liveFeed}
             onNavigateTab={setActiveTab}
-            onUpdateOrderStatus={handleUpdateOrderStatus}
+            onUpdateOrderStatus={handleUpdateFulfillmentStatus}
             writeOffsSummary={writeOffsData.summary}
             onOpenWriteOffModal={(tab) => {
               setWriteOffModalTab(tab || 'NEW');
               setShowWriteOffModal(true);
             }}
+          />
+          <ExecutiveFinancialSummary
+            sales={salesData?.sales || []}
+            onOpenPaymentModal={handleOpenCrediarioPayModal}
+            onSelectSale={setSelectedSaleDetail}
           />
         </div>
       )}
@@ -5102,12 +5120,28 @@ export default function BackofficeDashboard() {
                     </div>
 
                     {/* Peças */}
-                    <div className="bg-deep-black/5 p-2 border border-deep-black/10 space-y-1">
+                    <div className="bg-deep-black/5 p-2.5 border border-deep-black/10 space-y-2">
                       <span className="text-[9px] font-black text-deep-black/60 uppercase block">PEÇAS COMPRADAS:</span>
                       {(sale.items || []).map((it: any, iIdx: number) => (
-                        <div key={iIdx} className="text-[10px] flex items-center justify-between">
-                          <span className="font-bold text-deep-black truncate">{it.title}</span>
-                          <span className="text-gold font-bold font-mono shrink-0 pl-1">
+                        <div key={iIdx} className="text-[10px] flex items-center justify-between gap-2 bg-white p-1.5 border border-deep-black/10">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {it.image && (
+                              <img
+                                src={it.image}
+                                alt={it.title}
+                                className="w-9 h-11 object-cover rounded border border-deep-black/20 shrink-0 bg-neutral-100"
+                              />
+                            )}
+                            <div className="min-w-0">
+                              <span className="font-bold text-deep-black block truncate">{it.title}</span>
+                              {it.sku && (
+                                <span className="text-[8.5px] font-mono font-black text-amber-900 bg-amber-100 border border-amber-300 px-1 inline-block mt-0.5">
+                                  SKU: {it.sku}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-gold font-bold font-mono shrink-0 pl-1 text-right">
                             ({it.color} • {it.size}) ×{it.quantity}
                           </span>
                         </div>
