@@ -14,11 +14,13 @@ import {
   X,
   ChevronRight,
   User,
+  ArrowLeft,
 } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const { lang, setLang, t } = useLanguage();
   const { siteInfo, siteImages } = useStoreSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -218,12 +220,29 @@ export function SiteHeader() {
       {/* Header Fixo/Colado no Topo (100% focado no cliente final) */}
       <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-deep-black/10 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 h-20 sm:h-24 flex items-center justify-between">
-          {/* Botão de Menu Hambúrguer Mobile (Topo à Esquerda) */}
-          <div className="flex items-center lg:hidden">
+          {/* Setinha Voltar + Menu Hambúrguer Mobile (Topo à Esquerda) */}
+          <div className="flex items-center lg:hidden gap-1.5">
+            {pathname && pathname !== '/' && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.history.length > 1) {
+                    router.back();
+                  } else {
+                    router.push('/');
+                  }
+                }}
+                className="w-9 h-9 -ml-1 rounded-full bg-neutral-100 hover:bg-neutral-200 active:scale-95 text-deep-black flex items-center justify-center transition cursor-pointer shrink-0 border border-deep-black/10"
+                aria-label={lang === 'pt' ? 'Voltar para a página anterior' : 'Go back'}
+                title={lang === 'pt' ? 'Voltar' : 'Back'}
+              >
+                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 -ml-2 text-deep-black hover:text-gold transition focus:outline-none"
+              className="p-2 text-deep-black hover:text-gold transition focus:outline-none"
               aria-label="Abrir menu de navegação"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}

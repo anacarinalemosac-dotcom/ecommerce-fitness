@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useLanguage } from '../../../context/LanguageContext';
 import { useStoreSettings } from '../../../context/StoreSettingsContext';
 import { trackEvent } from '../../../lib/tracking';
@@ -22,6 +23,7 @@ import {
   Clock,
   Heart,
   ZoomIn,
+  ArrowLeft,
   ArrowRight,
   ShoppingBag,
   Ruler,
@@ -204,9 +206,18 @@ const CATALOG_ITEMS: Record<string, any> = {
 };
 
 export default function ProductDetailPage({ params }: { params: { slug: string } }) {
+  const router = useRouter();
   const { lang, t } = useLanguage();
   const { products: storeProducts } = useStoreSettings();
   const slug = params.slug || 'samanta-romper';
+
+  const handleGoBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/');
+    }
+  };
 
   const [liveProduct, setLiveProduct] = useState<any>(null);
 
@@ -1095,22 +1106,34 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10 space-y-16 bg-white">
-      {/* Breadcrumb */}
-      <nav className="text-[10px] font-black uppercase tracking-widest text-deep-black/50 flex items-center gap-2">
-        <Link href="/" className="hover:text-deep-black transition">HOME</Link>
-        <span>/</span>
-        <Link
-          href={isSpoilerProduct ? '/?cat=spoiler' : `/?cat=${productData.categoryKey || productData.category || 'all'}`}
-          className="hover:text-deep-black transition"
+    <div className="max-w-7xl mx-auto px-4 sm:px-8 pt-4 sm:pt-8 pb-12 space-y-5 sm:space-y-8 bg-white">
+      {/* Barra Superior de Navegação: Setinha Voltar + Breadcrumb */}
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-neutral-100">
+        <button
+          type="button"
+          onClick={handleGoBack}
+          aria-label={lang === 'pt' ? 'Voltar para a página anterior' : 'Go back to previous page'}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-neutral-100 hover:bg-black hover:text-white active:scale-95 text-black text-xs font-bold uppercase tracking-wider rounded-full transition cursor-pointer shrink-0 border border-neutral-200 shadow-2xs"
         >
-          {isSpoilerProduct
-            ? (lang === 'pt' ? '👀 SPOILER (EM BREVE)' : '👀 SPOILER (COMING SOON)')
-            : (lang === 'pt' ? productData.categoryPt : productData.categoryEn)}
-        </Link>
-        <span>/</span>
-        <span className="text-deep-black font-black">{productData.title}</span>
-      </nav>
+          <ArrowLeft className="w-4 h-4 stroke-[2.5] shrink-0" />
+          <span>{lang === 'pt' ? 'Voltar' : 'Back'}</span>
+        </button>
+
+        <nav className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-1.5 overflow-x-auto no-scrollbar whitespace-nowrap">
+          <Link href="/" className="hover:text-black transition shrink-0">HOME</Link>
+          <span>/</span>
+          <Link
+            href={isSpoilerProduct ? '/?cat=spoiler' : `/?cat=${productData.categoryKey || productData.category || 'all'}`}
+            className="hover:text-black transition shrink-0"
+          >
+            {isSpoilerProduct
+              ? (lang === 'pt' ? '👀 SPOILER' : '👀 SPOILER')
+              : (lang === 'pt' ? productData.categoryPt : productData.categoryEn)}
+          </Link>
+          <span className="hidden sm:inline">/</span>
+          <span className="hidden sm:inline text-black font-black truncate max-w-[220px]">{productData.title}</span>
+        </nav>
+      </div>
 
       {/* Grid Principal: Galeria Lateral + Painel de Compra */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
