@@ -980,6 +980,22 @@ export async function PATCH(req: NextRequest) {
           meta.compare_price = body.compare_price ? parseFloat(String(body.compare_price)) : null;
         }
 
+        // 1b. Atualização em Massa de Preço de Custo
+        const bulkInputCost = body.cost_price !== undefined ? body.cost_price : body.costPrice;
+        if (bulkInputCost !== undefined && bulkInputCost !== null && bulkInputCost !== '') {
+          const numCost = parseFloat(String(bulkInputCost));
+          if (!isNaN(numCost)) {
+            meta.cost_price = numCost;
+            if (Array.isArray(meta.variants)) {
+              meta.variants = meta.variants.map((v: any) => ({ ...v, cost_price: numCost, costPrice: numCost }));
+            }
+            await supabaseServer
+              .from('product_variants')
+              .update({ cost_price: numCost })
+              .eq('product_id', prod.id);
+          }
+        }
+
         // 2. Atualização em Massa de Medidas / Size Guide
         if (body.sizeGuide !== undefined || body.size_guide !== undefined) {
           const newSizeGuide = body.sizeGuide !== undefined ? String(body.sizeGuide) : String(body.size_guide);

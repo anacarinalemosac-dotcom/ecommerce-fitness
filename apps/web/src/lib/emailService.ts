@@ -6,7 +6,7 @@ export interface EmailRecord {
   order_id: string;
   to: string;
   subject: string;
-  type: 'ORDER_CONFIRMATION' | 'SHIPPING_NOTIFICATION' | 'GENERAL';
+  type: 'ORDER_CONFIRMATION' | 'SHIPPING_NOTIFICATION' | 'OWNER_SALE_NOTIFICATION' | 'GENERAL';
   status: 'SENT' | 'SIMULATED_SENT' | 'FAILED';
   error?: string;
   provider_id?: string;
@@ -52,8 +52,12 @@ function formatCurrency(val: number): string {
 export function generateOrderConfirmationHtml(order: any): string {
   const orderId = order.order_id || order.id || 'ANA-ORDER';
   const customerName = order.customer_name || 'Cliente Especial';
+  const addr = order.shipping_address || {};
+  const isPickup =
+    (addr?.delivery_method || order.delivery_method || '').toUpperCase() === 'PICKUP';
   const subtotal = Number(order.subtotal_products || order.subtotal_amount || 0);
-  const shippingFee = Number(order.shipping_fee || 9.99);
+  const shippingFee =
+    order.shipping_fee !== undefined ? Number(order.shipping_fee) : isPickup ? 0 : 9.90;
   const discount = Number(order.discount_amount || 0);
   const total = Number(order.total_amount || Math.max(0, subtotal + shippingFee - discount));
   const paymentMethod = (order.payment_method || 'CARD').toUpperCase();
@@ -61,12 +65,11 @@ export function generateOrderConfirmationHtml(order: any): string {
     ? new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
     : new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
-  const addr = order.shipping_address;
-  const addressStreet = addr?.address || '742 Commonwealth Ave';
-  const addressApt = addr?.apt ? `Apt ${addr.apt}` : '';
-  const addressCity = addr?.city || 'Boston';
-  const addressState = addr?.state || 'MA';
-  const addressZip = addr?.zip || '02215';
+  const addressStreet = isPickup ? '126 First St' : (addr?.address || 'Endereço informado no checkout');
+  const addressApt = isPickup ? 'Apt 01' : (addr?.apt ? `Apt ${addr.apt}` : '');
+  const addressCity = isPickup ? 'Leominster' : (addr?.city || 'Leominster');
+  const addressState = isPickup ? 'MA' : (addr?.state || 'MA');
+  const addressZip = isPickup ? '01453' : (addr?.zip || '01453');
 
   const rawItems = Array.isArray(order.items) && order.items.length > 0
     ? order.items
@@ -74,23 +77,31 @@ export function generateOrderConfirmationHtml(order: any): string {
 
   const itemsHtml = rawItems.map((item: any) => {
     const title = item.title || 'Peça Fitness Exclusiva';
-    const size = item.size || 'M';
-    const color = item.color || 'Preto Ônix';
+    const size = item.size || 'Único';
+    const color = item.color || 'Padrão';
+    const sku = item.sku || '';
     const qty = Number(item.quantity || 1);
     const unitPrice = Number(item.unit_price || item.price || 44.90);
     const lineTotal = qty * unitPrice;
+    const itemImg = item.image || item.image_url || item.thumbnail || '';
 
     return `
       <tr>
-        <td style="padding: 14px 10px; border-bottom: 1px solid #f0f0f0;">
+        ${itemImg ? `
+        <td width="76" valign="top" style="padding: 12px 10px 12px 0; border-bottom: 1px solid #f0f0f0;">
+          <img src="${itemImg}" alt="${title}" width="64" height="80" style="width: 64px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #e5e5e5; display: block;" />
+        </td>
+        ` : ''}
+        <td style="padding: 14px 10px; border-bottom: 1px solid #f0f0f0;" valign="middle">
           <div style="font-weight: 700; color: #111111; font-size: 14px; text-transform: uppercase;">
             ${title}
           </div>
           <div style="font-size: 12px; color: #777777; margin-top: 4px;">
             Tamanho: <strong style="color: #111;">${size}</strong> &bull; Cor: <strong style="color: #111;">${color}</strong> &bull; Qtd: <strong style="color: #111;">${qty}</strong>
           </div>
+          ${sku ? `<div style="font-size: 11px; color: #555; font-family: monospace; margin-top: 3px;">SKU: <strong>${sku}</strong></div>` : ''}
         </td>
-        <td style="padding: 14px 10px; border-bottom: 1px solid #f0f0f0; text-align: right; font-weight: 700; color: #111111; font-size: 14px; font-family: monospace;">
+        <td style="padding: 14px 10px; border-bottom: 1px solid #f0f0f0; text-align: right; font-weight: 700; color: #111111; font-size: 14px; font-family: monospace;" valign="middle">
           ${formatCurrency(lineTotal)}
         </td>
       </tr>
@@ -168,12 +179,12 @@ export function generateOrderConfirmationHtml(order: any): string {
                   <td style="padding: 4px 0; font-size: 13px; font-weight: 700; text-align: right; font-family: monospace;">${formatCurrency(subtotal)}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 4px 0; font-size: 13px; color: #555;">Frete USPS Priority (Flat Rate):</td>
-                  <td style="padding: 4px 0; font-size: 13px; font-weight: 700; text-align: right; font-family: monospace;">${formatCurrency(shippingFee)}</td>
+                  <td style="padding: 4px 0; font-size: 13px; color: #555;">${isPickup ? 'Retirada no Showroom (Leominster, MA):' : 'Frete USPS Priority (Flat Rate):'}</td>
+                  <td style="padding: 4px 0; font-size: 13px; font-weight: 700; text-align: right; font-family: monospace;">${isPickup ? '<span style="color: #2e7d32;">GRÁTIS ($0.00)</span>' : formatCurrency(shippingFee)}</td>
                 </tr>
                 ${discount > 0 ? `
                 <tr>
-                  <td style="padding: 4px 0; font-size: 13px; color: #2e7d32;">Desconto Aplicado (Cupom):</td>
+                  <td style="padding: 4px 0; font-size: 13px; color: #2e7d32;">Desconto Aplicado (Combo / Cupom):</td>
                   <td style="padding: 4px 0; font-size: 13px; font-weight: 700; text-align: right; color: #2e7d32; font-family: monospace;">-${formatCurrency(discount)}</td>
                 </tr>
                 ` : ''}
@@ -188,13 +199,13 @@ export function generateOrderConfirmationHtml(order: any): string {
                 </tr>
               </table>
 
-              <!-- Endereço de Entrega -->
+              <!-- Endereço de Entrega ou Retirada no Showroom -->
               <div style="background-color: #ffffff; border: 1px solid #ddd; padding: 16px; margin-bottom: 24px;">
-                <div style="font-size: 11px; font-weight: 800; letter-spacing: 1px; color: #888; text-transform: uppercase; margin-bottom: 6px;">
-                  ENDEREÇO DE ENTREGA (USPS)
+                <div style="font-size: 11px; font-weight: 800; letter-spacing: 1px; color: ${isPickup ? '#2e7d32' : '#888'}; text-transform: uppercase; margin-bottom: 6px;">
+                  ${isPickup ? '📍 RETIRADA NO SHOWROOM OFICIAL (SEM FRETE)' : '📦 ENDEREÇO DE ENTREGA (USPS)'}
                 </div>
                 <div style="font-size: 14px; font-weight: 700; color: #111;">
-                  ${customerName}
+                  ${isPickup ? 'Showroom Ana Fitness Wear' : customerName}
                 </div>
                 <div style="font-size: 13px; color: #444; line-height: 1.5; margin-top: 2px;">
                   ${addressStreet} ${addressApt ? `&bull; ${addressApt}` : ''}<br />
@@ -206,13 +217,17 @@ export function generateOrderConfirmationHtml(order: any): string {
               <!-- Informação de Envio e Rastreamento -->
               <div style="background-color: #0b0b0b; color: #ffffff; padding: 20px; text-align: center; margin-bottom: 20px;">
                 <div style="color: #d4af37; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px;">
-                  📦 PRÓXIMO PASSO: ENVIO & RASTREIO
+                  ${isPickup ? '📍 PRÓXIMO PASSO: RETIRADA NO SHOWROOM' : '📦 PRÓXIMO PASSO: ENVIO & RASTREIO'}
                 </div>
                 <p style="font-size: 13px; color: #e0e0e0; margin: 0 0 10px 0; line-height: 1.5;">
-                  Seu pacote será postado nos correios americanos (USPS Priority Mail / Ground Advantage) em <strong>1 a 2 dias úteis</strong>.
+                  ${isPickup
+                    ? 'Suas peças já estão sendo separadas! Avisaremos no seu WhatsApp assim que o pedido estiver pronto para retirada em Leominster (126 First St, Apt 01).'
+                    : 'Seu pacote será postado nos correios americanos (USPS Priority Mail / Ground Advantage) em <strong>1 a 2 dias úteis</strong>.'}
                 </p>
                 <p style="font-size: 12px; color: #d4af37; margin: 0; font-weight: 600;">
-                  Assim que o pacote for coletado, você receberá um novo e-mail com o código de rastreio para acompanhar a entrega!
+                  ${isPickup
+                    ? 'Dúvidas ou agendamento de horário? Chame no WhatsApp: +1 (978) 313-9452'
+                    : 'Assim que o pacote for coletado, você receberá um novo e-mail com o código de rastreio para acompanhar a entrega!'}
                 </p>
               </div>
 
@@ -277,10 +292,16 @@ export function generateShippingConfirmationHtml(order: any, trackingCode: strin
     const size = item.size || 'M';
     const color = item.color || 'Preto Ônix';
     const qty = Number(item.quantity || 1);
+    const itemImg = item.image || item.image_url || item.thumbnail || '';
 
     return `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">
+        ${itemImg ? `
+        <td width="64" valign="top" style="padding: 10px 8px 10px 0; border-bottom: 1px solid #f0f0f0;">
+          <img src="${itemImg}" alt="${title}" width="54" height="68" style="width: 54px; height: 68px; object-fit: cover; border-radius: 4px; border: 1px solid #e5e5e5; display: block;" />
+        </td>
+        ` : ''}
+        <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;" valign="middle">
           <div style="font-weight: 700; color: #111111; font-size: 13px; text-transform: uppercase;">
             ${title}
           </div>
@@ -288,7 +309,7 @@ export function generateShippingConfirmationHtml(order: any, trackingCode: strin
             Tam: <strong style="color: #111;">${size}</strong> &bull; Cor: <strong style="color: #111;">${color}</strong>
           </div>
         </td>
-        <td style="padding: 10px; border-bottom: 1px solid #f0f0f0; text-align: right; font-weight: 700; color: #111111; font-size: 13px; font-family: monospace;">
+        <td style="padding: 10px; border-bottom: 1px solid #f0f0f0; text-align: right; font-weight: 700; color: #111111; font-size: 13px; font-family: monospace;" valign="middle">
           ${qty}x pacote
         </td>
       </tr>
@@ -427,7 +448,7 @@ export interface SendEmailOptions {
   subject: string;
   html: string;
   order_id: string;
-  type: 'ORDER_CONFIRMATION' | 'SHIPPING_NOTIFICATION' | 'GENERAL';
+  type: 'ORDER_CONFIRMATION' | 'SHIPPING_NOTIFICATION' | 'OWNER_SALE_NOTIFICATION' | 'GENERAL';
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<{ success: boolean; simulated?: boolean; messageId?: string; error?: string }> {
@@ -609,6 +630,214 @@ export async function sendShippingNotificationEmail(order: any, trackingCode: st
     order_id: orderId,
     type: 'SHIPPING_NOTIFICATION',
   });
+}
+
+// ============================================================================
+// TEMPLATE 5: NOTIFICAÇÃO IMEDIATA DE NOVA VENDA PARA A LOJISTA (ANA)
+// ============================================================================
+export function generateOwnerSaleNotificationHtml(order: any): string {
+  const orderId = order.order_id || order.id || 'ANA-ORDER';
+  const customerName = order.customer_name || 'Cliente Online';
+  const customerEmail = order.customer_email || order.shipping_address?.customer_email || 'Não informado';
+  const customerPhone = order.customer_phone || order.shipping_address?.customer_phone || '';
+  const cleanPhone = String(customerPhone || '').replace(/\D/g, '');
+  const waPhone = cleanPhone.length === 10 ? `1${cleanPhone}` : cleanPhone;
+
+  const addr = order.shipping_address || {};
+  const isPickup =
+    (addr?.delivery_method || order.delivery_method || '').toUpperCase() === 'PICKUP';
+  const subtotal = Number(order.subtotal_products || order.subtotal_amount || 0);
+  const shippingFee =
+    order.shipping_fee !== undefined ? Number(order.shipping_fee) : isPickup ? 0 : 9.90;
+  const discount = Number(order.discount_amount || 0);
+  const total = Number(order.total_amount || Math.max(0, subtotal + shippingFee - discount));
+  const paymentMethod = (order.payment_method || 'CARD').toUpperCase();
+  const dateFormatted = new Date(order.created_at || Date.now()).toLocaleString('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+
+  const rawItems = Array.isArray(order.items) && order.items.length > 0
+    ? order.items
+    : (Array.isArray(addr?.items) ? addr.items : []);
+
+  const itemsHtml = rawItems.map((item: any) => {
+    const title = item.title || 'Peça Fitness';
+    const size = item.size || 'Único';
+    const color = item.color || 'Padrão';
+    const sku = item.sku || '-';
+    const qty = Number(item.quantity || 1);
+    const unitPrice = Number(item.unit_price || item.price || 44.90);
+    const lineTotal = qty * unitPrice;
+    const itemImg = item.image || item.image_url || item.thumbnail || '';
+
+    return `
+      <tr>
+        <td width="92" valign="top" style="padding: 12px 10px 12px 0; border-bottom: 1px solid #eeeeee;">
+          ${itemImg ? `
+            <img src="${itemImg}" alt="${title}" width="80" height="100" style="width: 80px; height: 100px; object-fit: cover; border-radius: 4px; border: 2px solid #d4af37; display: block;" />
+          ` : `
+            <div style="width: 80px; height: 100px; background-color: #f3f3f3; border: 1px dashed #ccc; border-radius: 4px; text-align: center; line-height: 100px; font-size: 10px; color: #999; font-weight: bold;">
+              SEM FOTO
+            </div>
+          `}
+        </td>
+        <td style="padding: 12px 8px; border-bottom: 1px solid #eeeeee;" valign="middle">
+          <div style="font-weight: 900; color: #111111; font-size: 14px; text-transform: uppercase;">
+            ${title}
+          </div>
+          <div style="margin-top: 6px;">
+            <span style="display: inline-block; background-color: #0b0b0b; color: #d4af37; padding: 3px 8px; font-size: 11px; font-weight: 900; border-radius: 2px;">
+              TAM: ${size}
+            </span>
+            <span style="display: inline-block; background-color: #f3f3f3; color: #111111; padding: 3px 8px; font-size: 11px; font-weight: 700; border-radius: 2px; margin-left: 4px;">
+              COR: ${color}
+            </span>
+          </div>
+          <div style="margin-top: 6px; font-size: 11px; color: #333333; font-family: monospace;">
+            <span style="display: inline-block; background-color: #fef3c7; color: #92400e; border: 1px solid #f59e0b; padding: 2px 6px; font-weight: 900;">
+              SKU: ${sku}
+            </span>
+            &nbsp;&bull; Qtd: <strong>${qty}x</strong>
+          </div>
+        </td>
+        <td style="padding: 12px 0 12px 8px; border-bottom: 1px solid #eeeeee; text-align: right; font-weight: 900; color: #111111; font-size: 14px; font-family: monospace;" valign="middle">
+          ${formatCurrency(lineTotal)}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NOVA VENDA! Pedido #${orderId}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111111;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f6; padding: 24px 10px;">
+    <tr>
+      <td align="center">
+        <table width="620" cellpadding="0" cellspacing="0" style="max-width: 620px; width: 100%; background-color: #ffffff; border: 2px solid #0b0b0b; border-radius: 4px; overflow: hidden;">
+          <tr>
+            <td style="background-color: #0b0b0b; padding: 24px 28px; text-align: center; border-bottom: 3px solid #d4af37;">
+              <div style="color: #10b981; font-size: 11px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px;">
+                💰 ALERTA DE VENDA • SEPARAR PEDIDO
+              </div>
+              <h1 style="color: #ffffff; font-size: 24px; font-weight: 900; text-transform: uppercase; margin: 0;">
+                NOVA VENDA: #${orderId}
+              </h1>
+              <div style="color: #d4af37; font-size: 18px; font-weight: 900; font-family: monospace; margin-top: 6px;">
+                TOTAL: ${formatCurrency(total)} (${paymentMethod})
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 24px 28px;">
+              <!-- Entrega / Ação -->
+              <div style="background-color: ${isPickup ? '#ecfdf5' : '#fffbeb'}; border: 2px solid ${isPickup ? '#10b981' : '#f59e0b'}; padding: 14px 16px; margin-bottom: 20px;">
+                <div style="font-size: 12px; font-weight: 900; text-transform: uppercase; color: ${isPickup ? '#065f46' : '#92400e'};">
+                  ${isPickup ? '📍 RETIRADA NO SHOWROOM (SEM FRETE)' : '📦 ENVIAR VIA USPS PARA A CLIENTE'}
+                </div>
+                <div style="font-size: 12px; color: #222; margin-top: 4px; line-height: 1.5;">
+                  ${isPickup
+                    ? 'A cliente optou por retirar em <strong>126 First St, Apt 01, Leominster, MA 01453</strong>. Combine o horário pelo WhatsApp!'
+                    : `<strong>${customerName}</strong><br/>${addr?.address || ''} ${addr?.apt ? `• ${addr.apt}` : ''}<br/>${addr?.city || ''}, ${addr?.state || ''} ${addr?.zip || ''}`}
+                </div>
+              </div>
+
+              <!-- Dados da Cliente -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fafafa; border: 1px solid #e5e5e5; padding: 12px 14px; margin-bottom: 20px; font-size: 12px;">
+                <tr>
+                  <td>
+                    <strong>Cliente:</strong> ${customerName}<br/>
+                    <strong>E-mail:</strong> ${customerEmail}<br/>
+                    <strong>Telefone / WhatsApp:</strong> ${customerPhone || 'Não informado'}
+                    ${waPhone ? ` &nbsp;<a href="https://wa.me/${waPhone}" style="background-color: #25d366; color: #000; padding: 2px 8px; border-radius: 3px; text-decoration: none; font-weight: 900; font-size: 10px;">CHAMAR NO WHATSAPP &rarr;</a>` : ''}
+                  </td>
+                  <td align="right" valign="top" style="font-family: monospace; color: #555;">
+                    ${dateFormatted}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Fotos Miniaturas das Peças Escolhidas -->
+              <h3 style="font-size: 13px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; color: #111; margin: 0 0 8px 0; border-bottom: 2px solid #0b0b0b; padding-bottom: 6px;">
+                📸 PEÇAS ESCOLHIDAS PELA CLIENTE (${rawItems.length}):
+              </h3>
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
+                ${itemsHtml}
+              </table>
+
+              <!-- Resumo Financeiro -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fafafa; border: 1px solid #e5e5e5; padding: 12px 16px; margin-bottom: 24px; font-size: 13px;">
+                <tr>
+                  <td style="padding: 3px 0; color: #555;">Subtotal das Peças:</td>
+                  <td style="padding: 3px 0; text-align: right; font-family: monospace; font-weight: 700;">${formatCurrency(subtotal)}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 3px 0; color: #555;">Frete Cobrado:</td>
+                  <td style="padding: 3px 0; text-align: right; font-family: monospace; font-weight: 700;">${formatCurrency(shippingFee)}</td>
+                </tr>
+                ${discount > 0 ? `
+                <tr>
+                  <td style="padding: 3px 0; color: #2e7d32;">Desconto (Combo/Cupom):</td>
+                  <td style="padding: 3px 0; text-align: right; font-family: monospace; font-weight: 700; color: #2e7d32;">-${formatCurrency(discount)}</td>
+                </tr>
+                ` : ''}
+                <tr>
+                  <td style="padding: 8px 0 0 0; font-weight: 900; border-top: 1px solid #ddd;">TOTAL DO PEDIDO:</td>
+                  <td style="padding: 8px 0 0 0; text-align: right; font-family: monospace; font-weight: 900; font-size: 16px; border-top: 1px solid #ddd;">${formatCurrency(total)}</td>
+                </tr>
+              </table>
+
+              <div style="text-align: center;">
+                <a href="https://anafitwear.com/backoffice?tab=sales" target="_blank" style="display: inline-block; background-color: #0b0b0b; color: #d4af37; padding: 14px 28px; font-size: 12px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; text-decoration: none; border: 2px solid #d4af37;">
+                  ABRIR PEDIDO NO BACKOFFICE &rarr;
+                </a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+export async function sendOwnerSaleNotificationEmail(order: any) {
+  const orderId = order.order_id || order.id || 'ANA-ORDER';
+  const customerName = order.customer_name || 'Cliente Online';
+  const subtotal = Number(order.subtotal_products || order.subtotal_amount || 0);
+  const shippingFee = order.shipping_fee !== undefined ? Number(order.shipping_fee) : 9.90;
+  const discount = Number(order.discount_amount || 0);
+  const total = Number(order.total_amount || Math.max(0, subtotal + shippingFee - discount));
+
+  const configuredOwners = process.env.STORE_OWNER_EMAIL
+    ? process.env.STORE_OWNER_EMAIL.split(',').map((s) => s.trim()).filter(Boolean)
+    : ['anafitweareua@gmail.com', 'anacarinalemos.ac@gmail.com'];
+
+  const uniqueRecipients = Array.from(new Set(configuredOwners));
+  const subject = `🛍️ NOVA VENDA! Pedido #${orderId} • ${formatCurrency(total)} (${customerName})`;
+  const html = generateOwnerSaleNotificationHtml(order);
+
+  const results = [];
+  for (const ownerEmail of uniqueRecipients) {
+    const r = await sendEmail({
+      to: ownerEmail,
+      subject,
+      html,
+      order_id: orderId,
+      type: 'OWNER_SALE_NOTIFICATION',
+    });
+    results.push({ email: ownerEmail, ...r });
+  }
+  return results;
 }
 
 // ============================================================================

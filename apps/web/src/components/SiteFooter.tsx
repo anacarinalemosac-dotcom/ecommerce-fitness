@@ -165,8 +165,8 @@ export function SiteFooter() {
               <li><Link href="/pedidos" className="hover:text-gold transition text-gold font-bold">{lang === 'pt' ? 'Rastrear Meu Pedido (USPS)' : 'Track My Order (USPS)'}</Link></li>
               <li><Link href="/contato" className="hover:text-gold transition">{t('nav.contact')}</Link></li>
               <li><Link href="/trocas-e-devolucoes" className="hover:text-gold transition">{lang === 'pt' ? `Trocas e Devoluções (${siteInfo.returnDays || 30} Dias)` : `${siteInfo.returnDays || 30}-Day Returns`}</Link></li>
-              <li><Link href="/politica-de-envio" className="hover:text-gold transition">{lang === 'pt' ? `Frete Fixo $${siteInfo.flatShippingRate ?? '9.99'} (EUA)` : `Flat Rate Shipping $${siteInfo.flatShippingRate ?? '9.99'}`}</Link></li>
-              <li><a href="https://www.anafitwear.com" target="_blank" rel="noreferrer" className="hover:text-gold transition">Site Oficial: anafitwear.com</a></li>
+              <li><Link href="/politica-de-envio" className="hover:text-gold transition">{lang === 'pt' ? `Frete Fixo $${siteInfo.flatShippingRate ?? '9.90'} (EUA)` : `Flat Rate Shipping $${siteInfo.flatShippingRate ?? '9.90'}`}</Link></li>
+              <li><a href="https://www.anafitwear.com" target="_blank" rel="noreferrer" className="hover:text-gold transition">{lang === 'pt' ? 'Site Oficial: anafitwear.com' : 'Official Site: anafitwear.com'}</a></li>
             </ul>
           </div>
 
@@ -179,8 +179,8 @@ export function SiteFooter() {
               <li><Link href="/vendedora" className="hover:text-gold transition text-gold font-bold">{lang === 'pt' ? 'Portal da Vendedora (Login)' : 'Seller / Affiliate Login'}</Link></li>
               <li><Link href="/pos" className="hover:text-gold transition">{t('nav.pos')}</Link></li>
               <li><Link href="/backoffice?tab=sales" className="hover:text-gold transition font-bold text-gold">{lang === 'pt' ? '📦 Pedidos dos Clientes & ERP' : '📦 Customer Orders & ERP'}</Link></li>
-              <li><span className="text-white/40">Moeda: USD ($) Only</span></li>
-              <li><span className="text-white/40">USPS Tracking: Ativo</span></li>
+              <li><span className="text-white/40">{lang === 'pt' ? 'Moeda: Dólar (USD $)' : 'Currency: USD ($) Only'}</span></li>
+              <li><span className="text-white/40">{lang === 'pt' ? 'Rastreamento USPS: Ativo' : 'USPS Tracking: Active'}</span></li>
             </ul>
           </div>
 
@@ -205,7 +205,7 @@ export function SiteFooter() {
             </div>
             <div className="pt-2 text-[10px] text-gold font-black uppercase tracking-wider flex items-center gap-1">
               <DollarSign className="w-3.5 h-3.5 text-gold" />
-              <span>TODOS OS PREÇOS EM DÓLAR (USD)</span>
+              <span>{lang === 'pt' ? 'TODOS OS PREÇOS EM DÓLAR (USD)' : 'ALL PRICES IN US DOLLARS (USD)'}</span>
             </div>
           </div>
         </div>
@@ -213,12 +213,12 @@ export function SiteFooter() {
         {/* Rodapé - Seção Interna / Colaboradores (Oculto no checkout para não desviar a compra) */}
         {pathname !== '/checkout' && (
           <div className="pt-8 mt-8 border-t border-neutral-800 text-xs text-neutral-400 flex flex-wrap gap-4 items-center justify-between">
-            <p>© {new Date().getFullYear()} {siteInfo.storeName || 'Ana Fitness Wear'} LLC • {siteInfo.address ? siteInfo.address.split('•')[0].trim() : 'Leominster, MA'}. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} {siteInfo.storeName || 'Ana Fitness Wear'} LLC • {siteInfo.address ? siteInfo.address.split('•')[0].trim() : 'Leominster, MA'}. {lang === 'pt' ? 'Todos os direitos reservados.' : 'All rights reserved.'}</p>
             <div className="flex flex-wrap gap-4 text-[11px]">
-              <Link href="/backoffice?tab=sales" target="_blank" className="text-gold font-black hover:text-white transition-colors">📦 Pedidos dos Clientes (ERP)</Link>
-              <Link href="/admin" target="_blank" className="hover:text-gold transition-colors">Personalizar Loja</Link>
-              <Link href="/pos" target="_blank" className="hover:text-gold transition-colors">PDV Balcão</Link>
-              <Link href="/vendedora" target="_blank" className="hover:text-gold transition-colors">Portal da Vendedora</Link>
+              <Link href="/backoffice?tab=sales" target="_blank" className="text-gold font-black hover:text-white transition-colors">{lang === 'pt' ? '📦 Pedidos dos Clientes (ERP)' : '📦 Customer Orders (ERP)'}</Link>
+              <Link href="/admin" target="_blank" className="hover:text-gold transition-colors">{lang === 'pt' ? 'Personalizar Loja' : 'Customize Store'}</Link>
+              <Link href="/pos" target="_blank" className="hover:text-gold transition-colors">{lang === 'pt' ? 'PDV Balcão' : 'POS Register'}</Link>
+              <Link href="/vendedora" target="_blank" className="hover:text-gold transition-colors">{lang === 'pt' ? 'Portal da Vendedora' : 'Seller Portal'}</Link>
             </div>
           </div>
         )}

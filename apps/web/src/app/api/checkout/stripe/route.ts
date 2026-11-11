@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe, isStripeConfigured } from '@/lib/stripe';
+import { supabaseServer } from '@/lib/supabaseServer';
+import { enrichOrderItemsWithCatalog, loadCatalogProductsForOrderMatch } from '@/lib/orderItemEnricher';
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,16 +31,39 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const catalogProducts = await loadCatalogProductsForOrderMatch(supabaseServer);
+    const enrichedItems = enrichOrderItemsWithCatalog(
+      (items || []).map((it: any) => ({
+        ...it,
+        unit_price: Number(it.unit_price || it.price || 44.90),
+        quantity: Number(it.quantity) || 1,
+      })),
+      catalogProducts
+    );
+
     // Calcula os itens no formato exigido pela Stripe (em centavos de dólar)
-    const lineItems: any[] = items.map((it: any) => {
+    const lineItems: any[] = enrichedItems.map((it: any) => {
       const unitAmountInCents = Math.round(Number(it.unit_price || it.price || 44.90) * 100);
+      const itemSize = it.size || '';
+      const itemColor = it.color || '';
+      const variantLabel = itemColor && itemSize ? ` (${itemColor} • TAM ${itemSize})` : (itemSize ? ` (TAM ${itemSize})` : '');
       return {
         price_data: {
           currency: 'usd',
           product_data: {
-            name: `${it.title || 'PEÇA FIT'} (${it.color || 'Preto Ônix'} • TAM ${it.size || 'M'})`,
+            name: `${it.title || 'PEÇA FIT'}${variantLabel}`,
             description: `ANA FITNESS WEAR LLC • SKU: ${it.sku || 'ANA-ITEM'}`,
             images: it.image ? [it.image] : ['https://anafitwear.com/logo-ana-fitness.png'],
+            metadata: {
+              title: String(it.title || 'PEÇA FIT').slice(0, 450),
+              size: String(itemSize).slice(0, 50),
+              color: String(itemColor).slice(0, 100),
+              sku: String(it.sku || 'ANA-ITEM').slice(0, 100),
+              slug: String(it.slug || '').slice(0, 100),
+              image: String(it.image || '').slice(0, 490),
+              unit_price: String(Number(it.unit_price || it.price || 44.90).toFixed(2)),
+              cost_price: String(Number(it.cost_price || 0).toFixed(2)),
+            },
           },
           unit_amount: unitAmountInCents,
         },

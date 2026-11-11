@@ -11,6 +11,8 @@ interface BulkPriceModalProps {
   setBulkPriceInput: (v: string) => void;
   bulkComparePriceInput: string;
   setBulkComparePriceInput: (v: string) => void;
+  bulkCostPriceInput?: string;
+  setBulkCostPriceInput?: (v: string) => void;
   onExecute: () => Promise<void>;
   isSubmitting: boolean;
 }
@@ -23,10 +25,14 @@ export function BulkPriceModal({
   setBulkPriceInput,
   bulkComparePriceInput,
   setBulkComparePriceInput,
+  bulkCostPriceInput = '',
+  setBulkCostPriceInput,
   onExecute,
   isSubmitting,
 }: BulkPriceModalProps) {
   if (!isOpen) return null;
+
+  const hasAnyValue = Boolean(bulkPriceInput || bulkComparePriceInput || bulkCostPriceInput);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 animate-fadeIn">
@@ -35,7 +41,7 @@ export function BulkPriceModal({
           <div className="flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-emerald-600" />
             <h3 className="text-sm font-black uppercase tracking-wider text-deep-black">
-              MUDAR PREÇO EM MASSA ({selectedCount} PRODUTOS)
+              MUDAR PREÇO / CUSTO ({selectedCount} PRODUTOS)
             </h3>
           </div>
           <button type="button" onClick={onClose} className="text-deep-black/60 hover:text-deep-black font-bold">
@@ -51,17 +57,16 @@ export function BulkPriceModal({
             <input
               type="number"
               step="0.01"
-              required
               autoFocus
               value={bulkPriceInput}
               onChange={(e) => setBulkPriceInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && bulkPriceInput && !isSubmitting) {
+                if (e.key === 'Enter' && hasAnyValue && !isSubmitting) {
                   e.preventDefault();
                   onExecute();
                 }
               }}
-              placeholder="Ex: 39.90"
+              placeholder="Deixe vazio se não quiser alterar venda"
               className="w-full px-3.5 py-2.5 text-sm font-mono font-bold border border-deep-black/30 focus:outline-none focus:border-deep-black"
             />
           </div>
@@ -80,6 +85,29 @@ export function BulkPriceModal({
             />
             <span className="text-[10px] text-deep-black/50 block">Exibe riscado (De: $59.90 Por: $39.90)</span>
           </div>
+
+          {setBulkCostPriceInput && (
+            <div className="space-y-1 bg-amber-50 p-3 border border-amber-400">
+              <label className="font-black uppercase tracking-wider text-amber-950 block">
+                ★ PREÇO DE CUSTO / CONFECÇÃO ($ USD) (OPCIONAL):
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={bulkCostPriceInput}
+                onChange={(e) => setBulkCostPriceInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && hasAnyValue && !isSubmitting) {
+                    e.preventDefault();
+                    onExecute();
+                  }
+                }}
+                placeholder="Ex: 12.00"
+                className="w-full px-3.5 py-2.5 text-sm font-mono font-bold border border-amber-500 bg-white focus:outline-none focus:border-deep-black"
+              />
+              <span className="text-[10px] text-amber-900 block">Atualiza o custo unitário em todas as peças selecionadas.</span>
+            </div>
+          )}
         </div>
 
         <div className="pt-2 flex gap-2">
@@ -92,12 +120,12 @@ export function BulkPriceModal({
           </button>
           <button
             type="button"
-            disabled={isSubmitting || !bulkPriceInput}
+            disabled={isSubmitting || !hasAnyValue}
             onClick={onExecute}
             className="flex-2 py-3 bg-deep-black hover:bg-gold text-white hover:text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-luxury cursor-pointer disabled:opacity-50"
           >
             <Check className="w-4 h-4 text-gold" />
-            <span>{isSubmitting ? 'ATUALIZANDO...' : 'APLICAR NOVO PREÇO'}</span>
+            <span>{isSubmitting ? 'ATUALIZANDO...' : 'APLICAR ALTERAÇÕES'}</span>
           </button>
         </div>
       </div>

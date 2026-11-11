@@ -30,7 +30,7 @@ function StripeSuccessContent() {
         const item = JSON.parse(savedCart);
         trackEvent.purchase({
           orderId: oId || 'ANA-STRIPE-ORDER',
-          value: (Number(item.price || 0) * Number(item.quantity || 1)) + 9.99,
+          value: (Number(item.price || 0) * Number(item.quantity || 1)) + 9.90,
           currency: 'USD',
           items: [
             {
@@ -50,6 +50,8 @@ function StripeSuccessContent() {
       }
       localStorage.removeItem('ana_cart_item');
       localStorage.removeItem('ana_cart_item_backup');
+      localStorage.removeItem('ana_cart_items');
+      window.dispatchEvent(new Event('ana_cart_updated'));
     } catch (e) {}
   }, [searchParams]);
 

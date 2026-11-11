@@ -30,9 +30,10 @@ interface SaleItem {
   size: string;
   color: string;
   sku: string;
+  image?: string;
   quantity: number;
-  unit_price: number;
-  cost_price: number;
+  unit_price: number | string;
+  cost_price: number | string;
 }
 
 interface EditSaleModalProps {
@@ -57,6 +58,7 @@ export function EditSaleModal({
   const [shippingState, setShippingState] = useState('');
   const [shippingZip, setShippingZip] = useState('');
   const [shippingFee, setShippingFee] = useState('0');
+  const [shippingCost, setShippingCost] = useState('0');
   const [trackingCode, setTrackingCode] = useState('');
   const [createdAt, setCreatedAt] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
@@ -88,8 +90,12 @@ export function EditSaleModal({
       setShippingZip(rawShip.zip || rawShip.postal_code || '');
       const fee = sale.shipping_fee !== undefined && sale.shipping_fee !== null
         ? sale.shipping_fee
-        : (rawShip.shipping_fee !== undefined ? rawShip.shipping_fee : (sale.channel === 'ONLINE' ? 9.99 : 0));
+        : (rawShip.shipping_fee !== undefined ? rawShip.shipping_fee : (sale.channel === 'ONLINE' ? 9.90 : 0));
       setShippingFee(String(fee));
+      const sCost = sale.shipping_cost !== undefined && sale.shipping_cost !== null
+        ? sale.shipping_cost
+        : (rawShip.shipping_cost !== undefined ? rawShip.shipping_cost : 0);
+      setShippingCost(String(sCost));
       setTrackingCode(sale.tracking_code || rawShip.tracking_code || '');
 
       setPaymentMethod((sale.payment_method || 'CASH').toUpperCase());
@@ -121,8 +127,9 @@ export function EditSaleModal({
           sale.items.map((it: any) => ({
             title: it.title || 'Peça Fitness',
             size: it.size || 'One Size',
-            color: it.color || 'Preto Ônix',
+            color: it.color || 'Padrão',
             sku: it.sku || 'ANA-ITEM',
+            image: it.image || '',
             quantity: Number(it.quantity) || 1,
             unit_price: it.unit_price !== undefined && it.unit_price !== null ? Number(it.unit_price) : 44.9,
             cost_price: it.cost_price !== undefined && it.cost_price !== null && !isNaN(Number(it.cost_price))
@@ -135,11 +142,12 @@ export function EditSaleModal({
           {
             title: 'Peça Fitness',
             size: 'One Size',
-            color: 'Preto',
+            color: 'Preto Ônix',
             sku: 'ANA-PDV-01',
+            image: '',
             quantity: 1,
             unit_price: Number(sale.subtotal_products) || 44.9,
-            cost_price: 16.0,
+            cost_price: 0,
           },
         ]);
       }
@@ -208,6 +216,8 @@ export function EditSaleModal({
   const discountVal = Math.max(0, Number(discountAmount) || 0);
   const commissionVal = Math.max(0, Number(commissionAmount) || 0);
   const shippingFeeVal = Math.max(0, Number(shippingFee) || 0);
+  const shippingCostVal = Math.max(0, Number(shippingCost) || 0);
+  const paymentFeeVal = Math.max(0, Number(sale?.payment_fee) || 0);
   const totalAmount = Math.max(0, subtotalProducts + shippingFeeVal - discountVal);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -228,6 +238,14 @@ export function EditSaleModal({
       // Converte data local para ISO
       const isoDate = createdAt ? new Date(createdAt).toISOString() : new Date().toISOString();
 
+      const sanitizedItems = items.map((it) => ({
+        ...it,
+        quantity: Math.max(1, Number(it.quantity) || 1),
+        unit_price: Number(it.unit_price) || 0,
+        cost_price: Number(it.cost_price) || 0,
+        manual_cost_edited: true,
+      }));
+
       const payload = {
         action: 'edit_sale',
         order_id: sale.order_id || sale.id,
@@ -245,6 +263,7 @@ export function EditSaleModal({
         commission_amount: commissionVal,
         subtotal_products: Number(subtotalProducts.toFixed(2)),
         shipping_fee: shippingFeeVal,
+        shipping_cost: shippingCostVal,
         tracking_code: trackingCode.trim() || undefined,
         shipping_address: (shippingStreet || shippingCity || shippingState || shippingZip) ? {
           address: shippingStreet.trim(),
@@ -254,7 +273,7 @@ export function EditSaleModal({
           zip: shippingZip.trim(),
         } : undefined,
         total_amount: Number(totalAmount.toFixed(2)),
-        items,
+        items: sanitizedItems,
         notes: notes.trim() || undefined,
       };
 
@@ -561,7 +580,7 @@ export function EditSaleModal({
                   className="w-full p-2.5 border-2 border-deep-black font-mono font-bold text-xs focus:outline-none focus:border-gold"
                 />
               </div>
-              <div className="sm:col-span-8 space-y-1">
+              <div className="sm:col-span-4 space-y-1">
                 <label className="text-[9.5px] font-black text-deep-black">Código de Rastreio (USPS Tracking)</label>
                 <input
                   type="text"
@@ -572,15 +591,27 @@ export function EditSaleModal({
                 />
               </div>
               <div className="sm:col-span-4 space-y-1">
-                <label className="text-[9.5px] font-black text-deep-black">Taxa de Frete ($)</label>
+                <label className="text-[9.5px] font-black text-deep-black">Frete Cobrado do Cliente ($)</label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   value={shippingFee}
                   onChange={(e) => setShippingFee(e.target.value)}
-                  placeholder="9.99"
+                  placeholder="9.90"
                   className="w-full p-2.5 border-2 border-deep-black font-mono font-bold text-xs text-right focus:outline-none focus:border-gold"
+                />
+              </div>
+              <div className="sm:col-span-4 space-y-1">
+                <label className="text-[9.5px] font-black text-red-700 uppercase">★ Seu Custo Etiqueta/Frete ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={shippingCost}
+                  onChange={(e) => setShippingCost(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full p-2.5 border-2 border-red-400 bg-red-50/40 font-mono font-bold text-xs text-right focus:outline-none focus:border-red-600"
                 />
               </div>
             </div>
@@ -685,23 +716,45 @@ export function EditSaleModal({
                     key={idx}
                     className="p-3 bg-neutral-50 border-2 border-deep-black/30 space-y-2.5 shadow-2xs"
                   >
-                    {/* Linha 1: Identificação da Peça */}
+                    {/* Linha 1: Identificação da Peça (com SKU visível e editável) */}
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
-                      <div className="sm:col-span-5 space-y-0.5">
+                      <div className="sm:col-span-4 space-y-0.5">
                         <label className="text-[8.5px] font-black text-deep-black/70 uppercase">
                           Peça / Modelo:
                         </label>
-                        <input
-                          type="text"
-                          required
-                          value={item.title}
-                          onChange={(e) => handleItemChange(idx, 'title', e.target.value)}
-                          placeholder="Nome do produto"
-                          className="w-full p-2 border border-deep-black font-bold text-xs uppercase bg-white focus:outline-none focus:border-gold"
-                        />
+                        <div className="flex items-center gap-2">
+                          {item.image && (
+                            <img
+                              src={item.image}
+                              alt={item.title}
+                              className="w-9 h-11 object-cover rounded border border-deep-black/20 shrink-0 bg-white"
+                            />
+                          )}
+                          <input
+                            type="text"
+                            required
+                            value={item.title}
+                            onChange={(e) => handleItemChange(idx, 'title', e.target.value)}
+                            placeholder="Nome do produto"
+                            className="w-full p-2 border border-deep-black font-bold text-xs uppercase bg-white focus:outline-none focus:border-gold"
+                          />
+                        </div>
                       </div>
 
                       <div className="sm:col-span-3 space-y-0.5">
+                        <label className="text-[8.5px] font-black text-amber-900 uppercase">
+                          SKU da Peça:
+                        </label>
+                        <input
+                          type="text"
+                          value={item.sku || ''}
+                          onChange={(e) => handleItemChange(idx, 'sku', e.target.value.toUpperCase())}
+                          placeholder="Ex: SET-BOR-P"
+                          className="w-full p-2 border border-amber-500 font-mono font-bold text-xs uppercase bg-amber-50/50 focus:bg-white focus:outline-none focus:border-gold"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2 space-y-0.5">
                         <label className="text-[8.5px] font-black text-deep-black/70 uppercase">
                           Tamanho:
                         </label>
@@ -709,12 +762,12 @@ export function EditSaleModal({
                           type="text"
                           value={item.size}
                           onChange={(e) => handleItemChange(idx, 'size', e.target.value)}
-                          placeholder="P, M, G, One Size"
+                          placeholder="P, M, G"
                           className="w-full p-2 border border-deep-black font-bold text-xs uppercase bg-white focus:outline-none focus:border-gold"
                         />
                       </div>
 
-                      <div className="sm:col-span-3 space-y-0.5">
+                      <div className="sm:col-span-2 space-y-0.5">
                         <label className="text-[8.5px] font-black text-deep-black/70 uppercase">
                           Cor / Detalhes:
                         </label>
@@ -722,7 +775,7 @@ export function EditSaleModal({
                           type="text"
                           value={item.color || ''}
                           onChange={(e) => handleItemChange(idx, 'color', e.target.value)}
-                          placeholder="Preto Ônix, etc."
+                          placeholder="Bordô com Bege"
                           className="w-full p-2 border border-deep-black font-medium text-xs bg-white focus:outline-none focus:border-gold"
                         />
                       </div>
@@ -756,7 +809,7 @@ export function EditSaleModal({
                         />
                       </div>
 
-                      {/* Preço de Custo (CMV) - CAMPO SOLICITADO */}
+                      {/* Preço de Custo (CMV) */}
                       <div className="space-y-0.5">
                         <label className="text-[8.5px] font-black uppercase text-amber-950 bg-amber-200/80 px-1.5 py-0.5 border border-amber-400 inline-flex items-center gap-1">
                           <span>★ PREÇO DE CUSTO ($):</span>
@@ -766,7 +819,7 @@ export function EditSaleModal({
                           step="0.01"
                           min="0"
                           value={item.cost_price}
-                          onChange={(e) => handleItemChange(idx, 'cost_price', parseFloat(e.target.value) || 0)}
+                          onChange={(e) => handleItemChange(idx, 'cost_price', e.target.value === '' ? '' : e.target.value)}
                           placeholder="0.00"
                           className="w-full p-2 border-2 border-amber-500 font-mono font-black text-xs bg-amber-50 text-right focus:bg-white focus:outline-none"
                         />
@@ -782,7 +835,7 @@ export function EditSaleModal({
                           step="0.01"
                           min="0"
                           value={item.unit_price}
-                          onChange={(e) => handleItemChange(idx, 'unit_price', parseFloat(e.target.value) || 0)}
+                          onChange={(e) => handleItemChange(idx, 'unit_price', e.target.value === '' ? '' : e.target.value)}
                           placeholder="0.00"
                           className="w-full p-2 border-2 border-emerald-500 font-mono font-black text-xs bg-emerald-50 text-right focus:bg-white focus:outline-none"
                         />
@@ -896,6 +949,18 @@ export function EditSaleModal({
               </span>
               <span className="font-mono font-bold">-${totalCostOfGoods.toFixed(2)}</span>
             </div>
+            {shippingCostVal > 0 && (
+              <div className="flex items-center justify-between text-xs text-red-300">
+                <span>(-) Seu Custo Real Etiqueta / Frete:</span>
+                <span className="font-mono font-bold">-${shippingCostVal.toFixed(2)}</span>
+              </div>
+            )}
+            {paymentFeeVal > 0 && (
+              <div className="flex items-center justify-between text-xs text-red-300">
+                <span>(-) Taxa Gateway ({paymentMethod}):</span>
+                <span className="font-mono font-bold">-${paymentFeeVal.toFixed(2)}</span>
+              </div>
+            )}
             {discountVal > 0 && (
               <div className="flex items-center justify-between text-xs text-red-400">
                 <span>(-) Desconto Concedido:</span>
@@ -916,7 +981,8 @@ export function EditSaleModal({
             <div className="flex items-center justify-between text-xs text-green-400 pt-1 border-t border-white/10">
               <span>(=) Lucro Líquido Real Estimado:</span>
               <span className="font-mono font-bold text-sm">
-                +${Math.max(0, subtotalProducts + shippingFeeVal - totalCostOfGoods - discountVal - commissionVal).toFixed(2)}
+                {(subtotalProducts + shippingFeeVal - totalCostOfGoods - shippingCostVal - paymentFeeVal - discountVal - commissionVal) >= 0 ? '+' : '-'}$
+                {Math.abs(subtotalProducts + shippingFeeVal - totalCostOfGoods - shippingCostVal - paymentFeeVal - discountVal - commissionVal).toFixed(2)}
               </span>
             </div>
             <div className="flex items-center justify-between text-base font-black text-gold pt-2 border-t border-white/20">

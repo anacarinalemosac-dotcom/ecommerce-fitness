@@ -19,6 +19,11 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { saveCartItems, CartItem } from '../../lib/cart';
+import {
+  translateProductTitle,
+  translateColorName,
+  translateBadgeText,
+} from '../../lib/translateFitness';
 
 interface ComboPromoConfig {
   active: boolean;
@@ -92,9 +97,14 @@ export default function ComboBuilderPage() {
   const promoProductIds = new Set((promo?.product_ids || []).map((id) => String(id).toLowerCase()));
   const promoProductSlugs = new Set((promo?.product_slugs || []).map((s) => String(s).toLowerCase()));
 
-  // Filtra produtos participantes da promoção
+  // Filtra produtos participantes da promoção que estão com estoque real (> 0)
   const participatingProducts = products.filter((p: any) => {
-    if (p.status === 'DRAFT' || p.status === 'ARCHIVED') return false;
+    if (p.status === 'DRAFT' || p.status === 'ARCHIVED' || p.visible_online === false || p.visibleOnline === false) return false;
+    const variants = Array.isArray(p.variants) ? p.variants : [];
+    const totalStock = variants.length > 0
+      ? variants.reduce((acc: number, v: any) => acc + Number(v.stock_quantity ?? v.stock ?? 0), 0)
+      : Number(p.stock ?? p.total_stock ?? 0);
+    if (totalStock <= 0) return false;
     const isId = p.id && promoProductIds.has(String(p.id).toLowerCase());
     const isSlug = p.slug && promoProductSlugs.has(String(p.slug).toLowerCase());
     const isFallback =
@@ -114,7 +124,7 @@ export default function ComboBuilderPage() {
     }
     if (selectedSizeFilter !== 'ALL') {
       const hasSize = (p.variants || []).some(
-        (v: any) => v.size?.toUpperCase() === selectedSizeFilter.toUpperCase() && (v.stock_quantity ?? v.stock ?? 1) > 0
+        (v: any) => v.size?.toUpperCase() === selectedSizeFilter.toUpperCase() && Number(v.stock_quantity ?? v.stock ?? 0) > 0
       );
       if (!hasSize) return false;
     }
@@ -132,7 +142,7 @@ export default function ComboBuilderPage() {
 
     // Pré-seleciona primeiro tamanho disponível
     const variants = product.variants || [];
-    const firstInStock = variants.find((v: any) => (v.stock_quantity ?? v.stock ?? 1) > 0) || variants[0];
+    const firstInStock = variants.find((v: any) => Number(v.stock_quantity ?? v.stock ?? 0) > 0) || variants[0];
     setTempSize(firstInStock?.size?.toUpperCase() || 'M');
     setTempColor(firstInStock?.color || product.colorName || 'Preto Ônix');
   };
@@ -320,10 +330,10 @@ export default function ComboBuilderPage() {
                     />
                     <div className="space-y-1 min-w-0">
                       <h4 className="text-xs font-black uppercase text-deep-black truncate">
-                        {slot.product.title}
+                        {translateProductTitle(slot.product.title, lang)}
                       </h4>
                       <p className="text-[11px] font-bold text-deep-black/70 uppercase">
-                        TAM: <span className="text-gold font-black">{slot.size}</span> • {slot.color}
+                        TAM: <span className="text-gold font-black">{slot.size}</span> • {translateColorName(slot.color, lang)}
                       </p>
                       <p className="text-[10px] text-deep-black/50 line-through">
                         Preço normal: ${(Number(slot.product.price) || 39.9).toFixed(2)}
@@ -490,7 +500,7 @@ export default function ComboBuilderPage() {
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[9px] font-black uppercase px-2 py-0.5 border border-emerald-800 shadow-xs">
-                        {promo?.badge_text || 'COMBO 3 PEÇAS'}
+                        {translateBadgeText(promo?.badge_text || 'COMBO 3 PEÇAS', lang)}
                       </span>
                       {isSelectedInAnySlot && (
                         <span className="absolute top-2 right-2 bg-emerald-600 text-white text-[9px] font-black uppercase px-2 py-0.5 border border-emerald-800 shadow-xs flex items-center gap-1">
@@ -503,7 +513,7 @@ export default function ComboBuilderPage() {
                     <div className="p-4 space-y-2 flex-1 flex flex-col justify-between">
                       <div className="space-y-1">
                         <h4 className="text-xs font-black uppercase tracking-wider text-deep-black line-clamp-2">
-                          {prod.title}
+                          {translateProductTitle(prod.title, lang)}
                         </h4>
                         <p className="text-[11px] text-deep-black/60 font-mono font-medium">
                           Preço avulso: ${normalPrice.toFixed(2)}
@@ -540,7 +550,7 @@ export default function ComboBuilderPage() {
                   ADICIONAR AO SLOT #{(tempSlotIndex ?? 0) + 1}
                 </span>
                 <h3 className="text-sm font-black uppercase text-deep-black">
-                  {activeProductForSlot.title}
+                  {translateProductTitle(activeProductForSlot.title, lang)}
                 </h3>
               </div>
               <button
@@ -566,7 +576,7 @@ export default function ComboBuilderPage() {
               />
               <div className="space-y-1 text-xs uppercase">
                 <p className="font-black text-deep-black">
-                  {activeProductForSlot.title}
+                  {translateProductTitle(activeProductForSlot.title, lang)}
                 </p>
                 <p className="text-[11px] text-deep-black/60">
                   Preço individual: ${(Number(activeProductForSlot.price) || 39.9).toFixed(2)}
@@ -585,20 +595,21 @@ export default function ComboBuilderPage() {
               <div className="flex flex-wrap gap-2">
                 {['P', 'M', 'G', 'GG', 'UN'].map((sz) => {
                   const hasStock = (activeProductForSlot.variants || []).some(
-                    (v: any) => v.size?.toUpperCase() === sz && (v.stock_quantity ?? v.stock ?? 1) > 0
+                    (v: any) => v.size?.toUpperCase() === sz && Number(v.stock_quantity ?? v.stock ?? 0) > 0
                   );
                   const isSelected = tempSize.toUpperCase() === sz;
                   return (
                     <button
                       key={sz}
                       type="button"
+                      disabled={!hasStock}
                       onClick={() => setTempSize(sz)}
-                      className={`px-4 py-2 text-xs font-black uppercase border transition cursor-pointer ${
-                        isSelected
-                          ? 'bg-deep-black text-gold border-deep-black shadow-sm'
-                          : hasStock
-                          ? 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
-                          : 'bg-gray-100 text-gray-400 border-gray-200'
+                      className={`px-4 py-2 text-xs font-black uppercase border transition ${
+                        !hasStock
+                          ? 'bg-gray-100 text-gray-400 border-gray-200 line-through cursor-not-allowed'
+                          : isSelected
+                          ? 'bg-deep-black text-gold border-deep-black shadow-sm cursor-pointer'
+                          : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black cursor-pointer'
                       }`}
                     >
                       {sz === 'P'
@@ -638,7 +649,7 @@ export default function ComboBuilderPage() {
                             : 'bg-white text-deep-black border-deep-black/30 hover:border-deep-black'
                         }`}
                       >
-                        {col}
+                        {translateColorName(col, lang)}
                       </button>
                     );
                   })}

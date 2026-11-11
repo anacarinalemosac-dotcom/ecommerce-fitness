@@ -6,6 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import ProductShareModal from '../components/ProductShareModal';
 import { addToCart } from '@/lib/cart';
+import { translateProductTitle, translateColorName, translateBadgeText, translateDynamicContent } from '../lib/translateFitness';
 import {
   Sparkles,
   ArrowRight,
@@ -294,8 +295,8 @@ const TESTIMONIALS = [
     author: 'MARIANA SALLES',
     location: 'Boston, MA',
     rating: 5,
-    textPt: 'A qualidade das peças da Ana Fitness Wear é surreal! O macaquinho Samanta veste perfeitamente sem ficar nada transparente no agachamento. Comprei aqui em Massachusetts e chegou em 2 dias com o frete de $9.99.',
-    textEn: 'The quality of Ana Fitness Wear pieces is surreal! The Samanta romper fits like a dream with zero see-through during deep squats. Ordered here in Massachusetts and arrived in 2 days with the flat $9.99 shipping.',
+    textPt: 'A qualidade das peças da Ana Fitness Wear é surreal! O macaquinho Samanta veste perfeitamente sem ficar nada transparente no agachamento. Comprei aqui em Massachusetts e chegou em 2 dias com o frete de $9.90.',
+    textEn: 'The quality of Ana Fitness Wear pieces is surreal! The Samanta romper fits like a dream with zero see-through during deep squats. Ordered here in Massachusetts and arrived in 2 days with the flat $9.90 shipping.',
   },
   {
     author: 'BEATRIZ FIGUEIREDO',
@@ -615,16 +616,16 @@ export default function HomePage() {
         const posterSrc = slide?.imageUrl || siteImages.heroPoster || "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1800&q=80";
         const mobilePosterSrc = slide?.mobileImageUrl || posterSrc;
 
-        const badgeText = slide?.badge || `${t('hero.badge')} • ${lang === 'pt' ? 'FRETE FIXO $' : 'FLAT $'}${siteInfo.flatShippingRate?.toFixed(2) || '9.99'}${lang === 'pt' ? ' P/ TODOS OS EUA' : ' US SHIPPING'}`;
-        const title1Text = slide?.title1 || siteInfo.heroTitle1 || 'WEAR YOUR';
-        const title2Text = slide?.title2 || siteInfo.heroTitle2 || 'STRENGTH.';
-        const subtitleText = slide?.subtitle || (lang === 'pt'
-          ? 'Moda fitness de alta performance sediada em Massachusetts. Zero transparência testada em agachamentos, compressão anatômica 4-way e frete fixo de $9.99 para todos os 50 estados dos EUA.'
-          : (siteInfo.heroSubtitle || 'High-performance athletic luxury based in Massachusetts. Lab-verified zero see-through, 4-way anatomical sculpt compression, and flat $9.99 shipping across all 50 US States.'));
+        const badgeText = translateDynamicContent(slide?.badge || `${t('hero.badge')} • ${lang === 'pt' ? 'FRETE FIXO $9.90 P/ TODOS OS EUA' : 'FLAT $9.90 US SHIPPING'}`, lang);
+        const title1Text = translateDynamicContent(slide?.title1 || siteInfo.heroTitle1 || 'WEAR YOUR', lang);
+        const title2Text = translateDynamicContent(slide?.title2 || siteInfo.heroTitle2 || 'STRENGTH.', lang);
+        const subtitleText = translateDynamicContent(slide?.subtitle || (lang === 'pt'
+          ? 'Moda fitness de alta performance sediada em Massachusetts. Zero transparência testada em agachamentos, compressão anatômica 4-way e frete fixo de $9.90 para todos os 50 estados dos EUA.'
+          : (siteInfo.heroSubtitle || 'High-performance athletic luxury based in Massachusetts. Lab-verified zero see-through, 4-way anatomical sculpt compression, and flat $9.90 shipping across all 50 US States.')), lang);
 
-        const primaryBtnText = slide?.primaryCtaText || t('hero.cta');
+        const primaryBtnText = translateDynamicContent(slide?.primaryCtaText || t('hero.cta'), lang);
         const primaryBtnLink = slide?.primaryCtaLink || '#vitrine';
-        const secondaryBtnText = slide?.secondaryCtaText || t('hero.preorderCta');
+        const secondaryBtnText = translateDynamicContent(slide?.secondaryCtaText || t('hero.preorderCta'), lang);
         const secondaryBtnLink = slide?.secondaryCtaLink || '/?cat=spoiler';
 
         const handleCtaClick = (link: string) => {
@@ -775,7 +776,7 @@ export default function HomePage() {
                 </span>
                 <span className="hidden sm:inline text-white/20">•</span>
                 <span className="flex items-center gap-2 shrink-0 text-white">
-                  <Truck className="w-4 h-4 text-gold" /> {lang === 'pt' ? 'FRETE FIXO $9.99 (TODOS OS 50 ESTADOS DOS EUA)' : 'FLAT RATE $9.99 US SHIPPING (ALL 50 STATES)'}
+                  <Truck className="w-4 h-4 text-gold" /> {lang === 'pt' ? 'FRETE FIXO $9.90 (TODOS OS 50 ESTADOS DOS EUA)' : 'FLAT RATE $9.90 US SHIPPING (ALL 50 STATES)'}
                 </span>
                 <span className="hidden sm:inline text-white/20">•</span>
                 <span className="flex items-center gap-2 shrink-0 text-gold">
@@ -843,7 +844,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-2.5">
                   <Truck className="w-4 h-4 text-gold shrink-0" />
-                  <span>{lang === 'pt' ? 'Frete Fixo $9.99' : 'Flat $9.99 Shipping'}</span>
+                  <span>{lang === 'pt' ? 'Frete Fixo $9.90' : 'Flat $9.90 Shipping'}</span>
                 </div>
                 <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-2.5">
                   <Zap className="w-4 h-4 text-gold shrink-0" />
@@ -970,7 +971,7 @@ export default function HomePage() {
             
             <div className="text-[11px] font-black uppercase tracking-wider text-gold bg-deep-black px-4 py-2 border border-gold inline-flex items-center gap-2 self-start md:self-auto shadow-sm">
               <Truck className="w-3.5 h-3.5 text-gold" />
-              <span>{lang === 'pt' ? 'FRETE FIXO: $9.99 (TODOS OS EUA)' : 'FLAT RATE: $9.99 SHIPPING (ALL US)'}</span>
+              <span>{lang === 'pt' ? 'FRETE FIXO: $9.90 (TODOS OS EUA)' : 'FLAT RATE: $9.90 SHIPPING (ALL US)'}</span>
             </div>
           </div>
 
@@ -1478,7 +1479,7 @@ export default function HomePage() {
                             <span
                               className={`text-[9px] uppercase tracking-widest px-2.5 py-1 font-black shadow-sm ${product.badgeStyle}`}
                             >
-                              {lang === 'pt' ? product.badgePt : product.badgeEn}
+                              {translateBadgeText(lang === 'pt' ? product.badgePt : product.badgeEn, lang)}
                             </span>
                           </div>
                         )}
@@ -1614,7 +1615,7 @@ export default function HomePage() {
                                     }}
                                     className="w-3.5 h-3.5 rounded-full border border-deep-black/30 shadow-xs cursor-pointer transition hover:scale-125"
                                     style={{ backgroundColor: color.hex }}
-                                    title={color.name}
+                                    title={translateColorName(color.name, lang)}
                                   />
                                 );
                               })}
@@ -1636,7 +1637,7 @@ export default function HomePage() {
                                 </span>
                               )}
                               <h3 className="text-sm font-black uppercase tracking-wider text-deep-black group-hover:text-gold transition line-clamp-1">
-                              {product.title}
+                              {translateProductTitle(product.title, lang)}
                               </h3>
                             </div>
                           </Link>
@@ -1686,7 +1687,7 @@ export default function HomePage() {
                           >
                             <div className="flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider text-emerald-800">
                               <Sparkles className="w-3 h-3 text-emerald-600 shrink-0" />
-                              <span>{comboPromo?.badge_text || 'COMBO 3 PEÇAS'}</span>
+                              <span>{translateBadgeText(comboPromo?.badge_text || 'COMBO 3 PEÇAS', lang)}</span>
                             </div>
                             <p className="text-[10.5px] font-bold text-emerald-950 leading-snug">
                               {lang === 'pt'
@@ -1764,17 +1765,17 @@ export default function HomePage() {
             <div className="relative z-10 p-6 sm:p-12 max-w-2xl text-white space-y-4">
               {siteInfo.promoBanner.badge && (
                 <span className="inline-block px-3 py-1 bg-gold text-deep-black text-[10px] font-black uppercase tracking-widest">
-                  {siteInfo.promoBanner.badge}
+                  {translateDynamicContent(siteInfo.promoBanner.badge, lang)}
                 </span>
               )}
 
               <h3 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-white leading-tight">
-                {siteInfo.promoBanner.title}
+                {translateDynamicContent(siteInfo.promoBanner.title, lang)}
               </h3>
 
               {siteInfo.promoBanner.subtitle && (
                 <p className="text-xs sm:text-sm text-white/80 uppercase tracking-wider leading-relaxed font-medium">
-                  {siteInfo.promoBanner.subtitle}
+                  {translateDynamicContent(siteInfo.promoBanner.subtitle, lang)}
                 </p>
               )}
 
@@ -1786,7 +1787,7 @@ export default function HomePage() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-widest transition shadow-lg group border border-gold"
                   >
-                    <span>{siteInfo.promoBanner.ctaText}</span>
+                    <span>{translateDynamicContent(siteInfo.promoBanner.ctaText, lang)}</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
                   </a>
                 </div>
@@ -1806,13 +1807,13 @@ export default function HomePage() {
             <div className="lg:col-span-6 space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 border border-gold/40 text-[10px] font-black uppercase tracking-widest text-gold">
                 <Zap className="w-3.5 h-3.5 text-gold" />
-                <span>{siteInfo.techSection?.badge || 'SQUAT-PROOF LAB CERTIFICATION'}</span>
+                <span>{translateDynamicContent(siteInfo.techSection?.badge || 'SQUAT-PROOF LAB CERTIFICATION', lang)}</span>
               </div>
 
               <h2 className="text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight leading-[0.95] text-white">
-                {siteInfo.techSection?.title1 || 'ENGINEERED FOR SQUATS.'}<br />
+                {translateDynamicContent(siteInfo.techSection?.title1 || 'ENGINEERED FOR SQUATS.', lang)}<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gold-light to-gold">
-                  {siteInfo.techSection?.title2 || 'SCULPTED FOR STRENGTH.'}
+                  {translateDynamicContent(siteInfo.techSection?.title2 || 'SCULPTED FOR STRENGTH.', lang)}
                 </span>
               </h2>
 
@@ -1832,7 +1833,7 @@ export default function HomePage() {
                 ]).map((spec, sIdx) => (
                   <div key={sIdx} className="space-y-1">
                     <span className="text-2xl sm:text-3xl font-black text-gold block">{spec.value}</span>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-white">{spec.title}</h4>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-white">{translateDynamicContent(spec.title, lang)}</h4>
                     <p className="text-[10px] text-white/60 uppercase font-medium">
                       {lang === 'pt' ? spec.subtitlePt : spec.subtitleEn}
                     </p>
@@ -1845,7 +1846,7 @@ export default function HomePage() {
                   href={siteInfo.techSection?.ctaLink || '#vitrine'}
                   className="inline-flex items-center gap-2 px-6 py-3.5 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-widest transition shadow-lg"
                 >
-                  <span>{siteInfo.techSection?.ctaText || 'EXPLORE TECHNICAL SPECS'}</span>
+                  <span>{translateDynamicContent(siteInfo.techSection?.ctaText || 'EXPLORE TECHNICAL SPECS', lang)}</span>
                   <ArrowRight className="w-4 h-4" />
                 </a>
               </div>
@@ -1865,7 +1866,7 @@ export default function HomePage() {
                   <img src={siteImages.symbolUrl || "/symbol-ana-fitness.png"} alt="Selo Oficial" className="w-6 h-6 object-contain" />
                   <span className="text-white">{siteInfo.storeName || 'ANA FITNESS ATELIER'} • {siteInfo.address ? siteInfo.address.split('•')[0].trim() : 'LEOMINSTER, MA'}</span>
                 </span>
-                <span className="text-gold">✨WEAR YOUR STRENGTH✨</span>
+                <span className="text-gold">{lang === 'pt' ? '✨VISTA SUA FORÇA✨' : '✨WEAR YOUR STRENGTH✨'}</span>
               </div>
             </div>
           </div>
@@ -1906,9 +1907,9 @@ export default function HomePage() {
           {(recentSoldProducts.length > 0 ? recentSoldProducts.slice(0, 12) : communityPostsData).map((post: any, idx: number) => {
             const isSoldProduct = Boolean(post.soldAt || post.slug);
             const productHref = post.slug ? `/produto/${post.slug}` : (siteInfo.instagramUrl || "https://www.instagram.com/anafitnessweareua");
-            const customerLabel = post.customerName ? `Comprado por ${post.customerName}` : post.user;
-            const locationLabel = post.location || 'EUA';
-            const sizeLabel = post.size ? `TAM ${post.size}` : '';
+            const customerLabel = post.customerName ? `${lang === 'pt' ? 'Comprado por' : 'Purchased by'} ${post.customerName}` : post.user;
+            const locationLabel = post.location || (lang === 'pt' ? 'EUA' : 'USA');
+            const sizeLabel = post.size ? `${lang === 'pt' ? 'TAM' : 'SIZE'} ${post.size}` : '';
 
             return (
               <Link
@@ -1931,7 +1932,7 @@ export default function HomePage() {
                 {/* Overlay Inferior com Detalhes */}
                 <div className="absolute inset-0 bg-gradient-to-t from-deep-black via-deep-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3 text-white">
                   <span className="text-[10px] font-black uppercase tracking-wider block text-white line-clamp-1">
-                    {post.title || post.piece}
+                    {translateProductTitle(post.title || post.piece, lang)}
                   </span>
                   <div className="flex items-center justify-between text-[9px] font-bold text-gold mt-0.5">
                     <span>{customerLabel}</span>

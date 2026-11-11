@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { recordOrderEvent } from '@/lib/liveStore';
-import { sendOrderConfirmationEmail, sendShippingNotificationEmail, sendPostDeliveryReviewEmail } from '@/lib/emailService';
+import { sendOrderConfirmationEmail, sendShippingNotificationEmail, sendPostDeliveryReviewEmail, sendOwnerSaleNotificationEmail } from '@/lib/emailService';
+import {
+  decrementProductStockAfterSale,
+  enrichOrderItemsWithCatalog,
+  loadCatalogProductsForOrderMatch,
+} from '@/lib/orderItemEnricher';
 import fs from 'fs';
 import path from 'path';
 
@@ -49,6 +54,7 @@ export interface SaleItemPayload {
   size: string;
   color: string;
   sku: string;
+  image?: string;
   quantity: number;
   unit_price: number;
   cost_price: number;
@@ -158,10 +164,10 @@ export async function GET(req: NextRequest) {
           const disc = Number(ord.discount_amount) || Number(meta.discount_amount) || 0;
           const shipFee = meta.shipping_fee !== undefined
             ? Number(meta.shipping_fee)
-            : (isOnline ? 9.99 : 0.00);
+            : (isOnline ? 9.90 : 0.00);
           const shipCost = meta.shipping_cost !== undefined
             ? Number(meta.shipping_cost)
-            : (isOnline ? 7.50 : 0.00);
+            : 0.00;
 
           const pMethod = (ord.payment_method || meta.payment_method || 'CARD').toUpperCase() as any;
           const grossTotal = Math.max(0, gross - disc + shipFee);
@@ -184,6 +190,7 @@ export async function GET(req: NextRequest) {
             size: it.size || 'M',
             color: it.color || 'Preto Ônix',
             sku: it.sku || 'ANA-ITEM',
+            image: it.image || '',
             quantity: Number(it.quantity) || 1,
             unit_price: Number(it.unit_price) || 39.9,
             cost_price: Number(it.cost_price) || 15.00,
@@ -301,8 +308,12 @@ export async function GET(req: NextRequest) {
         console.warn('Erro ao consultar Supabase orders:', e);
       }
 
-      // Normalização completa de status de entrega e financeiro para todas as vendas
+      // Carrega catálogo uma única vez para enriquecer miniaturas, SKU e tamanhos/cores legados
+      const catalogProducts = await loadCatalogProductsForOrderMatch(supabaseServer);
+
+      // Normalização completa de status de entrega, imagens de itens e financeiro para todas as vendas
       sales = sales.map((s) => {
+        const enrichedItems = enrichOrderItemsWithCatalog(s.items || [], catalogProducts);
         const isOnline = s.channel === 'ONLINE';
         const grossTotal = Math.max(0, (s.subtotal_products || 0) - (s.discount_amount || 0) + (s.shipping_fee || 0));
         const rawPayments = Array.isArray((s as any).payments)
@@ -349,6 +360,7 @@ export async function GET(req: NextRequest) {
 
         return {
           ...s,
+          items: enrichedItems,
           fulfillment_status: fStatus,
           payment_status: pStatus,
           payments: rawPayments,
@@ -445,8 +457,8 @@ export async function POST(req: NextRequest) {
       payment_method = 'CARD',
       subtotal_products = 0,
       discount_amount = 0,
-      shipping_fee = channel === 'ONLINE' ? 9.99 : 0.00,
-      shipping_cost = channel === 'ONLINE' ? 7.50 : 0.00,
+      shipping_fee = channel === 'ONLINE' ? 9.90 : 0.00,
+      shipping_cost = 0.00,
       items = [],
       crediario,
     } = body;
@@ -508,9 +520,37 @@ export async function POST(req: NextRequest) {
       ? Math.max(0, Number(body.commission_amount) || 0)
       : Number(((gross - disc) * commRate).toFixed(2));
 
-    // Soma do custo de confecção / aquisição
-    const totalCostOfGoods = (items || []).reduce((acc: number, it: any) => {
-      const c = Number(it.cost_price) || 15.00;
+    // Carrega catálogo real para enriquecer SKU, miniatura, tamanho/cor e preço de custo cadastrado
+    const catalogProducts = await loadCatalogProductsForOrderMatch(supabaseServer);
+    const enrichedItems = enrichOrderItemsWithCatalog(
+      (items || []).map((it: any) => ({
+        title: it.title || 'Peça Fitness',
+        size: it.size || '',
+        color: it.color || '',
+        sku: it.sku || 'ANA-ITEM',
+        slug: it.slug || '',
+        image: it.image || '',
+        quantity: Number(it.quantity) || 1,
+        unit_price: Number(it.unit_price) || 39.9,
+        cost_price: it.cost_price !== undefined && it.cost_price !== null ? Number(it.cost_price) : 0,
+      })),
+      catalogProducts
+    );
+
+    const formattedItems: SaleItemPayload[] = enrichedItems.map((it: any) => ({
+      title: it.title || 'Peça Fitness',
+      size: it.size || 'Único',
+      color: it.color || 'Padrão',
+      sku: it.sku || 'ANA-ITEM',
+      image: it.image || '',
+      quantity: Number(it.quantity) || 1,
+      unit_price: Number(it.unit_price) || 39.9,
+      cost_price: Number(it.cost_price) || 0,
+    }));
+
+    // Soma do custo de confecção / aquisição real dos itens
+    const totalCostOfGoods = formattedItems.reduce((acc: number, it: any) => {
+      const c = Number(it.cost_price) || 0;
       const q = Number(it.quantity) || 1;
       return acc + (c * q);
     }, 0);
@@ -524,16 +564,6 @@ export async function POST(req: NextRequest) {
       : (seller_name || (isPOS ? 'Ana Karina' : 'Loja Oficial Online'));
 
     const finalOrderId = order_id || (isPOS ? `POS-LEO-${Math.floor(1000 + Math.random() * 9000)}` : `ANA-${Math.floor(100000 + Math.random() * 900000)}`);
-
-    const formattedItems: SaleItemPayload[] = (items || []).map((it: any) => ({
-      title: it.title || 'Peça Fitness',
-      size: it.size || 'M',
-      color: it.color || 'Preto Ônix',
-      sku: it.sku || 'ANA-ITEM',
-      quantity: Number(it.quantity) || 1,
-      unit_price: Number(it.unit_price) || 39.9,
-      cost_price: Number(it.cost_price) || 15.0,
-    }));
 
     const fulfillmentStatus = body.fulfillment_status || (isPOS ? 'DELIVERED' : 'AWAITING_SEPARATION');
     const paymentStatus = body.payment_status || (
@@ -625,27 +655,8 @@ export async function POST(req: NextRequest) {
       console.warn('Exceção ao gravar no Supabase orders:', e);
     }
 
-    // 2. Baixa de estoque automática para peças vendidas com SKU correspondente
-    for (const it of formattedItems) {
-      if (it.sku) {
-        try {
-          const { data: v } = await supabaseServer
-            .from('product_variants')
-            .select('id, stock_quantity')
-            .eq('sku', it.sku)
-            .maybeSingle();
-
-          if (v) {
-            await supabaseServer
-              .from('product_variants')
-              .update({ stock_quantity: Math.max(0, (v.stock_quantity || 0) - (Number(it.quantity) || 1)) })
-              .eq('id', v.id);
-          }
-        } catch (stockErr) {
-          console.warn('Erro ao atualizar estoque da variante no banco:', stockErr);
-        }
-      }
-    }
+    // 2. Baixa de estoque automática (e marca ESGOTADO se zerar) para peças vendidas
+    await decrementProductStockAfterSale(supabaseServer, formattedItems, catalogProducts);
 
     // 3. Atualiza acumulado da vendedora no sellers_db.json
     if (matchedSeller && sellersList.length > 0) {
@@ -699,13 +710,21 @@ export async function POST(req: NextRequest) {
       console.warn('Erro ao disparar evento de live order:', e);
     }
 
-    // 6. Dispara e-mail automático de Confirmação do Pedido para o cliente
+    // 6. Dispara e-mail automático de Confirmação do Pedido para o cliente e alerta para lojista (pedidos online)
     if (newSale.customer_email) {
       try {
         await sendOrderConfirmationEmail(newSale);
         newSale.confirmation_email_sent = true;
       } catch (emailErr) {
         console.warn('Erro ao disparar e-mail de confirmação de pedido:', emailErr);
+      }
+    }
+
+    if (!isPOS) {
+      try {
+        await sendOwnerSaleNotificationEmail(newSale);
+      } catch (ownerEmailErr) {
+        console.warn('Erro ao disparar e-mail de venda para lojista:', ownerEmailErr);
       }
     }
 
@@ -776,6 +795,7 @@ export async function PATCH(req: NextRequest) {
         seller_name,
         discount_amount,
         shipping_fee,
+        shipping_cost,
         shipping_address,
         tracking_code: inputTrackingCode,
         subtotal_products,
@@ -788,30 +808,36 @@ export async function PATCH(req: NextRequest) {
       const disc = Math.max(0, Number(discount_amount) || 0);
       const subtotal = Math.max(0, Number(subtotal_products) || 0);
       const shipFee = shipping_fee !== undefined ? Math.max(0, Number(shipping_fee) || 0) : undefined;
+      const inputShipCost = shipping_cost !== undefined && shipping_cost !== null && shipping_cost !== ''
+        ? Math.max(0, Number(shipping_cost) || 0)
+        : undefined;
       const grossTotal = Math.max(0, Number(total_amount) || (subtotal + (shipFee || 0) - disc));
       const pFee = calculatePaymentFee(pMethod, grossTotal);
 
-      // Custo de confecção / aquisição das peças
+      // Custo de confecção / aquisição das peças + preservação de SKU e miniatura
       const formattedItems: SaleItemPayload[] = Array.isArray(items)
         ? items.map((it: any) => ({
             title: it.title || 'Peça Fitness',
             size: it.size || 'One Size',
-            color: it.color || 'Preto Ônix',
+            color: it.color || 'Padrão',
             sku: it.sku || 'ANA-ITEM',
+            image: it.image || '',
             quantity: Number(it.quantity) || 1,
             unit_price: it.unit_price !== undefined && it.unit_price !== null ? Number(it.unit_price) : 44.9,
             cost_price: (it.cost_price !== undefined && it.cost_price !== null && !isNaN(Number(it.cost_price)))
               ? Number(it.cost_price)
               : 0,
+            manual_cost_edited: true,
           }))
         : [];
 
-      const totalCostOfGoods = formattedItems.reduce((acc, it) => acc + (it.cost_price * it.quantity), 0);
+      const totalCostOfGoods = Number(formattedItems.reduce((acc, it) => acc + (it.cost_price * it.quantity), 0).toFixed(2));
       const isAnaKarina = !seller_name || seller_name.toLowerCase().includes('ana karina') || seller_name.toLowerCase().includes('loja oficial');
       const commissionAmount = body.commission_amount !== undefined && body.commission_amount !== null
         ? Math.max(0, Number(body.commission_amount) || 0)
         : (isAnaKarina ? 0.00 : Number(((subtotal - disc) * 0.10).toFixed(2)));
-      const netProfit = Number((grossTotal - totalCostOfGoods - pFee - commissionAmount).toFixed(2));
+      const effectiveShipCost = inputShipCost !== undefined ? inputShipCost : 0;
+      const netProfit = Number((grossTotal - totalCostOfGoods - pFee - effectiveShipCost - commissionAmount).toFixed(2));
       const marginPct = grossTotal > 0 ? Number(((netProfit / grossTotal) * 100).toFixed(1)) : 0;
 
       // 1. Atualiza no Supabase orders
@@ -830,6 +856,9 @@ export async function PATCH(req: NextRequest) {
               : (currentMeta.seller_name && !currentMeta.seller_name.includes('Juliana Silva') ? currentMeta.seller_name : 'Ana Karina');
 
             const resolvedShipFee = shipFee !== undefined ? shipFee : Number(currentMeta.shipping_fee || 0);
+            const resolvedShipCost = inputShipCost !== undefined ? inputShipCost : Number(currentMeta.shipping_cost || 0);
+            const resolvedNetProfit = Number((grossTotal - totalCostOfGoods - pFee - resolvedShipCost - commissionAmount).toFixed(2));
+            const resolvedMarginPct = grossTotal > 0 ? Number(((resolvedNetProfit / grossTotal) * 100).toFixed(1)) : 0;
             const resolvedAddress = shipping_address !== undefined ? shipping_address : currentMeta.address;
             const resolvedTracking = inputTrackingCode !== undefined ? inputTrackingCode : (tracking_code || currentMeta.tracking_code);
 
@@ -838,11 +867,13 @@ export async function PATCH(req: NextRequest) {
               seller_name: cleanSeller,
               payment_fee: pFee,
               shipping_fee: resolvedShipFee,
+              shipping_cost: resolvedShipCost,
               ...(resolvedAddress ? { address: resolvedAddress } : {}),
               ...(resolvedTracking ? { tracking_code: resolvedTracking } : {}),
               cost_of_goods: totalCostOfGoods,
-              net_profit: netProfit,
-              profit_margin_pct: marginPct,
+              manual_cost_edited: true,
+              net_profit: resolvedNetProfit,
+              profit_margin_pct: resolvedMarginPct,
               items: formattedItems,
               notes: notes !== undefined ? notes : currentMeta.notes,
               ...(fulfillment_status ? { fulfillment_status } : {}),
@@ -881,6 +912,9 @@ export async function PATCH(req: NextRequest) {
       const updated = sales.map((s: any) => {
         if (s.order_id === order_id || s.id === order_id || (body.id && s.id === body.id)) {
           const resolvedShipFee = shipFee !== undefined ? shipFee : Number(s.shipping_fee || 0);
+          const resolvedShipCost = inputShipCost !== undefined ? inputShipCost : Number(s.shipping_cost || 0);
+          const resolvedNetProfit = Number((grossTotal - totalCostOfGoods - pFee - resolvedShipCost - commissionAmount).toFixed(2));
+          const resolvedMarginPct = grossTotal > 0 ? Number(((resolvedNetProfit / grossTotal) * 100).toFixed(1)) : 0;
           const resolvedAddress = shipping_address !== undefined ? shipping_address : s.shipping_address;
           const resolvedTracking = inputTrackingCode !== undefined ? inputTrackingCode : (tracking_code || s.tracking_code);
 
@@ -895,13 +929,14 @@ export async function PATCH(req: NextRequest) {
             subtotal_products: subtotal,
             discount_amount: disc,
             shipping_fee: resolvedShipFee,
+            shipping_cost: resolvedShipCost,
             shipping_address: resolvedAddress,
             tracking_code: resolvedTracking,
             payment_fee: pFee,
             cost_of_goods: totalCostOfGoods,
             commission_amount: commissionAmount,
-            net_profit: netProfit,
-            profit_margin_pct: marginPct,
+            net_profit: resolvedNetProfit,
+            profit_margin_pct: resolvedMarginPct,
             items: formattedItems,
             status: payment_status === 'PAID' ? 'COMPLETED' : (payment_status || status || s.status || 'COMPLETED'),
             fulfillment_status: fulfillment_status || s.fulfillment_status,

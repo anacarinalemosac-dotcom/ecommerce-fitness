@@ -11,7 +11,16 @@ import ProductShareModal from '../../../components/ProductShareModal';
 import { ProductSizeGuide } from '../../../components/ProductSizeGuide';
 import { FormattedDescription } from '../../../components/FormattedDescription';
 import { UrgencyCountdownTimer } from '../../../components/UrgencyCountdownTimer';
-import { translateEnToPt, translatePtToEn, isPortugueseText } from '../../../lib/translateFitness';
+import {
+  translateEnToPt,
+  translatePtToEn,
+  isPortugueseText,
+  translateProductTitle,
+  translateColorName,
+  translateCategoryName,
+  translateBadgeText,
+  translateDescriptionText,
+} from '../../../lib/translateFitness';
 import {
   Star,
   ShieldCheck,
@@ -486,15 +495,23 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       });
     }
 
-    const finalEn =
-      dynamicProduct.descriptionEn ||
-      (dynamicProduct.description && !isPortugueseText(dynamicProduct.description) ? dynamicProduct.description : '') ||
-      translatePtToEn(dynamicProduct.descriptionPt || dynamicProduct.description || '');
-
-    const finalPt =
-      dynamicProduct.descriptionPt ||
+    const rawPtCandidate =
+      (dynamicProduct.descriptionPt && isPortugueseText(dynamicProduct.descriptionPt) ? dynamicProduct.descriptionPt : '') ||
       (dynamicProduct.description && isPortugueseText(dynamicProduct.description) ? dynamicProduct.description : '') ||
-      translateEnToPt(dynamicProduct.descriptionEn || dynamicProduct.description || '');
+      dynamicProduct.descriptionPt ||
+      dynamicProduct.descriptionEn ||
+      dynamicProduct.description ||
+      '';
+    const finalPt = translateEnToPt(rawPtCandidate);
+
+    const rawEnCandidate =
+      (dynamicProduct.descriptionEn && !isPortugueseText(dynamicProduct.descriptionEn) ? dynamicProduct.descriptionEn : '') ||
+      (dynamicProduct.description && !isPortugueseText(dynamicProduct.description) ? dynamicProduct.description : '') ||
+      dynamicProduct.descriptionEn ||
+      dynamicProduct.descriptionPt ||
+      dynamicProduct.description ||
+      '';
+    const finalEn = translatePtToEn(rawEnCandidate);
 
     const resolvedCupsType =
       dynamicProduct.cupsType ||
@@ -1128,10 +1145,12 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           >
             {isSpoilerProduct
               ? (lang === 'pt' ? '👀 SPOILER' : '👀 SPOILER')
-              : (lang === 'pt' ? productData.categoryPt : productData.categoryEn)}
+              : translateCategoryName(lang === 'pt' ? productData.categoryPt : productData.categoryEn, lang)}
           </Link>
           <span className="hidden sm:inline">/</span>
-          <span className="hidden sm:inline text-black font-black truncate max-w-[220px]">{productData.title}</span>
+          <span className="hidden sm:inline text-black font-black truncate max-w-[220px]">
+            {translateProductTitle(productData.title, lang)}
+          </span>
         </nav>
       </div>
 
@@ -1234,7 +1253,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 (productData.ribbon || productData.badgePt) && (
                   <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
                     <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm ${productData.badgeStyle || 'bg-gold text-deep-black'}`}>
-                      {productData.ribbon || (lang === 'pt' ? productData.badgePt : productData.badgeEn)}
+                      {translateBadgeText(productData.ribbon || (lang === 'pt' ? productData.badgePt : productData.badgeEn), lang)}
                     </span>
                   </div>
                 )
@@ -1257,7 +1276,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           {/* Categoria & Título */}
           <div className="space-y-1.5">
             <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 block">
-              {lang === 'pt' ? productData.categoryPt : productData.categoryEn}
+              {translateCategoryName(lang === 'pt' ? productData.categoryPt : productData.categoryEn, lang)} • {lang === 'pt' ? 'ALTA PERFORMANCE' : 'HIGH PERFORMANCE'}
             </span>
             <div className="flex items-center gap-2 flex-wrap">
               {isOutOfStock && (
@@ -1266,7 +1285,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 </span>
               )}
               <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-black leading-tight">
-                {productData.title}
+                {translateProductTitle(productData.title, lang)}
               </h1>
             </div>
 
@@ -1314,7 +1333,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               <span className="text-neutral-500 uppercase tracking-wider text-[11px] font-bold">
                 {lang === 'pt' ? 'Cor: ' : 'Color: '}
               </span>
-              <span className="text-black font-bold uppercase text-[11px]">{selectedColor}</span>
+              <span className="text-black font-bold uppercase text-[11px]">{translateColorName(selectedColor, lang)}</span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
@@ -1326,7 +1345,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                     key={col.name}
                     type="button"
                     onClick={() => handleSelectColor(col.name)}
-                    title={col.name}
+                    title={translateColorName(col.name, lang)}
                     className={`w-7 h-7 rounded-full transition-all relative flex items-center justify-center cursor-pointer ${
                       isSelected
                         ? 'ring-2 ring-offset-2 ring-black scale-105'
@@ -1345,7 +1364,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
           {/* Fit Hint (Alo Yoga style) */}
           <p className="text-[11px] text-neutral-600 leading-relaxed">
-            <strong className="text-black font-bold">Fit: </strong>
+            <strong className="text-black font-bold">{lang === 'pt' ? 'Modelagem: ' : 'Fit: '}</strong>
             {lang === 'pt'
               ? `Modelagem anatômica de alta compressão inteligente. ${
                   productData.cupsType === 'removable'
@@ -1475,7 +1494,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 <div className="space-y-1 flex-1">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <span className="text-[9.5px] font-black uppercase tracking-wider bg-emerald-600 text-white px-2 py-0.5">
-                      {comboPromo?.badge_text || 'COMBO 3 PEÇAS'}
+                      {translateBadgeText(comboPromo?.badge_text || 'COMBO 3 PEÇAS', lang)}
                     </span>
                     <Link
                       href="/combo"
@@ -1700,7 +1719,10 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 <span className="font-medium text-black">
                   {lang === 'pt' ? 'Composição:' : 'Fabrication:'}
                 </span>{' '}
-                {productData.composition || productData.material || (lang === 'pt' ? 'Poliamida Premium com Elastano LYCRA® de alta densidade' : 'Premium Polyamide with high-density LYCRA® Spandex')}
+                {translateDescriptionText(
+                  productData.composition || productData.material || (lang === 'pt' ? 'Poliamida Premium com Elastano LYCRA® de alta densidade' : 'Premium Polyamide with high-density LYCRA® Spandex'),
+                  lang
+                )}
               </li>
               <li>
                 <span className="font-medium text-black">
@@ -1774,7 +1796,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                     />
                     {item.badgePt && (
                       <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-black text-white px-2 py-0.5">
-                        {lang === 'pt' ? item.badgePt : (item.badgeEn || item.badgePt)}
+                        {translateBadgeText(lang === 'pt' ? item.badgePt : (item.badgeEn || item.badgePt), lang)}
                       </span>
                     )}
                     {itemInCombo && (
@@ -1787,7 +1809,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   </div>
                   <div className="space-y-0.5">
                     <h4 className="text-xs font-medium text-neutral-900 group-hover:underline truncate">
-                      {item.title}
+                      {translateProductTitle(item.title, lang)}
                     </h4>
                     <p className="text-xs text-neutral-600 font-mono font-medium">
                       ${itemPrice.toFixed(2)}
@@ -2126,7 +2148,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                       </div>
 
                       <div className="pt-3 border-t border-deep-black/10 flex items-center justify-between text-[10px] text-deep-black/50 font-mono">
-                        <span className="font-bold uppercase text-gold">{rev.productTitle || productData.title}</span>
+                        <span className="font-bold uppercase text-gold">{translateProductTitle(rev.productTitle || productData.title, lang)}</span>
                         <span>{rev.createdAt ? new Date(rev.createdAt).toLocaleDateString() : 'Recent'}</span>
                       </div>
                     </div>

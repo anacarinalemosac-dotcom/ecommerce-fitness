@@ -14,7 +14,7 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
   en: {
     // Top Bar
     'ticker.slogan': '✨ WEAR YOUR STRENGTH ✨',
-    'ticker.shipping': 'FLAT RATE SHIPPING $9.99 ACROSS ALL 50 US STATES',
+    'ticker.shipping': 'FLAT RATE SHIPPING $9.90 ACROSS ALL 50 US STATES',
     'ticker.delivery': 'BASED IN LEOMINSTER, MA • FAST DOMESTIC 1-5 DAY USPS DELIVERY',
     'ticker.preorder': 'EXCLUSIVE MADE-TO-ORDER PRE-ORDERS',
 
@@ -35,7 +35,7 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     'hero.badge': 'OFFICIAL US STORE • LEOMINSTER, MA',
     'hero.title1': 'WEAR YOUR',
     'hero.title2': 'STRENGTH',
-    'hero.subtitle': 'High-end athletic luxury based in Massachusetts. Zero see-through, anatomical compression and sculpt fit. We sell and ship domestically across all United States for a flat rate of $9.99.',
+    'hero.subtitle': 'High-end athletic luxury based in Massachusetts. Zero see-through, anatomical compression and sculpt fit. We sell and ship domestically across all United States for a flat rate of $9.90.',
     'hero.cta': 'SHOP COLLECTION',
     'hero.preorderCta': 'EXPLORE SPOILERS 👀',
 
@@ -53,7 +53,7 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     'prod.bestSeller': 'BEST SELLER',
     'prod.preOrderBadge': 'Spoiler: Coming soon',
     'prod.newBadge': 'NEW ARRIVAL',
-    'prod.freeShippingBanner': 'FLAT RATE SHIPPING: $9.99 ACROSS ALL US STATES',
+    'prod.freeShippingBanner': 'FLAT RATE SHIPPING: $9.90 ACROSS ALL US STATES',
 
     // PDP Tabs
     'tab.desc': 'DESCRIPTION & PERFORMANCE',
@@ -90,8 +90,8 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     // Shipping page
     'ship.title': 'DOMESTIC US SHIPPING & DELIVERY POLICY',
     'ship.subtitle': 'Fast domestic shipping to all 50 US States via USPS and trusted carriers.',
-    'ship.flatRateTitle': 'STANDARD FLAT RATE US SHIPPING: $9.99',
-    'ship.flatRateDesc': 'Regardless of your US state or item quantity, standard domestic shipping is flat $9.99 with full online tracking provided via email & SMS.',
+    'ship.flatRateTitle': 'STANDARD FLAT RATE US SHIPPING: $9.90',
+    'ship.flatRateDesc': 'Regardless of your US state or item quantity, standard domestic shipping is flat $9.90 with full online tracking provided via email & SMS.',
     'ship.prepTitle': 'HANDLING & PROCESSING TIME',
     'ship.prepDesc': 'Orders are prepared, inspected and dispatched within 1 to 5 business days after payment confirmation.',
 
@@ -111,8 +111,8 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
   },
   pt: {
     // Top Bar
-    'ticker.slogan': '✨ WEAR YOUR STRENGTH ✨',
-    'ticker.shipping': 'TAXA FIXA DE FRETE $9.99 PARA TODOS OS ESTADOS UNIDOS',
+    'ticker.slogan': '✨ VISTA SUA FORÇA ✨',
+    'ticker.shipping': 'TAXA FIXA DE FRETE $9.90 PARA TODOS OS ESTADOS UNIDOS',
     'ticker.delivery': 'SEDE EM LEOMINSTER, MA • ENVIO DOMÉSTICO USPS EM 1 A 5 DIAS ÚTEIS',
     'ticker.preorder': 'PRÉ-VENDAS EXCLUSIVAS SOB MEDIDA',
 
@@ -122,20 +122,20 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     'nav.jumpsuits': 'MACACÕES',
     'nav.rompers': 'MACAQUINHOS',
     'nav.tops': 'TOPS',
-    'nav.preorder': 'SPOILERS',
+    'nav.preorder': 'EM BREVE',
     'nav.contact': 'CONTATO',
-    'nav.faq': 'FAQ',
+    'nav.faq': 'DÚVIDAS',
     'nav.policy': 'POLÍTICA DA LOJA',
     'nav.pos': 'PDV BALCÃO',
     'nav.erp': 'ERP',
 
     // Hero
     'hero.badge': 'LOJA OFICIAL NOS ESTADOS UNIDOS • LEOMINSTER, MA',
-    'hero.title1': 'WEAR YOUR',
-    'hero.title2': 'STRENGTH',
-    'hero.subtitle': 'Moda fitness de alto padrão sediada em Massachusetts. Zero transparência, caimento escultural e compressão anatômica. Vendemos e entregamos para todos os Estados Unidos com frete fixo de $9.99.',
+    'hero.title1': 'VISTA SUA',
+    'hero.title2': 'FORÇA',
+    'hero.subtitle': 'Moda fitness de alto padrão sediada em Massachusetts. Zero transparência, caimento escultural e compressão anatômica. Vendemos e entregamos para todos os Estados Unidos com frete fixo de $9.90.',
     'hero.cta': 'VER COLEÇÃO',
-    'hero.preorderCta': 'VER SPOILERS 👀',
+    'hero.preorderCta': 'VER NOVIDADES 👀',
 
     // Categorias
     'cat.title': 'CATEGORIAS OFICIAIS',
@@ -151,7 +151,7 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     'prod.bestSeller': 'BEST SELLER',
     'prod.preOrderBadge': 'Spoiler: Em breve',
     'prod.newBadge': 'LANÇAMENTO',
-    'prod.freeShippingBanner': 'TAXA FIXA DE FRETE: $9.99 PARA QUALQUER ESTADO DOS EUA',
+    'prod.freeShippingBanner': 'TAXA FIXA DE FRETE: $9.90 PARA QUALQUER ESTADO DOS EUA',
 
     // PDP Tabs
     'tab.desc': 'DESCRIÇÃO & PERFORMANCE',
@@ -188,8 +188,8 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     // Shipping page
     'ship.title': 'POLÍTICA DE ENVIO DOMÉSTICO (EUA)',
     'ship.subtitle': 'Entregas rápidas para todos os 50 estados dos Estados Unidos via USPS e transportadoras parceiras.',
-    'ship.flatRateTitle': 'TAXA FIXA DE FRETE STANDARD: $9.99',
-    'ship.flatRateDesc': 'Independente do estado ou quantidade de peças no pedido, o frete doméstico é fixo em apenas $9.99 com código de rastreamento enviado via e-mail e SMS.',
+    'ship.flatRateTitle': 'TAXA FIXA DE FRETE STANDARD: $9.90',
+    'ship.flatRateDesc': 'Independente do estado ou quantidade de peças no pedido, o frete doméstico é fixo em apenas $9.90 com código de rastreamento enviado via e-mail e SMS.',
     'ship.prepTitle': 'PRAZO DE PREPARAÇÃO E DESPACHO',
     'ship.prepDesc': 'Seu pedido é separado, conferido e despachado em 1 a 5 dias úteis a partir da nossa sede em Massachusetts.',
 
@@ -223,7 +223,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (saved === 'pt' || saved === 'en') {
       setLangState(saved);
     } else {
-      setLangState('en');
+      const browserIsPt = typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('pt');
+      setLangState(browserIsPt ? 'pt' : 'en');
     }
   }, []);
 

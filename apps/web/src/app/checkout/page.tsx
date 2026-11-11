@@ -7,6 +7,11 @@ import { useStoreSettings } from '../../context/StoreSettingsContext';
 import { trackEvent } from '../../lib/tracking';
 import { UrgencyCountdownTimer } from '../../components/UrgencyCountdownTimer';
 import {
+  translateProductTitle,
+  translateColorName,
+  translateBadgeText,
+} from '../../lib/translateFitness';
+import {
   getCartItems,
   saveCartItems,
   removeCartItem,
@@ -845,7 +850,7 @@ export default function CheckoutPage() {
           subtotal_products: subtotal,
           discount_amount: totalDiscount,
           shipping_fee: shippingRate,
-          shipping_cost: deliveryMethod === 'PICKUP' ? 0 : 7.50,
+          shipping_cost: 0,
           items: effectiveItems.map((it) => ({
             title: it.title,
             size: it.size,
@@ -853,7 +858,8 @@ export default function CheckoutPage() {
             sku: (it as any).sku || 'ANA-ITEM',
             quantity: it.quantity,
             unit_price: it.price,
-            cost_price: 15.0,
+            image: it.image,
+            cost_price: Number((it as any).cost_price) || 0,
           })),
         }),
       });
@@ -2234,10 +2240,10 @@ export default function CheckoutPage() {
                 />
                 <div className="flex-1 space-y-1 min-w-0">
                   <h4 className="text-xs font-black uppercase tracking-wider text-deep-black truncate">
-                    {item.title}
+                    {translateProductTitle(item.title, lang)}
                   </h4>
                   <p className="text-[10px] text-deep-black/60 uppercase font-mono font-bold">
-                    {lang === 'pt' ? 'TAM' : 'SIZE'}: <span className="text-gold font-black">{item.size}</span> • {item.color}
+                    {lang === 'pt' ? 'TAM' : 'SIZE'}: <span className="text-gold font-black">{item.size}</span> • {translateColorName(item.color, lang)}
                   </p>
 
                   <div className="flex items-center gap-3 pt-1">
@@ -2305,7 +2311,7 @@ export default function CheckoutPage() {
                   <span>{comboPromo?.title || 'PROMOÇÃO DE COMBO'}</span>
                 </span>
                 <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 font-bold font-mono">
-                  {comboPromo?.badge_text || 'COMBO 3 PEÇAS'}
+                  {translateBadgeText(comboPromo?.badge_text || 'COMBO 3 PEÇAS', lang)}
                 </span>
               </div>
               <p className="text-xs text-emerald-950 font-bold leading-relaxed">

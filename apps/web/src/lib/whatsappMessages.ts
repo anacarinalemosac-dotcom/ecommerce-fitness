@@ -17,8 +17,12 @@ export function generateReceiptWhatsAppMessage(sale: any): string {
   const customer = sale.customer_name || 'Cliente';
   const orderId = sale.order_id || sale.id?.slice(0, 8);
   const payLabel = formatPaymentMethodLabel(sale.payment_method);
-  const total = Number(sale.total_paid ?? (sale.subtotal_products - (sale.discount_amount || 0))).toFixed(2);
+  const subtotal = Number(sale.subtotal_products || 0);
   const discount = Number(sale.discount_amount || 0);
+  const shippingFee = Number(sale.shipping_fee || 0);
+  const computedTotal = Math.max(0, subtotal - discount + shippingFee);
+  const total = Number(sale.total_paid ?? sale.total_amount ?? computedTotal).toFixed(2);
+  const isPickup = (sale.shipping_address?.delivery_method || '').toUpperCase() === 'PICKUP';
 
   const saleDate = sale.created_at
     ? new Date(sale.created_at).toLocaleDateString('pt-BR')
@@ -32,10 +36,18 @@ export function generateReceiptWhatsAppMessage(sale: any): string {
   msg += `▫️ *Data:* ${saleDate}\n`;
   msg += `▫️ *Forma de Pagamento:* ${payLabel}\n`;
   msg += `▫️ *Status:* ✅ *PAGO COM SUCESSO*\n`;
-  msg += `▫️ *Valor Total:* $${total} USD\n`;
+  if (shippingFee > 0 || discount > 0) {
+    msg += `▫️ *Subtotal das Peças:* $${subtotal.toFixed(2)} USD\n`;
+  }
   if (discount > 0) {
     msg += `▫️ *Desconto Concedido:* -$${discount.toFixed(2)} USD\n`;
   }
+  if (shippingFee > 0) {
+    msg += `▫️ *Frete (Envio USPS):* $${shippingFee.toFixed(2)} USD\n`;
+  } else if (isPickup) {
+    msg += `▫️ *Entrega:* Retirada no Showroom ($0.00 - Sem frete)\n`;
+  }
+  msg += `▫️ *Valor Total Pago${shippingFee > 0 ? ' (c/ frete)' : ''}:* *$${total} USD*\n`;
 
   const items = Array.isArray(sale.items) ? sale.items : [];
   if (items.length > 0) {
@@ -64,14 +76,18 @@ export function generateCrediarioWhatsAppMessage(sale: any): string {
   const customer = sale.customer_name || 'Cliente';
   const orderId = sale.order_id || sale.id?.slice(0, 8);
   const cred = sale.crediario;
-  const total = Number(sale.subtotal_products - (sale.discount_amount || 0)).toFixed(2);
+  const shippingFee = Number(sale.shipping_fee || 0);
+  const total = Number(Math.max(0, Number(sale.subtotal_products || 0) - Number(sale.discount_amount || 0) + shippingFee)).toFixed(2);
   const downPayment = Number(cred?.down_payment || 0).toFixed(2);
   const remaining = Number(cred?.remaining_balance || total).toFixed(2);
 
   let msg = `✨ *ANA FITNESS WEAR • CARNÊ DE CREDIÁRIO* ✨\n\n`;
   msg += `Olá *${customer}*! Segue o comprovante e as datas de vencimento da sua compra em crediário:\n\n`;
   msg += `🛍️ *Pedido:* #${orderId}\n`;
-  msg += `💰 *Valor Total:* $${total} USD\n`;
+  if (shippingFee > 0) {
+    msg += `▫️ *Frete:* $${shippingFee.toFixed(2)} USD\n`;
+  }
+  msg += `💰 *Valor Total${shippingFee > 0 ? ' (c/ frete)' : ''}:* $${total} USD\n`;
   if (Number(downPayment) > 0) {
     msg += `💵 *Entrada Paga:* $${downPayment} USD (${cred?.down_payment_method || 'CASH'})\n`;
   }
@@ -99,9 +115,16 @@ export function printSaleReceipt(sale: any) {
   const phone = sale.customer_phone || '';
   const orderId = sale.order_id || sale.id?.slice(0, 8);
   const payLabel = formatPaymentMethodLabel(sale.payment_method);
-  const total = Number(sale.total_paid ?? (sale.subtotal_products - (sale.discount_amount || 0))).toFixed(2);
-  const subtotal = Number(sale.subtotal_products || total).toFixed(2);
+  const subtotalNum = Number(sale.subtotal_products || 0);
+  const shippingFee = Number(sale.shipping_fee || 0);
   const discount = Number(sale.discount_amount || 0);
+  const computedTotal = Math.max(0, subtotalNum - discount + shippingFee);
+  const total = Number(
+    sale.total_paid !== undefined && Number(sale.total_paid) >= computedTotal
+      ? sale.total_paid
+      : (sale.total_amount ?? computedTotal)
+  ).toFixed(2);
+  const subtotal = (subtotalNum || Number(total)).toFixed(2);
 
   const itemsHtml = (sale.items || []).map((it: any) => {
     const title = it.title || it.name || 'Peça Fitness';
@@ -175,6 +198,11 @@ export function printSaleReceipt(sale: any) {
           <div class="totals-row" style="color: #15803d; font-weight: bold;">
             <span>Desconto Concedido:</span>
             <span>-$${discount.toFixed(2)}</span>
+          </div>` : ''}
+          ${shippingFee > 0 ? `
+          <div class="totals-row">
+            <span>Frete (USPS):</span>
+            <span>$${shippingFee.toFixed(2)}</span>
           </div>` : ''}
           <div class="totals-row grand-total">
             <span>TOTAL PAGO (${payLabel}):</span>

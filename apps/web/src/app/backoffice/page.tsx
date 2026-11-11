@@ -307,6 +307,7 @@ export default function BackofficeDashboard() {
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
   const [bulkPriceInput, setBulkPriceInput] = useState('');
   const [bulkComparePriceInput, setBulkComparePriceInput] = useState('');
+  const [bulkCostPriceInput, setBulkCostPriceInput] = useState('');
   const [bulkSizeGuideInput, setBulkSizeGuideInput] = useState('');
   const [bulkDescInput, setBulkDescInput] = useState('');
   const [bulkDescEnInput, setBulkDescEnInput] = useState('');
@@ -780,28 +781,42 @@ export default function BackofficeDashboard() {
 
   const handleExecuteBulkPrice = async () => {
     if (selectedCatalogIds.length === 0) return;
-    const num = parseFloat(bulkPriceInput);
-    if (isNaN(num) || num < 0) {
+    const hasPrice = bulkPriceInput.trim() !== '';
+    const hasCost = bulkCostPriceInput.trim() !== '';
+    const hasCompare = bulkComparePriceInput.trim() !== '';
+    if (!hasPrice && !hasCost && !hasCompare) {
+      alert('Informe pelo menos um valor (Preço de Venda, Preço Original ou Preço de Custo).');
+      return;
+    }
+    const num = hasPrice ? parseFloat(bulkPriceInput) : undefined;
+    const numCost = hasCost ? parseFloat(bulkCostPriceInput) : undefined;
+    if (hasPrice && (num === undefined || isNaN(num) || num < 0)) {
       alert('Por favor, informe um preço de venda válido.');
+      return;
+    }
+    if (hasCost && (numCost === undefined || isNaN(numCost) || numCost < 0)) {
+      alert('Por favor, informe um preço de custo válido.');
       return;
     }
     setIsBulkSubmitting(true);
     try {
+      const payload: any = { ids: selectedCatalogIds };
+      if (num !== undefined) payload.price = num;
+      if (hasCompare) payload.compare_price = bulkComparePriceInput ? parseFloat(bulkComparePriceInput) : null;
+      if (numCost !== undefined) payload.cost_price = numCost;
+
       const res = await fetch('/api/backoffice/products', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ids: selectedCatalogIds,
-          price: num,
-          compare_price: bulkComparePriceInput ? parseFloat(bulkComparePriceInput) : null,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao atualizar preços');
-      alert(`Sucesso! ${data.updatedCount || selectedCatalogIds.length} produtos tiveram seus preços atualizados para $${num.toFixed(2)}.`);
+      alert(`Sucesso! ${data.updatedCount || selectedCatalogIds.length} produtos atualizados no catálogo.`);
       setShowBulkPriceModal(false);
       setBulkPriceInput('');
       setBulkComparePriceInput('');
+      setBulkCostPriceInput('');
       setSelectedCatalogIds([]);
       await fetchSupabaseProducts();
       if (refreshProducts) refreshProducts();
@@ -4290,7 +4305,7 @@ export default function BackofficeDashboard() {
               <div className="pt-2 text-xs text-white/80 uppercase font-mono tracking-wide leading-relaxed bg-white/5 p-4 border border-white/10">
                 <span className="text-gold font-black">FÓRMULA EXATA DE LUCRO LÍQUIDO NO SEU BOLSO: </span>
                 <span>
-                  (Receita de Peças + Fretes Cobrados $9.99) - Custo das Peças (COGS) - Taxas Gateway (Stripe/Venmo) - Custo Envio USPS ($7.50) - Comissões Vendedoras (10%) - <strong className="text-amber-300">Despesas Produtos Retirados (Uso Próprio/Brindes)</strong> ={' '}
+                  (Receita de Peças + Fretes Cobrados $9.90) - Custo das Peças (COGS) - Taxas Gateway (Stripe/Venmo) - Custo Etiqueta/Frete Real (se informado no pedido) - Comissões Vendedoras (10%) - <strong className="text-amber-300">Despesas Produtos Retirados (Uso Próprio/Brindes)</strong> ={' '}
                 </span>
                 <strong className="text-gold font-black underline">LUCRO REAL NO SEU BOLSO ($ USD)</strong>
               </div>
@@ -5343,13 +5358,31 @@ export default function BackofficeDashboard() {
 
                       {/* Itens e Grade */}
                       <td className="p-3">
-                        <div className="space-y-1 max-w-xs">
+                        <div className="space-y-1.5 max-w-xs">
                           {(sale.items || []).map((it: any, iIdx: number) => (
-                            <div key={iIdx} className="text-[10px] leading-tight">
-                              <span className="font-black text-deep-black">{it.title}</span>
-                              <span className="text-gold font-bold ml-1 font-mono">
-                                ({it.color} • TAM {it.size}) ×{it.quantity}
-                              </span>
+                            <div key={iIdx} className="flex items-center gap-2 text-[10px] leading-tight">
+                              {it.image ? (
+                                <img
+                                  src={it.image}
+                                  alt={it.title}
+                                  className="w-9 h-11 object-cover rounded border border-deep-black/20 shrink-0 bg-neutral-100"
+                                />
+                              ) : (
+                                <div className="w-9 h-11 rounded border border-dashed border-deep-black/20 shrink-0 bg-neutral-100 flex items-center justify-center text-[8px] font-bold text-deep-black/40">
+                                  IMG
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <span className="font-black text-deep-black block truncate">{it.title}</span>
+                                <span className="text-gold font-bold font-mono block">
+                                  ({it.color} • TAM {it.size}) ×{it.quantity}
+                                </span>
+                                {it.sku && (
+                                  <span className="text-[9px] font-mono font-bold text-amber-900 bg-amber-100 border border-amber-300 px-1 py-0.2 inline-block mt-0.5">
+                                    SKU: {it.sku}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -6205,7 +6238,7 @@ export default function BackofficeDashboard() {
                       title="Editar preço de custo ou valor das peças"
                     >
                       <Edit3 className="w-3 h-3 text-gold" />
-                      <span>ATUALIZAR PREÇO DE CUSTO</span>
+                      <span>EDITAR CUSTO / FRETE / SKU</span>
                     </button>
                   </div>
 
@@ -6219,12 +6252,30 @@ export default function BackofficeDashboard() {
                       const itemProfit = itemSubtotal - itemCostTotal;
 
                       return (
-                        <div key={idx} className="p-2.5 flex items-center justify-between text-xs">
-                          <div>
-                            <strong className="text-deep-black block uppercase text-[11px]">{it.title}</strong>
-                            <span className="text-[9px] text-deep-black/60 font-mono">
-                              Tam: {it.size || 'One Size'} • Cor: {it.color || 'Padrão'} • Qtd: {qty}x
-                            </span>
+                        <div key={idx} className="p-2.5 flex items-center justify-between gap-3 text-xs">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {it.image ? (
+                              <img
+                                src={it.image}
+                                alt={it.title}
+                                className="w-12 h-16 object-cover rounded border border-deep-black/20 shrink-0 bg-neutral-100"
+                              />
+                            ) : (
+                              <div className="w-12 h-16 rounded border border-dashed border-deep-black/20 shrink-0 bg-neutral-100 flex items-center justify-center text-[9px] font-bold text-deep-black/40">
+                                FOTO
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <strong className="text-deep-black block uppercase text-[11px]">{it.title}</strong>
+                              <span className="text-[9px] text-deep-black/60 font-mono block">
+                                Tam: {it.size || 'One Size'} • Cor: {it.color || 'Padrão'} • Qtd: {qty}x
+                              </span>
+                              {it.sku && (
+                                <span className="text-[9px] font-mono font-bold text-amber-900 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded inline-block mt-1">
+                                  SKU: {it.sku}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <div className="text-right font-mono space-y-0.5">
                             <div className="text-deep-black font-bold">
@@ -8451,6 +8502,8 @@ export default function BackofficeDashboard() {
         setBulkPriceInput={setBulkPriceInput}
         bulkComparePriceInput={bulkComparePriceInput}
         setBulkComparePriceInput={setBulkComparePriceInput}
+        bulkCostPriceInput={bulkCostPriceInput}
+        setBulkCostPriceInput={setBulkCostPriceInput}
         onExecute={handleExecuteBulkPrice}
         isSubmitting={isBulkSubmitting}
       />

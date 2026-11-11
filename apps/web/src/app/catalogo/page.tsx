@@ -19,6 +19,13 @@ import {
   Truck,
 } from 'lucide-react';
 import { useStoreSettings } from '@/context/StoreSettingsContext';
+import { useLanguage } from '@/context/LanguageContext';
+import {
+  translateProductTitle,
+  translateColorName,
+  translateCategoryName,
+  translateBadgeText,
+} from '@/lib/translateFitness';
 
 export interface CatalogVariationTile {
   tileId: string;
@@ -42,6 +49,7 @@ export interface CatalogVariationTile {
 
 export default function PublicClientCatalogPage() {
   const { siteInfo } = useStoreSettings();
+  const { lang } = useLanguage();
   const [rawProducts, setRawProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
@@ -671,7 +679,7 @@ export default function PublicClientCatalogPage() {
               <div className="flex items-center justify-between bg-gray-100 border-l-4 border-gold p-3 mb-5 print:bg-gray-100">
                 <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-deep-black flex items-center gap-2">
                   <span className="text-gold">★</span>
-                  <span>{categoryName}</span>
+                  <span>{translateCategoryName(categoryName, lang)}</span>
                 </h2>
                 <span className="px-2.5 py-0.5 bg-deep-black text-white text-[10px] font-black uppercase">
                   {itemsList.length} {itemsList.length === 1 ? 'variação' : 'variações'}
@@ -722,7 +730,7 @@ export default function PublicClientCatalogPage() {
                           style={{ backgroundColor: item.colorHex }}
                         />
                         <span className="text-[9px] font-black uppercase tracking-wider line-clamp-1">
-                          {item.colorName}
+                          {translateColorName(item.colorName, lang)}
                         </span>
                       </div>
                     </div>
@@ -738,7 +746,7 @@ export default function PublicClientCatalogPage() {
                             </span>
                           )}
                           <h3 className="text-xs sm:text-sm font-black uppercase text-deep-black tracking-wide line-clamp-2">
-                          {item.title}
+                          {translateProductTitle(item.title, lang)}
                         </h3>
                       </div>
 
@@ -767,10 +775,12 @@ export default function PublicClientCatalogPage() {
                       {isCatalogItemInCombo(item) && item.totalStock > 0 && (
                         <div className="p-2 bg-emerald-50 border-2 border-emerald-500 text-emerald-950 text-[10px] font-bold leading-snug space-y-0.5">
                           <span className="text-[9px] font-black uppercase tracking-wider text-emerald-800 block">
-                            ✨ {comboPromo?.badge_text || 'COMBO 3 PEÇAS'}
+                            ✨ {translateBadgeText(comboPromo?.badge_text || 'COMBO 3 PEÇAS', lang)}
                           </span>
                           <p>
-                            Esta peça participa da promoção: {Number(comboPromo?.required_quantity) || 3} peças pelo valor ${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Adicione essa peça na sua sacola e faltará pouco para você participar da promoção.
+                            {lang === 'pt'
+                              ? `Esta peça participa da promoção: ${Number(comboPromo?.required_quantity) || 3} peças pelo valor $${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Adicione essa peça na sua sacola e faltará pouco para você participar da promoção.`
+                              : `This piece qualifies for our promo: ${Number(comboPromo?.required_quantity) || 3} pieces for $${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Add this piece to your bag and you're close to unlocking the deal!`}
                           </p>
                         </div>
                       )}

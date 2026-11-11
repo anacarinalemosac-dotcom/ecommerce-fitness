@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
+import { translateDynamicContent } from '../lib/translateFitness';
 import {
   ShoppingBag,
   Sparkles,
@@ -93,7 +94,7 @@ export function SiteHeader() {
             <div className="flex items-center gap-2 text-center sm:text-left flex-wrap justify-center font-black">
               {siteInfo.announcementBar.badgeText && (
                 <span className="px-2.5 py-0.5 bg-gold/20 text-gold border border-gold/40 text-[9px] font-black uppercase tracking-wider rounded-xs animate-pulse shrink-0">
-                  {siteInfo.announcementBar.badgeText}
+                  {translateDynamicContent(siteInfo.announcementBar.badgeText, lang)}
                 </span>
               )}
               {siteInfo.announcementBar.link ? (
@@ -174,11 +175,11 @@ export function SiteHeader() {
             <div className="flex items-center gap-4 text-center sm:text-left flex-wrap justify-center">
               <span className="flex items-center gap-1.5 text-gold font-black">
                 <Sparkles className="w-3.5 h-3.5 text-gold" />{' '}
-                {siteInfo.tickerSlogan || (lang === 'pt' ? t('ticker.slogan') : t('ticker.slogan'))}
+                {translateDynamicContent(siteInfo.tickerSlogan || t('ticker.slogan'), lang)}
               </span>
               <span className="hidden md:inline text-white/30">•</span>
               <span className="text-white/90 font-medium">
-                {siteInfo.tickerShipping || (lang === 'pt' ? t('ticker.shipping') : t('ticker.shipping'))}
+                {translateDynamicContent(siteInfo.tickerShipping || t('ticker.shipping'), lang)}
               </span>
               <span className="hidden lg:inline text-white/30">•</span>
               <span className="hidden lg:inline text-gold font-black">
@@ -351,7 +352,7 @@ export function SiteHeader() {
               <User className="w-3.5 h-3.5 text-gold" />
               <span className="hidden md:inline">
                 {customerUser
-                  ? `OLÁ, ${(customerUser.name || 'CLIENTE').split(' ')[0].toUpperCase()}`
+                  ? `${lang === 'pt' ? 'OLÁ' : 'HI'}, ${(customerUser.name || (lang === 'pt' ? 'CLIENTE' : 'GUEST')).split(' ')[0].toUpperCase()}`
                   : (lang === 'pt' ? 'MINHA CONTA' : 'MY ACCOUNT')}
               </span>
             </Link>
