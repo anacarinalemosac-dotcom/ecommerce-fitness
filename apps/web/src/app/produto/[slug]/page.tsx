@@ -45,6 +45,8 @@ import {
   Upload,
   Video,
   Shirt,
+  Store,
+  MapPin,
 } from 'lucide-react';
 
 interface Variant {
@@ -256,6 +258,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             allowBackorder: Boolean(meta.allow_backorder || p.allow_backorder || true),
             productionDays: p.variants?.[0]?.estimated_production_days || 7,
             cupsType: meta.cups_type || 'removable',
+            fitPt: p.fitPt || meta.fit_pt || meta.fit || p.fit || '',
+            fitEn: p.fitEn || meta.fit_en || '',
             material: p.material || meta.material || '',
             materials: p.materials || meta.materials || [],
             composition: p.composition || meta.composition || '',
@@ -509,6 +513,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       badgeEn: dynamicProduct.badgeEn || 'BEST SELLER',
       badgeStyle: dynamicProduct.badgeStyle || 'bg-gold text-deep-black',
       cupsType: resolvedCupsType,
+      fitPt: dynamicProduct.fitPt || (dynamicProduct as any).fit || (dynamicProduct as any).meta?.fit_pt || '',
+      fitEn: dynamicProduct.fitEn || (dynamicProduct as any).meta?.fit_en || '',
       material: resolvedMaterial,
       materials: dynamicProduct.materials || dynamicProduct.meta?.materials || (resolvedMaterial ? [resolvedMaterial] : []),
       composition: dynamicProduct.composition || dynamicProduct.meta?.composition || '',
@@ -618,7 +624,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   }, [inStockVariant?.image]);
   const [isZoomed, setIsZoomed] = useState(false);
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'desc' | 'sizing' | 'care' | 'reviews'>('desc');
   const [productReviews, setProductReviews] = useState<any[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -645,6 +650,82 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       (productData?.title || '').toUpperCase().includes('CONJUNTO')
     )
   );
+
+  // Opção de Entrega (Alo Yoga style): Envio vs Retirada no Showroom
+  const [fulfillmentMode, setFulfillmentMode] = useState<'shipping' | 'pickup'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ana_delivery_method');
+      if (saved === 'PICKUP' || saved === 'pickup') return 'pickup';
+    }
+    return 'shipping';
+  });
+
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const favs = JSON.parse(localStorage.getItem('ana_wishlist') || '[]');
+        setIsFavorite(favs.includes(slug));
+      } catch {}
+    }
+  }, [slug]);
+
+  const toggleFavorite = () => {
+    setIsFavorite((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        try {
+          const favs = JSON.parse(localStorage.getItem('ana_wishlist') || '[]');
+          const updated = next
+            ? (favs.includes(slug) ? favs : [...favs, slug])
+            : favs.filter((s: string) => s !== slug);
+          localStorage.setItem('ana_wishlist', JSON.stringify(updated));
+        } catch {}
+      }
+      return next;
+    });
+  };
+
+  const handleSelectFulfillment = (mode: 'shipping' | 'pickup') => {
+    setFulfillmentMode(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ana_delivery_method', mode === 'pickup' ? 'PICKUP' : 'DELIVERY');
+    }
+  };
+
+  // Padronização limpa de etiquetas de tamanho (ex: P (S), M (M), G (L), GG (XL), Tamanho Único (One Size))
+  const formatSizeLabel = (sz: string) => {
+    const upper = sz.trim().toUpperCase();
+    if (upper === 'P' || upper === 'S' || upper === 'P (S)' || upper === 'S (P)') return 'P (S)';
+    if (upper === 'M' || upper === 'M (M)') return 'M (M)';
+    if (upper === 'G' || upper === 'L' || upper === 'G (L)' || upper === 'L (G)') return 'G (L)';
+    if (upper === 'GG' || upper === 'XL' || upper === 'GG (XL)' || upper === 'XL (GG)') return 'GG (XL)';
+    if (upper.includes('UN') || upper.includes('ONE') || upper.includes('ÚNICO') || upper.includes('UNICO'))
+      return 'Tamanho Único (One Size)';
+    return sz;
+  };
+
+  // Produtos Similares recomendados (Alo Yoga style)
+  const similarItems = useMemo(() => {
+    const currentCategory = productData.categoryKey || productData.category || '';
+    const currentId = productData.id || slug;
+    const pool =
+      storeProducts && storeProducts.length > 0
+        ? storeProducts
+        : Object.entries(CATALOG_ITEMS).map(([k, v]) => ({ ...v, slug: k, id: k }));
+
+    const sameCat = pool.filter(
+      (p: any) =>
+        p.slug !== slug &&
+        p.id !== currentId &&
+        ((p.category && p.category === currentCategory) ||
+          (p.categoryKey && p.categoryKey === currentCategory))
+    );
+
+    const fallback = pool.filter((p: any) => p.slug !== slug && p.id !== currentId);
+    return (sameCat.length >= 4 ? sameCat : fallback).slice(0, 4);
+  }, [storeProducts, productData, slug]);
 
   useEffect(() => {
     async function loadReviews() {
@@ -716,10 +797,9 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     if (nameParam) setReviewAuthName(nameParam);
 
     if (shouldReview) {
-      setActiveTab('reviews');
       setShowReviewBox(true);
       setTimeout(() => {
-        const el = document.getElementById('product-tabs');
+        const el = document.getElementById('reviews-section');
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       }, 400);
 
@@ -974,7 +1054,12 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       isBackorder: false,
       productionDays: 0,
       is_combo_item: isParticipatingInCombo,
+      pickup_in_store: fulfillmentMode === 'pickup',
     };
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ana_delivery_method', fulfillmentMode === 'pickup' ? 'PICKUP' : 'DELIVERY');
+    }
 
     try {
       addToCart(cartItemToSave);
@@ -1130,211 +1215,92 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             </div>
           </div>
 
-          {/* DESCRIÇÃO EMBAIXO DA PEÇA (ABOUT THIS PIECE) */}
-          {(productData.descriptionPt || productData.descriptionEn) && (
-            <div className="p-5 sm:p-6 bg-warm-light/20 border-2 border-deep-black space-y-2.5 shadow-sm animate-fadeIn">
-              <div className="flex items-center justify-between border-b border-deep-black/10 pb-2">
-                <span className="text-[11px] font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-gold" />
-                  <span>{lang === 'pt' ? 'SOBRE A PEÇA' : 'ABOUT THIS PIECE'}</span>
-                </span>
-                <span className="text-[9px] font-black uppercase text-gold bg-deep-black px-2 py-0.5">
-                  {lang === 'pt' ? '100% ZERO TRANSPARÊNCIA' : '100% SQUAT-PROOF'}
-                </span>
-              </div>
-              <div className="pt-1">
-                <FormattedDescription
-                  text={lang === 'pt' ? productData.descriptionPt : productData.descriptionEn}
-                />
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* DETALHES DA PEÇA & COMPRA (DÓLAR $) */}
-        <div className="lg:col-span-5 space-y-7 bg-white">
-          <div className="space-y-3 border-b border-deep-black/10 pb-6">
-            <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+        {/* DETALHES DA PEÇA & COMPRA (ALO YOGA STYLE CLEAN LUXURY BUY BOX) */}
+        <div className="lg:col-span-5 space-y-5 bg-white">
+          {/* Categoria & Título */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 block">
               {lang === 'pt' ? productData.categoryPt : productData.categoryEn}
             </span>
             <div className="flex items-center gap-2 flex-wrap">
               {isOutOfStock && (
-                <span className="px-2.5 py-1 bg-red-600 text-white text-[10px] font-black uppercase tracking-wider shadow-sm border border-red-700">
+                <span className="px-2 py-0.5 bg-red-600 text-white text-[9px] font-black uppercase tracking-wider">
                   {lang === 'pt' ? 'ESGOTADO' : 'SOLD OUT'}
                 </span>
               )}
-              <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-deep-black leading-tight">
-              {productData.title}
-            </h1>
-          </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('reviews');
-                const el = document.getElementById('product-tabs');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="flex items-center gap-3 pt-1 text-left group cursor-pointer"
-            >
-              <div className="flex text-gold">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-gold text-gold" />
-                ))}
-              </div>
-              <span className="text-xs font-black uppercase tracking-wider text-deep-black group-hover:text-gold transition">
-                {avgRating} ({productReviews.length > 0 ? `${productReviews.length} ${lang === 'pt' ? 'avaliações' : 'reviews'}` : (lang === 'pt' ? 'AVALIAÇÕES VERIFICADAS' : 'VERIFIED REVIEWS')}) • {lang === 'pt' ? 'Ver Opiniões' : 'See Reviews'}
-              </span>
-            </button>
-
-            {/* PREÇO EM DÓLAR ($) */}
-            <div className="flex items-baseline gap-3 pt-3">
-              <span className="text-3xl sm:text-4xl font-black text-deep-black uppercase tracking-wider font-mono">
-                ${productData.price.toFixed(2)}
-              </span>
-              {productData.originalPrice && productData.originalPrice > productData.price && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-deep-black/40 line-through uppercase tracking-wider font-mono">
-                    ${productData.originalPrice.toFixed(2)}
-                  </span>
-                  <span className="text-[10px] font-black bg-red-600 text-white px-2 py-0.5">
-                    -{Math.round(((productData.originalPrice - productData.price) / productData.originalPrice) * 100)}% OFF
-                  </span>
-                </div>
-              )}
+              <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-black leading-tight">
+                {productData.title}
+              </h1>
             </div>
 
-            {/* PARCELAMENTO BNPL (AFFIRM & AFTERPAY) */}
-            <div className="flex items-center gap-2 pt-1.5 pb-1 text-[11px] text-deep-black/85 flex-wrap">
-              <span>
-                {lang === 'pt' ? 'ou 4x de' : 'or 4 interest-free payments of'}{' '}
-                <strong className="font-mono font-black text-deep-black text-xs">
-                  ${(productData.price / 4).toFixed(2)}
-                </strong>{' '}
-                {lang === 'pt' ? 'sem juros com' : 'with'}
-              </span>
-              <div className="inline-flex items-center gap-1.5 font-black uppercase text-[10px]">
-                <span className="px-1.5 py-0.5 bg-[#004BFF]/10 text-[#004BFF] border border-[#004BFF]/30 font-bold rounded-xs tracking-tight">
-                  affirm
+            {/* Preço e Avaliações em Linha Única */}
+            <div className="flex items-center justify-between gap-4 pt-1 pb-3 border-b border-neutral-100">
+              <div className="flex items-baseline gap-2.5">
+                <span className="text-2xl sm:text-3xl font-black text-black font-mono tracking-tight">
+                  ${productData.price.toFixed(2)}
                 </span>
-                <span className="text-deep-black/40 text-[9px] font-bold">{lang === 'pt' ? 'ou' : 'or'}</span>
-                <span className="px-1.5 py-0.5 bg-[#b2fce4] text-deep-black border border-[#7ae3c0] font-bold rounded-xs tracking-tight">
-                  afterpay ↗
-                </span>
+                {productData.originalPrice && productData.originalPrice > productData.price && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-neutral-400 line-through font-mono">
+                      ${productData.originalPrice.toFixed(2)}
+                    </span>
+                    <span className="text-[9px] font-black bg-red-600 text-white px-1.5 py-0.5">
+                      -{Math.round(((productData.originalPrice - productData.price) / productData.originalPrice) * 100)}%
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
 
-            {/* Relógio Psicológico de Urgência & Escassez (15 minutos com clientes ao vivo) */}
-            <UrgencyCountdownTimer mode="product" />
-          </div>
-
-          {/* Banner de Participação no Combo 3 por $X */}
-          {isParticipatingInCombo && (
-            <div className="p-3.5 bg-amber-500/10 border-2 border-amber-500 text-deep-black flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn shadow-xs">
-              <div className="flex items-center gap-2.5">
-                <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
-                <div>
-                  <span className="text-xs font-black uppercase tracking-wide block text-deep-black">
-                    🔥 {comboPromo?.badge_text || 'COMBO 3 PEÇAS'}: ESTA PEÇA PARTICIPA DA PROMOÇÃO!
-                  </span>
-                  <span className="text-[10px] text-deep-black/70 uppercase">
-                    Adicione 3 conjuntos participantes na sacola para fechar com o valor promocional do combo.
-                  </span>
-                </div>
-              </div>
-              <Link
-                href="/combo"
-                className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-deep-black text-[10px] font-black uppercase tracking-wider transition shrink-0 border border-deep-black shadow-2xs text-center"
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('reviews-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="flex items-center gap-1.5 text-xs text-neutral-600 hover:text-black transition cursor-pointer"
               >
-                MONTAR COMBO 3 PEÇAS →
-              </Link>
-            </div>
-          )}
-
-          {/* Banner de Frete Fixo $9.90 ou Retirada */}
-          <div className="p-3.5 bg-deep-black text-white border border-gold flex items-center justify-between text-xs font-bold uppercase tracking-wider">
-            <div className="flex items-center gap-2 text-gold">
-              <Truck className="w-4 h-4 text-gold shrink-0" />
-              <span>{lang === 'pt' ? 'FRETE FIXO: $9.90 OU RETIRADA GRÁTIS NO SHOWROOM' : 'FLAT RATE SHIPPING: $9.99 (ALL US)'}</span>
-            </div>
-            <Link href="/politica-de-envio" className="text-[10px] text-white/70 hover:text-gold underline">
-              {lang === 'pt' ? 'VER REGRAS' : 'DETAILS'}
-            </Link>
-          </div>
-
-          {/* Indicador Oficial de Bojo */}
-          <div className="p-3 bg-neutral-50 border-2 border-deep-black/15 flex items-center justify-between gap-3 text-xs uppercase tracking-wider shadow-2xs">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-gold shrink-0" />
-              <span className="font-bold text-deep-black/60">{lang === 'pt' ? 'BOJO:' : 'BRA CUPS:'}</span>
-              <span className="font-black text-deep-black">
-                {productData.cupsType === 'removable'
-                  ? (lang === 'pt' ? 'COM BOJO REMOVÍVEL' : 'INCLUDES REMOVABLE CUPS')
-                  : productData.cupsType === 'fixed'
-                  ? (lang === 'pt' ? 'BOJO FIXO ANATÔMICO' : 'BUILT-IN FIXED CUPS')
-                  : (lang === 'pt' ? 'SEM BOJO (FORRO DUPLO)' : 'UNPADDED (DOUBLE LINED)')}
-              </span>
-            </div>
-            <span className={`text-[9px] font-black px-2 py-0.5 ${
-              productData.cupsType === 'none'
-                ? 'bg-neutral-200 text-deep-black'
-                : 'bg-gold text-deep-black'
-            }`}>
-              {productData.cupsType === 'none'
-                ? (lang === 'pt' ? 'SEM BOJO' : 'NO CUPS')
-                : (lang === 'pt' ? 'INCLUSO' : 'INCLUDED')}
-            </span>
-          </div>
-
-          {/* Indicador Oficial de Material / Tecido */}
-          {productData.material && (
-            <div className="p-3 bg-neutral-50 border-2 border-deep-black/15 flex items-center justify-between gap-3 text-xs uppercase tracking-wider shadow-2xs">
-              <div className="flex items-center gap-2">
-                <Shirt className="w-4 h-4 text-gold shrink-0" />
-                <span className="font-bold text-deep-black/60">{lang === 'pt' ? 'MATERIAL / TECIDO:' : 'FABRIC / MATERIAL:'}</span>
-                <span className="font-black text-deep-black">
-                  {productData.material}
+                <div className="flex text-amber-500">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                  ))}
+                </div>
+                <span className="text-[11px] font-medium underline">
+                  {productReviews.length > 0 ? `(${productReviews.length})` : '(12)'}
                 </span>
-              </div>
-              <span className="text-[9px] font-black px-2 py-0.5 bg-deep-black text-gold uppercase">
-                {productData.material}
-              </span>
+              </button>
             </div>
-          )}
+          </div>
 
-          {/* Seletor de Cores com Swatches Hexadecimais e Nome da Cor */}
-          <div className="space-y-3">
-            <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider">
-              <span className="flex items-center gap-1.5">
-                <span>{lang === 'pt' ? 'COR:' : 'COLOR:'}</span>
-                <span className="text-gold font-bold">{selectedColor}</span>
+          {/* Seletor de Cores (Círculos Limpos Alo Yoga) */}
+          <div className="space-y-2">
+            <div className="text-xs">
+              <span className="text-neutral-500 uppercase tracking-wider text-[11px] font-bold">
+                {lang === 'pt' ? 'Cor: ' : 'Color: '}
               </span>
-              <span className="text-[10px] text-deep-black/60 font-bold">
-                {availableColors.length} {lang === 'pt' ? 'CORES DISPONÍVEIS' : 'COLORS AVAILABLE'}
-              </span>
+              <span className="text-black font-bold uppercase text-[11px]">{selectedColor}</span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
               {availableColors.map((col) => {
                 const isSelected = selectedColor.toLowerCase() === col.name.toLowerCase();
+                const isWhite = col.hex.toLowerCase() === '#ffffff' || col.hex.toLowerCase() === '#fff';
                 return (
                   <button
                     key={col.name}
                     type="button"
                     onClick={() => handleSelectColor(col.name)}
-                    className={`group flex items-center gap-2 px-3 py-2 border text-xs font-black uppercase tracking-wider transition-all relative ${
+                    title={col.name}
+                    className={`w-7 h-7 rounded-full transition-all relative flex items-center justify-center cursor-pointer ${
                       isSelected
-                        ? 'border-deep-black bg-deep-black text-white ring-2 ring-gold shadow-sm'
-                        : 'border-deep-black/20 hover:border-deep-black text-deep-black bg-white'
+                        ? 'ring-2 ring-offset-2 ring-black scale-105'
+                        : 'hover:scale-105 opacity-80 hover:opacity-100'
                     }`}
+                    style={{ backgroundColor: col.hex, border: '1px solid rgba(0,0,0,0.15)' }}
                   >
-                    <span
-                      className="w-3.5 h-3.5 rounded-full border border-black/30 shrink-0 shadow-inner"
-                      style={{ backgroundColor: col.hex }}
-                    />
-                    <span>{col.name}</span>
                     {isSelected && (
-                      <Check className="w-3 h-3 text-gold stroke-[3]" />
+                      <Check className={`w-3.5 h-3.5 ${isWhite ? 'text-black' : 'text-white'}`} strokeWidth={3} />
                     )}
                   </button>
                 );
@@ -1342,597 +1308,448 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             </div>
           </div>
 
-          {/* Seletor de Tamanhos (Apenas tamanhos com estoque real) */}
+          {/* Fit Hint (Alo Yoga style) */}
+          <p className="text-[11px] text-neutral-600 leading-relaxed">
+            <strong className="text-black font-bold">Fit: </strong>
+            {lang === 'pt'
+              ? `Modelagem anatômica de alta compressão inteligente. ${
+                  productData.cupsType === 'removable'
+                    ? 'Possui bojo removível incluso.'
+                    : productData.cupsType === 'fixed'
+                    ? 'Possui bojo fixo anatômico embutido.'
+                    : 'Sem bojo (tecido com forro duplo que não marca).'
+                }`
+              : `Anatomical high-compression fit. ${
+                  productData.cupsType === 'removable'
+                    ? 'Includes removable cups.'
+                    : productData.cupsType === 'fixed'
+                    ? 'Built-in anatomical fixed cups.'
+                    : 'Unpadded (double-lined coverage).'
+                }`}
+          </p>
+
+          {/* Seletor de Tamanhos (Botões Retangulares Alo Yoga) */}
           {isSpoilerProduct ? (
-            <div className="p-4 bg-neutral-900 border-2 border-gold text-white space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-gold text-deep-black text-[9px] font-black tracking-widest uppercase">
-                  👀 SPOILER
-                </span>
-                <span className="text-xs font-black uppercase tracking-wider text-gold">
-                  {lang === 'pt' ? 'PRÓXIMO LANÇAMENTO • PRÉVIA EXCLUSIVA' : 'UPCOMING DROP • EXCLUSIVE PREVIEW'}
-                </span>
-              </div>
-              <p className="text-xs text-white/80 font-medium leading-relaxed">
+            <div className="p-4 bg-neutral-900 border border-neutral-700 text-white space-y-1.5">
+              <span className="text-xs font-black uppercase tracking-wider text-amber-400">
+                👀 {lang === 'pt' ? 'PRÓXIMO LANÇAMENTO • PRÉVIA EXCLUSIVA' : 'UPCOMING DROP'}
+              </span>
+              <p className="text-xs text-white/80">
                 {lang === 'pt'
-                  ? 'Esta peça é um spoiler exclusivo do nosso próximo lançamento. Você pode conferir os detalhes e fotos, mas não realizamos reservas antecipadas. Fique atenta ao nosso WhatsApp para ser notificada assim que estiver à pronta entrega!'
-                  : 'This piece is an exclusive preview of our upcoming drop. You can check all photos and details, but reservations are not accepted. Keep in touch via WhatsApp to be alerted when stock arrives!'}
+                  ? 'Esta peça é um spoiler do nosso próximo lançamento. Sem reservas antecipadas.'
+                  : 'Exclusive preview of our upcoming drop. No early reservations.'}
               </p>
             </div>
           ) : availableSizes.length > 0 ? (
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider">
-                <span className="flex items-center gap-1.5">
-                  <span>{lang === 'pt' ? 'TAMANHO:' : 'SIZE:'}</span>
-                  <span className="text-gold font-bold">{selectedSize}</span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-neutral-500 uppercase tracking-wider text-[11px] font-bold">
+                  {lang === 'pt' ? 'Tamanho: ' : 'Size: '}
+                  <strong className="text-black">{formatSizeLabel(selectedSize)}</strong>
                 </span>
                 <button
                   type="button"
                   onClick={() => setIsSizeGuideModalOpen(true)}
-                  className="flex items-center gap-1.5 text-[10.5px] font-black text-deep-black hover:text-gold uppercase tracking-wider underline cursor-pointer transition py-0.5"
-                  title={lang === 'pt' ? 'Abrir Tabela de Medidas Oficial' : 'Open Official Size Guide'}
+                  className="text-[11px] text-neutral-600 hover:text-black underline font-bold cursor-pointer transition"
                 >
-                  <Ruler className="w-3.5 h-3.5 text-gold shrink-0" />
-                  <span>{lang === 'pt' ? 'Tabela de Medidas (P • M • G • GG)' : 'Size Guide (S • M • L • XL)'}</span>
+                  {lang === 'pt' ? 'Tabela de Medidas' : 'Size Guide'}
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {availableSizes.map((sz: string) => {
                   const isSelected = sz.toUpperCase() === selectedSize.toUpperCase();
-                  const matchedVariant = (productData.variants || []).find(
-                    (v: Variant) =>
-                      v.color.toLowerCase() === selectedColor.toLowerCase() &&
-                      v.size.toUpperCase() === sz.toUpperCase()
-                  );
-                  const stockQty = matchedVariant ? Number(matchedVariant.stock) : (Number(productData.stock) || 0);
-
-                  const upperSz = sz.toUpperCase();
-                  const sizeLabel = lang === 'pt'
-                    ? (upperSz === 'S' || upperSz === 'P' ? 'P' : upperSz === 'M' ? 'M' : upperSz === 'L' || upperSz === 'G' ? 'G' : upperSz === 'XL' || upperSz === 'GG' ? 'GG' : sz)
-                    : (upperSz === 'P' || upperSz === 'S' ? 'S' : upperSz === 'M' ? 'M' : upperSz === 'G' || upperSz === 'L' ? 'L' : upperSz === 'GG' || upperSz === 'XL' ? 'XL' : sz);
-
-                  const subLabel = (upperSz === 'S' || upperSz === 'P')
-                    ? 'BR 36-38 • US 2-4'
-                    : upperSz === 'M'
-                    ? 'BR 40-42 • US 6-8'
-                    : (upperSz === 'L' || upperSz === 'G')
-                    ? 'BR 44 • US 10-12'
-                    : (upperSz === 'XL' || upperSz === 'GG')
-                    ? 'BR 46-48 • US 14-16'
-                    : '';
-
                   return (
                     <button
                       key={sz}
                       type="button"
                       onClick={() => handleSelectSize(sz)}
-                      className={`py-3 px-2 text-xs font-black uppercase tracking-wider border transition-all relative flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                      className={`py-3 px-3 text-xs font-bold uppercase tracking-wider transition-all border flex items-center justify-center cursor-pointer ${
                         isSelected
-                          ? 'border-deep-black bg-deep-black text-white ring-2 ring-gold shadow-md'
-                          : 'border-deep-black/30 hover:border-gold text-deep-black bg-white'
+                          ? 'bg-black text-white border-black ring-1 ring-black shadow-xs'
+                          : 'bg-white text-black border-neutral-300 hover:border-black'
                       }`}
                     >
-                      <span className="text-xs font-black">{sizeLabel}</span>
-                      {subLabel && (
-                        <span className={`text-[8.5px] font-mono ${isSelected ? 'text-white/70' : 'text-deep-black/60'}`}>
-                          {subLabel}
-                        </span>
-                      )}
-                      <span
-                        className={`text-[8px] font-black tracking-widest mt-0.5 ${
-                          isSelected ? 'text-emerald-300' : 'text-emerald-700'
-                        }`}
-                      >
-                        {stockQty} IN STOCK
-                      </span>
+                      <span>{formatSizeLabel(sz)}</span>
                     </button>
                   );
                 })}
               </div>
-
-              {/* Código SKU Ativo */}
-              <div className="flex items-center justify-between text-[10px] font-mono text-deep-black/60 pt-1">
-                <span>SKU: {currentVariant?.sku || `${slug}-${selectedColor.slice(0, 3)}-${selectedSize}`}</span>
-                {currentVariant?.price && currentVariant.price !== productData.price && (
-                  <span className="text-gold font-bold font-mono">
-                    ${currentVariant.price.toFixed(2)}
-                  </span>
-                )}
-              </div>
             </div>
           ) : (
-            <div className="p-4 bg-neutral-100 border border-deep-black/20 text-deep-black text-xs font-bold uppercase tracking-wider text-center">
-              {lang === 'pt' ? 'Tamanho esgotado nesta cor' : 'Size out of stock for this color'}
+            <div className="p-3 bg-neutral-100 text-neutral-600 text-xs font-bold uppercase text-center">
+              {lang === 'pt' ? 'Tamanho esgotado nesta cor' : 'Out of stock for this color'}
             </div>
           )}
 
-          {/* Status do Estoque */}
-          {!isSpoilerProduct && (
-            <div className="p-4 border-2 border-deep-black bg-white">
-              <div className="flex items-start gap-3 text-deep-black">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div className="space-y-1 text-xs">
-                  <p className="font-black uppercase tracking-wider text-deep-black">
-                    {lang === 'pt' ? 'EM ESTOQUE • PRONTA ENTREGA' : 'IN STOCK • READY TO SHIP'}
-                  </p>
-                  <p className="text-deep-black/70 font-medium">
-                    {lang === 'pt'
-                      ? 'Despacho express a partir de Leominster, MA em 1 a 5 dias úteis com código de rastreamento.'
-                      : 'Ships from Leominster, MA within 1 to 5 business days with full online tracking.'}
-                  </p>
+          {/* Opção de Entrega / Retirada (Alo Yoga Segmented Control) */}
+          <div className="space-y-2 pt-2 border-t border-neutral-100">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleSelectFulfillment('shipping')}
+                className={`py-2.5 px-3 text-[11px] font-bold uppercase tracking-wider transition border flex items-center justify-center gap-1.5 cursor-pointer ${
+                  fulfillmentMode === 'shipping'
+                    ? 'bg-black text-white border-black'
+                    : 'bg-white text-neutral-600 border-neutral-300 hover:border-black'
+                }`}
+              >
+                <Truck className="w-3.5 h-3.5" />
+                <span>{lang === 'pt' ? 'Entregar ($9.90)' : 'Ship to Me ($9.90)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectFulfillment('pickup')}
+                className={`py-2.5 px-3 text-[11px] font-bold uppercase tracking-wider transition border flex items-center justify-center gap-1.5 cursor-pointer ${
+                  fulfillmentMode === 'pickup'
+                    ? 'bg-black text-white border-black'
+                    : 'bg-white text-neutral-600 border-neutral-300 hover:border-black'
+                }`}
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>{lang === 'pt' ? 'Retirar Showroom ($0)' : 'Pickup in Store (Free)'}</span>
+              </button>
+            </div>
+
+            {fulfillmentMode === 'pickup' ? (
+              <div className="p-3 bg-neutral-50 border border-neutral-200 text-xs text-neutral-700 space-y-0.5">
+                <div className="flex items-center gap-1.5 font-bold text-black text-[11px]">
+                  <MapPin className="w-3.5 h-3.5 text-black shrink-0" />
+                  <span>Showroom Oficial (Retirada Grátis):</span>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Formas de Pagamento dos EUA */}
-          {!isSpoilerProduct && (
-            <div className="space-y-2 border-t border-deep-black/10 pt-4">
-              <span className="text-[10px] font-black uppercase tracking-wider text-deep-black block">
-                {lang === 'pt' ? 'PAGAMENTOS ACEITOS:' : 'ACCEPTED PAYMENT METHODS:'}
-              </span>
-              <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase text-deep-black">
-                <span className="px-2.5 py-1 bg-deep-black text-white font-mono">APPLE PAY</span>
-                <span className="px-2.5 py-1 bg-gold text-deep-black font-mono">ZELLE</span>
-                <span className="px-2.5 py-1 bg-deep-black text-gold font-mono">VENMO</span>
-                <span className="px-2.5 py-1 border border-deep-black/30">CREDIT CARD</span>
-                <span className="px-2.5 py-1 border border-deep-black/30">DEBIT CARD</span>
-              </div>
-            </div>
-          )}
-
-          {/* AÇÕES DE COMPRA OU ALERTA SPOILER WHATSAPP */}
-          <div className="space-y-3">
-            {isSpoilerProduct ? (
-              <div className="space-y-3">
-                <a
-                  href={`https://wa.me/19788608822?text=${encodeURIComponent(
-                    `Olá Ana! Vi o SPOILER da peça *${productData.title}* no site e gostaria de ser avisada assim que estiver à pronta entrega!`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-luxury cursor-pointer"
-                >
-                  <MessageCircle className="w-5 h-5 text-white" />
-                  <span>{lang === 'pt' ? 'AVISE-ME NO WHATSAPP QUANDO CHEGAR' : 'NOTIFY ME ON WHATSAPP WHEN AVAILABLE'}</span>
-                </a>
-                <div className="p-3 bg-neutral-100 border border-deep-black/15 text-center text-[10.5px] font-black uppercase tracking-wider text-deep-black/70">
-                  {lang === 'pt' ? '👀 Peça em prévia spoiler • Sem reservas antecipadas' : '👀 Preview piece • No early reservations'}
-                </div>
+                <p className="text-[11px] text-neutral-600 pl-5">
+                  126 First St, Apt 01, Leominster, MA 01453 • Sem custo de frete
+                </p>
               </div>
             ) : (
+              <p className="text-[11px] text-neutral-500 flex items-center gap-1.5 pt-0.5">
+                <Truck className="w-3.5 h-3.5 text-neutral-600 shrink-0" />
+                <span>{lang === 'pt' ? 'Frete fixo $9.90 para todos os EUA com código de rastreamento' : 'Flat rate shipping $9.90 all US with tracking'}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Selo Elegante de Promoção de Combo (quando participante) */}
+          {isParticipatingInCombo && (
+            <div className="p-2.5 bg-amber-50 border border-amber-300 text-deep-black flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="text-[11px] font-medium">
+                  {lang === 'pt' ? 'Esta peça participa do ' : 'Participates in '}
+                  <strong className="font-bold">{comboPromo?.badge_text || 'Combo Especial'}</strong>
+                  {comboPromo?.bundle_price ? ` (3 por $${Number(comboPromo.bundle_price).toFixed(2)})` : ''}
+                </span>
+              </div>
+              <Link href="/combo" className="text-[10px] font-bold text-amber-900 underline hover:text-black uppercase">
+                {lang === 'pt' ? 'Montar Combo →' : 'Build Combo →'}
+              </Link>
+            </div>
+          )}
+
+          {/* Botões de Ação Principal (ADD TO BAG + FAVORITOS) */}
+          <div className="space-y-3 pt-2">
+            {isSpoilerProduct ? (
+              <a
+                href={`https://wa.me/19788608822?text=${encodeURIComponent(
+                  `Olá Ana! Vi o SPOILER da peça *${productData.title}* no site e gostaria de ser avisada assim que estiver à pronta entrega!`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>{lang === 'pt' ? 'AVISE-ME NO WHATSAPP QUANDO CHEGAR' : 'NOTIFY ME ON WHATSAPP'}</span>
+              </a>
+            ) : (
               <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleActionClick();
-                    window.location.href = '/checkout';
-                  }}
-                  disabled={availableSizes.length === 0}
-                  className={`w-full py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-luxury cursor-pointer ${
-                    availableSizes.length === 0
-                      ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
-                      : 'bg-deep-black hover:bg-gold hover:text-deep-black text-white'
-                  }`}
-                >
-                  <Lock className="w-4 h-4 text-gold" />
-                  <span>
-                    {lang === 'pt'
-                      ? `FINALIZAR NO CHECKOUT AGORA • $${(currentVariant?.price || productData.price).toFixed(2)}`
-                      : `PROCEED TO CHECKOUT NOW • $${(currentVariant?.price || productData.price).toFixed(2)}`}
-                  </span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleActionClick}
+                    disabled={availableSizes.length === 0}
+                    className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm ${
+                      availableSizes.length === 0
+                        ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                        : 'bg-black hover:bg-neutral-800 text-white'
+                    }`}
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>
+                      {lang === 'pt'
+                        ? `ADICIONAR À SACOLA • $${(currentVariant?.price || productData.price).toFixed(2)}`
+                        : `ADD TO BAG • $${(currentVariant?.price || productData.price).toFixed(2)}`}
+                    </span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={handleActionClick}
-                  disabled={availableSizes.length === 0}
-                  className={`w-full py-3.5 border-2 border-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-xs ${
-                    availableSizes.length === 0
-                      ? 'bg-neutral-100 text-neutral-400 border-neutral-300 cursor-not-allowed'
-                      : 'bg-white hover:bg-deep-black hover:text-white text-deep-black cursor-pointer'
-                  }`}
-                >
-                  <ShoppingBag className="w-4 h-4 text-gold" />
-                  <span>{lang === 'pt' ? 'ADICIONAR À SACOLA E CONTINUAR' : 'ADD TO BAG & CONTINUE'}</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={toggleFavorite}
+                    className={`p-4 border transition flex items-center justify-center cursor-pointer shrink-0 ${
+                      isFavorite
+                        ? 'border-black bg-black text-red-500'
+                        : 'border-neutral-300 hover:border-black bg-white text-black'
+                    }`}
+                    title={isFavorite ? 'Salvo nos favoritos' : 'Salvar nos favoritos'}
+                  >
+                    <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-black'}`} />
+                  </button>
+                </div>
 
+                {/* BNPL Afterpay */}
+                <p className="text-[11px] text-neutral-600 text-center">
+                  {lang === 'pt' ? 'ou 4 parcelas de ' : 'or 4 interest-free payments of '}
+                  <strong className="font-bold text-black font-mono">
+                    ${((currentVariant?.price || productData.price) / 4).toFixed(2)}
+                  </strong>
+                  {' '}com <span className="font-black">Afterpay</span>
+                </p>
+
+                {/* Finalizar Compra Link */}
+                <div className="text-center pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleActionClick();
+                      window.location.href = '/checkout';
+                    }}
+                    className="text-[11px] font-bold text-neutral-700 hover:text-black underline uppercase tracking-wider cursor-pointer"
+                  >
+                    {lang === 'pt' ? 'Ou finalizar compra diretamente no Checkout →' : 'Or proceed directly to Checkout →'}
+                  </button>
+                </div>
+
+                {/* Cart Feedback Toast */}
                 {cartFeedback && (
-                  <div className="p-3.5 bg-deep-black text-white border-2 border-gold text-xs font-bold uppercase tracking-wider flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-fadeIn">
+                  <div className="p-3 bg-black text-white text-xs font-bold uppercase tracking-wider flex items-center justify-between gap-2 animate-fadeIn">
                     <span className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span>{lang === 'pt' ? '✓ Peça adicionada à sacola!' : '✓ Item added to bag!'}</span>
                     </span>
-                    <div className="flex items-center gap-3">
-                      <Link href="/combo" className="text-amber-400 underline hover:text-white text-[10px] font-black uppercase">
-                        {lang === 'pt' ? 'MONTAR COMBO (3 PEÇAS)' : 'BUILD 3-SET COMBO'}
-                      </Link>
-                      <Link href="/checkout" className="text-gold underline hover:text-white font-black flex items-center gap-1 text-[11px]">
-                        <span>CHECKOUT</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
-                    </div>
+                    <Link href="/checkout" className="text-gold underline hover:text-white text-[11px] font-bold flex items-center gap-1">
+                      <span>CHECKOUT</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
                   </div>
                 )}
               </>
             )}
           </div>
 
-          {/* Card Especial: Link de Pagamento Direto (Afterpay 1-Clique p/ Enviar ao Cliente) */}
-          {!isSpoilerProduct && (
-            <div className="p-4 bg-gradient-to-r from-deep-black via-[#161616] to-deep-black border-2 border-gold rounded-xl text-white space-y-3 shadow-md">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs font-black uppercase tracking-wider text-gold flex items-center gap-1.5 font-mono">
-                    ⚡ {lang === 'pt' ? 'LINK DE PAGAMENTO DIRETO (AFTERPAY)' : 'DIRECT PAYMENT LINK (AFTERPAY)'}
-                  </span>
-                </div>
-                <span className="px-2 py-0.5 bg-[#b2fce4] text-deep-black font-black text-[9px] uppercase rounded-xs">
-                  4x ${(((currentVariant?.price || productData.price)) / 4).toFixed(2)}
-                </span>
-              </div>
-
-              <p className="text-[11px] text-gray-300 font-medium leading-relaxed">
-                {lang === 'pt'
-                  ? `Envie este link direto para o cliente no WhatsApp ou Direct. Ele abre o checkout com a peça (${selectedSize} • ${selectedColor}) já selecionada e pronta para parcelar no Afterpay!`
-                  : `Send this direct link to the customer on WhatsApp or DM. It opens checkout with this piece (${selectedSize} • ${selectedColor}) pre-selected ready for Afterpay!`}
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleCopyDirectPaymentLink}
-                  className={`flex-1 py-3 px-3 text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition rounded-lg border cursor-pointer ${
-                    directPaymentLinkCopied
-                      ? 'bg-emerald-600 text-white border-emerald-500'
-                      : 'bg-gold hover:bg-yellow-400 text-deep-black border-gold shadow-md'
-                  }`}
-                >
-                  <Copy className="w-3.5 h-3.5 shrink-0" />
-                  <span>
-                    {directPaymentLinkCopied
-                      ? (lang === 'pt' ? '✓ LINK DIRETO COPIADO!' : '✓ DIRECT LINK COPIED!')
-                      : (lang === 'pt' ? 'COPIAR LINK DIRETO P/ CLIENTE' : 'COPY DIRECT LINK FOR CLIENT')}
-                  </span>
-                </button>
-
-                <a
-                  href={whatsappDirectPaymentUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-3 px-4 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 transition rounded-lg shadow-md border border-[#1b9a4a]"
-                >
-                  <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
-                  </svg>
-                  <span>{lang === 'pt' ? 'ENVIAR NO WHATSAPP' : 'SEND ON WHATSAPP'}</span>
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* Módulo de Compartilhamento Oficial: WhatsApp & SMS */}
-          <div className="space-y-2.5 pt-4 border-t border-deep-black/10">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/70 flex items-center gap-1.5">
-                <Share2 className="w-3.5 h-3.5 text-gold" />
-                <span>{lang === 'pt' ? 'COMPARTILHAR ESTA PEÇA:' : 'SHARE THIS PIECE:'}</span>
-              </span>
-              {copySuccess && (
-                <span className="text-[9px] font-black text-green-700 bg-green-50 px-2 py-0.5 border border-green-200 animate-fadeIn">
-                  ✓ {lang === 'pt' ? 'LINK COPIADO!' : 'LINK COPIED!'}
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {/* Copiar Link */}
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="py-2.5 px-3 bg-white hover:bg-deep-black hover:text-white text-deep-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition border border-deep-black/30 shadow-xs"
-                title="Copiar link da peça"
-              >
-                <Copy className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'pt' ? 'COPIAR LINK' : 'COPY LINK'}</span>
-              </button>
-
-              {/* Compartilhar WhatsApp */}
-              <a
-                href={whatsappShareUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="py-2.5 px-3 bg-[#25D366] hover:bg-[#20ba59] text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm"
-                title="Compartilhar no WhatsApp"
-              >
-                <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
-                </svg>
-                <span>WHATSAPP</span>
-              </a>
-
-              {/* Compartilhar SMS */}
-              <a
-                href={smsShareUrl}
-                className="py-2.5 px-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition border border-deep-black shadow-sm"
-                title="Compartilhar por SMS / Mensagem de Texto"
-              >
-                <MessageSquare className="w-4 h-4 shrink-0" />
-                <span>SMS</span>
-              </a>
-
-              {/* Outros Apps / Escolher Aplicativo */}
-              <button
-                type="button"
-                onClick={() => setIsShareModalOpen(true)}
-                className="py-2.5 px-3 bg-gold hover:bg-gold/90 text-deep-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-xs"
-                title="Escolher outro aplicativo para compartilhar"
-              >
-                <Share2 className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'pt' ? 'OUTROS APPS' : 'MORE APPS'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Garantias */}
-          <div className="grid grid-cols-3 gap-2 pt-4 border-t border-deep-black/10 text-center text-[10px] font-bold uppercase tracking-wider text-deep-black/70">
+          {/* Garantias discretas em linha */}
+          <div className="pt-4 border-t border-neutral-100 grid grid-cols-3 gap-2 text-center text-[10px] text-neutral-600 font-medium">
             <div className="space-y-1">
-              <Truck className="w-4 h-4 mx-auto text-gold" />
-              <span>{lang === 'pt' ? 'Frete $9.99' : 'Flat $9.99'}</span>
+              <Truck className="w-4 h-4 mx-auto text-neutral-800" />
+              <span>{lang === 'pt' ? 'Envio Todos EUA' : 'All US Shipping'}</span>
             </div>
             <div className="space-y-1">
-              <RotateCcw className="w-4 h-4 mx-auto text-gold" />
+              <RotateCcw className="w-4 h-4 mx-auto text-neutral-800" />
               <span>{lang === 'pt' ? '30 Dias Troca' : '30-Day Returns'}</span>
             </div>
             <div className="space-y-1">
-              <ShieldCheck className="w-4 h-4 mx-auto text-gold" />
-              <span>{lang === 'pt' ? 'Zero Transparência' : 'Zero See-Through'}</span>
+              <ShieldCheck className="w-4 h-4 mx-auto text-neutral-800" />
+              <span>{lang === 'pt' ? 'Zero Transparência' : '100% Squat-Proof'}</span>
             </div>
+          </div>
+
+          {/* Atendimento no WhatsApp */}
+          <div className="pt-2 text-center">
+            <a
+              href={`https://wa.me/19788608822?text=${encodeURIComponent(
+                `Olá Ana! Gostaria de tirar uma dúvida sobre a peça ${productData.title}:`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-neutral-500 hover:text-black inline-flex items-center gap-1.5 transition"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{lang === 'pt' ? 'Dúvidas sobre tamanho ou tecido? Fale com a Ana no WhatsApp' : 'Questions on size or fit? Chat on WhatsApp'}</span>
+            </a>
           </div>
         </div>
       </div>
 
       {/* =========================================================================
-          MÓDULO DE ABAS (DESCRIÇÃO, MEDIDAS, CUIDADOS, PRÉ-VENDA)
+          ALO YOGA: 3-COLUNAS (DESCRIPTION • FIT & DETAILS • FABRICATION & CARE)
          ========================================================================= */}
-      <section id="product-tabs" className="border-t border-deep-black/10 pt-16 space-y-8 scroll-mt-24">
-        <div className="flex border-b border-deep-black/15 overflow-x-auto no-scrollbar gap-2 sm:gap-6">
-          {[
-            { id: 'desc', label: t('tab.desc'), icon: Sparkles },
-            { id: 'sizing', label: t('tab.sizing'), icon: Ruler },
-            { id: 'care', label: t('tab.care'), icon: Droplets },
-            { id: 'reviews', label: `${lang === 'pt' ? 'AVALIAÇÕES' : 'REVIEWS'} (${productReviews.length})`, icon: Star },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 py-4 px-3 sm:px-4 text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap border-b-2 -mb-[2px] ${
-                  isActive
-                    ? 'border-deep-black text-deep-black bg-white'
-                    : 'border-transparent text-deep-black/40 hover:text-deep-black hover:border-gold/50'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-gold' : 'text-deep-black/30'}`} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="pt-2">
-          {/* ABA 1: PERFORMANCE */}
-          {activeTab === 'desc' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-              <div className="lg:col-span-7 space-y-6">
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
-                    ANA FITNESS WEAR • ATELIER
-                  </span>
-                  <h3 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-deep-black mt-1">
-                    {lang === 'pt' ? 'COMPRESSÃO ANATÔMICA & TOQUE AMANTEIGADO' : 'ANATOMICAL COMPRESSION & BUTTERY-SOFT FEEL'}
-                  </h3>
-                </div>
-
-                <div className="pt-1">
-                  <FormattedDescription
-                    text={lang === 'pt' ? productData.descriptionPt : productData.descriptionEn}
-                  />
-                </div>
-
-                <div className="p-5 border border-deep-black/10 bg-white space-y-3">
-                  <h4 className="text-xs font-black uppercase tracking-widest text-deep-black flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-gold" />
-                    {lang === 'pt' ? 'ZERO TRANSPARÊNCIA COMPROVADA' : 'VERIFIED ZERO SEE-THROUGH'}
-                  </h4>
-                  <p className="text-xs text-deep-black/70 font-medium uppercase tracking-wide leading-relaxed">
-                    {lang === 'pt'
-                      ? 'Nossas peças são rigorosamente testadas sob iluminação direta e flexão máxima. Segurança absoluta para agachar sem preocupações.'
-                      : 'Every silhouette is rigorously tested under high-intensity gym lighting and 90-degree deep squats. Absolute peace of mind.'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
-                {[
-                  {
-                    title: productData.cupsType === 'fixed'
-                      ? (lang === 'pt' ? 'BOJO FIXO ANATÔMICO' : 'BUILT-IN FIXED CUPS')
-                      : productData.cupsType === 'none'
-                      ? (lang === 'pt' ? 'SEM BOJO (FORRO DUPLO)' : 'UNPADDED (DOUBLE LINED)')
-                      : (lang === 'pt' ? 'BOJO REMOVÍVEL INCLUSO' : 'REMOVABLE BRA CUPS'),
-                    desc: productData.cupsType === 'fixed'
-                      ? (lang === 'pt' ? 'Bojo embutido de sustentação anatômica que não sai do lugar durante treinos intensos.' : 'Built-in contour cups engineered to stay perfectly positioned during movement.')
-                      : productData.cupsType === 'none'
-                      ? (lang === 'pt' ? 'Confeccionada sem bojo, com forro duplo de alta compressão para suporte natural e conforto.' : 'Crafted without padding, featuring double-layer compression for natural contour and support.')
-                      : (lang === 'pt' ? 'Acompanha bojo removível para usar com ou sem, personalizando o caimento e o suporte.' : 'Built-in slots allowing effortless insertion or removal of padding for customizable coverage.'),
-                    icon: Sparkles,
-                  },
-                  {
-                    title: lang === 'pt' ? 'ELASTICIDADE 4-WAY STRETCH' : '4-WAY STRETCH RECOVERY',
-                    desc: lang === 'pt' ? 'Fibras elásticas de alta recuperação que acompanham cada repetição sem deformar.' : 'High-recovery spandex fibers that stretch multidirectionally without sagging.',
-                    icon: Activity,
-                  },
-                  {
-                    title: lang === 'pt' ? 'CÓS DUPLO ANTI-ROLAMENTO' : 'ANTI-ROLL DOUBLE WAISTBAND',
-                    desc: lang === 'pt' ? 'Firmeza e sustentação abdominal que dispensam puxões a cada série de exercícios.' : 'Double-layered waist contour that stays securely in place during cardio and lifting.',
-                    icon: Layers,
-                  },
-                  {
-                    title: lang === 'pt' ? 'DRY-FIT & PROTEÇÃO SOLAR' : 'DRY-FIT & UV 50+ DEFENSE',
-                    desc: lang === 'pt' ? 'Secagem acelerada e bloqueio de raios UV para treinos internos e ao ar livre.' : 'Instant sweat wicking with UV 50+ protection for indoor and outdoor endurance.',
-                    icon: Sun,
-                  },
-                ].map((feat, i) => {
-                  const FIcon = feat.icon;
-                  return (
-                    <div key={i} className="p-4 border border-deep-black/10 bg-white hover:border-gold transition space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <FIcon className="w-4 h-4 text-gold" />
-                        <h5 className="text-xs font-black uppercase tracking-wider text-deep-black">
-                          {feat.title}
-                        </h5>
-                      </div>
-                      <p className="text-[11px] text-deep-black/70 font-medium uppercase tracking-wide leading-relaxed">
-                        {feat.desc}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
+      <section className="border-t border-neutral-200 mt-16 pt-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-12 text-xs">
+          {/* COLUNA 1: DESCRIPTION */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-black">
+              {lang === 'pt' ? 'DESCRIÇÃO' : 'DESCRIPTION'}
+            </h3>
+            <div className="text-neutral-600 leading-relaxed font-normal space-y-2">
+              <FormattedDescription
+                text={lang === 'pt' ? productData.descriptionPt : productData.descriptionEn}
+              />
             </div>
-          )}
+          </div>
 
-          {/* ABA 2: TABELA DE MEDIDAS (EM BRANCO SE NÃO PREENCHIDA / PERSONALIZADA PELA LOJISTA) */}
-          {activeTab === 'sizing' && (
-            <div className="pt-2">
-              {productData.sizeGuide && productData.sizeGuide.trim() ? (
-                <div className="p-6 sm:p-8 bg-white border-2 border-deep-black space-y-5">
-                  <div className="flex items-center gap-2 border-b border-deep-black/10 pb-4">
-                    <Ruler className="w-5 h-5 text-gold" />
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
-                        GUIA DE MEDIDAS DA PEÇA
+          {/* COLUNA 2: FIT & DETAILS */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-black">
+              {lang === 'pt' ? 'MODELAGEM & AJUSTE' : 'FIT & DETAILS'}
+            </h3>
+            <ul className="space-y-2 text-neutral-600 leading-relaxed list-disc list-inside">
+              <li>
+                <span className="font-medium text-black">
+                  {lang === 'pt' ? 'Modelagem:' : 'Fit:'}
+                </span>{' '}
+                {lang === 'pt'
+                  ? (productData.fitPt || 'Modelagem anatômica que abraça as curvas com compressão na medida certa.')
+                  : (productData.fitEn || 'Anatomical compression fit that flatters and holds with sculpting power.')}
+              </li>
+              <li>
+                <span className="font-medium text-black">
+                  {lang === 'pt' ? 'Sustentação do Busto:' : 'Cup Support:'}
+                </span>{' '}
+                {productData.cupsType === 'fixed'
+                  ? (lang === 'pt' ? 'Bojo anatômico embutido e costurado (não sai do lugar durante treinos intensos)' : 'Built-in contour cups engineered to stay in place.')
+                  : productData.cupsType === 'none'
+                  ? (lang === 'pt' ? 'Sem bojo, confeccionado com forro duplo de alta compressão para suporte natural' : 'Unpadded silhouette with double-layer compression support.')
+                  : (lang === 'pt' ? 'Acompanha bojo removível anatômico (use com ou sem, conforme preferir)' : 'Removable cups included for customizable shape and coverage.')}
+              </li>
+              <li>
+                <span className="font-medium text-black">
+                  {lang === 'pt' ? 'Cós Anatômico:' : 'Waistband:'}
+                </span>{' '}
+                {lang === 'pt' ? 'Cós duplo de compressão média/alta que não enrola nem desce nos movimentos' : 'Double-layered stay-put waistband that holds without rolling.'}
+              </li>
+              <li>
+                <span className="font-medium text-black">
+                  {lang === 'pt' ? 'Zero Transparência:' : 'Squat-Proof:'}
+                </span>{' '}
+                {lang === 'pt' ? '100% à prova de agachamentos e iluminação forte de estúdio' : '100% squat-proof under direct gym light.'}
+              </li>
+              <li>
+                <span className="font-medium text-black">
+                  {lang === 'pt' ? 'Costuras Flatlock:' : 'Seams:'}
+                </span>{' '}
+                {lang === 'pt' ? 'Costura ultra-plana suave que previne atrito ou marcas na pele' : 'Ultra-flat reinforced seams that prevent chafing.'}
+              </li>
+              {productData.sizeGuide && (
+                <li className="pt-1 list-none">
+                  <button
+                    type="button"
+                    onClick={() => setIsSizeGuideModalOpen(true)}
+                    className="text-[11px] font-bold text-black underline hover:text-gold cursor-pointer inline-flex items-center gap-1"
+                  >
+                    <Ruler className="w-3.5 h-3.5" />
+                    <span>{lang === 'pt' ? 'Ver Tabela de Medidas da Peça' : 'View Detailed Size Chart'}</span>
+                  </button>
+                </li>
+              )}
+            </ul>
+          </div>
+
+          {/* COLUNA 3: FABRICATION & CARE */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-black">
+              {lang === 'pt' ? 'TECIDO & CUIDADOS' : 'FABRICATION & CARE'}
+            </h3>
+            <ul className="space-y-2 text-neutral-600 leading-relaxed list-disc list-inside">
+              <li>
+                <span className="font-medium text-black">
+                  {lang === 'pt' ? 'Composição:' : 'Fabrication:'}
+                </span>{' '}
+                {productData.composition || productData.material || (lang === 'pt' ? 'Poliamida Premium com Elastano LYCRA® de alta densidade' : 'Premium Polyamide with high-density LYCRA® Spandex')}
+              </li>
+              <li>
+                <span className="font-medium text-black">
+                  {lang === 'pt' ? 'Toque:' : 'Handfeel:'}
+                </span>{' '}
+                {lang === 'pt' ? 'Toque macio amanteigado (buttery-soft) de alta respirabilidade' : 'Buttery-soft luxury handfeel with breathable micro-fibers.'}
+              </li>
+              <li>
+                <span className="font-medium text-black">
+                  {lang === 'pt' ? 'Elasticidade:' : 'Stretch:'}
+                </span>{' '}
+                {lang === 'pt' ? '4-Way Stretch multidirecional que não laceia nem perde a memória elástica' : '4-Way Stretch recovery that holds its shape wash after wash.'}
+              </li>
+              <li>
+                <span className="font-medium text-black">
+                  {lang === 'pt' ? 'Tecnologia:' : 'Tech:'}
+                </span>{' '}
+                {lang === 'pt' ? 'Secagem rápida Dry-Fit com proteção UV 50+ para treinos ao ar livre' : 'Moisture-wicking Dry-Fit with built-in UV 50+ sun protection.'}
+              </li>
+              <li>
+                <span className="font-medium text-black">
+                  {lang === 'pt' ? 'Lavagem:' : 'Care:'}
+                </span>{' '}
+                {lang === 'pt' ? 'Lavar em água fria no ciclo delicado, do avesso. Secar à sombra' : 'Machine wash cold on gentle cycle inside-out. Air dry in shade.'}
+              </li>
+              <li>
+                <span className="font-medium text-black">
+                  {lang === 'pt' ? 'Dica de ouro:' : 'Pro tip:'}
+                </span>{' '}
+                {lang === 'pt' ? 'Não usar amaciante nem secadora de ar quente para preservar as fibras elásticas' : 'Skip softeners and high-heat drying to maximize lifespan.'}
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          ALO YOGA: PRODUTOS SIMILARES (SIMILAR ITEMS)
+         ========================================================================= */}
+      {similarItems && similarItems.length > 0 && (
+        <section className="border-t border-neutral-200 mt-16 pt-12">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-black">
+              {lang === 'pt' ? 'PRODUTOS SIMILARES' : 'SIMILAR ITEMS'}
+            </h3>
+            <Link
+              href="/catalogo"
+              className="text-[11px] font-medium text-neutral-500 hover:text-black underline uppercase tracking-wider"
+            >
+              {lang === 'pt' ? 'Ver Coleção Completa →' : 'View All Collection →'}
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            {similarItems.map((item: any) => {
+              const itemImg = item.primaryImage || item.image || item.media?.[0]?.url || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80';
+              const itemPrice = Number(item.price) || 44.9;
+              return (
+                <Link
+                  key={item.id || item.slug}
+                  href={`/produto/${item.slug}`}
+                  className="group block"
+                >
+                  <div className="aspect-[3/4] bg-neutral-100 overflow-hidden relative mb-2.5">
+                    <img
+                      src={itemImg}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                    {item.badgePt && (
+                      <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-black text-white px-2 py-0.5">
+                        {lang === 'pt' ? item.badgePt : (item.badgeEn || item.badgePt)}
                       </span>
-                      <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-deep-black">
-                        {lang === 'pt' ? 'MEDIDAS OFICIAIS' : 'OFFICIAL MEASUREMENTS'}
-                      </h3>
-                    </div>
+                    )}
                   </div>
-
-                  <div className="p-4 bg-stone-50 border border-deep-black/10 text-xs sm:text-sm font-mono whitespace-pre-wrap leading-relaxed text-deep-black">
-                    {productData.sizeGuide}
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-deep-black/10 text-xs">
-                    <span className="text-deep-black/70">
-                      {lang === 'pt' ? 'Ficou com dúvida sobre qual tamanho veste melhor em você?' : 'Need personalized advice on sizing?'}
-                    </span>
-                    <a
-                      href={`https://wa.me/19783139452?text=${encodeURIComponent(`Olá Ana! Gostaria de confirmar as medidas do produto: ${productData.title}`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-[#25D366] hover:bg-[#1ebe5b] text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-2 shrink-0"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>{lang === 'pt' ? 'Tirar Dúvida no WhatsApp' : 'Ask Sizing on WhatsApp'}</span>
-                    </a>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-8 sm:p-10 bg-white border-2 border-deep-black text-center space-y-4 max-w-2xl mx-auto">
-                  <div className="w-12 h-12 rounded-full bg-deep-black text-gold flex items-center justify-center mx-auto shadow-sm">
-                    <Ruler className="w-6 h-6" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-deep-black">
-                      {lang === 'pt' ? 'MEDIDAS SOB CONSULTA' : 'MEASUREMENTS ON REQUEST'}
-                    </h3>
-                    <p className="text-xs text-deep-black/70 max-w-md mx-auto leading-relaxed">
-                      {lang === 'pt'
-                        ? 'As medidas desta peça estão disponíveis para confirmação rápida com nossa consultora no WhatsApp. Auxiliamos na escolha do caimento perfeito para o seu corpo!'
-                        : 'Detailed measurements for this piece can be checked directly with our fit consultant on WhatsApp. We ensure your flawless silhouette!'}
+                  <div className="space-y-0.5">
+                    <h4 className="text-xs font-medium text-neutral-900 group-hover:underline truncate">
+                      {item.title}
+                    </h4>
+                    <p className="text-xs text-neutral-600 font-mono font-medium">
+                      ${itemPrice.toFixed(2)}
                     </p>
                   </div>
-                  <div className="pt-2">
-                    <a
-                      href={`https://wa.me/19783139452?text=${encodeURIComponent(`Olá Ana! Gostaria de saber as medidas do produto: ${productData.title}`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-[#25D366] hover:bg-[#1ebe5b] text-white text-xs font-black uppercase tracking-wider transition shadow-sm"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>{lang === 'pt' ? 'Consultar Medidas no WhatsApp' : 'Check Measurements on WhatsApp'}</span>
-                    </a>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
-          {/* ABA 3: CUIDADOS & LAVAGEM */}
-          {activeTab === 'care' && (
-            <div className="space-y-8">
-              <div className="max-w-3xl space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
-                  GARMENT PRESERVATION
-                </span>
-                <h3 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-deep-black">
-                  {lang === 'pt' ? 'INSTRUÇÕES DE LAVAGEM' : 'WASH & CARE INSTRUCTIONS'}
-                </h3>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  {
-                    title: lang === 'pt' ? 'ÁGUA FRIA' : 'COLD WATER WASH',
-                    desc: lang === 'pt' ? 'Lavar em água fria no ciclo delicado e com a peça virada do avesso.' : 'Gentle cycle with cold water, inside-out.',
-                    icon: Droplets,
-                  },
-                  {
-                    title: lang === 'pt' ? 'SEM AMACIANTE' : 'NO FABRIC SOFTENERS',
-                    desc: lang === 'pt' ? 'Amaciantes impermeabilizam os microporos respiráveis.' : 'Softeners damage the breathable Dry-Fit fibers.',
-                    icon: Shield,
-                  },
-                  {
-                    title: lang === 'pt' ? 'SECAGEM NATURAL' : 'NATURAL AIR DRY',
-                    desc: lang === 'pt' ? 'Secar à sombra. Não usar secadora de alta temperatura.' : 'Air dry in shade. Avoid high-heat tumble dryers.',
-                    icon: Wind,
-                  },
-                  {
-                    title: lang === 'pt' ? 'NÃO PASSAR A FERRO' : 'NO IRONING',
-                    desc: lang === 'pt' ? 'O tecido não amassa e o calor excessivo prejudica o elastano.' : 'Fabric is naturally wrinkle-free. Protect the spandex.',
-                    icon: Scissors,
-                  },
-                ].map((c, i) => {
-                  const CIcon = c.icon;
-                  return (
-                    <div key={i} className="p-5 border border-deep-black/15 bg-white space-y-2.5">
-                      <div className="w-10 h-10 rounded-full bg-deep-black text-gold flex items-center justify-center">
-                        <CIcon className="w-5 h-5" />
-                      </div>
-                      <h4 className="text-xs font-black uppercase tracking-wider text-deep-black">
-                        {c.title}
-                      </h4>
-                      <p className="text-[11px] text-deep-black/70 font-medium uppercase tracking-wide leading-relaxed">
-                        {c.desc}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-
-
-          {/* ABA 5: AVALIAÇÕES & PROVA SOCIAL */}
-          {activeTab === 'reviews' && (
-            <div className="space-y-8 animate-fadeIn">
+      {/* =========================================================================
+          ALO YOGA: AVALIAÇÕES DE CLIENTES (CUSTOMER REVIEWS)
+         ========================================================================= */}
+      <section id="reviews-section" className="border-t border-neutral-200 mt-16 pt-12 scroll-mt-20">
+        <div className="space-y-8 animate-fadeIn">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white border-2 border-deep-black p-6 sm:p-8">
                 <div className="space-y-2">
                   <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
@@ -2262,8 +2079,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 </div>
               )}
             </div>
-          )}
-        </div>
       </section>
 
       {/* Modal Universal de Compartilhamento */}
