@@ -87,15 +87,22 @@ export function DashboardMetricsView({
     }
   };
 
-  // 1. Resumo de Vendas: Dia, Semana, Mês
+  // 1. Resumo de Vendas: Dia, Semana, Mês (Fuso NY/MA, sempre valor real com desconto retirado)
+  const nyTodayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+  const nyMonthStr = nyTodayStr.substring(0, 7);
+  const currentMonthLabel = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase();
   const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).getTime();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
   let salesToday = 0;
+  let discountToday = 0;
+  let costToday = 0;
+  let grossProfitToday = 0;
   let salesWeek = 0;
   let salesMonth = 0;
+  let discountMonth = 0;
+  let costMonth = 0;
+  let grossProfitMonth = 0;
   let totalGross = 0;
   let totalNetProfit = 0;
 
@@ -105,26 +112,43 @@ export function DashboardMetricsView({
   let cancelledOrdersCount = 0;
 
   sales.forEach((s: any) => {
-    const saleDate = new Date(s.created_at).getTime();
-    const gross = (Number(s.subtotal_products) || 0) + (Number(s.shipping_fee) || 0) - (Number(s.discount_amount) || 0);
-    const net = Number(s.net_profit) || 0;
-
-    totalGross += gross;
-    totalNetProfit += net;
-
-    if (saleDate >= startOfDay) salesToday += gross;
-    if (saleDate >= startOfWeek) salesWeek += gross;
-    if (saleDate >= startOfMonth) salesMonth += gross;
-
     const st = (s.status || '').toUpperCase();
+    const isCancelled = st === 'CANCELLED';
+    const isWriteOff = s.order_id?.startsWith('OUT-') || s.channel === 'WRITE_OFF';
+
     if (st === 'COMPLETED' || st === 'PAID' || st === 'DELIVERED' || st === 'SHIPPED') {
       paidOrdersCount++;
     } else if (st === 'IN_PRODUCTION') {
       inProductionOrdersCount++;
-    } else if (st === 'CANCELLED') {
+    } else if (isCancelled) {
       cancelledOrdersCount++;
-    } else {
+    } else if (!isWriteOff) {
       pendingOrdersCount++;
+    }
+
+    if (isCancelled || isWriteOff) return;
+
+    const fin = computeSaleFinancials(s);
+    const saleDate = new Date(s.created_at).getTime();
+    const dNyStr = s.created_at
+      ? new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(s.created_at))
+      : '';
+
+    totalGross += fin.afterDiscount;
+    totalNetProfit += fin.netProfit;
+
+    if (dNyStr === nyTodayStr) {
+      salesToday += fin.afterDiscount;
+      discountToday += fin.discount;
+      costToday += fin.costOfGoods;
+      grossProfitToday += fin.grossProfit;
+    }
+    if (saleDate >= startOfWeek) salesWeek += fin.afterDiscount;
+    if (dNyStr.startsWith(nyMonthStr)) {
+      salesMonth += fin.afterDiscount;
+      discountMonth += fin.discount;
+      costMonth += fin.costOfGoods;
+      grossProfitMonth += fin.grossProfit;
     }
   });
 
@@ -984,19 +1008,26 @@ export function DashboardMetricsView({
                   <span>1. VENDA DO DIA</span>
                 </span>
                 <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[9px] font-black uppercase">
-                  HOJE
+                  REAL C/ DESC.
                 </span>
               </div>
               <div className="text-2xl sm:text-3xl font-black text-deep-black font-mono mt-1">
                 ${salesToday.toFixed(2)}
               </div>
               <p className="text-[10px] text-deep-black/60 uppercase font-bold mt-1">
-                {todayOrders.length === 1 ? '1 pedido registrado hoje' : `${todayOrders.length} pedidos registrados hoje`}
+                {todayOrders.length === 1 ? '1 pedido hoje' : `${todayOrders.length} pedidos hoje`}
+                {discountToday > 0 ? ` • Desc: -$${discountToday.toFixed(2)}` : ''}
               </p>
             </div>
-            <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px]">
-              <span className="text-deep-black/60 font-bold uppercase">Status:</span>
-              <span className="font-mono font-black text-emerald-700">Faturado Hoje</span>
+            <div className="pt-2 border-t border-deep-black/10 space-y-1 text-[10px] font-mono">
+              <div className="flex items-center justify-between">
+                <span className="text-deep-black/60 font-bold uppercase">Custo Peças:</span>
+                <span className="font-black text-red-700">-${costToday.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-deep-black font-black uppercase">Lucro Bruto:</span>
+                <span className="font-black text-emerald-700">${grossProfitToday.toFixed(2)}</span>
+              </div>
             </div>
           </div>
 
@@ -1009,19 +1040,25 @@ export function DashboardMetricsView({
                   <span>2. ACUMULADO DO MÊS</span>
                 </span>
                 <span className="px-1.5 py-0.5 bg-gold/20 text-deep-black border border-gold/40 text-[9px] font-black uppercase font-mono">
-                  MÊS ATUAL
+                  {currentMonthLabel}
                 </span>
               </div>
               <div className="text-2xl sm:text-3xl font-black text-deep-black font-mono mt-1">
                 ${salesMonth.toFixed(2)}
               </div>
               <p className="text-[10px] text-deep-black/60 uppercase font-bold mt-1">
-                Receita acumulada do mês corrente
+                Valor real após descontos{discountMonth > 0 ? ` (-$${discountMonth.toFixed(2)})` : ''}
               </p>
             </div>
-            <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px]">
-              <span className="text-deep-black/60 font-bold uppercase">Período:</span>
-              <span className="font-mono font-black text-deep-black">Outubro / 2026</span>
+            <div className="pt-2 border-t border-deep-black/10 space-y-1 text-[10px] font-mono">
+              <div className="flex items-center justify-between">
+                <span className="text-deep-black/60 font-bold uppercase">Custo Peças:</span>
+                <span className="font-black text-red-700">-${costMonth.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-deep-black font-black uppercase">Lucro Bruto:</span>
+                <span className="font-black text-emerald-700">${grossProfitMonth.toFixed(2)}</span>
+              </div>
             </div>
           </div>
 

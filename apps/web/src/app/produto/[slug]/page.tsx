@@ -6,7 +6,15 @@ import { useRouter } from 'next/navigation';
 import { useLanguage } from '../../../context/LanguageContext';
 import { useStoreSettings } from '../../../context/StoreSettingsContext';
 import { trackEvent } from '../../../lib/tracking';
-import { addToCart, getCartItems, getCartItemQty, reconcileCartStockWithCatalog, CartItem } from '@/lib/cart';
+import {
+  addToCart,
+  getCartItems,
+  getCartItemQty,
+  reconcileCartStockWithCatalog,
+  getOrCreateCartSessionId,
+  getReservedQtyForCandidate,
+  CartItem,
+} from '@/lib/cart';
 import ProductShareModal from '../../../components/ProductShareModal';
 import { ProductSizeGuide } from '../../../components/ProductSizeGuide';
 import { FormattedDescription } from '../../../components/FormattedDescription';
@@ -655,15 +663,41 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [isZoomed, setIsZoomed] = useState(false);
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
   const [cartItemsSnapshot, setCartItemsSnapshot] = useState<CartItem[]>([]);
+  const [otherHoldsByKey, setOtherHoldsByKey] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const syncBag = () => setCartItemsSnapshot(getCartItems());
+    const refreshHolds = () => {
+      const sid = getOrCreateCartSessionId();
+      if (!sid) return;
+      fetch(`/api/cart/reservations?session_id=${encodeURIComponent(sid)}`, { cache: 'no-store' })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.byKey) setOtherHoldsByKey(data.byKey);
+        })
+        .catch(() => {});
+    };
+
+    const handleFocus = () => {
+      syncBag();
+      refreshHolds();
+    };
     syncBag();
+    refreshHolds();
     window.addEventListener('ana_cart_updated', syncBag);
+    window.addEventListener('ana_cart_expired', syncBag);
     window.addEventListener('storage', syncBag);
+    window.addEventListener('focus', handleFocus);
+    const timer = setInterval(() => {
+      syncBag();
+      refreshHolds();
+    }, 20000);
     return () => {
       window.removeEventListener('ana_cart_updated', syncBag);
+      window.removeEventListener('ana_cart_expired', syncBag);
       window.removeEventListener('storage', syncBag);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(timer);
     };
   }, []);
 
@@ -1011,10 +1045,18 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       (v: Variant) => v.color.toLowerCase() === selectedColor.toLowerCase()
     );
 
-  // Estoque da variante selecionada
-  const currentStock = currentVariant
+  // Estoque da variante selecionada (descontando reservas temporárias de 3h em sacolas de outras clientes)
+  const rawVariantStock = currentVariant
     ? Math.max(0, Number(currentVariant.stock ?? 0))
     : Math.max(0, Number(productData.stock ?? 0));
+  const heldByOthersForCurrent = getReservedQtyForCandidate(otherHoldsByKey, {
+    sku: currentVariant?.sku,
+    slug,
+    size: selectedSize,
+    color: selectedColor,
+  });
+  const currentStock = Math.max(0, rawVariantStock - heldByOthersForCurrent);
+  const isHeldByAnotherShopper = rawVariantStock > 0 && currentStock <= 0;
   const isOutOfStock = currentStock <= 0 || isSpoilerProduct;
   const qtyInBagForCurrent = getCartItemQty(cartItemsSnapshot, {
     id: productData.id,
@@ -1108,10 +1150,17 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         v.color.toLowerCase() === selectedColor.toLowerCase() &&
         v.size.toUpperCase() === selectedSize.toUpperCase()
     );
-    const stockQty = matchedVariant
+    const rawStockQty = matchedVariant
       ? Math.max(0, Number(matchedVariant.stock ?? 0))
       : Math.max(0, Number(productData.stock ?? 0));
-    if (stockQty <= 0) return; // Bloqueio estrito: sem estoque não adiciona à sacola
+    const heldByOthers = getReservedQtyForCandidate(otherHoldsByKey, {
+      sku: matchedVariant?.sku,
+      slug,
+      size: selectedSize,
+      color: selectedColor,
+    });
+    const stockQty = Math.max(0, rawStockQty - heldByOthers);
+    if (stockQty <= 0) return; // Bloqueio estrito: sem estoque disponível não adiciona à sacola
 
     const cartItemToSave = {
       id: productData.id,
@@ -1589,10 +1638,12 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   <button
                     type="button"
                     onClick={handleActionClick}
-                    disabled={availableSizes.length === 0 || isCurrentVariantMaxedInBag}
+                    disabled={availableSizes.length === 0 || isHeldByAnotherShopper || isCurrentVariantMaxedInBag}
                     className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2.5 shadow-sm ${
                       availableSizes.length === 0
                         ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                        : isHeldByAnotherShopper
+                        ? 'bg-amber-100 text-amber-950 border-2 border-amber-400 cursor-not-allowed'
                         : isCurrentVariantMaxedInBag
                         ? 'bg-emerald-600 text-white cursor-not-allowed'
                         : 'bg-black hover:bg-neutral-800 text-white cursor-pointer'
@@ -1600,7 +1651,11 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   >
                     <ShoppingBag className="w-4 h-4" />
                     <span>
-                      {isCurrentVariantMaxedInBag
+                      {isHeldByAnotherShopper
+                        ? (lang === 'pt'
+                            ? '⏳ RESERVADO EM OUTRA SACOLA • LIBERA EM 3H'
+                            : '⏳ HELD IN ANOTHER BAG • RELEASES IN 3H')
+                        : isCurrentVariantMaxedInBag
                         ? (lang === 'pt'
                             ? `✓ MÁX. DO ESTOQUE NA SACOLA (${qtyInBagForCurrent}/${currentStock})`
                             : `✓ MAX STOCK IN BAG (${qtyInBagForCurrent}/${currentStock})`)

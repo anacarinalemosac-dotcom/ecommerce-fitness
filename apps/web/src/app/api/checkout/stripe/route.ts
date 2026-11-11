@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe, isStripeConfigured } from '@/lib/stripe';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { enrichOrderItemsWithCatalog, loadCatalogProductsForOrderMatch } from '@/lib/orderItemEnricher';
+import { loadActiveCartReservations, summarizeOtherSessionHolds } from '@/lib/cartReservationsStore';
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,6 +20,7 @@ export async function POST(req: NextRequest) {
       payment_method = 'card',
       delivery_method = 'DELIVERY',
       shipping_fee,
+      cart_session_id,
     } = body;
 
     const origin = req.headers.get('origin') || 'https://anafitwear.com';
@@ -43,6 +45,8 @@ export async function POST(req: NextRequest) {
 
     // Valida rigorosamente se a quantidade solicitada de cada item não ultrapassa o estoque disponível
     if (Array.isArray(catalogProducts) && catalogProducts.length > 0) {
+      const activeHolds = await loadActiveCartReservations();
+      const { byKey: otherHoldsByKey } = summarizeOtherSessionHolds(activeHolds, cart_session_id);
       const requestedPerSku = new Map<string, { qty: number; available: number; title: string }>();
       for (const it of enrichedItems) {
         const matchedProd = catalogProducts.find(
@@ -63,7 +67,11 @@ export async function POST(req: NextRequest) {
         if (!matchedVar || matchedVar.allow_backorder) continue;
 
         const key = (matchedVar.sku || `${matchedProd.slug}-${matchedVar.color}-${matchedVar.size}`).toUpperCase();
-        const available = Math.max(0, Number(matchedVar.stock_quantity ?? 0));
+        const skuHoldKey = matchedVar.sku ? `SKU:${String(matchedVar.sku).trim().toUpperCase()}` : '';
+        const ssHoldKey = `SS:${String(matchedProd.slug || '').trim().toLowerCase()}::${String(matchedVar.size || '').trim().toUpperCase()}`;
+        const heldByOthers = Math.max(0, Number((skuHoldKey && otherHoldsByKey[skuHoldKey]) ?? otherHoldsByKey[ssHoldKey] ?? 0));
+        const rawStock = Math.max(0, Number(matchedVar.stock_quantity ?? 0));
+        const available = Math.max(0, rawStock - heldByOthers);
         const prev = requestedPerSku.get(key) || { qty: 0, available, title: `${matchedProd.title} (${matchedVar.size})` };
         prev.qty += Math.max(1, Number(it.quantity) || 1);
         requestedPerSku.set(key, prev);

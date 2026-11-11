@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import ProductShareModal from '../components/ProductShareModal';
-import { addToCart, getCartItems, getCartItemQty, reconcileCartStockWithCatalog, CartItem } from '@/lib/cart';
+import { addToCart, getCartItems, getCartItemQty, reconcileCartStockWithCatalog, getOrCreateCartSessionId, getReservedQtyForCandidate, CartItem } from '@/lib/cart';
 import { translateProductTitle, translateColorName, translateBadgeText, translateDynamicContent } from '../lib/translateFitness';
 import {
   Sparkles,
@@ -358,15 +358,37 @@ export default function HomePage() {
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
   const [quickAddedItem, setQuickAddedItem] = useState<{ id: string; size: string; limitReached?: boolean; maxStock?: number } | null>(null);
   const [cartItemsSnapshot, setCartItemsSnapshot] = useState<CartItem[]>([]);
+  const [otherHoldsByKey, setOtherHoldsByKey] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const syncBag = () => setCartItemsSnapshot(getCartItems());
+    const refreshHolds = () => {
+      const sid = getOrCreateCartSessionId();
+      if (!sid) return;
+      fetch(`/api/cart/reservations?session_id=${encodeURIComponent(sid)}`, { cache: 'no-store' })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.byKey) setOtherHoldsByKey(data.byKey);
+        })
+        .catch(() => {});
+    };
+    const handleFocus = () => {
+      syncBag();
+      refreshHolds();
+    };
     syncBag();
+    refreshHolds();
     window.addEventListener('ana_cart_updated', syncBag);
+    window.addEventListener('ana_cart_expired', syncBag);
     window.addEventListener('storage', syncBag);
+    window.addEventListener('focus', handleFocus);
+    const interval = setInterval(handleFocus, 20000);
     return () => {
       window.removeEventListener('ana_cart_updated', syncBag);
+      window.removeEventListener('ana_cart_expired', syncBag);
       window.removeEventListener('storage', syncBag);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
     };
   }, []);
 
@@ -488,9 +510,16 @@ export default function HomePage() {
     if (prod) {
       const chosenColor = preferredColor || cardSelectedColors[id] || '';
       const matchedVariant = getCardVariantFor(prod, size, chosenColor);
-      resolvedMaxStock = matchedVariant
+      const rawVariantMax = matchedVariant
         ? Math.max(0, Number(matchedVariant.stock_quantity ?? matchedVariant.stock ?? 0))
         : Math.max(0, Number(prod.stock ?? 0));
+      const heldByOthers = getReservedQtyForCandidate(otherHoldsByKey, {
+        sku: matchedVariant?.sku,
+        slug: prod.slug,
+        size,
+        color: matchedVariant?.color || chosenColor,
+      });
+      resolvedMaxStock = Math.max(0, rawVariantMax - heldByOthers);
 
       if (resolvedMaxStock <= 0) {
         return;
@@ -1517,9 +1546,19 @@ export default function HomePage() {
                       : selectableSizes[0] || '';
                   const isOutOfStock = !isSpoiler && inStockSizes.length === 0;
                   const selectedVariantObj = selectedCardSize ? getCardVariantFor(product, selectedCardSize, activeColor) : null;
-                  const selectedVariantStock = selectedVariantObj
+                  const rawSelectedVariantStock = selectedVariantObj
                     ? Math.max(0, Number(selectedVariantObj.stock_quantity ?? selectedVariantObj.stock ?? 0))
                     : Math.max(0, Number(product.stock ?? 0));
+                  const heldByOthersForSelected = selectedCardSize
+                    ? getReservedQtyForCandidate(otherHoldsByKey, {
+                        sku: selectedVariantObj?.sku,
+                        slug: product.slug,
+                        size: selectedCardSize,
+                        color: selectedVariantObj?.color || activeColor,
+                      })
+                    : 0;
+                  const selectedVariantStock = Math.max(0, rawSelectedVariantStock - heldByOthersForSelected);
+                  const isSelectedHeldByOtherShopper = rawSelectedVariantStock > 0 && selectedVariantStock <= 0;
                   const selectedVariantSku = selectedVariantObj?.sku || `${product.slug}-${selectedCardSize}`;
                   const qtyInBagForSelected = selectedCardSize
                     ? getCartItemQty(cartItemsSnapshot, {
@@ -1665,9 +1704,16 @@ export default function HomePage() {
                                     ? (upperSz === 'S' || upperSz === 'P' ? 'P' : upperSz === 'M' ? 'M' : upperSz === 'L' || upperSz === 'G' ? 'G' : upperSz === 'XL' || upperSz === 'GG' ? 'GG' : size)
                                     : size;
                                   const szVar = getCardVariantFor(product, size, activeColor);
-                                  const szStock = szVar
+                                  const rawSzStock = szVar
                                     ? Math.max(0, Number(szVar.stock_quantity ?? szVar.stock ?? 0))
                                     : Math.max(0, Number(product.stock ?? 0));
+                                  const szHeldByOthers = getReservedQtyForCandidate(otherHoldsByKey, {
+                                    sku: szVar?.sku,
+                                    slug: product.slug,
+                                    size,
+                                    color: szVar?.color || activeColor,
+                                  });
+                                  const szStock = Math.max(0, rawSzStock - szHeldByOthers);
                                   const szInBag = getCartItemQty(cartItemsSnapshot, {
                                     id: product.id,
                                     slug: product.slug,
@@ -1675,7 +1721,7 @@ export default function HomePage() {
                                     size,
                                     color: szVar?.color || activeColor,
                                   });
-                                  const isSzMaxed = szStock > 0 && szInBag >= szStock;
+                                  const isSzMaxed = (szStock > 0 && szInBag >= szStock) || (rawSzStock > 0 && szStock <= 0);
                                   return (
                                     <button
                                       key={size}
@@ -1891,27 +1937,37 @@ export default function HomePage() {
                             : selectedCardSize;
                           return (
                             <div className="space-y-1.5">
-                              {selectedVariantStock === 1 && !isSelectedSizeMaxedInBag && (
+                              {selectedVariantStock === 1 && !isSelectedSizeMaxedInBag && !isSelectedHeldByOtherShopper && (
                                 <span className="block text-[9.5px] font-black uppercase text-amber-700 tracking-wider text-center">
                                   ⚠️ {lang === 'pt' ? 'Última unidade em estoque!' : 'Only 1 left in stock!'}
                                 </span>
                               )}
                               <button
                                 type="button"
-                                disabled={isSelectedSizeMaxedInBag}
+                                disabled={isSelectedHeldByOtherShopper || isSelectedSizeMaxedInBag}
                                 onClick={(e) => {
-                                  if (isSelectedSizeMaxedInBag) return;
+                                  if (isSelectedHeldByOtherShopper || isSelectedSizeMaxedInBag) return;
                                   handleQuickAdd(product.id, selectedCardSize, e, activeColor);
                                 }}
                                 className={`w-full py-2.5 px-3 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm border-2 ${
-                                  isSelectedSizeMaxedInBag
+                                  isSelectedHeldByOtherShopper
+                                    ? 'bg-amber-50 text-amber-950 border-amber-400 cursor-not-allowed'
+                                    : isSelectedSizeMaxedInBag
                                     ? 'bg-emerald-50 text-emerald-900 border-emerald-600 cursor-not-allowed'
                                     : wasJustAdded
                                     ? 'bg-emerald-600 text-white border-emerald-700 cursor-pointer'
                                     : 'bg-deep-black hover:bg-gold text-white hover:text-deep-black border-deep-black active:scale-[0.98] cursor-pointer'
                                 }`}
                               >
-                                {isSelectedSizeMaxedInBag ? (
+                                {isSelectedHeldByOtherShopper ? (
+                                  <>
+                                    <span>
+                                      {lang === 'pt'
+                                        ? '⏳ EM OUTRA SACOLA (LIBERA EM 3H)'
+                                        : '⏳ HELD IN BAG (RELEASES IN 3H)'}
+                                    </span>
+                                  </>
+                                ) : isSelectedSizeMaxedInBag ? (
                                   <>
                                     <Check className="w-3.5 h-3.5 stroke-[3] text-emerald-700" />
                                     <span>

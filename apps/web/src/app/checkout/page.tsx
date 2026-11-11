@@ -14,11 +14,13 @@ import {
 import {
   getCartItems,
   saveCartItems,
+  clearCart,
   removeCartItem,
   updateCartItemQuantity,
   calculateComboDiscount,
   resolveVariantStockFromCatalog,
   reconcileCartStockWithCatalog,
+  getOrCreateCartSessionId,
   CartItem as BaseCartItem,
 } from '../../lib/cart';
 import {
@@ -795,6 +797,7 @@ export default function CheckoutPage() {
             coupon_code: appliedCoupon,
             seller_name: couponSellerInfo ? couponSellerInfo.name : 'Loja Oficial Online',
             discount_amount: totalDiscount,
+            cart_session_id: getOrCreateCartSessionId(),
             items: effectiveItems.map((it) => ({
               title: it.title,
               size: it.size,
@@ -919,8 +922,8 @@ export default function CheckoutPage() {
     }
 
     // Esvazia a sacola com sucesso e despacha evento global
-    localStorage.removeItem('ana_cart_item');
-    window.dispatchEvent(new Event('ana_cart_updated'));
+    clearCart();
+    setCartItems([]);
     setCartItem(null);
 
     setIsSubmitting(false);

@@ -1800,6 +1800,7 @@ export default function BackofficeDashboard() {
       totalShippingCost += fin.shippingCost;
     });
 
+    const totalGrossProfit = Number((totalAfterDiscount - totalCogs).toFixed(2));
     const marginPct = totalAfterDiscount > 0 ? (totalProfit / totalAfterDiscount) * 100 : 0;
 
     return {
@@ -1808,6 +1809,7 @@ export default function BackofficeDashboard() {
       totalDiscounts,
       totalAfterDiscount,
       totalCogs,
+      totalGrossProfit,
       totalCommissions,
       totalFees,
       totalShippingCollected,
@@ -4299,27 +4301,67 @@ export default function BackofficeDashboard() {
         const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
         const currentMonthStr = todayStr.substring(0, 7);
 
-        // 1. Venda do Dia (Hoje)
+        // 1. Venda do Dia (Hoje) - sempre usando valor real após descontos, custo e lucro bruto
         const todayOrders = activeSales.filter((s: any) => {
           if (!s.created_at) return false;
           const dStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(s.created_at));
           return dStr === todayStr;
         });
-        const todayRevenue = todayOrders.reduce((acc: number, s: any) => acc + (Number(s.subtotal_products) || 0) + (Number(s.shipping_fee) || 0), 0);
-        const todayProfit = todayOrders.reduce((acc: number, s: any) => acc + (Number(s.net_profit) || 0), 0);
+        const todayFinancials = todayOrders.reduce(
+          (acc: { gross: number; discount: number; real: number; cost: number; grossProfit: number; net: number }, s: any) => {
+            const fin = computeSaleFinancials(s);
+            return {
+              gross: acc.gross + fin.totalGross,
+              discount: acc.discount + fin.discount,
+              real: acc.real + fin.afterDiscount,
+              cost: acc.cost + fin.costOfGoods,
+              grossProfit: acc.grossProfit + fin.grossProfit,
+              net: acc.net + fin.netProfit,
+            };
+          },
+          { gross: 0, discount: 0, real: 0, cost: 0, grossProfit: 0, net: 0 }
+        );
+        const todayRevenue = todayFinancials.real;
+        const todayProfit = todayFinancials.net;
 
-        // 2. Acumulado do Mês
+        // 2. Acumulado do Mês (valor real após descontos, custo e lucro bruto)
         const monthOrders = activeSales.filter((s: any) => {
           if (!s.created_at) return false;
           const dStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(s.created_at));
           return dStr.startsWith(currentMonthStr);
         });
-        const monthRevenue = monthOrders.reduce((acc: number, s: any) => acc + (Number(s.subtotal_products) || 0) + (Number(s.shipping_fee) || 0), 0);
-        const monthProfit = monthOrders.reduce((acc: number, s: any) => acc + (Number(s.net_profit) || 0), 0);
+        const monthFinancials = monthOrders.reduce(
+          (acc: { gross: number; discount: number; real: number; cost: number; grossProfit: number; net: number }, s: any) => {
+            const fin = computeSaleFinancials(s);
+            return {
+              gross: acc.gross + fin.totalGross,
+              discount: acc.discount + fin.discount,
+              real: acc.real + fin.afterDiscount,
+              cost: acc.cost + fin.costOfGoods,
+              grossProfit: acc.grossProfit + fin.grossProfit,
+              net: acc.net + fin.netProfit,
+            };
+          },
+          { gross: 0, discount: 0, real: 0, cost: 0, grossProfit: 0, net: 0 }
+        );
+        const monthRevenue = monthFinancials.real;
+        const monthProfit = monthFinancials.net;
 
         // 3. O Meu Lucro
-        const totalNetProfit = salesData?.summary?.totalNetProfit ?? activeSales.reduce((acc: number, s: any) => acc + (Number(s.net_profit) || 0), 0);
-        const totalGrossRevenue = salesData?.summary?.totalGrossRevenue ?? activeSales.reduce((acc: number, s: any) => acc + (Number(s.subtotal_products) || 0) + (Number(s.shipping_fee) || 0), 0);
+        const allFinancials = activeSales.reduce(
+          (acc: { real: number; cost: number; grossProfit: number; net: number }, s: any) => {
+            const fin = computeSaleFinancials(s);
+            return {
+              real: acc.real + fin.afterDiscount,
+              cost: acc.cost + fin.costOfGoods,
+              grossProfit: acc.grossProfit + fin.grossProfit,
+              net: acc.net + fin.netProfit,
+            };
+          },
+          { real: 0, cost: 0, grossProfit: 0, net: 0 }
+        );
+        const totalNetProfit = salesData?.summary?.totalNetProfit ?? allFinancials.net;
+        const totalGrossRevenue = allFinancials.real;
 
         // 3.1 Despesas de Produtos Retirados (Uso Próprio, Brindes, Influencers, Mostruário)
         const totalWriteOffCost = writeOffsData?.summary?.totalCostValue || 0;
@@ -4441,21 +4483,30 @@ export default function BackofficeDashboard() {
                         <span>1. VENDA DO DIA</span>
                       </span>
                       <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase font-mono border border-emerald-300">
-                        HOJE
+                        REAL C/ DESC.
                       </span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-black text-deep-black font-mono mt-2">
                       ${todayRevenue.toFixed(2)}
                     </div>
-                    <p className="text-[11px] text-deep-black/60 uppercase font-bold mt-1">
-                      {todayOrders.length === 1 ? '1 pedido registrado hoje' : `${todayOrders.length} pedidos registrados hoje`}
+                    <p className="text-[10.5px] text-deep-black/60 uppercase font-bold mt-1">
+                      {todayOrders.length === 1 ? '1 pedido hoje' : `${todayOrders.length} pedidos hoje`}
+                      {todayFinancials.discount > 0 ? ` • Desc: -$${todayFinancials.discount.toFixed(2)}` : ''}
                     </p>
                   </div>
-                  <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px]">
-                    <span className="text-deep-black/60 font-bold uppercase">Lucro Hoje:</span>
-                    <span className="font-mono font-black text-emerald-700">
-                      ${todayProfit.toFixed(2)}
-                    </span>
+                  <div className="pt-2 border-t border-deep-black/10 space-y-1 text-[10px] font-mono">
+                    <div className="flex items-center justify-between">
+                      <span className="text-deep-black/60 font-bold uppercase">Custo Peças:</span>
+                      <span className="font-black text-red-700">-${todayFinancials.cost.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-deep-black font-black uppercase">Lucro Bruto:</span>
+                      <span className="font-black text-emerald-700">${todayFinancials.grossProfit.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-deep-black/10 pt-1">
+                      <span className="text-deep-black/60 font-bold uppercase">Lucro Líquido:</span>
+                      <span className="font-black text-deep-black">${todayProfit.toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -4468,21 +4519,30 @@ export default function BackofficeDashboard() {
                         <span>2. ACUMULADO DO MÊS</span>
                       </span>
                       <span className="px-1.5 py-0.5 bg-gold/20 text-deep-black border border-gold/40 text-[9px] font-black uppercase font-mono">
-                        MÊS CORRENTE
+                        REAL C/ DESC.
                       </span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-black text-deep-black font-mono mt-2">
                       ${monthRevenue.toFixed(2)}
                     </div>
-                    <p className="text-[11px] text-deep-black/60 uppercase font-bold mt-1">
-                      {monthOrders.length === 1 ? '1 pedido acumulado no mês' : `${monthOrders.length} pedidos acumulados no mês`}
+                    <p className="text-[10.5px] text-deep-black/60 uppercase font-bold mt-1">
+                      {monthOrders.length === 1 ? '1 pedido no mês' : `${monthOrders.length} pedidos no mês`}
+                      {monthFinancials.discount > 0 ? ` • Desc: -$${monthFinancials.discount.toFixed(2)}` : ''}
                     </p>
                   </div>
-                  <div className="pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px]">
-                    <span className="text-deep-black/60 font-bold uppercase">Lucro no Mês:</span>
-                    <span className="font-mono font-black text-deep-black">
-                      ${monthProfit.toFixed(2)}
-                    </span>
+                  <div className="pt-2 border-t border-deep-black/10 space-y-1 text-[10px] font-mono">
+                    <div className="flex items-center justify-between">
+                      <span className="text-deep-black/60 font-bold uppercase">Custo Peças:</span>
+                      <span className="font-black text-red-700">-${monthFinancials.cost.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-deep-black font-black uppercase">Lucro Bruto:</span>
+                      <span className="font-black text-emerald-700">${monthFinancials.grossProfit.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-deep-black/10 pt-1">
+                      <span className="text-deep-black/60 font-bold uppercase">Lucro Líquido:</span>
+                      <span className="font-black text-deep-black">${monthProfit.toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -5377,9 +5437,9 @@ export default function BackofficeDashboard() {
                     </th>
                     <th className="p-3">ITENS & GRADE (COR/TAM)</th>
                     <th className="p-3">PGTO</th>
-                    <th className="p-2.5 text-right whitespace-nowrap">1. VALOR TOTAL</th>
+                    <th className="p-2.5 text-right whitespace-nowrap">1. VALOR BRUTO</th>
                     <th className="p-2.5 text-right whitespace-nowrap">2. DESCONTO</th>
-                    <th className="p-2.5 text-right whitespace-nowrap">3. APÓS DESCONTO</th>
+                    <th className="p-2.5 text-right whitespace-nowrap text-gold">3. VALOR REAL (C/ DESC.)</th>
                     <th className="p-2.5 text-right whitespace-nowrap">4. PREÇO CUSTO</th>
                     <th className="p-2.5 text-right whitespace-nowrap">5. COMISSÕES</th>
                     <th className="p-2.5 text-right whitespace-nowrap">6. TAXAS GATEWAY</th>
@@ -5880,71 +5940,77 @@ export default function BackofficeDashboard() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {/* 1. TOTAL DE VENDA */}
-              <div className="p-3.5 bg-white/10 border border-white/20 space-y-1">
-                <span className="text-[9px] font-black uppercase tracking-wider text-white/70 block">
-                  1. TOTAL DE VENDA
+              {/* 1. VALOR REAL DA VENDA (COM DESCONTO RETIRADO) */}
+              <div className="p-3.5 bg-white/15 border-2 border-gold/60 space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-wider text-gold block">
+                  1. VALOR REAL (C/ DESC.)
                 </span>
                 <p className="text-lg sm:text-xl font-black font-mono text-white">
-                  ${filteredSalesTotals.totalSalesGross.toFixed(2)}
+                  ${filteredSalesTotals.totalAfterDiscount.toFixed(2)}
                 </p>
-                <span className="text-[8px] text-white/50 uppercase block">Faturamento Bruto</span>
+                <span className="text-[8.5px] text-white/70 uppercase block font-mono">
+                  Bruto: ${filteredSalesTotals.totalSalesGross.toFixed(2)} • Desc: -${filteredSalesTotals.totalDiscounts.toFixed(2)}
+                </span>
               </div>
 
-              {/* TOTAL DE CUSTO */}
+              {/* 2. TOTAL DE CUSTO */}
               <div className="p-3.5 bg-white/10 border border-white/20 space-y-1">
                 <span className="text-[9px] font-black uppercase tracking-wider text-white/70 block">
-                  TOTAL DE CUSTO
+                  2. CUSTO DAS PEÇAS
                 </span>
-                <p className="text-lg sm:text-xl font-black font-mono text-white/80">
+                <p className="text-lg sm:text-xl font-black font-mono text-red-300">
                   -${filteredSalesTotals.totalCogs.toFixed(2)}
                 </p>
-                <span className="text-[8px] text-white/50 uppercase block">Custo Confecção</span>
+                <span className="text-[8.5px] text-white/50 uppercase block">Custo Mercadoria (CMV)</span>
               </div>
 
-              {/* TOTAL DE DESCONTO */}
+              {/* 3. LUCRO BRUTO (VALOR REAL - CUSTO) */}
+              <div className="p-3.5 bg-emerald-950/60 border-2 border-emerald-400 space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-wider text-emerald-300 block">
+                  3. LUCRO BRUTO
+                </span>
+                <p className="text-lg sm:text-xl font-black font-mono text-emerald-300">
+                  ${filteredSalesTotals.totalGrossProfit.toFixed(2)}
+                </p>
+                <span className="text-[8.5px] text-emerald-200/80 uppercase block">
+                  Valor Real - Custo Peças
+                </span>
+              </div>
+
+              {/* 4. DESCONTOS (CUPONS & BALCÃO) */}
               <div className="p-3.5 bg-white/10 border border-white/20 space-y-1">
                 <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 block">
-                  TOTAL DESCONTOS
+                  4. DESCONTOS TOTAIS
                 </span>
                 <p className="text-lg sm:text-xl font-black font-mono text-amber-300">
                   -${filteredSalesTotals.totalDiscounts.toFixed(2)}
                 </p>
-                <span className="text-[8px] text-white/50 uppercase block">Cupons & Balcão</span>
+                <span className="text-[8.5px] text-white/50 uppercase block">Cupons, Combo &amp; Balcão</span>
               </div>
 
-              {/* 2. TOTAL DE JURO / TAXAS */}
+              {/* 5. TAXAS & COMISSÕES */}
               <div className="p-3.5 bg-white/10 border border-red-500/30 space-y-1">
                 <span className="text-[9px] font-black uppercase tracking-wider text-red-400 block">
-                  2. TOTAL JUROS / TAXAS
+                  5. TAXAS &amp; COMISSÕES
                 </span>
                 <p className="text-lg sm:text-xl font-black font-mono text-red-400">
-                  -${filteredSalesTotals.totalFees.toFixed(2)}
+                  -${(filteredSalesTotals.totalFees + filteredSalesTotals.totalCommissions).toFixed(2)}
                 </p>
-                <span className="text-[8px] text-white/50 uppercase block">Gateways & Cartão</span>
-              </div>
-
-              {/* 3. TOTAL DE COMISSÃO */}
-              <div className="p-3.5 bg-white/10 border border-white/20 space-y-1">
-                <span className="text-[9px] font-black uppercase tracking-wider text-white/70 block">
-                  3. TOTAL COMISSÃO
+                <span className="text-[8.5px] text-white/60 uppercase block font-mono">
+                  Taxas: -${filteredSalesTotals.totalFees.toFixed(2)} • Com: -${filteredSalesTotals.totalCommissions.toFixed(2)}
                 </span>
-                <p className="text-lg sm:text-xl font-black font-mono text-white">
-                  -${filteredSalesTotals.totalCommissions.toFixed(2)}
-                </p>
-                <span className="text-[8px] text-white/50 uppercase block">Vendedoras Balcão/Online</span>
               </div>
 
-              {/* 4. TOTAL DE LUCRO & 5. TOTAL DE TUDO */}
+              {/* 6. LUCRO LÍQUIDO FINAL */}
               <div className="p-3.5 bg-gold text-deep-black border-2 border-gold space-y-1">
                 <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/80 block">
-                  4. TOTAL LUCRO REAL
+                  6. LUCRO LÍQUIDO REAL
                 </span>
                 <p className="text-lg sm:text-xl font-black font-mono text-deep-black">
                   ${filteredSalesTotals.totalProfit.toFixed(2)}
                 </p>
-                <span className="text-[8px] font-bold text-deep-black/70 uppercase block">
-                  Margem: {filteredSalesTotals.marginPct.toFixed(1)}% retida
+                <span className="text-[8.5px] font-bold text-deep-black/75 uppercase block">
+                  Margem Líq.: {filteredSalesTotals.marginPct.toFixed(1)}%
                 </span>
               </div>
             </div>
@@ -5953,8 +6019,10 @@ export default function BackofficeDashboard() {
               <span className="text-gold font-bold">
                 🏆 BALANÇO CONSOLIDADO (TOTAL DE TUDO):
               </span>
-              <span className="text-white/80">
-                ${filteredSalesTotals.totalSalesGross.toFixed(2)} (Venda) - ${filteredSalesTotals.totalCogs.toFixed(2)} (Custo) - ${filteredSalesTotals.totalDiscounts.toFixed(2)} (Desc) - ${filteredSalesTotals.totalFees.toFixed(2)} (Taxas/Juros) - ${filteredSalesTotals.totalCommissions.toFixed(2)} (Comissão) ={' '}
+              <span className="text-white/85">
+                ${filteredSalesTotals.totalAfterDiscount.toFixed(2)} (Valor Real c/ Desc.) - ${filteredSalesTotals.totalCogs.toFixed(2)} (Custo) ={' '}
+                <strong className="text-emerald-300">${filteredSalesTotals.totalGrossProfit.toFixed(2)} (Lucro Bruto)</strong>{' '}
+                - ${filteredSalesTotals.totalFees.toFixed(2)} (Taxas) - ${filteredSalesTotals.totalCommissions.toFixed(2)} (Comissão) ={' '}
                 <strong className="text-gold underline">${filteredSalesTotals.totalProfit.toFixed(2)} USD LIMPO NO BOLSO</strong>
               </span>
             </div>

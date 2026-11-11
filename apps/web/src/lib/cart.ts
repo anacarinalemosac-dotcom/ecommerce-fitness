@@ -24,9 +24,139 @@ export interface ComboDiscountResult {
   promoTitle: string;
 }
 
+export const CART_EXPIRATION_MS = 3 * 60 * 60 * 1000; // 3 horas
+const CART_EXPIRES_AT_KEY = 'ana_cart_expires_at';
+const CART_SESSION_ID_KEY = 'ana_cart_session_id';
+
+export function getOrCreateCartSessionId(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    let existing = localStorage.getItem(CART_SESSION_ID_KEY);
+    if (!existing) {
+      existing = `cart-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem(CART_SESSION_ID_KEY, existing);
+    }
+    return existing;
+  } catch {
+    return '';
+  }
+}
+
+export function getCartExpiresAt(): number | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(CART_EXPIRES_AT_KEY);
+    if (!raw) return null;
+    const n = Number(raw);
+    return isNaN(n) || n <= 0 ? null : n;
+  } catch {
+    return null;
+  }
+}
+
+export function getCartRemainingMs(): number {
+  const exp = getCartExpiresAt();
+  if (!exp) return 0;
+  return Math.max(0, exp - Date.now());
+}
+
+function syncReservationsWithServer(items: CartItem[], expiresAt?: number | null): void {
+  if (typeof window === 'undefined' || typeof fetch !== 'function') return;
+  try {
+    const sessionId = getOrCreateCartSessionId();
+    if (!sessionId) return;
+
+    if (!items || items.length === 0) {
+      fetch(`/api/cart/reservations?session_id=${encodeURIComponent(sessionId)}`, {
+        method: 'DELETE',
+        keepalive: true,
+      }).catch(() => {});
+      return;
+    }
+
+    fetch('/api/cart/reservations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        session_id: sessionId,
+        items: items.map((it) => ({
+          sku: it.sku,
+          slug: it.slug,
+          size: it.size,
+          color: it.color,
+          quantity: it.quantity || 1,
+        })),
+        expires_at: expiresAt || Date.now() + CART_EXPIRATION_MS,
+      }),
+    }).catch(() => {});
+  } catch (_) {}
+}
+
+export function getReservedQtyForCandidate(
+  holdsByKey: Record<string, number> | undefined | null,
+  candidate: { sku?: string; slug?: string; size?: string; color?: string }
+): number {
+  if (!holdsByKey) return 0;
+  const skuKey = candidate.sku ? `SKU:${String(candidate.sku).trim().toUpperCase()}` : '';
+  if (skuKey && typeof holdsByKey[skuKey] === 'number') {
+    return Math.max(0, holdsByKey[skuKey]);
+  }
+  const slug = String(candidate.slug || '').trim().toLowerCase();
+  const size = String(candidate.size || '').trim().toUpperCase();
+  const color = String(candidate.color || '').trim().toLowerCase();
+  const sscKey = slug && size && color ? `SSC:${slug}::${size}::${color}` : '';
+  if (sscKey && typeof holdsByKey[sscKey] === 'number') {
+    return Math.max(0, holdsByKey[sscKey]);
+  }
+  const ssKey = slug && size ? `SS:${slug}::${size}` : '';
+  if (ssKey && typeof holdsByKey[ssKey] === 'number') {
+    return Math.max(0, holdsByKey[ssKey]);
+  }
+  return 0;
+}
+
+export function enforceCartExpiration(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const rawMulti = localStorage.getItem('ana_cart_items');
+    const rawSingle = localStorage.getItem('ana_cart_item');
+    const hasMulti = Boolean(rawMulti && rawMulti !== '[]');
+    const hasSingle = Boolean(rawSingle);
+
+    if (!hasMulti && !hasSingle) {
+      localStorage.removeItem(CART_EXPIRES_AT_KEY);
+      return false;
+    }
+
+    const expiresAt = getCartExpiresAt();
+    const now = Date.now();
+    if (expiresAt && now >= expiresAt) {
+      localStorage.removeItem('ana_cart_items');
+      localStorage.removeItem('ana_cart_item');
+      localStorage.removeItem('ana_cart_item_backup');
+      localStorage.removeItem(CART_EXPIRES_AT_KEY);
+      syncReservationsWithServer([], null);
+      window.dispatchEvent(new Event('ana_cart_updated'));
+      window.dispatchEvent(new Event('ana_cart_expired'));
+      return true;
+    }
+
+    // Se o carrinho já existia antes da regra de 3h, inicia a contagem de 3h a partir de agora
+    if (!expiresAt) {
+      localStorage.setItem(CART_EXPIRES_AT_KEY, String(now + CART_EXPIRATION_MS));
+    }
+  } catch (_) {}
+  return false;
+}
+
 export function getCartItems(): CartItem[] {
   if (typeof window === 'undefined') return [];
   try {
+    if (enforceCartExpiration()) {
+      return [];
+    }
+
     const rawMulti = localStorage.getItem('ana_cart_items');
     if (rawMulti) {
       const parsed = JSON.parse(rawMulti);
@@ -42,6 +172,9 @@ export function getCartItems(): CartItem[] {
       if (single && typeof single === 'object') {
         const migrated = [single];
         localStorage.setItem('ana_cart_items', JSON.stringify(migrated));
+        if (!getCartExpiresAt()) {
+          localStorage.setItem(CART_EXPIRES_AT_KEY, String(Date.now() + CART_EXPIRATION_MS));
+        }
         return migrated;
       }
     }
@@ -51,16 +184,32 @@ export function getCartItems(): CartItem[] {
   return [];
 }
 
-export function saveCartItems(items: CartItem[]): void {
+export function saveCartItems(
+  items: CartItem[],
+  options?: { preserveExpiry?: boolean; skipServerSync?: boolean }
+): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem('ana_cart_items', JSON.stringify(items));
+    let nextExpiresAt: number | null = null;
     if (items.length > 0) {
       localStorage.setItem('ana_cart_item', JSON.stringify(items[0]));
       localStorage.setItem('ana_cart_item_backup', JSON.stringify(items[0]));
+      const existingExp = getCartExpiresAt();
+      if (options?.preserveExpiry && existingExp && existingExp > Date.now()) {
+        nextExpiresAt = existingExp;
+      } else {
+        nextExpiresAt = Date.now() + CART_EXPIRATION_MS;
+        localStorage.setItem(CART_EXPIRES_AT_KEY, String(nextExpiresAt));
+      }
     } else {
       localStorage.removeItem('ana_cart_item');
       localStorage.removeItem('ana_cart_item_backup');
+      localStorage.removeItem(CART_EXPIRES_AT_KEY);
+    }
+
+    if (!options?.skipServerSync) {
+      syncReservationsWithServer(items, nextExpiresAt);
     }
     window.dispatchEvent(new Event('ana_cart_updated'));
   } catch (err) {
@@ -174,7 +323,7 @@ export function reconcileCartStockWithCatalog(products: any[]): { items: CartIte
   }
 
   if (changed) {
-    saveCartItems(reconciled);
+    saveCartItems(reconciled, { preserveExpiry: true });
   }
   return { items: reconciled, adjusted };
 }
@@ -287,6 +436,8 @@ export function clearCart(): void {
   localStorage.removeItem('ana_cart_items');
   localStorage.removeItem('ana_cart_item');
   localStorage.removeItem('ana_cart_item_backup');
+  localStorage.removeItem(CART_EXPIRES_AT_KEY);
+  syncReservationsWithServer([], null);
   window.dispatchEvent(new Event('ana_cart_updated'));
 }
 

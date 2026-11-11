@@ -1,8 +1,9 @@
 export interface SaleFinancials {
   totalGross: number; // 1. Valor Total (Bruto)
   discount: number; // 2. Valor do Desconto
-  afterDiscount: number; // 3. Valor Após Desconto (Faturado)
+  afterDiscount: number; // 3. Valor Real da Venda (Após Desconto)
   costOfGoods: number; // 4. Valor do Preço de Custo (COGS)
+  grossProfit: number; // 4.1 Lucro Bruto (Valor Real - Custo)
   commission: number; // 5. Valor de Comissões
   fees: number; // 6. Valor de Taxas (Gateways / Stripe)
   netProfit: number; // 7. Valor Final (Lucro Líquido Real)
@@ -29,6 +30,7 @@ export function computeSaleFinancials(sale: any): SaleFinancials {
       discount: 0,
       afterDiscount: 0,
       costOfGoods: 0,
+      grossProfit: 0,
       commission: 0,
       fees: 0,
       netProfit: 0,
@@ -64,33 +66,34 @@ export function computeSaleFinancials(sale: any): SaleFinancials {
 
   const costOfGoods = !isNaN(rawCost) && rawCost > 0 ? rawCost : itemsCostSum;
 
-  const rawSubtotal = Number(sale.subtotal_products) || Number(sale.total_amount) || 0;
+  const rawSubtotal = Number(sale.subtotal_products) || 0;
+  const rawTotalAmount = Number(sale.total_amount) || Number(sale.total) || 0;
 
   let totalGross = 0;
   let afterDiscount = 0;
 
-  if (itemsGrossSum > 0 && discount > 0) {
-    // Se temos a soma dos itens no preço de vitrine
+  if (itemsGrossSum > 0) {
     totalGross = Number((itemsGrossSum + shippingFee).toFixed(2));
     afterDiscount = Math.max(0, Number((totalGross - discount).toFixed(2)));
   } else if (rawSubtotal > 0) {
-    if (discount > 0) {
-      // Se subtotal já estiver com desconto deduzido
-      if (Math.abs(rawSubtotal + shippingFee - (rawSubtotal)) > 0) {
-        totalGross = Number((rawSubtotal + discount + shippingFee).toFixed(2));
-        afterDiscount = Number((rawSubtotal + shippingFee).toFixed(2));
-      } else {
-        totalGross = Number((rawSubtotal + shippingFee).toFixed(2));
-        afterDiscount = Math.max(0, Number((totalGross - discount).toFixed(2)));
-      }
+    if (discount > 0 && rawTotalAmount > 0 && Math.abs((rawSubtotal + shippingFee) - rawTotalAmount) < 0.05) {
+      // Caso legado em que subtotal_products já veio líquido do desconto
+      afterDiscount = Number(rawTotalAmount.toFixed(2));
+      totalGross = Number((afterDiscount + discount).toFixed(2));
     } else {
       totalGross = Number((rawSubtotal + shippingFee).toFixed(2));
-      afterDiscount = totalGross;
+      afterDiscount = Math.max(0, Number((totalGross - discount).toFixed(2)));
     }
+  } else if (rawTotalAmount > 0) {
+    afterDiscount = Number(rawTotalAmount.toFixed(2));
+    totalGross = Number((afterDiscount + discount).toFixed(2));
   } else {
     totalGross = 0;
     afterDiscount = 0;
   }
+
+  // Lucro Bruto = Valor Real da Venda (após descontos) - Custo das Peças
+  const grossProfit = Number((afterDiscount - costOfGoods).toFixed(2));
 
   // Lucro líquido real (Valor Após Desconto - Custo - Comissões - Taxas - Frete Real)
   const calculatedNet = Number((afterDiscount - costOfGoods - commission - fees - shippingCost).toFixed(2));
@@ -107,6 +110,7 @@ export function computeSaleFinancials(sale: any): SaleFinancials {
     discount: Number(discount.toFixed(2)),
     afterDiscount: Number(afterDiscount.toFixed(2)),
     costOfGoods: Number(costOfGoods.toFixed(2)),
+    grossProfit,
     commission: Number(commission.toFixed(2)),
     fees: Number(fees.toFixed(2)),
     netProfit: Number(netProfit.toFixed(2)),

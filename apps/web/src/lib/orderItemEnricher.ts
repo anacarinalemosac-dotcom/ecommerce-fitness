@@ -79,7 +79,9 @@ export async function loadCatalogProductsForOrderMatch(supabaseServer: any): Pro
       return [];
     }
 
-    return rows.map((row: any) => {
+    return rows
+      .filter((row: any) => !String(row?.slug || '').startsWith('__'))
+      .map((row: any) => {
       let meta: Record<string, any> = {};
       try {
         if (typeof row.description === 'string' && row.description.trim().startsWith('{')) {

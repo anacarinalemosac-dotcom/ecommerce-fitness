@@ -13,6 +13,7 @@ import {
   Sparkles,
   Check,
   ChevronLeft,
+  Clock,
 } from 'lucide-react';
 import {
   CartItem,
@@ -22,6 +23,9 @@ import {
   calculateComboDiscount,
   resolveVariantStockFromCatalog,
   reconcileCartStockWithCatalog,
+  getCartRemainingMs,
+  getOrCreateCartSessionId,
+  getReservedQtyForCandidate,
 } from '@/lib/cart';
 import { useLanguage } from '@/context/LanguageContext';
 import { useStoreSettings } from '@/context/StoreSettingsContext';
@@ -83,9 +87,23 @@ export function SideCartDrawer() {
   const [comboPromo, setComboPromo] = useState<any>(null);
   const [justHighlighted, setJustHighlighted] = useState(false);
   const [stockNotice, setStockNotice] = useState<string | null>(null);
+  const [remainingMs, setRemainingMs] = useState<number>(0);
+  const [otherHoldsByKey, setOtherHoldsByKey] = useState<Record<string, number>>({});
+
+  const refreshOtherHolds = useCallback(() => {
+    const sid = getOrCreateCartSessionId();
+    if (!sid) return;
+    fetch(`/api/cart/reservations?session_id=${encodeURIComponent(sid)}`, { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.byKey) setOtherHoldsByKey(data.byKey);
+      })
+      .catch(() => {});
+  }, []);
 
   const syncCart = useCallback(() => {
     setItems(getCartItems());
+    setRemainingMs(getCartRemainingMs());
   }, []);
 
   useEffect(() => {
@@ -114,8 +132,22 @@ export function SideCartDrawer() {
       .catch(() => {});
 
     const handleUpdated = () => syncCart();
+    const handleExpired = () => {
+      syncCart();
+      setStockNotice(
+        lang === 'pt'
+          ? '⏰ Seu carrinho ficou mais de 3 horas sem finalizar e foi esvaziado automaticamente para liberar as peças.'
+          : '⏰ Your bag expired after 3 hours and was automatically emptied to release items.'
+      );
+      setTimeout(() => setStockNotice(null), 6500);
+    };
+    const handleFocus = () => {
+      syncCart();
+      refreshOtherHolds();
+    };
     const handleAdded = (evt: any) => {
       syncCart();
+      refreshOtherHolds();
       setIsOpen(true);
       const detail = evt?.detail;
       if (detail?.limitReached) {
@@ -133,27 +165,45 @@ export function SideCartDrawer() {
     };
     const handleOpen = () => {
       syncCart();
+      refreshOtherHolds();
       setIsOpen(true);
     };
     const handleToggle = () => {
       syncCart();
+      refreshOtherHolds();
       setIsOpen((prev) => !prev);
     };
 
+    refreshOtherHolds();
     window.addEventListener('ana_cart_updated', handleUpdated);
+    window.addEventListener('ana_cart_expired', handleExpired);
     window.addEventListener('storage', handleUpdated);
+    window.addEventListener('focus', handleFocus);
     window.addEventListener('ana_cart_item_added', handleAdded);
     window.addEventListener('ana_open_cart_drawer', handleOpen);
     window.addEventListener('ana_toggle_cart_drawer', handleToggle);
 
     return () => {
       window.removeEventListener('ana_cart_updated', handleUpdated);
+      window.removeEventListener('ana_cart_expired', handleExpired);
       window.removeEventListener('storage', handleUpdated);
+      window.removeEventListener('focus', handleFocus);
       window.removeEventListener('ana_cart_item_added', handleAdded);
       window.removeEventListener('ana_open_cart_drawer', handleOpen);
       window.removeEventListener('ana_toggle_cart_drawer', handleToggle);
     };
-  }, [syncCart]);
+  }, [syncCart, refreshOtherHolds, lang]);
+
+  // Cronômetro em tempo real da validade de 3h do carrinho
+  useEffect(() => {
+    if (!mounted) return;
+    const timer = setInterval(() => {
+      const current = getCartItems();
+      setItems(current);
+      setRemainingMs(current.length > 0 ? getCartRemainingMs() : 0);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [mounted]);
 
   // Fecha no Esc para facilitar navegação no desktop
   useEffect(() => {
@@ -262,12 +312,36 @@ export function SideCartDrawer() {
               </button>
             </div>
 
-            {/* Aviso de Limite de Estoque */}
+            {/* Aviso de Limite de Estoque / Expiração */}
             {stockNotice && (
               <div className="px-5 py-2.5 text-[11px] font-black bg-amber-50 border-b border-amber-300 text-amber-950 shrink-0">
-                ⚠️ {stockNotice}
+                {stockNotice}
               </div>
             )}
+
+            {/* Cronômetro de 3 Horas (Esvazia Automaticamente) */}
+            {items.length > 0 && remainingMs > 0 && (() => {
+              const totalSec = Math.max(0, Math.floor(remainingMs / 1000));
+              const hrs = Math.floor(totalSec / 3600);
+              const mins = Math.floor((totalSec % 3600) / 60);
+              const secs = totalSec % 60;
+              const formatted = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+              return (
+                <div className="px-5 py-2 text-[10.5px] font-bold bg-deep-black/5 border-b border-deep-black/15 text-deep-black flex items-center justify-between gap-2 shrink-0">
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-gold shrink-0" />
+                    <span>
+                      {lang === 'pt'
+                        ? 'Sacola expira automaticamente após 3h sem concluir:'
+                        : 'Bag automatically clears after 3h idle:'}
+                    </span>
+                  </span>
+                  <span className="font-mono font-black px-2 py-0.5 bg-deep-black text-gold text-[10px]">
+                    {formatted}
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Banner de Promoção Combo (se ativa) */}
             {comboPromo?.active && items.length > 0 && (
@@ -327,7 +401,14 @@ export function SideCartDrawer() {
                 items.map((item, idx) => {
                   const qty = Math.max(1, Number(item.quantity) || 1);
                   const liveCap = resolveVariantStockFromCatalog(liveCatalogProducts || [], item);
-                  const maxAllowed = liveCap !== null ? liveCap : (typeof item.maxStock === 'number' ? item.maxStock : undefined);
+                  const rawCap = liveCap !== null ? liveCap : (typeof item.maxStock === 'number' ? item.maxStock : undefined);
+                  const heldByOthers = getReservedQtyForCandidate(otherHoldsByKey, {
+                    sku: item.sku,
+                    slug: item.slug,
+                    size: item.size,
+                    color: item.color,
+                  });
+                  const maxAllowed = rawCap !== undefined ? Math.max(0, rawCap - heldByOthers) : undefined;
                   const isAtMaxStock = typeof maxAllowed === 'number' && qty >= maxAllowed;
                   const lineTotal = (Number(item.price) || 0) * qty;
                   return (

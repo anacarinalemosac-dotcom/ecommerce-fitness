@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { CheckCircle2, Package, ArrowRight, Phone, Sparkles, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '../../../context/LanguageContext';
 import { trackEvent } from '../../../lib/tracking';
+import { clearCart } from '@/lib/cart';
 
 function StripeSuccessContent() {
   const searchParams = useSearchParams();
@@ -48,10 +49,7 @@ function StripeSuccessContent() {
           currency: 'USD',
         });
       }
-      localStorage.removeItem('ana_cart_item');
-      localStorage.removeItem('ana_cart_item_backup');
-      localStorage.removeItem('ana_cart_items');
-      window.dispatchEvent(new Event('ana_cart_updated'));
+      clearCart();
     } catch (e) {}
   }, [searchParams]);
 

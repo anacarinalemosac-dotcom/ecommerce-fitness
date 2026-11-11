@@ -67,6 +67,10 @@ export function ExecutiveFinancialSummary({
 
   let totalSalesAfterDiscountAllTime = 0;
   let totalSalesAfterDiscountThisMonth = 0;
+  let totalSalesAfterDiscountToday = 0;
+  let totalDiscountAllTime = 0;
+  let totalDiscountThisMonth = 0;
+  let totalDiscountToday = 0;
 
   let totalReceivedAllTime = 0;
   let totalPendingAllTime = 0;
@@ -78,9 +82,12 @@ export function ExecutiveFinancialSummary({
 
   let totalProfitAllTime = 0;
   let totalProfitThisMonth = 0;
+  let totalProfitToday = 0;
 
   let totalCostOfGoodsAllTime = 0;
   let totalCostOfGoodsThisMonth = 0;
+  let totalCostOfGoodsToday = 0;
+  let todayOrdersCount = 0;
 
   let totalCrediarioPendingAllTime = 0;
   let totalCrediarioPendingThisMonth = 0;
@@ -96,13 +103,26 @@ export function ExecutiveFinancialSummary({
 
   activeSales.forEach((s: any) => {
     const fin = computeSaleFinancials(s);
+    const saleDateNy = s.created_at
+      ? new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(s.created_at))
+      : '';
+    const isToday = saleDateNy === todayStr;
     const saleMonth = getSaleMonthStr(s.created_at);
     const isThisMonth = saleMonth === currentMonthStr;
 
-    // 1 & 2. Venda total acumulada após desconto & Venda do mês após desconto
+    // 1 & 2. Venda real após desconto (Hoje, Mês e Acumulada)
     totalSalesAfterDiscountAllTime += fin.afterDiscount;
+    totalDiscountAllTime += fin.discount;
     if (isThisMonth) {
       totalSalesAfterDiscountThisMonth += fin.afterDiscount;
+      totalDiscountThisMonth += fin.discount;
+    }
+    if (isToday) {
+      todayOrdersCount++;
+      totalSalesAfterDiscountToday += fin.afterDiscount;
+      totalDiscountToday += fin.discount;
+      totalCostOfGoodsToday += fin.costOfGoods;
+      totalProfitToday += fin.netProfit;
     }
 
     // 5. Lucro total acumulado & Lucro do mês
@@ -226,60 +246,108 @@ export function ExecutiveFinancialSummary({
       </div>
 
       {/* =========================================================================
-          SEÇÃO 1: VENDA TOTAL ACUMULADA vs VENDA TOTAL DO MÊS
+          SEÇÃO 1: VENDA DO DIA, DO MÊS E ACUMULADA (VALOR REAL C/ DESCONTO + CUSTO + LUCRO BRUTO)
          ========================================================================= */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Card 1: Venda Total Acumulada (Todos os Meses) */}
-        <div className="bg-deep-black text-white p-5 border-2 border-gold shadow-luxury flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center gap-1.5">
-                <DollarSign className="w-4 h-4 text-gold" />
-                <span>VENDA TOTAL ACUMULADA</span>
-              </span>
-              <span className="px-2 py-0.5 bg-gold text-deep-black text-[9px] font-black uppercase font-mono">
-                TODOS OS MESES
-              </span>
-            </div>
-            <div className="text-3xl sm:text-4xl font-black text-gold font-mono mt-2.5">
-              ${totalSalesAfterDiscountAllTime.toFixed(2)}
-            </div>
-            <p className="text-[11px] text-white/70 uppercase font-bold mt-1">
-              Soma total de todos os meses, tirando o desconto sempre.
-            </p>
-          </div>
-          <div className="pt-3 mt-3 border-t border-white/20 flex items-center justify-between text-[10px]">
-            <span className="text-white/60 font-bold uppercase">Base de Cálculo:</span>
-            <span className="font-mono font-black text-gold">
-              {activeSales.length} pedidos ativos acumulados
-            </span>
-          </div>
-        </div>
-
-        {/* Card 2: Venda Total do Mês */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Card 1: Venda Real do Dia */}
         <div className="bg-white border-2 border-deep-black p-5 shadow-sm hover:border-gold transition flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/70 flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-gold" />
-                <span>VENDA TOTAL DO MÊS</span>
+                <span>VENDA REAL DO DIA</span>
+              </span>
+              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[9px] font-black uppercase font-mono">
+                HOJE ({todayOrdersCount})
+              </span>
+            </div>
+            <div className="text-3xl font-black text-deep-black font-mono mt-2.5">
+              ${totalSalesAfterDiscountToday.toFixed(2)}
+            </div>
+            <p className="text-[10.5px] text-deep-black/60 uppercase font-bold mt-1">
+              Valor real vendido hoje, já retirando cupons e descontos
+              {totalDiscountToday > 0 ? ` (-$${totalDiscountToday.toFixed(2)} desc.)` : ''}.
+            </p>
+          </div>
+          <div className="pt-3 mt-3 border-t border-deep-black/10 space-y-1 text-[10.5px] font-mono">
+            <div className="flex items-center justify-between">
+              <span className="text-deep-black/60 font-bold uppercase">Custo Peças:</span>
+              <span className="font-black text-red-700">-${totalCostOfGoodsToday.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-deep-black font-black uppercase">Lucro Bruto Hoje:</span>
+              <span className="font-black text-emerald-700">
+                ${(totalSalesAfterDiscountToday - totalCostOfGoodsToday).toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Venda Real do Mês */}
+        <div className="bg-white border-2 border-deep-black p-5 shadow-sm hover:border-gold transition flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/70 flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-gold" />
+                <span>VENDA REAL DO MÊS</span>
               </span>
               <span className="px-2 py-0.5 bg-gold/20 text-deep-black border border-gold/40 text-[9px] font-black uppercase font-mono">
                 {currentMonthLabel}
               </span>
             </div>
-            <div className="text-3xl sm:text-4xl font-black text-deep-black font-mono mt-2.5">
+            <div className="text-3xl font-black text-deep-black font-mono mt-2.5">
               ${totalSalesAfterDiscountThisMonth.toFixed(2)}
             </div>
-            <p className="text-[11px] text-deep-black/60 uppercase font-bold mt-1">
-              Faturamento do mês corrente (sempre após desconto).
+            <p className="text-[10.5px] text-deep-black/60 uppercase font-bold mt-1">
+              Faturamento real do mês após cupons/descontos
+              {totalDiscountThisMonth > 0 ? ` (-$${totalDiscountThisMonth.toFixed(2)} desc.)` : ''}.
             </p>
           </div>
-          <div className="pt-3 mt-3 border-t border-deep-black/10 flex items-center justify-between text-[10px]">
-            <span className="text-deep-black/60 font-bold uppercase">Período:</span>
-            <span className="font-mono font-black text-deep-black">
-              Mês Atual ({currentMonthStr})
-            </span>
+          <div className="pt-3 mt-3 border-t border-deep-black/10 space-y-1 text-[10.5px] font-mono">
+            <div className="flex items-center justify-between">
+              <span className="text-deep-black/60 font-bold uppercase">Custo Peças:</span>
+              <span className="font-black text-red-700">-${totalCostOfGoodsThisMonth.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-deep-black font-black uppercase">Lucro Bruto Mês:</span>
+              <span className="font-black text-emerald-700">
+                ${(totalSalesAfterDiscountThisMonth - totalCostOfGoodsThisMonth).toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Venda Total Acumulada (Todos os Meses) */}
+        <div className="bg-deep-black text-white p-5 border-2 border-gold shadow-luxury flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center gap-1.5">
+                <DollarSign className="w-4 h-4 text-gold" />
+                <span>VENDA REAL ACUMULADA</span>
+              </span>
+              <span className="px-2 py-0.5 bg-gold text-deep-black text-[9px] font-black uppercase font-mono">
+                {activeSales.length} PEDIDOS
+              </span>
+            </div>
+            <div className="text-3xl font-black text-gold font-mono mt-2.5">
+              ${totalSalesAfterDiscountAllTime.toFixed(2)}
+            </div>
+            <p className="text-[10.5px] text-white/70 uppercase font-bold mt-1">
+              Total acumulado já tirando todos os descontos
+              {totalDiscountAllTime > 0 ? ` (-$${totalDiscountAllTime.toFixed(2)} desc.)` : ''}.
+            </p>
+          </div>
+          <div className="pt-3 mt-3 border-t border-white/20 space-y-1 text-[10.5px] font-mono">
+            <div className="flex items-center justify-between">
+              <span className="text-white/60 font-bold uppercase">Custo Total:</span>
+              <span className="font-black text-red-300">-${totalCostOfGoodsAllTime.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gold font-black uppercase">Lucro Bruto Total:</span>
+              <span className="font-black text-emerald-400">
+                ${(totalSalesAfterDiscountAllTime - totalCostOfGoodsAllTime).toFixed(2)}
+              </span>
+            </div>
           </div>
         </div>
       </div>

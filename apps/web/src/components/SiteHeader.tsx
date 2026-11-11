@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import { translateDynamicContent } from '../lib/translateFitness';
+import { getCartItems } from '@/lib/cart';
 import {
   ShoppingBag,
   Sparkles,
@@ -30,24 +31,9 @@ export function SiteHeader() {
 
   const updateCartAndUser = () => {
     try {
-      const rawMulti = localStorage.getItem('ana_cart_items');
-      if (rawMulti) {
-        const parsed = JSON.parse(rawMulti);
-        if (Array.isArray(parsed)) {
-          const total = parsed.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 1), 0);
-          setCartCount(total);
-        } else {
-          setCartCount(0);
-        }
-      } else {
-        const savedCart = localStorage.getItem('ana_cart_item');
-        if (savedCart) {
-          const parsed = JSON.parse(savedCart);
-          setCartCount(Number(parsed.quantity) || 1);
-        } else {
-          setCartCount(0);
-        }
-      }
+      const items = getCartItems();
+      const total = items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 1), 0);
+      setCartCount(total);
 
       const savedCust = localStorage.getItem('ana_customer_session');
       if (savedCust) {
@@ -64,12 +50,18 @@ export function SiteHeader() {
   useEffect(() => {
     updateCartAndUser();
     window.addEventListener('ana_cart_updated', updateCartAndUser);
+    window.addEventListener('ana_cart_expired', updateCartAndUser);
     window.addEventListener('ana_customer_updated', updateCartAndUser);
     window.addEventListener('storage', updateCartAndUser);
+    window.addEventListener('focus', updateCartAndUser);
+    const expiryCheckInterval = setInterval(updateCartAndUser, 15000);
     return () => {
       window.removeEventListener('ana_cart_updated', updateCartAndUser);
+      window.removeEventListener('ana_cart_expired', updateCartAndUser);
       window.removeEventListener('ana_customer_updated', updateCartAndUser);
       window.removeEventListener('storage', updateCartAndUser);
+      window.removeEventListener('focus', updateCartAndUser);
+      clearInterval(expiryCheckInterval);
     };
   }, []);
 

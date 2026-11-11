@@ -202,13 +202,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ products: [] });
     }
 
+    const visibleDbProducts = (products || []).filter(
+      (p) => !String(p?.slug || '').startsWith('__')
+    );
+
     // Busca variações de todos os produtos
     const { data: allVariants } = await supabaseServer
       .from('product_variants')
       .select('*')
       .order('size', { ascending: true });
 
-    const enrichedProducts = (products || []).map((p) => {
+    const enrichedProducts = visibleDbProducts.map((p) => {
       let meta: any = {};
       try {
         if (p.description && p.description.startsWith('{')) {
