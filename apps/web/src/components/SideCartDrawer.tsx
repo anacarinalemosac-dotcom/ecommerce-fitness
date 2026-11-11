@@ -20,8 +20,11 @@ import {
   updateCartItemQuantity,
   removeCartItem,
   calculateComboDiscount,
+  resolveVariantStockFromCatalog,
+  reconcileCartStockWithCatalog,
 } from '@/lib/cart';
 import { useLanguage } from '@/context/LanguageContext';
+import { useStoreSettings } from '@/context/StoreSettingsContext';
 import {
   translateProductTitle,
   translateColorName,
@@ -73,15 +76,31 @@ function formatSizeForLang(size: string, lang: 'en' | 'pt'): string {
 export function SideCartDrawer() {
   const pathname = usePathname();
   const { lang } = useLanguage();
+  const { products: liveCatalogProducts } = useStoreSettings();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [items, setItems] = useState<CartItem[]>([]);
   const [comboPromo, setComboPromo] = useState<any>(null);
   const [justHighlighted, setJustHighlighted] = useState(false);
+  const [stockNotice, setStockNotice] = useState<string | null>(null);
 
   const syncCart = useCallback(() => {
     setItems(getCartItems());
   }, []);
+
+  useEffect(() => {
+    if (!mounted || !Array.isArray(liveCatalogProducts) || liveCatalogProducts.length === 0) return;
+    const { items: reconciled, adjusted } = reconcileCartStockWithCatalog(liveCatalogProducts);
+    setItems(reconciled);
+    if (adjusted) {
+      setStockNotice(
+        lang === 'pt'
+          ? 'Quantidade ajustada automaticamente para o máximo disponível em estoque.'
+          : 'Quantity automatically adjusted to match available stock.'
+      );
+      setTimeout(() => setStockNotice(null), 5000);
+    }
+  }, [mounted, liveCatalogProducts, lang]);
 
   useEffect(() => {
     setMounted(true);
@@ -95,11 +114,22 @@ export function SideCartDrawer() {
       .catch(() => {});
 
     const handleUpdated = () => syncCart();
-    const handleAdded = () => {
+    const handleAdded = (evt: any) => {
       syncCart();
       setIsOpen(true);
-      setJustHighlighted(true);
-      setTimeout(() => setJustHighlighted(false), 1800);
+      const detail = evt?.detail;
+      if (detail?.limitReached) {
+        const cap = detail.maxStock ?? 1;
+        setStockNotice(
+          lang === 'pt'
+            ? `Limite do estoque atingido (${cap} ${cap === 1 ? 'unidade disponível' : 'unidades disponíveis'}).`
+            : `Stock limit reached (${cap} ${cap === 1 ? 'unit available' : 'units available'}).`
+        );
+        setTimeout(() => setStockNotice(null), 4000);
+      } else {
+        setJustHighlighted(true);
+        setTimeout(() => setJustHighlighted(false), 1800);
+      }
     };
     const handleOpen = () => {
       syncCart();
@@ -232,6 +262,13 @@ export function SideCartDrawer() {
               </button>
             </div>
 
+            {/* Aviso de Limite de Estoque */}
+            {stockNotice && (
+              <div className="px-5 py-2.5 text-[11px] font-black bg-amber-50 border-b border-amber-300 text-amber-950 shrink-0">
+                ⚠️ {stockNotice}
+              </div>
+            )}
+
             {/* Banner de Promoção Combo (se ativa) */}
             {comboPromo?.active && items.length > 0 && (
               <div
@@ -289,6 +326,9 @@ export function SideCartDrawer() {
               ) : (
                 items.map((item, idx) => {
                   const qty = Math.max(1, Number(item.quantity) || 1);
+                  const liveCap = resolveVariantStockFromCatalog(liveCatalogProducts || [], item);
+                  const maxAllowed = liveCap !== null ? liveCap : (typeof item.maxStock === 'number' ? item.maxStock : undefined);
+                  const isAtMaxStock = typeof maxAllowed === 'number' && qty >= maxAllowed;
                   const lineTotal = (Number(item.price) || 0) * qty;
                   return (
                     <div
@@ -349,34 +389,60 @@ export function SideCartDrawer() {
                           )}
                         </div>
 
-                        <div className="flex items-center justify-between pt-1.5 border-t border-deep-black/10">
-                          {/* Stepper Quantidade */}
-                          <div className="inline-flex items-center border border-deep-black bg-white">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                updateCartItemQuantity(idx, qty - 1);
-                                syncCart();
-                              }}
-                              className="w-7 h-7 flex items-center justify-center text-deep-black hover:bg-neutral-100 transition cursor-pointer"
-                              aria-label={lang === 'pt' ? 'Diminuir quantidade' : 'Decrease quantity'}
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-7 text-center text-xs font-black font-mono text-deep-black">
-                              {qty}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                updateCartItemQuantity(idx, qty + 1);
-                                syncCart();
-                              }}
-                              className="w-7 h-7 flex items-center justify-center text-deep-black hover:bg-neutral-100 transition cursor-pointer"
-                              aria-label={lang === 'pt' ? 'Aumentar quantidade' : 'Increase quantity'}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
+                        <div className="flex items-center justify-between pt-1.5 border-t border-deep-black/10 gap-2">
+                          <div className="space-y-1">
+                            {/* Stepper Quantidade */}
+                            <div className="inline-flex items-center border border-deep-black bg-white">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateCartItemQuantity(idx, qty - 1, maxAllowed);
+                                  syncCart();
+                                }}
+                                className="w-7 h-7 flex items-center justify-center text-deep-black hover:bg-neutral-100 transition cursor-pointer"
+                                aria-label={lang === 'pt' ? 'Diminuir quantidade' : 'Decrease quantity'}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="w-7 text-center text-xs font-black font-mono text-deep-black">
+                                {qty}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={isAtMaxStock}
+                                onClick={() => {
+                                  if (isAtMaxStock) return;
+                                  updateCartItemQuantity(idx, qty + 1, maxAllowed);
+                                  syncCart();
+                                }}
+                                className={`w-7 h-7 flex items-center justify-center transition ${
+                                  isAtMaxStock
+                                    ? 'bg-neutral-100 text-deep-black/25 cursor-not-allowed'
+                                    : 'text-deep-black hover:bg-neutral-100 cursor-pointer'
+                                }`}
+                                title={
+                                  isAtMaxStock
+                                    ? (lang === 'pt' ? `Máximo disponível: ${maxAllowed} un` : `Max available: ${maxAllowed}`)
+                                    : (lang === 'pt' ? 'Aumentar quantidade' : 'Increase quantity')
+                                }
+                                aria-label={lang === 'pt' ? 'Aumentar quantidade' : 'Increase quantity'}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                            {typeof maxAllowed === 'number' && (
+                              <span
+                                className={`block text-[9px] font-bold uppercase ${
+                                  isAtMaxStock ? 'text-amber-700' : 'text-deep-black/45'
+                                }`}
+                              >
+                                {isAtMaxStock
+                                  ? (lang === 'pt'
+                                      ? `Máx. no estoque (${maxAllowed} un)`
+                                      : `Max stock (${maxAllowed} left)`)
+                                  : (lang === 'pt' ? `${maxAllowed} em estoque` : `${maxAllowed} in stock`)}
+                              </span>
+                            )}
                           </div>
 
                           <div className="text-right">

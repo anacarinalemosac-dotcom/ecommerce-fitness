@@ -17,6 +17,8 @@ import {
   removeCartItem,
   updateCartItemQuantity,
   calculateComboDiscount,
+  resolveVariantStockFromCatalog,
+  reconcileCartStockWithCatalog,
   CartItem as BaseCartItem,
 } from '../../lib/cart';
 import {
@@ -73,7 +75,7 @@ const WhatsAppIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
 
 export default function CheckoutPage() {
   const { lang, t } = useLanguage();
-  const { siteInfo } = useStoreSettings();
+  const { siteInfo, products: liveCatalogProducts } = useStoreSettings();
 
   // Dados do Item no Carrinho (Inicia como null para não forçar item estático)
   const [cartItem, setCartItem] = useState<CartItem | null>(null);
@@ -551,8 +553,27 @@ export default function CheckoutPage() {
     }
   };
 
+  useEffect(() => {
+    if (!Array.isArray(liveCatalogProducts) || liveCatalogProducts.length === 0) return;
+    const { items: reconciled, adjusted } = reconcileCartStockWithCatalog(liveCatalogProducts);
+    if (reconciled.length > 0 || adjusted) {
+      setCartItems(reconciled);
+      setCartItem(reconciled[0] || null);
+    }
+  }, [liveCatalogProducts]);
+
   const handleUpdateItemQuantity = (targetIdx: number, newQty: number) => {
-    const updated = updateCartItemQuantity(targetIdx, newQty);
+    const targetItem = cartItems[targetIdx];
+    const liveCap = targetItem
+      ? resolveVariantStockFromCatalog(liveCatalogProducts || [], targetItem)
+      : null;
+    const maxCap =
+      liveCap !== null
+        ? liveCap
+        : typeof (targetItem as any)?.maxStock === 'number'
+        ? (targetItem as any).maxStock
+        : undefined;
+    const updated = updateCartItemQuantity(targetIdx, newQty, maxCap);
     setCartItems(updated);
     setCartItem(updated[0] || null);
   };
@@ -2246,25 +2267,58 @@ export default function CheckoutPage() {
                     {lang === 'pt' ? 'TAM' : 'SIZE'}: <span className="text-gold font-black">{item.size}</span> • {translateColorName(item.color, lang)}
                   </p>
 
-                  <div className="flex items-center gap-3 pt-1">
-                    {/* Stepper de Quantidade */}
-                    <div className="flex items-center border border-deep-black/20 bg-stone-50">
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateItemQuantity(idx, (item.quantity || 1) - 1)}
-                        className="px-2 py-0.5 text-xs font-bold text-deep-black hover:bg-gold/20"
-                      >
-                        -
-                      </button>
-                      <span className="px-2 text-xs font-mono font-bold">{item.quantity || 1}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateItemQuantity(idx, (item.quantity || 1) + 1)}
-                        className="px-2 py-0.5 text-xs font-bold text-deep-black hover:bg-gold/20"
-                      >
-                        +
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-3 pt-1 flex-wrap">
+                    {(() => {
+                      const liveCap = resolveVariantStockFromCatalog(liveCatalogProducts || [], item as any);
+                      const maxCap =
+                        liveCap !== null
+                          ? liveCap
+                          : typeof (item as any).maxStock === 'number'
+                          ? (item as any).maxStock
+                          : undefined;
+                      const isAtMaxStock = typeof maxCap === 'number' && (item.quantity || 1) >= maxCap;
+                      return (
+                        <>
+                          {/* Stepper de Quantidade */}
+                          <div className="flex items-center border border-deep-black/20 bg-stone-50">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateItemQuantity(idx, (item.quantity || 1) - 1)}
+                              className="px-2 py-0.5 text-xs font-bold text-deep-black hover:bg-gold/20 cursor-pointer"
+                            >
+                              -
+                            </button>
+                            <span className="px-2 text-xs font-mono font-bold">{item.quantity || 1}</span>
+                            <button
+                              type="button"
+                              disabled={isAtMaxStock}
+                              onClick={() => {
+                                if (isAtMaxStock) return;
+                                handleUpdateItemQuantity(idx, (item.quantity || 1) + 1);
+                              }}
+                              className={`px-2 py-0.5 text-xs font-bold ${
+                                isAtMaxStock
+                                  ? 'text-deep-black/25 cursor-not-allowed'
+                                  : 'text-deep-black hover:bg-gold/20 cursor-pointer'
+                              }`}
+                              title={
+                                isAtMaxStock
+                                  ? (lang === 'pt' ? `Estoque máximo: ${maxCap} un` : `Max stock: ${maxCap}`)
+                                  : undefined
+                              }
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          {typeof maxCap === 'number' && isAtMaxStock && (
+                            <span className="text-[9.5px] font-bold uppercase text-amber-700">
+                              {lang === 'pt' ? `Máx. estoque (${maxCap} un)` : `Max stock (${maxCap})`}
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     <button
                       type="button"

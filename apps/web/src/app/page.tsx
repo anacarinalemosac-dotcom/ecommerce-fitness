@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import ProductShareModal from '../components/ProductShareModal';
-import { addToCart } from '@/lib/cart';
+import { addToCart, getCartItems, getCartItemQty, reconcileCartStockWithCatalog, CartItem } from '@/lib/cart';
 import { translateProductTitle, translateColorName, translateBadgeText, translateDynamicContent } from '../lib/translateFitness';
 import {
   Sparkles,
@@ -356,7 +356,26 @@ export default function HomePage() {
   const [selectedFabricFilter, setSelectedFabricFilter] = useState<string>('all');
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState<boolean>(false);
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
-  const [quickAddedItem, setQuickAddedItem] = useState<{ id: string; size: string } | null>(null);
+  const [quickAddedItem, setQuickAddedItem] = useState<{ id: string; size: string; limitReached?: boolean; maxStock?: number } | null>(null);
+  const [cartItemsSnapshot, setCartItemsSnapshot] = useState<CartItem[]>([]);
+
+  useEffect(() => {
+    const syncBag = () => setCartItemsSnapshot(getCartItems());
+    syncBag();
+    window.addEventListener('ana_cart_updated', syncBag);
+    window.addEventListener('storage', syncBag);
+    return () => {
+      window.removeEventListener('ana_cart_updated', syncBag);
+      window.removeEventListener('storage', syncBag);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Array.isArray(storeProducts) && storeProducts.length > 0) {
+      const { items } = reconcileCartStockWithCatalog(storeProducts);
+      setCartItemsSnapshot(items);
+    }
+  }, [storeProducts]);
   const [recentSoldProducts, setRecentSoldProducts] = useState<any[]>([]);
   const [loadingRecentSold, setLoadingRecentSold] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -436,45 +455,70 @@ export default function HomePage() {
     setWishlist((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const getCardVariantFor = (prod: ProductItem, size: string, preferredColor?: string) => {
+    if (!Array.isArray(prod?.variants) || prod.variants.length === 0) return null;
+    const targetColor = String(preferredColor || '').trim().toLowerCase();
+    const targetSize = String(size || '').trim().toUpperCase();
+    return (
+      prod.variants.find(
+        (v: any) =>
+          String(v.size || '').toUpperCase() === targetSize &&
+          (!targetColor || targetColor === 'padr\u00e3o' || String(v.color || '').toLowerCase() === targetColor) &&
+          Number(v.stock_quantity ?? v.stock ?? 0) > 0
+      ) ||
+      prod.variants.find(
+        (v: any) =>
+          String(v.size || '').toUpperCase() === targetSize &&
+          Number(v.stock_quantity ?? v.stock ?? 0) > 0
+      ) ||
+      prod.variants.find(
+        (v: any) => String(v.size || '').toUpperCase() === targetSize
+      ) ||
+      prod.variants[0]
+    );
+  };
+
   const handleQuickAdd = (id: string, size: string, e: React.MouseEvent, preferredColor?: string) => {
     e.preventDefault();
     e.stopPropagation();
     const prod = activeProducts.find((p) => p.id === id);
+    let hitLimit = false;
+    let resolvedMaxStock = 0;
+
     if (prod) {
-      const targetColor = (preferredColor || cardSelectedColors[id] || '').trim().toLowerCase();
-      const matchedVariant = Array.isArray(prod.variants)
-        ? prod.variants.find(
-            (v: any) =>
-              String(v.size || '').toUpperCase() === size.toUpperCase() &&
-              (!targetColor || String(v.color || '').toLowerCase() === targetColor) &&
-              Number(v.stock_quantity ?? v.stock ?? 0) > 0
-          ) ||
-          prod.variants.find(
-            (v: any) =>
-              String(v.size || '').toUpperCase() === size.toUpperCase() &&
-              Number(v.stock_quantity ?? v.stock ?? 0) > 0
-          ) ||
-          prod.variants[0]
-        : null;
+      const chosenColor = preferredColor || cardSelectedColors[id] || '';
+      const matchedVariant = getCardVariantFor(prod, size, chosenColor);
+      resolvedMaxStock = matchedVariant
+        ? Math.max(0, Number(matchedVariant.stock_quantity ?? matchedVariant.stock ?? 0))
+        : Math.max(0, Number(prod.stock ?? 0));
+
+      if (resolvedMaxStock <= 0) {
+        return;
+      }
+
       const variantImg = matchedVariant
         ? (Array.isArray(matchedVariant.images) && matchedVariant.images.length > 0 ? matchedVariant.images[0] : matchedVariant.image)
         : null;
-      addToCart({
+      const result = addToCart({
         id: prod.id,
         title: prod.title,
         slug: prod.slug,
         size,
-        color: matchedVariant?.color || preferredColor || cardSelectedColors[id] || prod.colors?.[0]?.name || 'Padrão',
+        color: matchedVariant?.color || chosenColor || prod.colors?.[0]?.name || 'Padr\u00e3o',
         sku: matchedVariant?.sku || `${prod.slug}-${size}`,
         price: Number(matchedVariant?.price || prod.price) || 44.9,
         quantity: 1,
+        maxStock: resolvedMaxStock,
         image: cardImageOverrides[prod.id] || variantImg || prod.primaryImage,
         isBackorder: false,
         productionDays: 0,
         is_combo_item: isProductInCombo(prod),
       });
+      hitLimit = Boolean(result.limitReached);
+      setCartItemsSnapshot(result.items);
     }
-    setQuickAddedItem({ id, size });
+
+    setQuickAddedItem({ id, size, limitReached: hitLimit, maxStock: resolvedMaxStock });
     setTimeout(() => {
       setQuickAddedItem(null);
     }, 3000);
@@ -1472,6 +1516,22 @@ export default function HomePage() {
                       ? cardSelectedSizes[product.id]
                       : selectableSizes[0] || '';
                   const isOutOfStock = !isSpoiler && inStockSizes.length === 0;
+                  const selectedVariantObj = selectedCardSize ? getCardVariantFor(product, selectedCardSize, activeColor) : null;
+                  const selectedVariantStock = selectedVariantObj
+                    ? Math.max(0, Number(selectedVariantObj.stock_quantity ?? selectedVariantObj.stock ?? 0))
+                    : Math.max(0, Number(product.stock ?? 0));
+                  const selectedVariantSku = selectedVariantObj?.sku || `${product.slug}-${selectedCardSize}`;
+                  const qtyInBagForSelected = selectedCardSize
+                    ? getCartItemQty(cartItemsSnapshot, {
+                        id: product.id,
+                        slug: product.slug,
+                        sku: selectedVariantSku,
+                        size: selectedCardSize,
+                        color: selectedVariantObj?.color || activeColor,
+                      })
+                    : 0;
+                  const isSelectedSizeMaxedInBag =
+                    selectedVariantStock > 0 && qtyInBagForSelected >= selectedVariantStock;
 
                   return (
                     <div
@@ -1573,7 +1633,13 @@ export default function HomePage() {
                             <div className="text-center py-1 space-y-1">
                               <div className="flex items-center justify-center gap-1.5 text-gold text-xs font-black uppercase tracking-wider">
                                 <Check className="w-4 h-4 text-gold stroke-[3]" />
-                                <span>{quickAddedItem.size} {t('gymshark.addedToBag')}</span>
+                                <span>
+                                  {quickAddedItem?.limitReached
+                                    ? (lang === 'pt'
+                                        ? `LIMITE NO CARRINHO (${quickAddedItem.maxStock ?? 1}/${quickAddedItem.maxStock ?? 1})`
+                                        : `MAX IN BAG (${quickAddedItem.maxStock ?? 1}/${quickAddedItem.maxStock ?? 1})`)
+                                    : `${quickAddedItem.size} ${t('gymshark.addedToBag')}`}
+                                </span>
                               </div>
                               <Link
                                 href="/checkout"
@@ -1598,17 +1664,47 @@ export default function HomePage() {
                                   const displaySz = lang === 'pt'
                                     ? (upperSz === 'S' || upperSz === 'P' ? 'P' : upperSz === 'M' ? 'M' : upperSz === 'L' || upperSz === 'G' ? 'G' : upperSz === 'XL' || upperSz === 'GG' ? 'GG' : size)
                                     : size;
+                                  const szVar = getCardVariantFor(product, size, activeColor);
+                                  const szStock = szVar
+                                    ? Math.max(0, Number(szVar.stock_quantity ?? szVar.stock ?? 0))
+                                    : Math.max(0, Number(product.stock ?? 0));
+                                  const szInBag = getCartItemQty(cartItemsSnapshot, {
+                                    id: product.id,
+                                    slug: product.slug,
+                                    sku: szVar?.sku || `${product.slug}-${size}`,
+                                    size,
+                                    color: szVar?.color || activeColor,
+                                  });
+                                  const isSzMaxed = szStock > 0 && szInBag >= szStock;
                                   return (
                                     <button
                                       key={size}
+                                      type="button"
+                                      disabled={isSzMaxed}
                                       onClick={(e) => {
                                         setCardSelectedSizes((prev) => ({ ...prev, [product.id]: size }));
+                                        if (isSzMaxed) {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          if (typeof window !== 'undefined') {
+                                            window.dispatchEvent(new Event('ana_open_cart_drawer'));
+                                          }
+                                          return;
+                                        }
                                         handleQuickAdd(product.id, size, e, activeColor);
                                       }}
-                                      className="py-1.5 text-xs font-black uppercase bg-white/10 hover:bg-gold hover:text-deep-black text-white border border-white/20 transition-all active:scale-95 flex items-center justify-center cursor-pointer"
-                                      title={`Add size ${size} directly to bag`}
+                                      className={`py-1.5 text-xs font-black uppercase border transition-all flex items-center justify-center ${
+                                        isSzMaxed
+                                          ? 'bg-emerald-600/80 text-white border-emerald-400 cursor-not-allowed'
+                                          : 'bg-white/10 hover:bg-gold hover:text-deep-black text-white border-white/20 active:scale-95 cursor-pointer'
+                                      }`}
+                                      title={
+                                        isSzMaxed
+                                          ? (lang === 'pt' ? `Máx. no carrinho (${szInBag}/${szStock})` : `Max in bag (${szInBag}/${szStock})`)
+                                          : `Add size ${size} directly to bag`
+                                      }
                                     >
-                                      {displaySz}
+                                      {isSzMaxed ? `✓ ${displaySz}` : displaySz}
                                     </button>
                                   );
                                 })}
@@ -1794,31 +1890,53 @@ export default function HomePage() {
                             ? (selectedCardSize === 'S' ? 'P' : selectedCardSize === 'L' ? 'G' : selectedCardSize === 'XL' ? 'GG' : selectedCardSize)
                             : selectedCardSize;
                           return (
-                            <button
-                              type="button"
-                              onClick={(e) => handleQuickAdd(product.id, selectedCardSize, e, activeColor)}
-                              className={`w-full py-2.5 px-3 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer shadow-sm border-2 ${
-                                wasJustAdded
-                                  ? 'bg-emerald-600 text-white border-emerald-700'
-                                  : 'bg-deep-black hover:bg-gold text-white hover:text-deep-black border-deep-black'
-                              }`}
-                            >
-                              {wasJustAdded ? (
-                                <>
-                                  <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                  <span>{lang === 'pt' ? 'ADICIONADO NO CARRINHO!' : 'ADDED TO BAG!'}</span>
-                                </>
-                              ) : (
-                                <>
-                                  <ShoppingBag className="w-3.5 h-3.5" />
-                                  <span>
-                                    {lang === 'pt'
-                                      ? `ADICIONAR NO CARRINHO • ${displaySelectedSz}`
-                                      : `ADD TO BAG • ${selectedCardSize}`}
-                                  </span>
-                                </>
+                            <div className="space-y-1.5">
+                              {selectedVariantStock === 1 && !isSelectedSizeMaxedInBag && (
+                                <span className="block text-[9.5px] font-black uppercase text-amber-700 tracking-wider text-center">
+                                  ⚠️ {lang === 'pt' ? 'Última unidade em estoque!' : 'Only 1 left in stock!'}
+                                </span>
                               )}
-                            </button>
+                              <button
+                                type="button"
+                                disabled={isSelectedSizeMaxedInBag}
+                                onClick={(e) => {
+                                  if (isSelectedSizeMaxedInBag) return;
+                                  handleQuickAdd(product.id, selectedCardSize, e, activeColor);
+                                }}
+                                className={`w-full py-2.5 px-3 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm border-2 ${
+                                  isSelectedSizeMaxedInBag
+                                    ? 'bg-emerald-50 text-emerald-900 border-emerald-600 cursor-not-allowed'
+                                    : wasJustAdded
+                                    ? 'bg-emerald-600 text-white border-emerald-700 cursor-pointer'
+                                    : 'bg-deep-black hover:bg-gold text-white hover:text-deep-black border-deep-black active:scale-[0.98] cursor-pointer'
+                                }`}
+                              >
+                                {isSelectedSizeMaxedInBag ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5 stroke-[3] text-emerald-700" />
+                                    <span>
+                                      {lang === 'pt'
+                                        ? `✓ MÁX. NO CARRINHO (${qtyInBagForSelected}/${selectedVariantStock})`
+                                        : `✓ MAX IN BAG (${qtyInBagForSelected}/${selectedVariantStock})`}
+                                    </span>
+                                  </>
+                                ) : wasJustAdded ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                    <span>{lang === 'pt' ? 'ADICIONADO NO CARRINHO!' : 'ADDED TO BAG!'}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ShoppingBag className="w-3.5 h-3.5" />
+                                    <span>
+                                      {lang === 'pt'
+                                        ? `ADICIONAR NO CARRINHO • ${displaySelectedSz}`
+                                        : `ADD TO BAG • ${selectedCardSize}`}
+                                    </span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
                           );
                         })()}
                       </div>

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useLanguage } from '../../../context/LanguageContext';
 import { useStoreSettings } from '../../../context/StoreSettingsContext';
 import { trackEvent } from '../../../lib/tracking';
-import { addToCart } from '@/lib/cart';
+import { addToCart, getCartItems, getCartItemQty, reconcileCartStockWithCatalog, CartItem } from '@/lib/cart';
 import ProductShareModal from '../../../components/ProductShareModal';
 import { ProductSizeGuide } from '../../../components/ProductSizeGuide';
 import { FormattedDescription } from '../../../components/FormattedDescription';
@@ -654,6 +654,25 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   }, [inStockVariant?.image]);
   const [isZoomed, setIsZoomed] = useState(false);
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
+  const [cartItemsSnapshot, setCartItemsSnapshot] = useState<CartItem[]>([]);
+
+  useEffect(() => {
+    const syncBag = () => setCartItemsSnapshot(getCartItems());
+    syncBag();
+    window.addEventListener('ana_cart_updated', syncBag);
+    window.addEventListener('storage', syncBag);
+    return () => {
+      window.removeEventListener('ana_cart_updated', syncBag);
+      window.removeEventListener('storage', syncBag);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Array.isArray(storeProducts) && storeProducts.length > 0) {
+      const { items } = reconcileCartStockWithCatalog(storeProducts);
+      setCartItemsSnapshot(items);
+    }
+  }, [storeProducts]);
   const [productReviews, setProductReviews] = useState<any[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -993,8 +1012,18 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     );
 
   // Estoque da variante selecionada
-  const currentStock = currentVariant?.stock ? Number(currentVariant.stock) : (Number(productData.stock) || 0);
+  const currentStock = currentVariant
+    ? Math.max(0, Number(currentVariant.stock ?? 0))
+    : Math.max(0, Number(productData.stock ?? 0));
   const isOutOfStock = currentStock <= 0 || isSpoilerProduct;
+  const qtyInBagForCurrent = getCartItemQty(cartItemsSnapshot, {
+    id: productData.id,
+    slug,
+    sku: currentVariant?.sku,
+    size: selectedSize,
+    color: selectedColor,
+  });
+  const isCurrentVariantMaxedInBag = currentStock > 0 && qtyInBagForCurrent >= currentStock;
 
   // Link de Pagamento Direto no Afterpay (1-Clique sem precisar navegar no site)
   const currentSiteOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://anafitwear.com';
@@ -1079,7 +1108,9 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         v.color.toLowerCase() === selectedColor.toLowerCase() &&
         v.size.toUpperCase() === selectedSize.toUpperCase()
     );
-    const stockQty = matchedVariant ? Number(matchedVariant.stock) : (Number(productData.stock) || 0);
+    const stockQty = matchedVariant
+      ? Math.max(0, Number(matchedVariant.stock ?? 0))
+      : Math.max(0, Number(productData.stock ?? 0));
     if (stockQty <= 0) return; // Bloqueio estrito: sem estoque não adiciona à sacola
 
     const cartItemToSave = {
@@ -1091,6 +1122,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       sku: matchedVariant?.sku || `${slug}-${selectedColor.slice(0, 3)}-${selectedSize}`,
       price: matchedVariant?.price || productData.price,
       quantity: 1,
+      maxStock: stockQty,
       image: matchedVariant?.image || productData.media[selectedMediaIdx]?.url || productData.media[0]?.url,
       isBackorder: false,
       productionDays: 0,
@@ -1102,24 +1134,28 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       localStorage.setItem('ana_delivery_method', fulfillmentMode === 'pickup' ? 'PICKUP' : 'DELIVERY');
     }
 
+    let addResult: { limitReached?: boolean } = {};
     try {
-      addToCart(cartItemToSave);
+      addResult = addToCart(cartItemToSave);
     } catch (e) {
       localStorage.setItem('ana_cart_item', JSON.stringify(cartItemToSave));
       window.dispatchEvent(new Event('ana_cart_updated'));
     }
+    setCartItemsSnapshot(getCartItems());
 
-    // Dispara evento de AddToCart nos Pixels de Rastreamento (Meta, Google, TikTok, Pinterest)
-    trackEvent.addToCart({
-      id: slug,
-      title: productData.title,
-      price: currentVariant?.price || productData.price,
-      quantity: 1,
-      size: selectedSize,
-      color: selectedColor,
-    });
+    if (!addResult?.limitReached) {
+      // Dispara evento de AddToCart nos Pixels de Rastreamento (Meta, Google, TikTok, Pinterest)
+      trackEvent.addToCart({
+        id: slug,
+        title: productData.title,
+        price: currentVariant?.price || productData.price,
+        quantity: 1,
+        size: selectedSize,
+        color: selectedColor,
+      });
+    }
 
-    setCartFeedback('added');
+    setCartFeedback(addResult?.limitReached ? 'maxed' : 'added');
     setTimeout(() => setCartFeedback(null), 4000);
   };
 
@@ -1553,16 +1589,22 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   <button
                     type="button"
                     onClick={handleActionClick}
-                    disabled={availableSizes.length === 0}
-                    className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm ${
+                    disabled={availableSizes.length === 0 || isCurrentVariantMaxedInBag}
+                    className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2.5 shadow-sm ${
                       availableSizes.length === 0
                         ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
-                        : 'bg-black hover:bg-neutral-800 text-white'
+                        : isCurrentVariantMaxedInBag
+                        ? 'bg-emerald-600 text-white cursor-not-allowed'
+                        : 'bg-black hover:bg-neutral-800 text-white cursor-pointer'
                     }`}
                   >
                     <ShoppingBag className="w-4 h-4" />
                     <span>
-                      {lang === 'pt'
+                      {isCurrentVariantMaxedInBag
+                        ? (lang === 'pt'
+                            ? `✓ MÁX. DO ESTOQUE NA SACOLA (${qtyInBagForCurrent}/${currentStock})`
+                            : `✓ MAX STOCK IN BAG (${qtyInBagForCurrent}/${currentStock})`)
+                        : lang === 'pt'
                         ? `ADICIONAR À SACOLA • $${(currentVariant?.price || productData.price).toFixed(2)}`
                         : `ADD TO BAG • $${(currentVariant?.price || productData.price).toFixed(2)}`}
                     </span>
@@ -1596,7 +1638,9 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   <button
                     type="button"
                     onClick={() => {
-                      handleActionClick();
+                      if (!isCurrentVariantMaxedInBag) {
+                        handleActionClick();
+                      }
                       window.location.href = '/checkout';
                     }}
                     className="text-[11px] font-bold text-neutral-700 hover:text-black underline uppercase tracking-wider cursor-pointer"

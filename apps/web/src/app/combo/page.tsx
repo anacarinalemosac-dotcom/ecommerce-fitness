@@ -156,6 +156,27 @@ export default function ComboBuilderPage() {
         (!tempColor || v.color?.toLowerCase() === tempColor.toLowerCase())
     ) || (activeProductForSlot.variants || [])[0];
 
+    const sku = matchedVariant?.sku || `${activeProductForSlot.slug || 'ANA'}-${tempSize}`;
+    const variantStock = matchedVariant
+      ? Math.max(0, Number(matchedVariant.stock_quantity ?? matchedVariant.stock ?? 0))
+      : Math.max(0, Number(activeProductForSlot.stock ?? 0));
+    const usedInOtherSlots = selectedSlots.filter(
+      (s, i) =>
+        i !== tempSlotIndex &&
+        s !== null &&
+        s.sku === sku &&
+        s.product?.id === activeProductForSlot.id
+    ).length;
+
+    if (variantStock > 0 && usedInOtherSlots >= variantStock) {
+      alert(
+        `Limite de estoque atingido: só temos ${variantStock} ${
+          variantStock === 1 ? 'unidade disponível' : 'unidades disponíveis'
+        } desta variação (${tempSize} / ${tempColor}). Escolha outra peça ou tamanho para este slot do combo.`
+      );
+      return;
+    }
+
     const img =
       matchedVariant?.image ||
       (Array.isArray(matchedVariant?.images) ? matchedVariant.images[0] : null) ||
@@ -168,7 +189,8 @@ export default function ComboBuilderPage() {
       size: tempSize,
       color: tempColor || 'Preto Ônix',
       image: img,
-      sku: matchedVariant?.sku || `${activeProductForSlot.slug || 'ANA'}-${tempSize}`,
+      sku,
+      maxStock: variantStock,
     };
 
     setSelectedSlots((prev) => {
@@ -197,7 +219,7 @@ export default function ComboBuilderPage() {
     if (!isComboComplete) return;
 
     // Converte os slots em itens da sacola
-    const itemsToAdd: CartItem[] = selectedSlots.map((s, idx) => ({
+    const itemsToAdd: CartItem[] = selectedSlots.map((s) => ({
       id: s!.product.id,
       title: s!.product.title,
       slug: s!.product.slug,
@@ -206,6 +228,7 @@ export default function ComboBuilderPage() {
       sku: s!.sku,
       price: Number(s!.product.price) || 39.9,
       quantity: 1,
+      maxStock: typeof (s as any)!.maxStock === 'number' ? (s as any)!.maxStock : undefined,
       image: s!.image,
       isBackorder: false,
       productionDays: 0,
