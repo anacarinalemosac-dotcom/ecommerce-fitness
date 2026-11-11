@@ -930,13 +930,20 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: 'Nenhum ID válido fornecido para atualização em massa.' }, { status: 400 });
       }
 
-      const { data: productsToUpdate, error: fetchErr } = await supabaseServer
-        .from('products')
-        .select('id, title, slug, description')
-        .in('id', targetIds);
+      let productsToUpdate: any[] = [];
+      const CHUNK_SIZE = 40;
+      for (let i = 0; i < targetIds.length; i += CHUNK_SIZE) {
+        const chunk = targetIds.slice(i, i + CHUNK_SIZE);
+        const { data: chunkData, error: chunkErr } = await supabaseServer
+          .from('products')
+          .select('id, title, slug, description')
+          .in('id', chunk);
 
-      if (fetchErr) {
-        return NextResponse.json({ error: `Erro ao buscar produtos: ${fetchErr.message}` }, { status: 500 });
+        if (chunkErr) {
+          console.error('Erro ao buscar chunk de produtos no Supabase:', chunkErr);
+        } else if (chunkData) {
+          productsToUpdate = productsToUpdate.concat(chunkData);
+        }
       }
 
       let updatedCount = 0;

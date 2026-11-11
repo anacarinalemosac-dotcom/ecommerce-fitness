@@ -43,6 +43,21 @@ export function ComboPromoModal({
     Array.isArray(comboPromo?.product_ids) ? comboPromo.product_ids : []
   );
 
+  React.useEffect(() => {
+    if (isOpen && comboPromo) {
+      setActive(comboPromo.active ?? true);
+      setTitle(comboPromo.title || 'Promoção Especial de Combo');
+      setRequiredQty(comboPromo.required_quantity || 3);
+      setBundlePrice(comboPromo.bundle_price || 99.0);
+      setBadgeText(comboPromo.badge_text || 'COMBO 3 PEÇAS');
+      setDescription(
+        comboPromo.description ||
+          'Selecione quaisquer 3 conjuntos participantes e feche o combo pelo valor promocional configurado!'
+      );
+      setSelectedProductIds(Array.isArray(comboPromo.product_ids) ? comboPromo.product_ids : []);
+    }
+  }, [isOpen, comboPromo]);
+
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState<'ALL' | 'ONLY_PARTICIPATING' | 'SETS'>('ALL');
   const [saving, setSaving] = useState(false);

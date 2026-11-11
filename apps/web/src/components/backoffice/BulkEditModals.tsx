@@ -52,8 +52,15 @@ export function BulkPriceModal({
               type="number"
               step="0.01"
               required
+              autoFocus
               value={bulkPriceInput}
               onChange={(e) => setBulkPriceInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && bulkPriceInput && !isSubmitting) {
+                  e.preventDefault();
+                  onExecute();
+                }
+              }}
               placeholder="Ex: 39.90"
               className="w-full px-3.5 py-2.5 text-sm font-mono font-bold border border-deep-black/30 focus:outline-none focus:border-deep-black"
             />

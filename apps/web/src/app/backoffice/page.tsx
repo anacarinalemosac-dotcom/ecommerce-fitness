@@ -101,6 +101,8 @@ import CouponsManagerView from '../../components/backoffice/CouponsManagerView';
 import { TikTokCatalogModal } from '../../components/backoffice/TikTokCatalogModal';
 import { AIModelStudioModal } from '../../components/backoffice/AIModelStudioModal';
 import { DirectPaymentLinkModal } from '../../components/backoffice/DirectPaymentLinkModal';
+import { BulkPriceModal, BulkSizeGuideModal, BulkDescModal } from '../../components/backoffice/BulkEditModals';
+import { ComboPromoModal } from '../../components/backoffice/ComboPromoModal';
 import { ConditionalsView } from '../../components/backoffice/ConditionalsView';
 import { ExecutiveFinancialSummary } from '../../components/backoffice/ExecutiveFinancialSummary';
 import {
@@ -3711,6 +3713,16 @@ export default function BackofficeDashboard() {
                 >
                   <span>✕</span>
                   <span>REMOVER DO COMBO</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowComboPromoModal(true)}
+                  className="px-3 py-2 bg-amber-500/20 hover:bg-amber-400 hover:text-deep-black text-amber-300 text-[11px] font-black uppercase tracking-wider transition border border-amber-500/40 flex items-center gap-1.5 cursor-pointer"
+                  title="Configurar valor promocional fechado das 3 peças do combo"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>CONFIGURAR VALOR DO COMBO ({comboPromo?.bundle_price ? `$${Number(comboPromo.bundle_price).toFixed(2)}` : '$99.00'})</span>
                 </button>
 
                 <button
@@ -8428,6 +8440,54 @@ export default function BackofficeDashboard() {
           setDirectPaymentProduct(null);
         }}
         product={directPaymentProduct}
+      />
+
+      {/* Modal de Alteração de Preço em Massa */}
+      <BulkPriceModal
+        isOpen={showBulkPriceModal}
+        onClose={() => setShowBulkPriceModal(false)}
+        selectedCount={selectedCatalogIds.length}
+        bulkPriceInput={bulkPriceInput}
+        setBulkPriceInput={setBulkPriceInput}
+        bulkComparePriceInput={bulkComparePriceInput}
+        setBulkComparePriceInput={setBulkComparePriceInput}
+        onExecute={handleExecuteBulkPrice}
+        isSubmitting={isBulkSubmitting}
+      />
+
+      {/* Modal de Tabela de Medidas em Massa */}
+      <BulkSizeGuideModal
+        isOpen={showBulkSizeGuideModal}
+        onClose={() => setShowBulkSizeGuideModal(false)}
+        selectedCount={selectedCatalogIds.length}
+        bulkSizeGuideInput={bulkSizeGuideInput}
+        setBulkSizeGuideInput={setBulkSizeGuideInput}
+        onExecute={handleExecuteBulkSizeGuide}
+        isSubmitting={isBulkSubmitting}
+      />
+
+      {/* Modal de Alteração de Descrição em Massa */}
+      <BulkDescModal
+        isOpen={showBulkDescModal}
+        onClose={() => setShowBulkDescModal(false)}
+        selectedCount={selectedCatalogIds.length}
+        bulkDescInput={bulkDescInput}
+        setBulkDescInput={setBulkDescInput}
+        bulkDescEnInput={bulkDescEnInput}
+        setBulkDescEnInput={setBulkDescEnInput}
+        bulkDescMode={bulkDescMode}
+        setBulkDescMode={setBulkDescMode}
+        onExecute={handleExecuteBulkDescription}
+        isSubmitting={isBulkSubmitting}
+      />
+
+      {/* Modal de Configuração da Promoção de Combo */}
+      <ComboPromoModal
+        isOpen={showComboPromoModal}
+        onClose={() => setShowComboPromoModal(false)}
+        comboPromo={comboPromo}
+        onSave={handleSaveComboPromo}
+        products={baseCatalogList}
       />
     </div>
   );
