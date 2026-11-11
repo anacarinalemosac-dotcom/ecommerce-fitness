@@ -76,12 +76,16 @@ interface MediaItem {
 
 interface ProductVariantMatrixFormProps {
   initialProduct?: any | null;
+  comboPromo?: any;
+  onComboPromoUpdated?: (updatedCombo: any) => void;
   onSaveSuccess?: (savedProduct: any) => void;
   onCancel?: () => void;
 }
 
 export function ProductVariantMatrixForm({
   initialProduct,
+  comboPromo,
+  onComboPromoUpdated,
   onSaveSuccess,
   onCancel,
 }: ProductVariantMatrixFormProps) {
@@ -131,6 +135,16 @@ export function ProductVariantMatrixForm({
   const [generalSku, setGeneralSku] = useState(''); // SKU Geral
   const [comparePrice, setComparePrice] = useState(''); // Preço de Comparação (De / Por)
   const [isOnSale, setIsOnSale] = useState(false); // Toggle de Promoção
+
+  // Participação na Promoção Especial de Combo
+  const [inComboPromo, setInComboPromo] = useState<boolean>(() => {
+    if (!initialProduct) return false;
+    const prodId = initialProduct.id;
+    const prodSlug = initialProduct.slug;
+    const ids = comboPromo?.product_ids || [];
+    const slugs = comboPromo?.product_slugs || [];
+    return Boolean((prodId && ids.includes(prodId)) || (prodSlug && slugs.includes(prodSlug)));
+  });
 
   // 2. Gerador de Cores e Tamanhos
   const [colors, setColors] = useState<Array<{ name: string; hex: string }>>([
@@ -351,6 +365,14 @@ export function ProductVariantMatrixForm({
           setVisiblePos(initialProduct.visible_pos !== false);
         }
       }
+
+      // Participação no Combo
+      const isProdInCombo = Boolean(
+        initialProduct &&
+          ((comboPromo?.product_ids || []).includes(initialProduct.id) ||
+            (comboPromo?.product_slugs || []).includes(initialProduct.slug))
+      );
+      setInComboPromo(isProdInCombo);
 
       // 1. Extração do Bojo
       const loadedCupsType =
@@ -697,9 +719,10 @@ export function ProductVariantMatrixForm({
         setIsOnSale(false);
         setProductVideoUrl('');
         setDirectVideoUrlInput('');
+        setInComboPromo(false);
       }
     }
-  }, [initialProduct]);
+  }, [initialProduct, comboPromo]);
 
   // Auto-save automático do rascunho no localStorage
   useEffect(() => {
@@ -1662,6 +1685,28 @@ export function ProductVariantMatrixForm({
         await refreshProducts();
       } catch (e) {}
 
+      // Sincroniza participação na Promoção de Combo
+      if (savedProduct?.id) {
+        try {
+          const action = inComboPromo ? 'ADD_PRODUCTS' : 'REMOVE_PRODUCTS';
+          const comboRes = await fetch('/api/backoffice/combo-promo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action,
+              product_ids: [savedProduct.id],
+              product_slugs: [savedProduct.slug || slug].filter(Boolean),
+            }),
+          });
+          const cData = await comboRes.json();
+          if (cData?.success && cData?.comboPromo && onComboPromoUpdated) {
+            onComboPromoUpdated(cData.comboPromo);
+          }
+        } catch (cErr) {
+          console.warn('Erro ao sincronizar combo promo:', cErr);
+        }
+      }
+
       if (onSaveSuccess) {
         onSaveSuccess({
           success: Boolean(success),
@@ -2502,6 +2547,47 @@ export function ProductVariantMatrixForm({
                     ✕ Limpar Fita
                   </button>
                 )}
+              </div>
+            </div>
+
+            {/* PARTICIPAÇÃO NA PROMOÇÃO DE COMBO */}
+            <div
+              className={`p-4 border-2 transition-all ${
+                inComboPromo
+                  ? 'bg-amber-500/10 border-amber-500 shadow-sm'
+                  : 'bg-gray-50 border-deep-black/20'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={inComboPromo}
+                    onChange={(e) => setInComboPromo(e.target.checked)}
+                    className="w-5 h-5 mt-0.5 text-amber-500 border-2 border-deep-black rounded-none focus:ring-0 cursor-pointer accent-amber-500"
+                  />
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      Participar da Promoção Especial de Combo
+                    </span>
+                    <p className="text-[10px] text-deep-black/70 mt-0.5 font-medium leading-relaxed">
+                      Ao marcar esta caixa, este produto participa da promoção especial de combo (o cliente pode juntar quaisquer 3 peças participantes para fechar no valor promocional no checkout).
+                    </p>
+                  </div>
+                </label>
+                <div className="shrink-0">
+                  {inComboPromo ? (
+                    <span className="px-2.5 py-1 bg-amber-500 text-deep-black text-[9px] font-black uppercase border border-deep-black shadow-xs flex items-center gap-1">
+                      <span>⚡</span>
+                      <span>NO COMBO</span>
+                    </span>
+                  ) : (
+                    <span className="px-2 py-1 bg-neutral-200 text-deep-black/50 text-[9px] font-bold uppercase">
+                      NÃO INCLUÍDO
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

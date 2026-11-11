@@ -911,6 +911,38 @@ export default function BackofficeDashboard() {
     }
   };
 
+  const fetchComboPromo = async () => {
+    try {
+      const res = await fetch('/api/backoffice/combo-promo');
+      const data = await res.json();
+      if (data?.comboPromo) {
+        setComboPromo(data.comboPromo);
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar combo promo:', err);
+    }
+  };
+
+  const handleToggleSingleProductCombo = async (productId: string, productSlug?: string) => {
+    try {
+      const res = await fetch('/api/backoffice/combo-promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'TOGGLE_PRODUCT',
+          product_id: productId,
+          product_slug: productSlug,
+        }),
+      });
+      const data = await res.json();
+      if (data?.success && data?.comboPromo) {
+        setComboPromo(data.comboPromo);
+      }
+    } catch (e: any) {
+      alert('Erro ao atualizar produto no combo: ' + e?.message);
+    }
+  };
+
   const handleExecuteBulkDescription = async () => {
     if (selectedCatalogIds.length === 0) return;
     setIsBulkSubmitting(true);
@@ -1406,6 +1438,7 @@ export default function BackofficeDashboard() {
     fetchWriteOffs();
     fetchSellers();
     fetchLiveFeed();
+    fetchComboPromo();
 
     const liveInterval = setInterval(fetchLiveFeed, 3500);
     return () => clearInterval(liveInterval);
@@ -3416,6 +3449,8 @@ export default function BackofficeDashboard() {
               <ProductVariantMatrixForm
                 key={editingProduct?.id || (editingProduct?._isDuplicate ? `dup-${editingProduct.slug}` : 'new-product')}
                 initialProduct={editingProduct}
+                comboPromo={comboPromo}
+                onComboPromoUpdated={(updated) => setComboPromo(updated)}
                 onSaveSuccess={(saved) => {
                   setShowAddForm(false);
                   setEditingProduct(null);
@@ -3997,6 +4032,32 @@ export default function BackofficeDashboard() {
                             <Edit3 className="w-3.5 h-3.5 text-gold" />
                             <span>EDITAR</span>
                           </button>
+
+                          {/* Botão Rápido de Combo Promocional */}
+                          {(() => {
+                            const isInCombo =
+                              (comboPromo?.product_ids || []).includes(item.id) ||
+                              (comboPromo?.product_slugs || []).includes(item.slug);
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleSingleProductCombo(item.id, item.slug)}
+                                className={`p-1.5 border transition flex items-center gap-1 text-[10px] font-black cursor-pointer shadow-xs ${
+                                  isInCombo
+                                    ? 'bg-amber-500 hover:bg-amber-400 text-deep-black border-deep-black'
+                                    : 'bg-white hover:bg-amber-50 text-deep-black border-deep-black/30'
+                                }`}
+                                title={
+                                  isInCombo
+                                    ? 'Remover este produto da promoção de combo'
+                                    : 'Incluir este produto na promoção de combo'
+                                }
+                              >
+                                <Sparkles className={`w-3.5 h-3.5 ${isInCombo ? 'text-deep-black' : 'text-amber-600'}`} />
+                                <span>{isInCombo ? '✓ NO COMBO' : '+ COMBO'}</span>
+                              </button>
+                            );
+                          })()}
 
                           {/* Botão Duplicar Produto no ERP com 1 clique */}
                           <button
