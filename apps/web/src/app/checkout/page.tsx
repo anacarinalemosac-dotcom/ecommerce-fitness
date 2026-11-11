@@ -497,7 +497,7 @@ export default function CheckoutPage() {
 
   // Status de Finalização
   useEffect(() => {
-    fetch('/api/backoffice/combo-promo')
+    fetch('/api/backoffice/combo-promo', { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.comboPromo) setComboPromo(data.comboPromo);
@@ -2298,27 +2298,27 @@ export default function CheckoutPage() {
               </p>
             </div>
           ) : comboResult.participatingCount > 0 && !comboResult.hasCombo && comboPromo?.active ? (
-            <div className="p-3 bg-amber-50 border border-amber-300 text-amber-950 space-y-1.5 animate-fadeIn">
+            <div className="p-3.5 bg-emerald-50 border-2 border-emerald-500 text-emerald-950 space-y-1.5 animate-fadeIn">
               <div className="flex items-center justify-between text-xs font-black uppercase">
-                <span className="flex items-center gap-1.5 text-amber-800">
-                  <Sparkles className="w-4 h-4 text-amber-600" />
-                  <span>{comboPromo?.title || 'PROMOÇÃO 3 CONJUNTOS'}</span>
+                <span className="flex items-center gap-1.5 text-emerald-800">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <span>{comboPromo?.title || 'PROMOÇÃO DE COMBO'}</span>
                 </span>
-                <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 font-bold font-mono">
+                <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 font-bold font-mono">
                   {comboPromo?.badge_text || 'COMBO 3 PEÇAS'}
                 </span>
               </div>
-              <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
+              <p className="text-xs text-emerald-950 font-bold leading-relaxed">
                 {lang === 'pt'
-                  ? `Você tem ${comboResult.participatingCount} conjunto(s) participante(s) na sacola. Adicione mais ${comboResult.neededForNextCombo} para ativar o valor promocional do combo!`
-                  : `You have ${comboResult.participatingCount} eligible set(s). Add ${comboResult.neededForNextCombo} more to unlock the combo deal!`}
+                  ? `Esta peça participa da promoção: ${comboPromo?.required_quantity || 3} peças pelo valor $${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Você já tem ${comboResult.participatingCount} na sacola — adicione mais ${comboResult.neededForNextCombo} e falta pouco para você garantir o valor promocional!`
+                  : `You have ${comboResult.participatingCount} eligible piece(s) for our ${comboPromo?.required_quantity || 3} for $${Number(comboPromo?.bundle_price || 120).toFixed(2)} deal. Add ${comboResult.neededForNextCombo} more to unlock the promo!`}
               </p>
               <div className="pt-1">
                 <Link
                   href="/combo"
-                  className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-amber-900 underline hover:text-black"
+                  className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-emerald-800 underline hover:text-emerald-950"
                 >
-                  <span>{lang === 'pt' ? 'ESCOLHER PEÇAS DO COMBO →' : 'ADD PIECES TO COMBO →'}</span>
+                  <span>{lang === 'pt' ? 'ESCOLHER MAIS PEÇAS DO COMBO →' : 'ADD MORE PIECES TO COMBO →'}</span>
                 </Link>
               </div>
             </div>

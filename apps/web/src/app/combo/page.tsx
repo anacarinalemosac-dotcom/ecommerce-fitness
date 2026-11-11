@@ -63,7 +63,7 @@ export default function ComboBuilderPage() {
 
   useEffect(() => {
     // 1. Carrega configuração da promoção de combo
-    fetch('/api/backoffice/combo-promo')
+    fetch('/api/backoffice/combo-promo', { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.comboPromo) {
@@ -489,7 +489,7 @@ export default function ComboBuilderPage() {
                         alt={prod.title}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
-                      <span className="absolute top-2 left-2 bg-gold text-deep-black text-[9px] font-black uppercase px-2 py-0.5 border border-deep-black shadow-xs">
+                      <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[9px] font-black uppercase px-2 py-0.5 border border-emerald-800 shadow-xs">
                         {promo?.badge_text || 'COMBO 3 PEÇAS'}
                       </span>
                       {isSelectedInAnySlot && (
@@ -507,6 +507,9 @@ export default function ComboBuilderPage() {
                         </h4>
                         <p className="text-[11px] text-deep-black/60 font-mono font-medium">
                           Preço avulso: ${normalPrice.toFixed(2)}
+                        </p>
+                        <p className="text-[10px] font-bold text-emerald-900 bg-emerald-50 border border-emerald-400 p-1.5 leading-snug">
+                          ✓ Esta peça participa da promoção: {requiredQty} peças pelo valor ${bundlePrice.toFixed(2)}.
                         </p>
                       </div>
 

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import ProductShareModal from '../components/ProductShareModal';
+import { addToCart } from '@/lib/cart';
 import {
   Sparkles,
   ArrowRight,
@@ -361,6 +362,30 @@ export default function HomePage() {
   const [shareModalProduct, setShareModalProduct] = useState<any | null>(null);
   const [cardImageOverrides, setCardImageOverrides] = useState<Record<string, string>>({});
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
+  const [comboPromo, setComboPromo] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/backoffice/combo-promo', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.comboPromo) setComboPromo(data.comboPromo);
+      })
+      .catch(() => {});
+  }, []);
+
+  const isProductInCombo = (p: any): boolean => {
+    if (!comboPromo?.active || !p) return false;
+    const promoIds = (comboPromo.product_ids || []).map((id: string) => String(id).toLowerCase());
+    const promoSlugs = (comboPromo.product_slugs || []).map((s: string) => String(s).toLowerCase());
+    const prodId = String(p.id || '').toLowerCase();
+    const prodSlug = String(p.slug || '').toLowerCase();
+
+    if (promoIds.length > 0 || promoSlugs.length > 0) {
+      return Boolean((prodId && promoIds.includes(prodId)) || (prodSlug && promoSlugs.includes(prodSlug)));
+    }
+    const tUpper = (p.title || '').toUpperCase();
+    return tUpper.includes('SET') || tUpper.includes('CONJUNTO') || tUpper.includes('KIT');
+  };
 
   const activeHeroSlides = (siteInfo.heroBanners && siteInfo.heroBanners.length > 0)
     ? siteInfo.heroBanners.filter((b) => b.active !== false)
@@ -411,6 +436,30 @@ export default function HomePage() {
   const handleQuickAdd = (id: string, size: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    const prod = activeProducts.find((p) => p.id === id);
+    if (prod) {
+      const matchedVariant = Array.isArray(prod.variants)
+        ? prod.variants.find(
+            (v: any) =>
+              String(v.size || '').toUpperCase() === size.toUpperCase() &&
+              Number(v.stock_quantity ?? v.stock ?? 0) > 0
+          ) || prod.variants[0]
+        : null;
+      addToCart({
+        id: prod.id,
+        title: prod.title,
+        slug: prod.slug,
+        size,
+        color: matchedVariant?.color || prod.colors?.[0]?.name || 'Padrão',
+        sku: matchedVariant?.sku || `${prod.slug}-${size}`,
+        price: Number(matchedVariant?.price || prod.price) || 44.9,
+        quantity: 1,
+        image: cardImageOverrides[prod.id] || matchedVariant?.image || prod.primaryImage,
+        isBackorder: false,
+        productionDays: 0,
+        is_combo_item: isProductInCombo(prod),
+      });
+    }
     setQuickAddedItem({ id, size });
     setTimeout(() => {
       setQuickAddedItem(null);
@@ -1630,7 +1679,24 @@ export default function HomePage() {
                           </div>
                         </div>
 
-                        {/* Preço em Dólar ($) e Frete Fixo $9.99 */}
+                        {isProductInCombo(product) && !isSpoiler && !isOutOfStock && (
+                          <Link
+                            href={`/produto/${product.slug}`}
+                            className="p-2.5 bg-emerald-50 border-2 border-emerald-500 text-emerald-950 block space-y-1 hover:bg-emerald-100/80 transition"
+                          >
+                            <div className="flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider text-emerald-800">
+                              <Sparkles className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <span>{comboPromo?.badge_text || 'COMBO 3 PEÇAS'}</span>
+                            </div>
+                            <p className="text-[10.5px] font-bold text-emerald-950 leading-snug">
+                              {lang === 'pt'
+                                ? `Esta peça participa da promoção: ${Number(comboPromo?.required_quantity) || 3} peças pelo valor $${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Adicione essa peça na sua sacola e faltará pouco para você participar da promoção.`
+                                : `This piece is part of our promo: ${Number(comboPromo?.required_quantity) || 3} pieces for $${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Add this piece to your bag and you're close to unlocking the deal!`}
+                            </p>
+                          </Link>
+                        )}
+
+                        {/* Preço em Dólar ($) e Frete Fixo $9.90 */}
                         <div className="pt-2.5 border-t border-deep-black/10 flex items-baseline justify-between">
                           <div>
                             <div className="flex items-baseline gap-2">
@@ -1649,7 +1715,7 @@ export default function HomePage() {
                               )}
                             </div>
                             <span className="text-[9px] block text-deep-black/60 font-bold uppercase tracking-wider">
-                              $9.99 FLAT RATE US SHIPPING
+                              $9.90 FLAT RATE US SHIPPING
                             </span>
                           </div>
 

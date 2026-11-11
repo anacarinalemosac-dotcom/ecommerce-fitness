@@ -52,6 +52,30 @@ export default function PublicClientCatalogPage() {
   const [columnsCount, setColumnsCount] = useState<2 | 3 | 4>(3);
   const [onlyInStock, setOnlyInStock] = useState(true);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [comboPromo, setComboPromo] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/backoffice/combo-promo', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.comboPromo) setComboPromo(data.comboPromo);
+      })
+      .catch(() => {});
+  }, []);
+
+  const isCatalogItemInCombo = (tile: CatalogVariationTile): boolean => {
+    if (!comboPromo?.active) return false;
+    const promoIds = (comboPromo.product_ids || []).map((id: string) => String(id).toLowerCase());
+    const promoSlugs = (comboPromo.product_slugs || []).map((s: string) => String(s).toLowerCase());
+    const idNorm = String(tile.productId || '').toLowerCase();
+    const slugNorm = String(tile.productSlug || '').toLowerCase();
+
+    if (promoIds.length > 0 || promoSlugs.length > 0) {
+      return Boolean((idNorm && promoIds.includes(idNorm)) || (slugNorm && promoSlugs.includes(slugNorm)));
+    }
+    const tUpper = (tile.title || '').toUpperCase();
+    return tUpper.includes('SET') || tUpper.includes('CONJUNTO') || tUpper.includes('KIT');
+  };
 
   useEffect(() => {
     async function loadProducts() {
@@ -617,7 +641,7 @@ export default function PublicClientCatalogPage() {
               <span>📲 PEDIDOS WHATSAPP: {siteInfo?.whatsapp || siteInfo?.phone || '+1 (978) 313-9452'}</span>
             </a>
             <div className="text-[10px] text-gold font-bold uppercase tracking-wider">
-              {siteInfo?.address || 'Showroom Leominster, MA'} • FRETE FIXO $9.99 P/ TODOS OS EUA
+              {siteInfo?.address || 'Showroom Leominster, MA'} • FRETE FIXO $9.90 P/ TODOS OS EUA
             </div>
             <div className="text-[9px] text-gray-400 font-bold uppercase">
               ATUALIZADO EM {new Date().toLocaleDateString('pt-BR')} • TOTAL: {filteredItems.length} VARIAÇÕES
@@ -735,10 +759,21 @@ export default function PublicClientCatalogPage() {
                             </span>
                           )}
                           <span className="text-[8.5px] font-bold text-gray-500 uppercase">
-                            +$9.99 FRETE FIXO EUA
+                            +$9.90 FRETE FIXO EUA
                           </span>
                         </div>
                       </div>
+
+                      {isCatalogItemInCombo(item) && item.totalStock > 0 && (
+                        <div className="p-2 bg-emerald-50 border-2 border-emerald-500 text-emerald-950 text-[10px] font-bold leading-snug space-y-0.5">
+                          <span className="text-[9px] font-black uppercase tracking-wider text-emerald-800 block">
+                            ✨ {comboPromo?.badge_text || 'COMBO 3 PEÇAS'}
+                          </span>
+                          <p>
+                            Esta peça participa da promoção: {Number(comboPromo?.required_quantity) || 3} peças pelo valor ${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Adicione essa peça na sua sacola e faltará pouco para você participar da promoção.
+                          </p>
+                        </div>
+                      )}
 
                       {/* Grade de Estoque por Tamanho */}
                       <div className="pt-2 border-t border-dashed border-gray-200">

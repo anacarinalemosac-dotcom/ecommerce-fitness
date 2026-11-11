@@ -503,6 +503,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       '';
 
     productData = {
+      id: dynamicProduct.id,
       title: dynamicProduct.title,
       categoryPt: `${dynamicProduct.categoryPt} • ALTA PERFORMANCE`,
       categoryEn: `${dynamicProduct.categoryEn} • HIGH PERFORMANCE`,
@@ -634,7 +635,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [comboPromo, setComboPromo] = useState<any>(null);
 
   useEffect(() => {
-    fetch('/api/backoffice/combo-promo')
+    fetch('/api/backoffice/combo-promo', { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.comboPromo) setComboPromo(data.comboPromo);
@@ -642,13 +643,24 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       .catch(() => {});
   }, []);
 
-  const isParticipatingInCombo = Boolean(
-    comboPromo?.active && (
-      (comboPromo.product_ids || []).some((id: string) => String(id).toLowerCase() === String(productData?.id || '').toLowerCase()) ||
-      (comboPromo.product_slugs || []).some((s: string) => String(s).toLowerCase() === String(slug || '').toLowerCase()) ||
-      (productData?.title || '').toUpperCase().includes('SET') ||
-      (productData?.title || '').toUpperCase().includes('CONJUNTO')
-    )
+  const isItemInCombo = (pId?: string, pSlug?: string, pTitle?: string) => {
+    if (!comboPromo?.active) return false;
+    const promoIds = (comboPromo.product_ids || []).map((id: string) => String(id).toLowerCase());
+    const promoSlugs = (comboPromo.product_slugs || []).map((s: string) => String(s).toLowerCase());
+    const idNorm = String(pId || '').toLowerCase();
+    const slugNorm = String(pSlug || '').toLowerCase();
+
+    if (promoIds.length > 0 || promoSlugs.length > 0) {
+      return Boolean((idNorm && promoIds.includes(idNorm)) || (slugNorm && promoSlugs.includes(slugNorm)));
+    }
+    const tUpper = (pTitle || '').toUpperCase();
+    return tUpper.includes('SET') || tUpper.includes('CONJUNTO') || tUpper.includes('KIT');
+  };
+
+  const isParticipatingInCombo = isItemInCombo(
+    (dynamicProduct as any)?.id || (productData as any)?.id,
+    slug,
+    productData?.title
   );
 
   // Opção de Entrega (Alo Yoga style): Envio vs Retirada no Showroom
@@ -1430,20 +1442,32 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             )}
           </div>
 
-          {/* Selo Elegante de Promoção de Combo (quando participante) */}
+          {/* Destaque Verde da Promoção de Combo (quando participante) */}
           {isParticipatingInCombo && (
-            <div className="p-2.5 bg-amber-50 border border-amber-300 text-deep-black flex items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-                <span className="text-[11px] font-medium">
-                  {lang === 'pt' ? 'Esta peça participa do ' : 'Participates in '}
-                  <strong className="font-bold">{comboPromo?.badge_text || 'Combo Especial'}</strong>
-                  {comboPromo?.bundle_price ? ` (3 por $${Number(comboPromo.bundle_price).toFixed(2)})` : ''}
+            <div className="p-3.5 bg-emerald-50 border-2 border-emerald-500 text-emerald-950 space-y-1.5 shadow-xs">
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                  <Sparkles className="w-3 h-3" />
                 </span>
+                <div className="space-y-1 flex-1">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-[9.5px] font-black uppercase tracking-wider bg-emerald-600 text-white px-2 py-0.5">
+                      {comboPromo?.badge_text || 'COMBO 3 PEÇAS'}
+                    </span>
+                    <Link
+                      href="/combo"
+                      className="text-[11px] font-black text-emerald-800 underline hover:text-emerald-950 uppercase tracking-wide"
+                    >
+                      {lang === 'pt' ? 'Ver peças do combo →' : 'Build Combo →'}
+                    </Link>
+                  </div>
+                  <p className="text-xs font-bold text-emerald-950 leading-relaxed">
+                    {lang === 'pt'
+                      ? `Esta peça participa da promoção: ${Number(comboPromo?.required_quantity) || 3} peças pelo valor $${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Adicione essa peça na sua sacola e faltará pouco para você participar da promoção.`
+                      : `This item is part of our combo deal: ${Number(comboPromo?.required_quantity) || 3} pieces for $${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Add this piece to your bag and you're close to unlocking the promotion!`}
+                  </p>
+                </div>
               </div>
-              <Link href="/combo" className="text-[10px] font-bold text-amber-900 underline hover:text-black uppercase">
-                {lang === 'pt' ? 'Montar Combo →' : 'Build Combo →'}
-              </Link>
             </div>
           )}
 
@@ -1711,6 +1735,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             {similarItems.map((item: any) => {
               const itemImg = item.primaryImage || item.image || item.media?.[0]?.url || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80';
               const itemPrice = Number(item.price) || 44.9;
+              const itemInCombo = isItemInCombo(item.id, item.slug, item.title);
               return (
                 <Link
                   key={item.id || item.slug}
@@ -1727,6 +1752,13 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                     {item.badgePt && (
                       <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-black text-white px-2 py-0.5">
                         {lang === 'pt' ? item.badgePt : (item.badgeEn || item.badgePt)}
+                      </span>
+                    )}
+                    {itemInCombo && (
+                      <span className="absolute bottom-2 left-2 right-2 text-[9px] font-bold uppercase tracking-wider bg-emerald-600/95 text-white px-2 py-1 text-center shadow-xs">
+                        {lang === 'pt'
+                          ? `COMBO: ${Number(comboPromo?.required_quantity) || 3} POR $${Number(comboPromo?.bundle_price || 120).toFixed(2)}`
+                          : `COMBO: ${Number(comboPromo?.required_quantity) || 3} FOR $${Number(comboPromo?.bundle_price || 120).toFixed(2)}`}
                       </span>
                     )}
                   </div>

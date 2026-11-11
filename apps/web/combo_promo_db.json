@@ -2,7 +2,7 @@
   "active": true,
   "title": "Promoção Especial de Combo",
   "required_quantity": 3,
-  "bundle_price": 99,
+  "bundle_price": 120,
   "badge_text": "COMBO 3 PEÇAS",
   "description": "Selecione quaisquer 3 conjuntos participantes e garanta o desconto especial no fechamento da compra!",
   "product_ids": [
@@ -58,7 +58,6 @@
     "2debea43-7309-4ca1-9bd5-bbe4e49039f2",
     "27424f85-c51e-4f20-b2f0-163e1a1b7423",
     "3d5b00b7-e80d-4d19-97f1-09515446a89e",
-    "3649d73b-b431-44f3-b1c5-a0d2bfba1fba",
     "733ed749-47a7-4263-9950-22879b4855d9",
     "c79a1330-bfb6-47c4-bc5b-dae29af75632",
     "9d6fb6b2-de96-451e-9a2d-a3d1b14734d3",
@@ -134,7 +133,6 @@
     "red-brown-suplex-activewear-set",
     "conjunto-promocao",
     "conjunto-promocao-3-por-110",
-    "3-conjuntos-promoo-afterpay",
     "set-ana-purple-baby-blue",
     "conjunto-ana-bicolor-azul-turquesa-bege",
     "set-ana-yellow-red",
@@ -157,5 +155,5 @@
     "set-pants-bruna",
     "set-pants-kely"
   ],
-  "updated_at": "2026-11-10T16:20:09.493Z"
+  "updated_at": "2026-11-11T13:15:09.720Z"
 }
