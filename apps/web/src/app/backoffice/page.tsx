@@ -289,11 +289,11 @@ export default function BackofficeDashboard() {
   // Configuração da Promoção de Combo (3 por $X)
   const [comboPromo, setComboPromo] = useState<any>({
     active: true,
-    title: 'Promoção Especial: 3 Conjuntos por $99',
+    title: 'Promoção Especial de Combo',
     required_quantity: 3,
     bundle_price: 99.0,
-    badge_text: '3 POR $99',
-    description: 'Selecione quaisquer 3 conjuntos participantes e feche o combo por apenas $99.00 no total!',
+    badge_text: 'COMBO 3 PEÇAS',
+    description: 'Selecione quaisquer 3 conjuntos participantes e feche o combo pelo valor promocional configurado!',
     product_ids: [],
     product_slugs: [],
   });
@@ -3665,7 +3665,7 @@ export default function BackofficeDashboard() {
                   className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-deep-black text-[11px] font-black uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
                   <span>⚡</span>
-                  <span>INCLUIR NO COMBO ({comboPromo?.badge_text || '3 POR $99'})</span>
+                  <span>INCLUIR NO COMBO ({comboPromo?.badge_text || 'COMBO 3 PEÇAS'})</span>
                 </button>
 
                 <button
@@ -3830,7 +3830,7 @@ export default function BackofficeDashboard() {
                           ) && (
                             <span className="px-1.5 py-0.5 bg-amber-500 text-deep-black text-[8px] font-black uppercase border border-deep-black shadow-xs flex items-center gap-0.5">
                               <span>🔥</span>
-                              <span>{comboPromo?.badge_text || '3 POR $99'}</span>
+                              <span>{comboPromo?.badge_text || 'COMBO'}</span>
                             </span>
                           )}
                           {(item.material || item.meta?.material) && (

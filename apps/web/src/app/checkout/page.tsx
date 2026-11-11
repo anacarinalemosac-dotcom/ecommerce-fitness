@@ -508,7 +508,7 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState<null | string>(null);
 
-  // Cálculos Financeiros (Suporte a Sacola Multi-Itens e Promoção de Combo 3 por $99)
+  // Cálculos Financeiros (Suporte a Sacola Multi-Itens e Promoção de Combo)
   const effectiveItems = cartItems.length > 0 ? cartItems : (cartItem ? [cartItem] : []);
   const subtotal = effectiveItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
 
@@ -2305,13 +2305,13 @@ export default function CheckoutPage() {
                   <span>{comboPromo?.title || 'PROMOÇÃO 3 CONJUNTOS'}</span>
                 </span>
                 <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 font-bold font-mono">
-                  {comboPromo?.badge_text || '3 POR $99'}
+                  {comboPromo?.badge_text || 'COMBO 3 PEÇAS'}
                 </span>
               </div>
               <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
                 {lang === 'pt'
-                  ? `Você tem ${comboResult.participatingCount} conjunto participante na sacola. Adicione mais ${comboResult.neededForNextCombo} para fechar o combo por apenas ${(comboPromo?.bundle_price || 99).toFixed(2)}!`
-                  : `You have ${comboResult.participatingCount} eligible set. Add ${comboResult.neededForNextCombo} more to get the combo for only ${(comboPromo?.bundle_price || 99).toFixed(2)}!`}
+                  ? `Você tem ${comboResult.participatingCount} conjunto(s) participante(s) na sacola. Adicione mais ${comboResult.neededForNextCombo} para ativar o valor promocional do combo!`
+                  : `You have ${comboResult.participatingCount} eligible set(s). Add ${comboResult.neededForNextCombo} more to unlock the combo deal!`}
               </p>
               <div className="pt-1">
                 <Link

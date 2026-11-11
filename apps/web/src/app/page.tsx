@@ -827,7 +827,7 @@ export default function HomePage() {
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 bg-amber-400 hover:bg-amber-300 text-deep-black font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-[0_6px_20px_rgba(251,191,36,0.35)] transition-all hover:scale-[1.03] active:scale-[0.98] text-center"
               >
                 <Sparkles className="w-5 h-5 text-deep-black shrink-0" />
-                <span>{lang === 'pt' ? '⚡ MONTE SEU COMBO (3 CONJUNTOS POR $99) →' : '⚡ BUILD YOUR COMBO (3 SETS FOR $99) →'}</span>
+                <span>{lang === 'pt' ? '⚡ MONTE SEU COMBO (3 CONJUNTOS) →' : '⚡ BUILD YOUR COMBO (3 SETS) →'}</span>
               </Link>
 
               <a

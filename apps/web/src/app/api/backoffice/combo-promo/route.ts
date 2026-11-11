@@ -20,11 +20,11 @@ export interface ComboPromoConfig {
 
 const DEFAULT_CONFIG: ComboPromoConfig = {
   active: true,
-  title: 'Promoção Especial: 3 Conjuntos por $99',
+  title: 'Promoção Especial de Combo',
   required_quantity: 3,
   bundle_price: 99.0,
-  badge_text: '3 POR $99',
-  description: 'Selecione quaisquer 3 conjuntos participantes e pague apenas $99.00 no total!',
+  badge_text: 'COMBO 3 PEÇAS',
+  description: 'Selecione quaisquer 3 conjuntos participantes e garanta o valor promocional de combo no fechamento do pedido!',
   product_ids: [],
   product_slugs: [],
 };

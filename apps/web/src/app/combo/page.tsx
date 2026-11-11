@@ -221,11 +221,11 @@ export default function ComboBuilderPage() {
         <div className="max-w-4xl mx-auto space-y-4 relative z-10">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 bg-gold text-deep-black text-xs font-black uppercase tracking-widest shadow-luxury">
             <Sparkles className="w-4 h-4 text-deep-black" />
-            <span>{promo?.badge_text || 'PROMOÇÃO ESPECIAL • 3 POR $99'}</span>
+            <span>{promo?.badge_text || 'PROMOÇÃO ESPECIAL • COMBO 3 PEÇAS'}</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-white">
-            {promo?.title || 'MONTE SEU COMBO: 3 CONJUNTOS POR $99'}
+            {promo?.title || 'MONTE SEU COMBO DE CONJUNTOS'}
           </h1>
 
           <p className="text-xs sm:text-sm text-white/80 uppercase max-w-2xl mx-auto font-medium leading-relaxed">
@@ -395,7 +395,7 @@ export default function ComboBuilderPage() {
                   className="w-full md:w-auto px-8 py-4 bg-gold hover:bg-white text-deep-black font-black text-xs sm:text-sm uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-luxury cursor-pointer"
                 >
                   <Lock className="w-4 h-4 text-deep-black" />
-                  <span>FINALIZAR MEU COMBO POR ${bundlePrice.toFixed(2)} →</span>
+                  <span>FINALIZAR MEU COMBO NO CHECKOUT →</span>
                 </button>
               ) : (
                 <div className="px-6 py-3.5 bg-white/10 text-white/60 border border-white/20 text-xs font-black uppercase tracking-wider text-center">
@@ -490,7 +490,7 @@ export default function ComboBuilderPage() {
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       <span className="absolute top-2 left-2 bg-gold text-deep-black text-[9px] font-black uppercase px-2 py-0.5 border border-deep-black shadow-xs">
-                        {promo?.badge_text || '3 POR $99'}
+                        {promo?.badge_text || 'COMBO 3 PEÇAS'}
                       </span>
                       {isSelectedInAnySlot && (
                         <span className="absolute top-2 right-2 bg-emerald-600 text-white text-[9px] font-black uppercase px-2 py-0.5 border border-emerald-800 shadow-xs flex items-center gap-1">

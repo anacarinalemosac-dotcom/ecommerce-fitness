@@ -32,12 +32,12 @@ export function ComboPromoModal({
   if (!isOpen) return null;
 
   const [active, setActive] = useState(comboPromo?.active ?? true);
-  const [title, setTitle] = useState(comboPromo?.title || 'Promoção Especial: 3 Conjuntos por $99');
+  const [title, setTitle] = useState(comboPromo?.title || 'Promoção Especial de Combo');
   const [requiredQty, setRequiredQty] = useState<number>(comboPromo?.required_quantity || 3);
   const [bundlePrice, setBundlePrice] = useState<number>(comboPromo?.bundle_price || 99.0);
-  const [badgeText, setBadgeText] = useState(comboPromo?.badge_text || '3 POR $99');
+  const [badgeText, setBadgeText] = useState(comboPromo?.badge_text || 'COMBO 3 PEÇAS');
   const [description, setDescription] = useState(
-    comboPromo?.description || 'Selecione quaisquer 3 conjuntos participantes e feche o combo por apenas $99.00 no total!'
+    comboPromo?.description || 'Selecione quaisquer 3 conjuntos participantes e feche o combo pelo valor promocional configurado!'
   );
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>(
     Array.isArray(comboPromo?.product_ids) ? comboPromo.product_ids : []
@@ -97,10 +97,10 @@ export function ComboPromoModal({
       );
       const updatedConfig = {
         active,
-        title: title.trim() || 'Promoção 3 Conjuntos por $99',
+        title: title.trim() || 'Promoção Especial de Combo',
         required_quantity: Number(requiredQty) || 3,
         bundle_price: Number(bundlePrice) || 99.0,
-        badge_text: badgeText.trim() || '3 POR $99',
+        badge_text: badgeText.trim() || 'COMBO 3 PEÇAS',
         description: description.trim(),
         product_ids: selectedProductIds,
         product_slugs: selectedProds.map((p) => p.slug).filter(Boolean),
@@ -218,7 +218,7 @@ export function ComboPromoModal({
                 required
                 value={badgeText}
                 onChange={(e) => setBadgeText(e.target.value)}
-                placeholder="3 POR $99"
+                placeholder="COMBO 3 PEÇAS"
                 className="w-full px-3.5 py-2.5 text-xs font-black uppercase tracking-wider border border-deep-black/30 focus:outline-none focus:border-deep-black bg-white font-mono"
               />
               <span className="text-[10px] text-deep-black/50 block">Selo exibido nos produtos</span>

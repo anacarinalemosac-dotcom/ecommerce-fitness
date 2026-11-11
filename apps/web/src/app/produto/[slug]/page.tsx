@@ -1235,10 +1235,10 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
                 <div>
                   <span className="text-xs font-black uppercase tracking-wide block text-deep-black">
-                    🔥 {comboPromo?.badge_text || '3 POR $99'}: ESTA PEÇA PARTICIPA DA PROMOÇÃO!
+                    🔥 {comboPromo?.badge_text || 'COMBO 3 PEÇAS'}: ESTA PEÇA PARTICIPA DA PROMOÇÃO!
                   </span>
                   <span className="text-[10px] text-deep-black/70 uppercase">
-                    Adicione 3 conjuntos na sacola e pague apenas ${(comboPromo?.bundle_price || 99).toFixed(2)} no total.
+                    Adicione 3 conjuntos participantes na sacola para fechar com o valor promocional do combo.
                   </span>
                 </div>
               </div>
@@ -1546,7 +1546,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                     </span>
                     <div className="flex items-center gap-3">
                       <Link href="/combo" className="text-amber-400 underline hover:text-white text-[10px] font-black uppercase">
-                        {lang === 'pt' ? 'MONTAR COMBO (3 POR $99)' : 'BUILD 3-SET COMBO'}
+                        {lang === 'pt' ? 'MONTAR COMBO (3 PEÇAS)' : 'BUILD 3-SET COMBO'}
                       </Link>
                       <Link href="/checkout" className="text-gold underline hover:text-white font-black flex items-center gap-1 text-[11px]">
                         <span>CHECKOUT</span>

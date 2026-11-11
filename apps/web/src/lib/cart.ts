@@ -131,7 +131,7 @@ export function calculateComboDiscount(
     participatingCount: 0,
     neededForNextCombo: promo?.required_quantity || 3,
     bundleTargetPrice: promo?.bundle_price || 99.0,
-    promoTitle: promo?.title || 'Promoção 3 Conjuntos por $99',
+    promoTitle: promo?.title || 'Promoção Especial de Combo',
   };
 
   if (!promo || !promo.active || !items || items.length === 0) {

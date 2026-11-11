@@ -1,10 +1,10 @@
 {
   "active": true,
-  "title": "Promoção Especial: 3 Conjuntos por $99",
+  "title": "Promoção Especial de Combo",
   "required_quantity": 3,
   "bundle_price": 99,
-  "badge_text": "3 POR $99",
-  "description": "Selecione quaisquer 3 conjuntos participantes e pague apenas $99.00 no total!",
+  "badge_text": "COMBO 3 PEÇAS",
+  "description": "Selecione quaisquer 3 conjuntos participantes e garanta o desconto especial no fechamento da compra!",
   "product_ids": [
     "0d4e71b8-02f5-48f8-a5dd-b04ea77e4003",
     "9425b8ad-629b-466a-ba99-51ea9d291e50",
