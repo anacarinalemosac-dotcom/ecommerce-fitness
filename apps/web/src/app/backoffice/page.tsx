@@ -2587,6 +2587,9 @@ export default function BackofficeDashboard() {
         onSelectOrder={(ord) => {
           setSelectedSaleDetail(ord);
         }}
+        onEditOrder={(ord) => {
+          setEditingSale(ord);
+        }}
         onViewAllSales={() => {
           setActiveTab('sales');
           setSalesUnfulfilledOnly(true);
@@ -5959,28 +5962,48 @@ export default function BackofficeDashboard() {
 
           {/* MODAL RAIO-X FINANCEIRO DO PEDIDO SELECIONADO */}
           {selectedSaleDetail && (
-            <div className="fixed inset-0 z-50 bg-deep-black/80 flex items-center justify-center p-4">
-              <div className="bg-white border-4 border-gold p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl animate-fadeIn">
-                <div className="flex items-center justify-between border-b border-deep-black/10 pb-3">
-                  <div className="flex items-center gap-2">
-                    <Receipt className="w-5 h-5 text-gold" />
-                    <div>
+            <div className="fixed inset-0 z-50 bg-deep-black/80 flex items-center justify-center p-2 sm:p-4 backdrop-blur-xs">
+              <div className="bg-white border-4 border-gold max-w-2xl w-full max-h-[92dvh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+                {/* Cabeçalho Fixo Sempre Visível no Topo */}
+                <div className="shrink-0 bg-deep-black text-white px-4 py-3.5 sm:px-6 sm:py-4 flex items-center justify-between gap-2 border-b-2 border-gold">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Receipt className="w-5 h-5 text-gold shrink-0" />
+                    <div className="min-w-0">
                       <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
-                        RAIO-X FINANCEIRO DA VENDA
+                        RAIO-X DO PEDIDO ({(selectedSaleDetail.items || []).length} PEÇA{(selectedSaleDetail.items || []).length === 1 ? '' : 'S'})
                       </span>
-                      <h3 className="text-base font-black uppercase tracking-wider text-deep-black">
-                        PEDIDO #{selectedSaleDetail.order_id}
+                      <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-white truncate">
+                        PEDIDO #{selectedSaleDetail.order_id} • {selectedSaleDetail.customer_name || 'Cliente'}
                       </h3>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSaleDetail(null)}
-                    className="p-1.5 text-deep-black hover:text-gold transition font-black"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingSale(selectedSaleDetail);
+                        setSelectedSaleDetail(null);
+                      }}
+                      className="px-2.5 py-1.5 bg-gold hover:bg-white text-deep-black text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition shadow cursor-pointer"
+                      title="Abrir editor para mudar nome da cliente, itens ou valores"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span className="hidden xs:inline">EDITAR NOME / DADOS</span>
+                      <span className="xs:hidden">EDITAR</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSaleDetail(null)}
+                      className="p-1.5 text-white/80 hover:text-gold hover:bg-white/10 transition font-black cursor-pointer"
+                      aria-label="Fechar detalhes"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
+
+                {/* Corpo Rolável do Pedido */}
+                <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-5">
 
                 {/* Dados da Venda e Envio */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs uppercase tracking-wider bg-deep-black/5 p-4 border border-deep-black/10">
@@ -6353,7 +6376,7 @@ export default function BackofficeDashboard() {
                     </button>
                   </div>
 
-                  <div className="border-2 border-deep-black/20 divide-y divide-deep-black/10 bg-white">
+                  <div className="border-2 border-deep-black/20 divide-y divide-deep-black/10 bg-white max-h-[300px] overflow-y-auto">
                     {(selectedSaleDetail.items || []).map((it: any, idx: number) => {
                       const cost = it.cost_price !== undefined && it.cost_price !== null ? Number(it.cost_price) : 0;
                       const price = Number(it.unit_price) || 0;
@@ -6469,84 +6492,85 @@ export default function BackofficeDashboard() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const isCred = selectedSaleDetail.payment_method === 'CREDIARIO' || !!selectedSaleDetail.crediario;
-                        const msg = isCred
-                          ? generateCrediarioWhatsAppMessage(selectedSaleDetail)
-                          : generateReceiptWhatsAppMessage(selectedSaleDetail);
-                        const cleanPhone = String(selectedSaleDetail.customer_phone || '').replace(/\D/g, '');
-                        const fullPhone = cleanPhone.length === 10 ? `1${cleanPhone}` : cleanPhone;
-                        if (fullPhone) {
-                          window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
-                        } else {
-                          window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-                        }
-                      }}
-                      className="py-2.5 px-3 bg-green-600 hover:bg-green-700 text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      <span>RECIBO NO WHATSAPP</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const isCred = selectedSaleDetail.payment_method === 'CREDIARIO' || !!selectedSaleDetail.crediario;
-                        if (isCred) {
-                          printCrediarioCarnet(selectedSaleDetail);
-                        } else {
-                          printSaleReceipt(selectedSaleDetail);
-                        }
-                      }}
-                      className="py-2.5 px-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>IMPRIMIR RECIBO</span>
-                    </button>
-                  </div>
+                {/* Zona Secundária de Cancelamento / Exclusão (dentro da área rolável) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-deep-black/10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCancellingSale(selectedSaleDetail);
+                      setSelectedSaleDetail(null);
+                    }}
+                    className="w-full py-2.5 bg-red-100 hover:bg-red-700 hover:text-white text-red-900 border-2 border-red-500 font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <Ban className="w-4 h-4" />
+                    <span>CANCELAR VENDA</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSale(selectedSaleDetail)}
+                    className="w-full py-2.5 bg-red-600 hover:bg-red-800 text-white border-2 border-red-800 font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                    title="Apagar este pedido permanentemente do banco de dados"
+                  >
+                    <Trash2 className="w-4 h-4 text-white" />
+                    <span>EXCLUIR PEDIDO</span>
+                  </button>
+                </div>
+                </div>
 
+                {/* Rodapé Fixo Sempre Acessível na Parte Inferior */}
+                <div className="shrink-0 bg-neutral-50 border-t-2 border-deep-black/20 px-4 py-3 sm:px-6 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => {
                       setEditingSale(selectedSaleDetail);
                       setSelectedSaleDetail(null);
                     }}
-                    className="w-full py-3 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                    className="flex-1 min-w-[170px] py-2.5 px-3 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-[11px] uppercase tracking-wider transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                   >
-                    <Edit3 className="w-4 h-4" />
-                    <span>EDITAR ESTA VENDA / ATUALIZAR PREÇO DE CUSTO</span>
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>EDITAR NOME / DADOS</span>
                   </button>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCancellingSale(selectedSaleDetail);
-                        setSelectedSaleDetail(null);
-                      }}
-                      className="w-full py-2.5 bg-red-100 hover:bg-red-700 hover:text-white text-red-900 border-2 border-red-500 font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-                    >
-                      <Ban className="w-4 h-4" />
-                      <span>CANCELAR VENDA</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteSale(selectedSaleDetail)}
-                      className="w-full py-2.5 bg-red-600 hover:bg-red-800 text-white border-2 border-red-800 font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-                      title="Apagar este pedido permanentemente do banco de dados"
-                    >
-                      <Trash2 className="w-4 h-4 text-white" />
-                      <span>EXCLUIR PEDIDO</span>
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const isCred = selectedSaleDetail.payment_method === 'CREDIARIO' || !!selectedSaleDetail.crediario;
+                      const msg = isCred
+                        ? generateCrediarioWhatsAppMessage(selectedSaleDetail)
+                        : generateReceiptWhatsAppMessage(selectedSaleDetail);
+                      const cleanPhone = String(selectedSaleDetail.customer_phone || '').replace(/\D/g, '');
+                      const fullPhone = cleanPhone.length === 10 ? `1${cleanPhone}` : cleanPhone;
+                      if (fullPhone) {
+                        window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+                      } else {
+                        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                      }
+                    }}
+                    className="py-2.5 px-3 bg-green-600 hover:bg-green-700 text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>WHATS</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const isCred = selectedSaleDetail.payment_method === 'CREDIARIO' || !!selectedSaleDetail.crediario;
+                      if (isCred) {
+                        printCrediarioCarnet(selectedSaleDetail);
+                      } else {
+                        printSaleReceipt(selectedSaleDetail);
+                      }
+                    }}
+                    className="py-2.5 px-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>RECIBO</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setSelectedSaleDetail(null)}
-                    className="w-full py-2.5 bg-gray-100 hover:bg-deep-black hover:text-white text-deep-black text-xs font-black uppercase tracking-widest transition cursor-pointer"
+                    className="py-2.5 px-3 bg-white hover:bg-deep-black hover:text-white text-deep-black border border-deep-black/30 text-[11px] font-black uppercase tracking-wider transition cursor-pointer"
                   >
-                    FECHAR DETALHES
+                    FECHAR
                   </button>
                 </div>
               </div>
@@ -8006,8 +8030,8 @@ export default function BackofficeDashboard() {
               MODAL 2: REGISTRAR REPASSE DE PAGAMENTO
              ========================================================================= */}
           {showPayoutModal && payoutSeller && (
-            <div className="fixed inset-0 z-50 bg-deep-black/80 flex items-center justify-center p-4 animate-fadeIn">
-              <div className="bg-white border-2 border-deep-black w-full max-w-md p-6 sm:p-8 space-y-6 shadow-luxury">
+            <div className="fixed inset-0 z-50 bg-deep-black/80 flex items-center justify-center p-2 sm:p-4 animate-fadeIn">
+              <div className="bg-white border-2 border-deep-black w-full max-w-md max-h-[92dvh] overflow-y-auto p-6 sm:p-8 space-y-6 shadow-luxury">
                 <div className="flex justify-between items-center border-b border-deep-black/10 pb-3">
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
@@ -8157,8 +8181,8 @@ export default function BackofficeDashboard() {
               MODAL 3: APROVAR E ATIVAR VENDEDORA
              ========================================================================= */}
           {approvingSeller && (
-            <div className="fixed inset-0 z-50 bg-deep-black/80 flex items-center justify-center p-4 animate-fadeIn">
-              <div className="bg-white border-2 border-deep-black w-full max-w-lg p-6 sm:p-8 space-y-6 shadow-luxury">
+            <div className="fixed inset-0 z-50 bg-deep-black/80 flex items-center justify-center p-2 sm:p-4 animate-fadeIn">
+              <div className="bg-white border-2 border-deep-black w-full max-w-lg max-h-[92dvh] overflow-y-auto p-6 sm:p-8 space-y-6 shadow-luxury">
                 <div className="flex justify-between items-center border-b border-deep-black/10 pb-3">
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-widest text-gold block">

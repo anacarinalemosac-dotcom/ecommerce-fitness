@@ -7,6 +7,7 @@ import {
   Check,
   CheckCircle2,
   Copy,
+  Edit3,
   Eye,
   Globe,
   MapPin,
@@ -28,6 +29,7 @@ interface PendingOrdersSpotlightProps {
   sales: any[];
   onUpdateFulfillmentStatus?: (orderId: string, newStatus: string, trackingCode?: string) => void;
   onSelectOrder?: (sale: any) => void;
+  onEditOrder?: (sale: any) => void;
   onViewAllSales?: () => void;
   showEmptyBanner?: boolean;
 }
@@ -36,6 +38,7 @@ export function PendingOrdersSpotlight({
   sales,
   onUpdateFulfillmentStatus,
   onSelectOrder,
+  onEditOrder,
   onViewAllSales,
   showEmptyBanner = true,
 }: PendingOrdersSpotlightProps) {
@@ -214,7 +217,7 @@ export function PendingOrdersSpotlight({
                   <Package className="w-3.5 h-3.5 text-gold" />
                   <span>PEÇAS PARA SEPARAR ({items.length}):</span>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {items.map((it: any, idx: number) => (
                     <div key={idx} className="flex items-center gap-2.5 bg-white p-1.5 border border-deep-black/10">
                       {it.image ? (
@@ -287,6 +290,17 @@ export function PendingOrdersSpotlight({
                       <span>ENTREGUE</span>
                     </button>
                   </>
+                )}
+                {onEditOrder && (
+                  <button
+                    type="button"
+                    onClick={() => onEditOrder(order)}
+                    className="py-2 px-3 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border border-deep-black text-[10px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1 cursor-pointer"
+                    title="Editar nome do cliente, itens ou valores"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>EDITAR NOME / DADOS</span>
+                  </button>
                 )}
                 {onSelectOrder ? (
                   <button

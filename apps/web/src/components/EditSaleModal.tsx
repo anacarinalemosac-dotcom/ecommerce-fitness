@@ -368,16 +368,16 @@ export function EditSaleModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-deep-black/85 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white border-4 border-gold w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
-        {/* Cabeçalho */}
-        <div className="bg-deep-black text-white p-5 flex items-center justify-between border-b-2 border-gold">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center border border-gold">
-              <Edit3 className="w-5 h-5 text-gold" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-deep-black/85 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-white border-4 border-gold w-full max-w-3xl max-h-[92dvh] flex flex-col shadow-2xl overflow-hidden">
+        {/* Cabeçalho Fixo no Topo */}
+        <div className="shrink-0 bg-deep-black text-white px-4 py-3.5 sm:p-5 flex items-center justify-between gap-2 border-b-2 border-gold">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gold/20 flex items-center justify-center border border-gold shrink-0">
+              <Edit3 className="w-4 h-4 sm:w-5 sm:h-5 text-gold" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-black uppercase tracking-widest text-gold flex items-center gap-1.5">
                   {isOnline ? (
                     <>
@@ -395,14 +395,15 @@ export function EditSaleModal({
                   #{sale.order_id || sale.id}
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-white">
+              <h2 className="text-sm sm:text-lg font-black uppercase tracking-wider text-white truncate">
                 EDITANDO VENDA DE: {sale.customer_name}
               </h2>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-sm transition font-black"
+            className="p-2 text-white/80 hover:text-white hover:bg-white/15 rounded-sm transition font-black shrink-0 cursor-pointer"
             title="Fechar"
           >
             <X className="w-5 h-5" />
@@ -412,7 +413,7 @@ export function EditSaleModal({
         {/* Feedback Alert */}
         {feedback && (
           <div
-            className={`p-3 text-xs font-black uppercase flex items-center justify-between ${
+            className={`shrink-0 p-3 text-xs font-black uppercase flex items-center justify-between ${
               feedback.type === 'success'
                 ? 'bg-deep-black text-gold border-b-2 border-gold'
                 : 'bg-red-50 text-red-700 border-b-2 border-red-400'
@@ -429,47 +430,15 @@ export function EditSaleModal({
           </div>
         )}
 
-        {/* Formulário com Scroll */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-6 flex-1 text-xs uppercase">
-          {/* SEÇÃO 1: DATA E HORÁRIO DA VENDA */}
-          <div className="p-4 bg-warm-light/25 border-2 border-deep-black space-y-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <label className="text-[10px] font-black tracking-wider text-deep-black flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-gold" />
-                <span>Data e Horário da Venda (Ajustar para Ontem ou Hoje) *</span>
-              </label>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={setDateToYesterday}
-                  className="px-2.5 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black tracking-wider transition border border-gold"
-                >
-                  📅 Marcar Ontem
-                </button>
-                <button
-                  type="button"
-                  onClick={setDateToToday}
-                  className="px-2.5 py-1 bg-white hover:bg-deep-black hover:text-white text-deep-black text-[9px] font-black tracking-wider transition border border-deep-black"
-                >
-                  ⏰ Marcar Hoje
-                </button>
-              </div>
-            </div>
-            <input
-              type="datetime-local"
-              required
-              value={createdAt}
-              onChange={(e) => setCreatedAt(e.target.value)}
-              className="w-full p-2.5 border-2 border-deep-black font-mono font-bold text-xs bg-white focus:outline-none focus:border-gold"
-            />
-          </div>
-
-          {/* SEÇÃO 2: DADOS DO CLIENTE & CONTATO */}
+        {/* Formulário com Corpo Rolável + Rodapé Fixo */}
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col text-xs uppercase">
+          <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 min-h-0">
+          {/* SEÇÃO 1: DADOS DO CLIENTE & CONTATO (NO TOPO PARA EDIÇÃO RÁPIDA) */}
           <div className="p-4 bg-white border-2 border-deep-black space-y-3">
             <div className="flex items-center gap-1.5 border-b border-deep-black/10 pb-2">
               <User className="w-4 h-4 text-gold" />
               <span className="text-[10px] font-black tracking-wider text-deep-black">
-                Dados do Cliente
+                Dados do Cliente (Nome, WhatsApp e E-mail)
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -507,6 +476,39 @@ export function EditSaleModal({
                 />
               </div>
             </div>
+          </div>
+
+          {/* SEÇÃO 2: DATA E HORÁRIO DA VENDA */}
+          <div className="p-4 bg-warm-light/25 border-2 border-deep-black space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label className="text-[10px] font-black tracking-wider text-deep-black flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-gold" />
+                <span>Data e Horário da Venda (Ajustar para Ontem ou Hoje) *</span>
+              </label>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={setDateToYesterday}
+                  className="px-2.5 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black tracking-wider transition border border-gold"
+                >
+                  📅 Marcar Ontem
+                </button>
+                <button
+                  type="button"
+                  onClick={setDateToToday}
+                  className="px-2.5 py-1 bg-white hover:bg-deep-black hover:text-white text-deep-black text-[9px] font-black tracking-wider transition border border-deep-black"
+                >
+                  ⏰ Marcar Hoje
+                </button>
+              </div>
+            </div>
+            <input
+              type="datetime-local"
+              required
+              value={createdAt}
+              onChange={(e) => setCreatedAt(e.target.value)}
+              className="w-full p-2.5 border-2 border-deep-black font-mono font-bold text-xs bg-white focus:outline-none focus:border-gold"
+            />
           </div>
 
           {/* SEÇÃO 2.1: ENDEREÇO DE ENTREGA & RASTREIO USPS (ONLINE E BALCÃO) */}
@@ -701,7 +703,7 @@ export function EditSaleModal({
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1.5">
               {items.map((item, idx) => {
                 const qty = Number(item.quantity) || 1;
                 const cost = Number(item.cost_price) || 0;
@@ -990,41 +992,42 @@ export function EditSaleModal({
               <span className="font-mono text-xl">${totalAmount.toFixed(2)} USD</span>
             </div>
           </div>
+          </div>
 
-          {/* BOTÕES DE AÇÃO */}
-          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+          {/* RODAPÉ FIXO COM BOTÕES DE AÇÃO SEMPRE VISÍVEIS */}
+          <div className="shrink-0 bg-neutral-50 border-t-2 border-deep-black p-3.5 sm:p-4 flex flex-col sm:flex-row gap-2">
             <button
               type="button"
               onClick={handleDeleteSale}
               disabled={isSaving}
-              className="py-3 px-3.5 bg-red-600 hover:bg-red-800 text-white font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 shadow-sm border-2 border-red-800 disabled:opacity-40 cursor-pointer"
+              className="py-2.5 px-3 bg-red-600 hover:bg-red-800 text-white font-black text-[11px] uppercase tracking-wider transition flex items-center justify-center gap-1.5 shadow-sm border-2 border-red-800 disabled:opacity-40 cursor-pointer"
               title="Excluir este pedido definitivamente do banco de dados"
             >
               <Trash2 className="w-4 h-4 text-white" />
-              <span>EXCLUIR PEDIDO</span>
+              <span>EXCLUIR</span>
             </button>
             <button
               type="button"
               onClick={handleCancelSale}
               disabled={isSaving || status === 'CANCELLED'}
-              className="py-3 px-3 bg-red-100 hover:bg-red-700 hover:text-white text-red-900 border-2 border-red-500 font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 disabled:opacity-40 cursor-pointer"
+              className="py-2.5 px-3 bg-red-100 hover:bg-red-700 hover:text-white text-red-900 border-2 border-red-500 font-black text-[11px] uppercase tracking-wider transition flex items-center justify-center gap-1.5 disabled:opacity-40 cursor-pointer"
               title="Cancelar esta venda e estornar as peças para o estoque"
             >
               <Ban className="w-4 h-4 text-red-700 group-hover:text-white" />
-              <span>CANCELAR VENDA</span>
+              <span>CANCELAR</span>
             </button>
             <button
               type="button"
               onClick={onClose}
               disabled={isSaving}
-              className="py-3 px-3.5 bg-white hover:bg-gray-100 text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-wider transition cursor-pointer"
+              className="py-2.5 px-3.5 bg-white hover:bg-gray-100 text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-wider transition cursor-pointer"
             >
               Fechar
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 py-3 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-md cursor-pointer"
+              className="flex-1 py-2.5 sm:py-3 bg-gold hover:bg-deep-black hover:text-gold text-deep-black border-2 border-deep-black font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-md cursor-pointer"
             >
               {isSaving ? (
                 <>
