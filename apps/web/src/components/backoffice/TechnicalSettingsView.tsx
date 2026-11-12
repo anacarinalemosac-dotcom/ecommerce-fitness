@@ -537,8 +537,8 @@ export function TechnicalSettingsView() {
                   Z
                 </div>
                 <div>
-                  <strong className="text-xs font-black uppercase text-deep-black block">ZELLE & VENMO (DIRETO)</strong>
-                  <span className="text-[10px] text-deep-black/60 font-mono">Pagamento Direto sem Taxas (Showroom / PDV)</span>
+                  <strong className="text-xs font-black uppercase text-deep-black block">ZELLE, VENMO & CASH APP (DIRETO)</strong>
+                  <span className="text-[10px] text-deep-black/60 font-mono">Pagamentos Diretos + Elegíveis ao Combo</span>
                 </div>
               </div>
               <span className="px-2 py-0.5 bg-gold/20 text-deep-black border border-gold text-[9px] font-black uppercase">
@@ -562,7 +562,11 @@ export function TechnicalSettingsView() {
               </div>
               <div className="flex justify-between border-b border-deep-black/10 pb-1.5">
                 <span className="text-deep-black/60 font-bold uppercase">VENMO:</span>
-                <span className="font-mono font-bold text-deep-black">@anafitnessweareua</span>
+                <span className="font-mono font-bold text-deep-black">{siteInfo.venmo || '@Accleaningproservices'}</span>
+              </div>
+              <div className="flex justify-between border-b border-deep-black/10 pb-1.5">
+                <span className="text-deep-black/60 font-bold uppercase">CASH APP ($CASHTAG):</span>
+                <span className="font-mono font-bold text-[#009e24]">{siteInfo.cashApp || '$AnaFitnessWear'}</span>
               </div>
               <div className="flex justify-between pt-1">
                 <span className="text-deep-black/60 font-bold uppercase">LIQUIDAÇÃO:</span>

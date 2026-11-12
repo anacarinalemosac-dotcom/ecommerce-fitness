@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
+import { downloadOrderPdf } from '../../lib/orderPdf';
 import {
   User,
   ShoppingBag,
@@ -24,6 +25,7 @@ import {
   Save,
   ArrowRight,
   AlertCircle,
+  Download,
 } from 'lucide-react';
 
 const US_STATES = [
@@ -68,6 +70,7 @@ export default function CustomerAccountPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [copiedTracking, setCopiedTracking] = useState<string | null>(null);
+  const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
 
   // Edição de Endereço Salvo
   const [editingAddress, setEditingAddress] = useState(false);
@@ -886,14 +889,38 @@ export default function CustomerAccountPage() {
                         </p>
                       </div>
 
-                      {/* Total Pago */}
-                      <div className="sm:text-right">
-                        <span className="text-[10px] text-deep-black/60 font-bold uppercase block">
-                          {lang === 'pt' ? 'TOTAL DO PEDIDO' : 'TOTAL AMOUNT'}
-                        </span>
-                        <span className="text-xl font-black text-gold font-mono">
-                          ${(ord.total || 0).toFixed(2)}
-                        </span>
+                      {/* Total Pago + Baixar PDF */}
+                      <div className="flex flex-col sm:items-end gap-2">
+                        <div className="sm:text-right">
+                          <span className="text-[10px] text-deep-black/60 font-bold uppercase block">
+                            {lang === 'pt' ? 'TOTAL DO PEDIDO' : 'TOTAL AMOUNT'}
+                          </span>
+                          <span className="text-xl font-black text-gold font-mono">
+                            ${(ord.total || 0).toFixed(2)}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={downloadingPdfId === ord.order_id}
+                          onClick={async () => {
+                            setDownloadingPdfId(ord.order_id);
+                            try {
+                              await downloadOrderPdf(ord, { lang });
+                            } catch (err) {
+                              console.error('Erro ao baixar PDF do pedido:', err);
+                            } finally {
+                              setDownloadingPdfId(null);
+                            }
+                          }}
+                          className="px-3.5 py-2 bg-deep-black hover:bg-gold text-gold hover:text-deep-black text-[10px] font-black uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-60"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>
+                            {downloadingPdfId === ord.order_id
+                              ? (lang === 'pt' ? 'GERANDO PDF...' : 'GENERATING PDF...')
+                              : (lang === 'pt' ? 'BAIXAR PEDIDO (PDF)' : 'DOWNLOAD ORDER PDF')}
+                          </span>
+                        </button>
                       </div>
                     </div>
 

@@ -78,7 +78,7 @@ export interface SaleRecord {
   channel: 'ONLINE' | 'POS_COUNTER';
   seller_name: string;
   coupon_code?: string;
-  payment_method: 'CARD' | 'ZELLE' | 'VENMO' | 'CASH' | 'APPLE_PAY' | 'CREDIARIO';
+  payment_method: 'CARD' | 'ZELLE' | 'VENMO' | 'CASHAPP' | 'CASH' | 'APPLE_PAY' | 'CREDIARIO';
   subtotal_products: number;
   shipping_fee: number; // Valor cobrado do cliente ($9.99 fixo online ou $0 balcão)
   shipping_cost: number; // Custo real da etiqueta USPS
@@ -135,7 +135,7 @@ function calculatePaymentFee(method: string, totalGross: number): number {
   if (m === 'VENMO') {
     return Number((totalGross * 0.019).toFixed(2));
   }
-  // ZELLE, CASH e CREDIARIO têm taxa 0%
+  // ZELLE, CASH APP, CASH e CREDIARIO têm taxa 0%
   return 0.00;
 }
 

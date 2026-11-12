@@ -11,6 +11,7 @@ import {
   translateColorName,
   translateBadgeText,
 } from '../../lib/translateFitness';
+import { downloadOrderPdf } from '../../lib/orderPdf';
 import {
   getCartItems,
   saveCartItems,
@@ -46,6 +47,7 @@ import {
   Store,
   MapPin,
   ExternalLink,
+  Download,
 } from 'lucide-react';
 
 const US_STATES = [
@@ -367,7 +369,7 @@ export default function CheckoutPage() {
   }, []);
 
   // Pagamento Online
-  const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'APPLE_PAY' | 'AFFIRM' | 'AFTERPAY' | 'ZELLE' | 'VENMO'>('CARD');
+  const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'APPLE_PAY' | 'AFFIRM' | 'AFTERPAY' | 'ZELLE' | 'VENMO' | 'CASHAPP'>('CARD');
 
   // Autenticação Obrigatória no Checkout (Cadastro ou Login prévio para histórico)
   const [checkoutAuthMode, setCheckoutAuthMode] = useState<'register' | 'login'>('register');
@@ -516,13 +518,19 @@ export default function CheckoutPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState<null | string>(null);
+  const [completedOrderSnapshot, setCompletedOrderSnapshot] = useState<any | null>(null);
+  const [downloadingOrderPdf, setDownloadingOrderPdf] = useState(false);
 
   // Cálculos Financeiros (Suporte a Sacola Multi-Itens e Promoção de Combo)
   const effectiveItems = cartItems.length > 0 ? cartItems : (cartItem ? [cartItem] : []);
   const subtotal = effectiveItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
 
-  // Desconto Automático da Promoção de Combo (se tiver 3 ou múltiplos de 3 participantes)
-  const comboResult = calculateComboDiscount(effectiveItems, comboPromo);
+  const cashAppTag = (siteInfo?.cashApp || '$AnaFitnessWear').trim();
+  const cashAppHandleNormalized = cashAppTag.startsWith('$') ? cashAppTag : `$${cashAppTag}`;
+  const cashAppUrl = `https://cash.app/${cashAppHandleNormalized}`;
+
+  // Desconto Automático da Promoção de Combo (somente válido para Zelle, Venmo ou Cash App)
+  const comboResult = calculateComboDiscount(effectiveItems, comboPromo, paymentMethod);
   const comboDiscount = comboResult.discount;
 
   // Desconto de Cupom (aplicado sobre o valor restante)
@@ -797,6 +805,7 @@ export default function CheckoutPage() {
             coupon_code: appliedCoupon,
             seller_name: couponSellerInfo ? couponSellerInfo.name : 'Loja Oficial Online',
             discount_amount: totalDiscount,
+            combo_discount: comboDiscount,
             cart_session_id: getOrCreateCartSessionId(),
             items: effectiveItems.map((it) => ({
               title: it.title,
@@ -820,6 +829,33 @@ export default function CheckoutPage() {
               shipping_address: effectiveShippingAddress,
             };
             localStorage.setItem('ana_customer_session', JSON.stringify(customerToSave));
+            localStorage.setItem(
+              'ana_last_order_snapshot',
+              JSON.stringify({
+                order_id: generatedOrderId,
+                created_at: new Date().toISOString(),
+                channel: 'ONLINE',
+                customer_name: `${shippingForm.firstName || 'Cliente'} ${shippingForm.lastName || 'Online'}`.trim(),
+                customer_email: shippingForm.email || '',
+                customer_phone: shippingForm.phone || '',
+                delivery_method: deliveryMethod,
+                shipping_address: effectiveShippingAddress,
+                payment_method: paymentMethod,
+                subtotal_products: subtotal,
+                discount_amount: totalDiscount,
+                shipping_fee: shippingRate,
+                total_amount: total,
+                items: effectiveItems.map((it) => ({
+                  title: it.title,
+                  size: it.size,
+                  color: it.color,
+                  sku: (it as any).sku || 'ANA-ITEM',
+                  quantity: it.quantity,
+                  unit_price: it.price,
+                  image: it.image,
+                })),
+              })
+            );
           } catch (_) {}
 
           // Redireciona imediatamente para o ambiente oficial de pagamento (Stripe / Afterpay / Affirm)
@@ -851,8 +887,8 @@ export default function CheckoutPage() {
       }
     }
 
-    // 2. Pagamentos Manuais Offline (Apenas Zelle e Venmo)
-    if (paymentMethod !== 'ZELLE' && paymentMethod !== 'VENMO') {
+    // 2. Pagamentos Manuais Offline (Apenas Zelle, Venmo e Cash App)
+    if (paymentMethod !== 'ZELLE' && paymentMethod !== 'VENMO' && paymentMethod !== 'CASHAPP') {
       setIsSubmitting(false);
       return;
     }
@@ -903,23 +939,51 @@ export default function CheckoutPage() {
     }
 
     // Dispara evento de Purchase nos Pixels de Rastreamento
+    const primaryOrderItem = cartItem || effectiveItems[0];
     trackEvent.purchase({
       orderId: generatedOrderId,
       value: total,
       currency: 'USD',
-      items: [
-        {
-          id: (cartItem as any).sku || 'ANA-ITEM',
-          title: cartItem.title,
-          price: cartItem.price,
-          quantity: cartItem.quantity,
-        },
-      ],
+      items: effectiveItems.map((it) => ({
+        id: (it as any).sku || 'ANA-ITEM',
+        title: it.title,
+        price: it.price,
+        quantity: it.quantity,
+      })),
     });
 
-    if (cartItem.isBackorder) {
+    if (primaryOrderItem?.isBackorder || effectiveItems.some((it) => it.isBackorder)) {
       setOrderWasBackorder(true);
     }
+
+    const offlineOrderSnapshot = {
+      order_id: generatedOrderId,
+      created_at: new Date().toISOString(),
+      channel: 'ONLINE',
+      customer_name: `${shippingForm.firstName || 'Cliente'} ${shippingForm.lastName || 'Online'}`.trim(),
+      customer_email: shippingForm.email || 'cliente@exemplo.com',
+      customer_phone: shippingForm.phone || '+1 978 313-9452',
+      delivery_method: deliveryMethod,
+      shipping_address: effectiveShippingAddress,
+      payment_method: paymentMethod,
+      subtotal_products: subtotal,
+      discount_amount: totalDiscount,
+      shipping_fee: shippingRate,
+      total_amount: total,
+      items: effectiveItems.map((it) => ({
+        title: it.title,
+        size: it.size,
+        color: it.color,
+        sku: (it as any).sku || 'ANA-ITEM',
+        quantity: it.quantity,
+        unit_price: it.price,
+        image: it.image,
+      })),
+    };
+    setCompletedOrderSnapshot(offlineOrderSnapshot);
+    try {
+      localStorage.setItem('ana_last_order_snapshot', JSON.stringify(offlineOrderSnapshot));
+    } catch (_) {}
 
     // Esvazia a sacola com sucesso e despacha evento global
     clearCart();
@@ -932,6 +996,30 @@ export default function CheckoutPage() {
 
   // 1. TELA DE SUCESSO / PEDIDO CONCLUÍDO
   if (orderComplete) {
+    const confirmedTotal = Number(completedOrderSnapshot?.total_amount ?? total ?? 0);
+    const confirmedItems = Array.isArray(completedOrderSnapshot?.items) ? completedOrderSnapshot.items : [];
+    const handleDownloadCompletedPdf = async () => {
+      if (downloadingOrderPdf) return;
+      setDownloadingOrderPdf(true);
+      try {
+        await downloadOrderPdf(
+          completedOrderSnapshot || {
+            order_id: orderComplete,
+            created_at: new Date().toISOString(),
+            payment_method: paymentMethod,
+            customer_name: `${shippingForm.firstName || 'Cliente'} ${shippingForm.lastName}`.trim(),
+            items: confirmedItems,
+            total_amount: confirmedTotal,
+          },
+          { lang }
+        );
+      } catch (err) {
+        console.error('Erro ao baixar PDF do pedido:', err);
+      } finally {
+        setDownloadingOrderPdf(false);
+      }
+    };
+
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-8 animate-fadeIn">
         <div className="w-16 h-16 bg-gold text-deep-black rounded-full flex items-center justify-center mx-auto shadow-luxury">
@@ -988,7 +1076,40 @@ export default function CheckoutPage() {
                 </span>
               )}
             </p>
-            <p><strong>{lang === 'pt' ? 'Total Pago' : 'Total Paid'}:</strong> <span className="font-bold text-gold font-mono">${total.toFixed(2)}</span></p>
+            <p><strong>{lang === 'pt' ? 'Total do Pedido' : 'Order Total'}:</strong> <span className="font-bold text-gold font-mono">${confirmedTotal.toFixed(2)}</span></p>
+
+            {confirmedItems.length > 0 && (
+              <div className="pt-3 border-t border-deep-black/10 space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-deep-black block">
+                  {lang === 'pt' ? `PEÇAS COMPRADAS (${confirmedItems.length})` : `PURCHASED PIECES (${confirmedItems.length})`}
+                </span>
+                <div className="divide-y divide-deep-black/10 max-h-56 overflow-y-auto pr-1">
+                  {confirmedItems.map((it: any, idx: number) => (
+                    <div key={idx} className="py-2 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {it.image && (
+                          <img
+                            src={it.image}
+                            alt={it.title}
+                            className="w-10 h-12 object-cover border border-deep-black/20 shrink-0"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-black text-deep-black truncate">{it.title}</p>
+                          <p className="text-[9px] font-mono text-deep-black/60">
+                            TAM {it.size} • {it.color} • {it.quantity}x
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-mono font-black text-deep-black shrink-0">
+                        ${(Number(it.unit_price || 0) * Number(it.quantity || 1)).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="pt-2.5 border-t border-deep-black/10 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5">
               <span>✉</span>
               <span>
@@ -1000,7 +1121,20 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center pt-4">
+          <button
+            type="button"
+            disabled={downloadingOrderPdf}
+            onClick={handleDownloadCompletedPdf}
+            className="px-6 py-3.5 bg-deep-black text-gold hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-luxury border-2 border-deep-black cursor-pointer disabled:opacity-60"
+          >
+            <Download className="w-4 h-4" />
+            <span>
+              {downloadingOrderPdf
+                ? (lang === 'pt' ? 'GERANDO PDF...' : 'GENERATING PDF...')
+                : (lang === 'pt' ? 'BAIXAR PEDIDO (PDF)' : 'DOWNLOAD ORDER PDF')}
+            </span>
+          </button>
           <Link
             href="/conta"
             className="px-6 py-3.5 bg-deep-black text-gold hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
@@ -1022,7 +1156,7 @@ export default function CheckoutPage() {
             <span>{lang === 'pt' ? 'DÚVIDAS? FALE NO WHATSAPP' : 'NEED HELP? CHAT ON WHATSAPP'}</span>
           </a>
           <Link
-            href="/pedidos"
+            href={`/pedidos?order=${encodeURIComponent(orderComplete)}`}
             className="px-6 py-3.5 bg-gold text-deep-black hover:bg-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow"
           >
             <Package className="w-4 h-4 text-deep-black" />
@@ -1857,16 +1991,32 @@ export default function CheckoutPage() {
             )}
 
             {/* Abas de Seleção de Pagamento */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {comboPromo?.active && comboResult.participatingCount > 0 && (
+              <div className="p-3 border border-emerald-500/40 bg-emerald-50 text-emerald-950 text-[11px] font-bold flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span>
+                  {lang === 'pt'
+                    ? 'Promoção do Combo: válida SOMENTE pagando via Zelle, Venmo ou Cash App. Em Cartão, Apple Pay, Affirm e Afterpay vale o preço normal das peças.'
+                    : 'Combo Deal Rule: valid ONLY for Zelle, Venmo, or Cash App. Card, Apple Pay, Affirm, and Afterpay charge regular product prices.'}
+                </span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
               <button
                 type="button"
                 onClick={() => setPaymentMethod('CARD')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[74px] ${
+                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[78px] relative ${
                   paymentMethod === 'CARD'
                     ? 'border-deep-black bg-deep-black text-white shadow-sm'
                     : 'border-deep-black/20 text-deep-black hover:border-gold bg-white'
                 }`}
               >
+                {comboPromo?.active && comboResult.participatingCount > 0 && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 uppercase">
+                    {lang === 'pt' ? 'VALOR NORMAL' : 'REG PRICE'}
+                  </span>
+                )}
                 <CreditCard className="w-4 h-4 text-gold" />
                 <span>CREDIT CARD</span>
                 <span className={`text-[8px] font-mono ${paymentMethod === 'CARD' ? 'text-white/60' : 'text-deep-black/50'}`}>
@@ -1877,12 +2027,17 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 onClick={() => setPaymentMethod('APPLE_PAY')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[74px] ${
+                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[78px] relative ${
                   paymentMethod === 'APPLE_PAY'
                     ? 'border-deep-black bg-deep-black text-white shadow-sm'
                     : 'border-deep-black/20 text-deep-black hover:border-gold bg-white'
                 }`}
               >
+                {comboPromo?.active && comboResult.participatingCount > 0 && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 uppercase">
+                    {lang === 'pt' ? 'VALOR NORMAL' : 'REG PRICE'}
+                  </span>
+                )}
                 <Sparkles className="w-4 h-4 text-gold" />
                 <span>APPLE PAY</span>
                 <span className={`text-[8px] font-mono ${paymentMethod === 'APPLE_PAY' ? 'text-white/60' : 'text-deep-black/50'}`}>
@@ -1893,12 +2048,17 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 onClick={() => setPaymentMethod('AFFIRM')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[74px] relative ${
+                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[78px] relative ${
                   paymentMethod === 'AFFIRM'
                     ? 'border-[#004BFF] bg-[#004BFF] text-white shadow-sm'
                     : 'border-deep-black/20 text-deep-black hover:border-[#004BFF] bg-white'
                 }`}
               >
+                {comboPromo?.active && comboResult.participatingCount > 0 && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 uppercase">
+                    {lang === 'pt' ? 'VALOR NORMAL' : 'REG PRICE'}
+                  </span>
+                )}
                 <span className={`font-black text-xs tracking-tight ${paymentMethod === 'AFFIRM' ? 'text-white' : 'text-[#004BFF]'}`}>
                   affirm
                 </span>
@@ -1911,12 +2071,17 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 onClick={() => setPaymentMethod('AFTERPAY')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[74px] relative ${
+                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[78px] relative ${
                   paymentMethod === 'AFTERPAY'
                     ? 'border-[#10b981] bg-[#b2fce4] text-deep-black shadow-sm ring-2 ring-[#10b981]'
                     : 'border-deep-black/20 text-deep-black hover:border-[#10b981] bg-white'
                 }`}
               >
+                {comboPromo?.active && comboResult.participatingCount > 0 && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 uppercase">
+                    {lang === 'pt' ? 'VALOR NORMAL' : 'REG PRICE'}
+                  </span>
+                )}
                 <span className="font-black text-xs tracking-tight text-deep-black">
                   afterpay ↗
                 </span>
@@ -1929,12 +2094,17 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 onClick={() => setPaymentMethod('ZELLE')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[74px] ${
+                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[78px] relative ${
                   paymentMethod === 'ZELLE'
                     ? 'border-deep-black bg-deep-black text-white shadow-sm'
                     : 'border-deep-black/20 text-deep-black hover:border-gold bg-white'
                 }`}
               >
+                {comboPromo?.active && comboResult.participatingCount > 0 && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-emerald-500 text-white uppercase">
+                    {lang === 'pt' ? 'ACEITA COMBO' : 'COMBO OK'}
+                  </span>
+                )}
                 <span className="font-mono text-gold font-black text-xs">ZELLE</span>
                 <span>ZELLE PAY</span>
                 <span className={`text-[8px] font-mono ${paymentMethod === 'ZELLE' ? 'text-white/60' : 'text-deep-black/50'}`}>
@@ -1945,16 +2115,42 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 onClick={() => setPaymentMethod('VENMO')}
-                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[74px] ${
+                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[78px] relative ${
                   paymentMethod === 'VENMO'
                     ? 'border-deep-black bg-deep-black text-white shadow-sm'
                     : 'border-deep-black/20 text-deep-black hover:border-[#008CFF] bg-white'
                 }`}
               >
+                {comboPromo?.active && comboResult.participatingCount > 0 && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-emerald-500 text-white uppercase">
+                    {lang === 'pt' ? 'ACEITA COMBO' : 'COMBO OK'}
+                  </span>
+                )}
                 <span className="font-mono text-[#008CFF] font-black text-xs">VENMO</span>
                 <span>VENMO PAY</span>
                 <span className={`text-[8px] font-mono ${paymentMethod === 'VENMO' ? 'text-white/60' : 'text-deep-black/50'}`}>
                   @Accleaningproservices
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('CASHAPP')}
+                className={`p-3 text-[10px] font-black uppercase tracking-wider border transition flex flex-col items-center justify-center gap-1 min-h-[78px] relative ${
+                  paymentMethod === 'CASHAPP'
+                    ? 'border-[#00D632] bg-deep-black text-white shadow-sm ring-2 ring-[#00D632]'
+                    : 'border-deep-black/20 text-deep-black hover:border-[#00D632] bg-white'
+                }`}
+              >
+                {comboPromo?.active && comboResult.participatingCount > 0 && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-emerald-500 text-white uppercase">
+                    {lang === 'pt' ? 'ACEITA COMBO' : 'COMBO OK'}
+                  </span>
+                )}
+                <span className="font-mono text-[#00D632] font-black text-xs">$ CASH APP</span>
+                <span>CASH APP PAY</span>
+                <span className={`text-[8px] font-mono ${paymentMethod === 'CASHAPP' ? 'text-white/60' : 'text-deep-black/50'}`}>
+                  {cashAppHandleNormalized}
                 </span>
               </button>
             </div>
@@ -2237,6 +2433,72 @@ export default function CheckoutPage() {
                 </div>
               </div>
             )}
+
+            {/* Instruções Cash App */}
+            {paymentMethod === 'CASHAPP' && (
+              <div className="p-4 border-2 border-[#00D632]/50 bg-[#00D632]/5 space-y-3 animate-fadeIn text-xs text-deep-black">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h4 className="font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#00D632] inline-block" />
+                    <span>{lang === 'pt' ? 'PAGAMENTO VIA CASH APP:' : 'PAYMENT VIA CASH APP:'}</span>
+                  </h4>
+                  <span className="text-[9px] font-mono font-black text-[#009e24] uppercase bg-white px-2 py-0.5 border border-[#00D632]/40 shadow-2xs">
+                    CASH APP OFICIAL • ACEITA COMBO
+                  </span>
+                </div>
+                <p className="text-deep-black/85 font-medium leading-relaxed">
+                  {lang === 'pt'
+                    ? 'Envie o valor total da compra pelo Cash App para o $Cashtag oficial da loja: '
+                    : 'Send the total purchase amount via Cash App to our official $Cashtag: '}
+                  <strong className="text-deep-black font-mono font-black text-sm block sm:inline mt-1 sm:mt-0 bg-white px-2 py-0.5 border border-deep-black/20">
+                    {cashAppHandleNormalized}
+                  </strong>
+                </p>
+                <p className="text-[10px] text-deep-black/65 uppercase font-bold">
+                  {lang === 'pt'
+                    ? 'Seu pedido (inclusive valores promocionais de Combo) será confirmado assim que a transferência cair no Cash App.'
+                    : 'Your order (including any Combo Promo pricing) is confirmed as soon as the Cash App transfer is received.'}
+                </p>
+                <div className="flex items-center gap-2 flex-wrap pt-1">
+                  <a
+                    href={cashAppUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#00D632] hover:bg-[#00b82b] text-deep-black font-black text-[10px] uppercase tracking-wider transition shadow-2xs border border-[#009e24]"
+                  >
+                    <span>{lang === 'pt' ? '↗ ABRIR CASH APP' : '↗ OPEN CASH APP'}</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(cashAppHandleNormalized);
+                      alert(
+                        lang === 'pt'
+                          ? `$Cashtag ${cashAppHandleNormalized} copiado com sucesso!`
+                          : `$Cashtag ${cashAppHandleNormalized} copied successfully!`
+                      );
+                    }}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 border border-deep-black/30 bg-white hover:bg-gray-100 text-deep-black font-black text-[10px] uppercase tracking-wider transition shadow-2xs cursor-pointer"
+                  >
+                    <Copy className="w-3 h-3 text-gold" />
+                    <span>{lang === 'pt' ? 'COPIAR $CASHTAG' : 'COPY $CASHTAG'}</span>
+                  </button>
+                  <a
+                    href={`https://wa.me/${rawWhatsApp || '19783139452'}?text=${encodeURIComponent(
+                      lang === 'pt'
+                        ? `Olá, Ana Carina! Estou finalizando meu pedido via Cash App (${cashAppHandleNormalized}) no valor de $${total.toFixed(2)} e gostaria de tirar uma dúvida ou enviar o comprovante.`
+                        : `Hello Ana Carina! I am paying via Cash App (${cashAppHandleNormalized}) for $${total.toFixed(2)} and would like to confirm details or send my receipt.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-[10px] uppercase tracking-wider transition shadow-2xs border border-[#1b9a4a]"
+                  >
+                    <WhatsAppIcon className="w-3.5 h-3.5 text-deep-black" />
+                    <span>{lang === 'pt' ? 'Enviar Comprovante / WhatsApp' : 'Send Receipt / WhatsApp'}</span>
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -2357,8 +2619,54 @@ export default function CheckoutPage() {
                 </span>
               </div>
               <p className="text-[11px] text-emerald-900 font-medium">
-                {comboResult.completedCombos}x combo ({comboResult.completedCombos * (comboPromo?.required_quantity || 3)} conjuntos fechados pelo valor especial de ${comboResult.bundleTargetPrice.toFixed(2)})!
+                {lang === 'pt'
+                  ? `${comboResult.completedCombos}x combo (${comboResult.completedCombos * (comboPromo?.required_quantity || 3)} conjuntos fechados por $${comboResult.bundleTargetPrice.toFixed(2)} via ${paymentMethod === 'CASHAPP' ? 'Cash App' : paymentMethod})!`
+                  : `${comboResult.completedCombos}x combo (${comboResult.completedCombos * (comboPromo?.required_quantity || 3)} sets for $${comboResult.bundleTargetPrice.toFixed(2)} via ${paymentMethod === 'CASHAPP' ? 'Cash App' : paymentMethod})!`}
               </p>
+            </div>
+          ) : comboResult.ineligibleByPaymentMethod && comboResult.rawPotentialDiscount > 0 && comboPromo?.active ? (
+            <div className="p-3.5 bg-amber-50 border-2 border-amber-500 text-amber-950 space-y-2 animate-fadeIn">
+              <div className="flex items-center justify-between text-xs font-black uppercase gap-2">
+                <span className="flex items-center gap-1.5 text-amber-900">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    {lang === 'pt'
+                      ? `PREÇO NORMAL NO ${paymentMethod === 'CARD' ? 'CARTÃO' : paymentMethod}`
+                      : `REGULAR PRICE ON ${paymentMethod}`}
+                  </span>
+                </span>
+                <span className="font-mono text-[10px] bg-amber-200 text-amber-950 px-2 py-0.5 border border-amber-400 shrink-0">
+                  {lang === 'pt' ? 'SEM COMBO' : 'NO COMBO'}
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-900 font-semibold leading-relaxed">
+                {lang === 'pt'
+                  ? `A promoção do combo (-$${comboResult.rawPotentialDiscount.toFixed(2)} OFF) é válida SOMENTE para pagamento no Zelle, Venmo ou Cash App. Na forma selecionada vale o preço normal das peças.`
+                  : `The combo deal (-$${comboResult.rawPotentialDiscount.toFixed(2)} OFF) applies ONLY to Zelle, Venmo, or Cash App. Regular product pricing applies with ${paymentMethod}.`}
+              </p>
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('ZELLE')}
+                  className="px-2.5 py-1 bg-deep-black hover:bg-gold text-white hover:text-deep-black text-[9px] font-black uppercase tracking-wider transition cursor-pointer"
+                >
+                  {lang === 'pt' ? 'USAR ZELLE' : 'SWITCH TO ZELLE'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('VENMO')}
+                  className="px-2.5 py-1 bg-[#008CFF] hover:bg-[#0074d9] text-white text-[9px] font-black uppercase tracking-wider transition cursor-pointer"
+                >
+                  {lang === 'pt' ? 'USAR VENMO' : 'SWITCH TO VENMO'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('CASHAPP')}
+                  className="px-2.5 py-1 bg-[#00D632] hover:bg-[#00b82b] text-deep-black text-[9px] font-black uppercase tracking-wider transition cursor-pointer"
+                >
+                  {lang === 'pt' ? 'USAR CASH APP' : 'SWITCH TO CASH APP'}
+                </button>
+              </div>
             </div>
           ) : comboResult.participatingCount > 0 && !comboResult.hasCombo && comboPromo?.active ? (
             <div className="p-3.5 bg-emerald-50 border-2 border-emerald-500 text-emerald-950 space-y-1.5 animate-fadeIn">
@@ -2373,8 +2681,8 @@ export default function CheckoutPage() {
               </div>
               <p className="text-xs text-emerald-950 font-bold leading-relaxed">
                 {lang === 'pt'
-                  ? `Esta peça participa da promoção: ${comboPromo?.required_quantity || 3} peças pelo valor $${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Você já tem ${comboResult.participatingCount} na sacola — adicione mais ${comboResult.neededForNextCombo} e falta pouco para você garantir o valor promocional!`
-                  : `You have ${comboResult.participatingCount} eligible piece(s) for our ${comboPromo?.required_quantity || 3} for $${Number(comboPromo?.bundle_price || 120).toFixed(2)} deal. Add ${comboResult.neededForNextCombo} more to unlock the promo!`}
+                  ? `Esta peça participa da promoção: ${comboPromo?.required_quantity || 3} peças por $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (exclusivo no Zelle, Venmo ou Cash App; cartão/Afterpay/Affirm mantém o valor normal). Você já tem ${comboResult.participatingCount} na sacola — adicione mais ${comboResult.neededForNextCombo}!`
+                  : `You have ${comboResult.participatingCount} eligible piece(s) for our ${comboPromo?.required_quantity || 3} for $${Number(comboPromo?.bundle_price || 120).toFixed(2)} deal (valid on Zelle, Venmo, or Cash App only; regular prices on Card/Afterpay/Affirm). Add ${comboResult.neededForNextCombo} more!`}
               </p>
               <div className="pt-1">
                 <Link
@@ -2425,6 +2733,17 @@ export default function CheckoutPage() {
               <span>{lang === 'pt' ? 'SUBTOTAL:' : 'SUBTOTAL:'}</span>
               <span className="font-mono font-bold">${subtotal.toFixed(2)}</span>
             </div>
+
+            {comboDiscount > 0 && (
+              <div className="flex justify-between text-emerald-700 font-black">
+                <span>
+                  {lang === 'pt'
+                    ? 'DESCONTO COMBO (ZELLE / VENMO / CASH APP):'
+                    : 'COMBO DISCOUNT (ZELLE / VENMO / CASH APP):'}
+                </span>
+                <span className="font-mono">-${comboDiscount.toFixed(2)}</span>
+              </div>
+            )}
 
             {appliedCoupon && discountAmount > 0 && (
               <div className="flex justify-between text-gold font-bold">
@@ -2494,6 +2813,7 @@ export default function CheckoutPage() {
                       {paymentMethod === 'AFTERPAY' && (lang === 'pt' ? `PAGAR COM AFTERPAY • 4x DE $${(total / 4).toFixed(2)}` : `PAY WITH AFTERPAY • 4x OF $${(total / 4).toFixed(2)}`)}
                       {paymentMethod === 'ZELLE' && (lang === 'pt' ? `FINALIZAR PEDIDO (ZELLE) • $${total.toFixed(2)}` : `CONFIRM ORDER (ZELLE) • $${total.toFixed(2)}`)}
                       {paymentMethod === 'VENMO' && (lang === 'pt' ? `FINALIZAR PEDIDO (VENMO) • $${total.toFixed(2)}` : `CONFIRM ORDER (VENMO) • $${total.toFixed(2)}`)}
+                      {paymentMethod === 'CASHAPP' && (lang === 'pt' ? `FINALIZAR PEDIDO (CASH APP) • $${total.toFixed(2)}` : `CONFIRM ORDER (CASH APP) • $${total.toFixed(2)}`)}
                     </span>
                   </>
                 )}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
+import { downloadOrderPdf } from '../../lib/orderPdf';
 import {
   Search,
   Package,
@@ -20,6 +21,7 @@ import {
   CreditCard,
   Copy,
   Check,
+  Download,
 } from 'lucide-react';
 
 export default function OrderLookupPage() {
@@ -30,17 +32,48 @@ export default function OrderLookupPage() {
   const [orderData, setOrderData] = useState<any | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [copiedTracking, setCopiedTracking] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [recentOrderIds, setRecentOrderIds] = useState<string[]>(['ANA-928104', 'ANA-927552']);
 
   useEffect(() => {
-    // Carrega último pedido realizado no navegador se houver
+    // Carrega pedido via querystring (?order= ou ?order_id=) ou último pedido salvo no navegador
     try {
-      const saved = localStorage.getItem('ana_cart_item');
-      if (saved) {
-        // Se houver pedido recente no checkout
+      const params = new URLSearchParams(window.location.search);
+      const urlOrderId = params.get('order') || params.get('order_id');
+      if (urlOrderId) {
+        setOrderQuery(urlOrderId);
+        handleSearchOrder(undefined, urlOrderId);
+        return;
+      }
+      const savedSnapshot = localStorage.getItem('ana_last_order_snapshot');
+      if (savedSnapshot) {
+        const parsed = JSON.parse(savedSnapshot);
+        if (parsed?.order_id) {
+          setOrderData((prev: any) => prev || {
+            ...parsed,
+            subtotal: parsed.subtotal_products ?? parsed.subtotal ?? 0,
+            discount: parsed.discount_amount ?? parsed.discount ?? 0,
+            total: parsed.total_amount ?? parsed.total ?? 0,
+          });
+          setOrderQuery(parsed.order_id);
+          setRecentOrderIds((prev) => [parsed.order_id, ...prev.filter((id) => id !== parsed.order_id)]);
+        }
       }
     } catch (e) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleDownloadPdf = async () => {
+    if (!orderData || downloadingPdf) return;
+    setDownloadingPdf(true);
+    try {
+      await downloadOrderPdf(orderData, { lang });
+    } catch (err) {
+      console.error('Erro ao gerar PDF do pedido:', err);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   const handleSearchOrder = async (e?: React.FormEvent, directId?: string) => {
     if (e) e.preventDefault();
@@ -217,11 +250,24 @@ export default function OrderLookupPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={downloadingPdf}
+                onClick={handleDownloadPdf}
+                className="px-4 py-2 bg-deep-black hover:bg-gold text-gold hover:text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 shadow cursor-pointer disabled:opacity-60"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>
+                  {downloadingPdf
+                    ? (lang === 'pt' ? 'GERANDO PDF...' : 'GENERATING PDF...')
+                    : (lang === 'pt' ? 'BAIXAR PEDIDO (PDF)' : 'DOWNLOAD ORDER PDF')}
+                </span>
+              </button>
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="px-4 py-2 border border-deep-black hover:bg-deep-black hover:text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5"
+                className="px-4 py-2 border border-deep-black hover:bg-deep-black hover:text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer"
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>{lang === 'pt' ? 'IMPRIMIR RECIBO' : 'PRINT INVOICE'}</span>

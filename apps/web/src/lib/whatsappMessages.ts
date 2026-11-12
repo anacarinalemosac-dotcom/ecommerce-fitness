@@ -7,6 +7,7 @@ export function formatPaymentMethodLabel(method: string): string {
   if (m === 'AFFIRM') return '💎 Affirm (4x sem juros)';
   if (m === 'AFTERPAY') return '⚡ Afterpay (4x sem juros)';
   if (m === 'VENMO') return '📱 Venmo';
+  if (m === 'CASHAPP' || m === 'CASH_APP') return '💲 Cash App';
   if (m === 'APPLE_PAY') return '🍏 Apple Pay';
   if (m === 'CREDIARIO') return '📋 Crediário da Loja';
   return method || 'Outro';

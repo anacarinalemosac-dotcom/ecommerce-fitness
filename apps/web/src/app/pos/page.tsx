@@ -41,6 +41,7 @@ import {
   MessageCircle,
   Ban,
   ShoppingBag,
+  Download,
 } from 'lucide-react';
 import { StockWriteOffModal } from '../../components/StockWriteOffModal';
 import { PosInstagramChat } from '../../components/pos/PosInstagramChat';
@@ -68,6 +69,7 @@ import {
   generateConditionalDispatchWhatsAppMessage,
   printConditionalReceipt,
 } from '@/lib/whatsappMessages';
+import { downloadOrderPdf } from '@/lib/orderPdf';
 
 export default function PosTerminalPage() {
   const { products, refreshProducts, adminUser, loginAdmin } = useStoreSettings();
@@ -135,8 +137,8 @@ export default function PosTerminalPage() {
       });
   }, []);
 
-  // Meios de Pagamento (incluindo CREDIÁRIO / Carnê Próprio da Loja)
-  const [paymentMethod, setPaymentMethod] = useState<'ZELLE' | 'VENMO' | 'CARD' | 'CASH' | 'CREDIARIO'>('ZELLE');
+  // Meios de Pagamento (incluindo CASH APP e CREDIÁRIO / Carnê Próprio da Loja)
+  const [paymentMethod, setPaymentMethod] = useState<'ZELLE' | 'VENMO' | 'CASHAPP' | 'CARD' | 'CASH' | 'CREDIARIO'>('ZELLE');
 
   // Helper para gerar datas de vencimento no formato YYYY-MM-DD
   const getFutureDateStr = (daysAhead: number = 30) => {
@@ -151,7 +153,7 @@ export default function PosTerminalPage() {
   // Configurações do Crediário
   const [crediarioInstallmentsCount, setCrediarioInstallmentsCount] = useState<number>(2);
   const [crediarioDownPayment, setCrediarioDownPayment] = useState<number>(0);
-  const [crediarioDownPaymentMethod, setCrediarioDownPaymentMethod] = useState<'CASH' | 'ZELLE' | 'CARD'>('CASH');
+  const [crediarioDownPaymentMethod, setCrediarioDownPaymentMethod] = useState<'CASH' | 'ZELLE' | 'VENMO' | 'CASHAPP' | 'CARD'>('CASH');
   const [crediarioFirstDueDate, setCrediarioFirstDueDate] = useState<string>(() => getFutureDateStr(30));
   const [crediarioInterval, setCrediarioInterval] = useState<'MONTHLY' | 'BIWEEKLY'>('MONTHLY');
   const [customInstallmentDates, setCustomInstallmentDates] = useState<Record<number, string>>({});
@@ -982,8 +984,17 @@ export default function PosTerminalPage() {
 
                   <button
                     type="button"
+                    onClick={() => downloadOrderPdf(completedSale, { lang: 'pt' })}
+                    className="py-2.5 px-3 bg-gold hover:bg-white text-deep-black border border-deep-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>BAIXAR PEDIDO (PDF)</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => printSaleReceipt(completedSale)}
-                    className="py-2.5 px-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm"
+                    className="py-2.5 px-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
                   >
                     <Printer className="w-3.5 h-3.5" />
                     <span>IMPRIMIR RECIBO</span>
@@ -2137,12 +2148,13 @@ export default function PosTerminalPage() {
               <span className="text-gold text-[9px] font-mono font-bold">
                 {paymentMethod === 'ZELLE' && 'TAXA 0% • INSTANTÂNEO'}
                 {paymentMethod === 'VENMO' && 'TAXA 1.9%'}
+                {paymentMethod === 'CASHAPP' && 'TAXA 0% • $CASHTAG'}
                 {paymentMethod === 'CARD' && 'TAXA 2.9% + $0.30'}
                 {paymentMethod === 'CASH' && 'TAXA 0% • DINHEIRO'}
                 {paymentMethod === 'CREDIARIO' && 'CARNÊ DA LOJA • PARCELADO'}
               </span>
             </label>
-            <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setPaymentMethod('ZELLE')}
@@ -2167,6 +2179,19 @@ export default function PosTerminalPage() {
               >
                 <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>VENMO</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('CASHAPP')}
+                className={`p-2 sm:p-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider flex flex-col items-center gap-1 border transition ${
+                  paymentMethod === 'CASHAPP'
+                    ? 'border-[#00D632] bg-[#00D632] text-deep-black font-black'
+                    : 'border-white/20 text-white/70 hover:border-[#00D632]'
+                }`}
+              >
+                <span className="text-xs sm:text-sm font-black font-mono leading-none">$</span>
+                <span>CASH APP</span>
               </button>
 
               <button
@@ -2257,6 +2282,8 @@ export default function PosTerminalPage() {
                     >
                       <option value="CASH">ENTRADA EM DINHEIRO</option>
                       <option value="ZELLE">ENTRADA NO ZELLE</option>
+                      <option value="VENMO">ENTRADA NO VENMO</option>
+                      <option value="CASHAPP">ENTRADA NO CASH APP</option>
                       <option value="CARD">ENTRADA NO CARTÃO</option>
                     </select>
                   )}

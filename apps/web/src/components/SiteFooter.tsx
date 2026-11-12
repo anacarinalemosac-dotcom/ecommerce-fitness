@@ -191,13 +191,14 @@ export function SiteFooter() {
             </h4>
             <p className="text-[11px] text-white/60 leading-relaxed uppercase tracking-wider">
               {lang === 'pt'
-                ? 'Pagamentos oficiais via Zelle, Venmo, Cartão de Crédito e Débito.'
-                : 'Official payments via Zelle, Venmo, Credit and Debit Cards.'}
+                ? 'Pagamentos oficiais via Zelle, Venmo, Cash App, Cartão de Crédito e Débito.'
+                : 'Official payments via Zelle, Venmo, Cash App, Credit and Debit Cards.'}
             </p>
             <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase text-white/90">
               <span className="px-2.5 py-1 bg-white/10 border border-white/20 font-bold">APPLE PAY</span>
               <span className="px-2.5 py-1 bg-white/10 border border-gold/40 text-gold font-mono">ZELLE</span>
               <span className="px-2.5 py-1 bg-white/10 border border-gold/40 text-gold font-mono">VENMO</span>
+              <span className="px-2.5 py-1 bg-white/10 border border-[#00D632]/60 text-[#00D632] font-mono">CASH APP</span>
               <span className="px-2 py-1 bg-white/10 border border-white/20">VISA</span>
               <span className="px-2 py-1 bg-white/10 border border-white/20">MASTERCARD</span>
               <span className="px-2 py-1 bg-white/10 border border-white/20">AMEX</span>

@@ -83,7 +83,7 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     'footer.phone': 'Phone / WhatsApp: +1 (978) 313-9452',
     'footer.insta': 'Instagram: @anafitnessweareua',
     'footer.payments': 'ACCEPTED PAYMENT METHODS',
-    'footer.paymentsDesc': 'Apple Pay, Credit & Debit Cards (Visa, Mastercard, Amex, Discover), Zelle, and Venmo.',
+    'footer.paymentsDesc': 'Apple Pay, Credit & Debit Cards (Visa, Mastercard, Amex, Discover), Zelle, Venmo, and Cash App.',
     'footer.returns': '30-DAY HASSLE-FREE RETURNS',
     'footer.returnsDesc': 'Total satisfaction guarantee. Easy returns and exchanges within 30 days of delivery.',
 
@@ -181,7 +181,7 @@ const DICTIONARY: Record<Language, Record<string, string>> = {
     'footer.phone': 'Telefone / WhatsApp: +1 (978) 313-9452',
     'footer.insta': 'Instagram: @anafitnessweareua',
     'footer.payments': 'FORMAS DE PAGAMENTO ACEITAS',
-    'footer.paymentsDesc': 'Apple Pay, Cartões de Crédito e Débito (Visa, Mastercard, Amex, Discover), Zelle e Venmo.',
+    'footer.paymentsDesc': 'Apple Pay, Cartões de Crédito e Débito (Visa, Mastercard, Amex, Discover), Zelle, Venmo e Cash App.',
     'footer.returns': '30 DIAS PARA TROCAS E DEVOLUÇÕES',
     'footer.returnsDesc': 'Garantia total de satisfação. Troca simplificada em até 30 dias após o recebimento.',
 

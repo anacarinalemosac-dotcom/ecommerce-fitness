@@ -638,6 +638,7 @@ export function EditSaleModal({
                   <option value="CASH">💵 DINHEIRO (CASH)</option>
                   <option value="ZELLE">📱 ZELLE (TRANSFERÊNCIA)</option>
                   <option value="VENMO">🟣 VENMO</option>
+                  <option value="CASHAPP">💲 CASH APP</option>
                   <option value="CARD">💳 CARTÃO (CRÉDITO / DÉBITO)</option>
                   <option value="CREDIARIO">📑 CREDIÁRIO / CARNÊ</option>
                   <option value="APPLE_PAY">🍎 APPLE PAY</option>

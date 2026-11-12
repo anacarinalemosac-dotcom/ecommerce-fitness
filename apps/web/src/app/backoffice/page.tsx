@@ -114,6 +114,7 @@ import {
   printSaleReceipt,
   printCrediarioCarnet,
 } from '@/lib/whatsappMessages';
+import { downloadOrderPdf } from '@/lib/orderPdf';
 
 interface ProductProfit {
   id?: string;
@@ -320,7 +321,7 @@ export default function BackofficeDashboard() {
   const [salesData, setSalesData] = useState<any | null>(null);
   const [loadingSales, setLoadingSales] = useState(false);
   const [salesChannelFilter, setSalesChannelFilter] = useState<'ALL' | 'ONLINE' | 'POS_COUNTER'>('ALL');
-  const [salesPaymentFilter, setSalesPaymentFilter] = useState<'ALL' | 'CARD' | 'ZELLE' | 'VENMO' | 'CASH' | 'CREDIARIO'>('ALL');
+  const [salesPaymentFilter, setSalesPaymentFilter] = useState<'ALL' | 'CARD' | 'ZELLE' | 'VENMO' | 'CASHAPP' | 'CASH' | 'CREDIARIO'>('ALL');
   const [salesPeriodFilter, setSalesPeriodFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'LAST_MONTH' | 'CUSTOM' | 'SPECIFIC_DATE'>('ALL');
   const [salesCustomStartDate, setSalesCustomStartDate] = useState('');
   const [salesCustomEndDate, setSalesCustomEndDate] = useState('');
@@ -346,7 +347,7 @@ export default function BackofficeDashboard() {
   });
 
   const [payAmountInput, setPayAmountInput] = useState<string>('');
-  const [payMethodSelected, setPayMethodSelected] = useState<'ZELLE' | 'CASH' | 'CARD' | 'VENMO'>('ZELLE');
+  const [payMethodSelected, setPayMethodSelected] = useState<'ZELLE' | 'CASH' | 'CARD' | 'VENMO' | 'CASHAPP'>('ZELLE');
   const [payNotesInput, setPayNotesInput] = useState<string>('');
   const [submittingPayment, setSubmittingPayment] = useState<boolean>(false);
 
@@ -4744,7 +4745,7 @@ export default function BackofficeDashboard() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {/* ZELLE */}
                 <div className="p-3 bg-deep-black/5 border border-deep-black/20 space-y-1">
                   <div className="flex items-center justify-between">
@@ -4780,6 +4781,25 @@ export default function BackofficeDashboard() {
                   </p>
                   <span className="text-[8px] text-deep-black/40 block font-mono">
                     {salesData?.paymentBreakdown?.VENMO?.count || 0} pedidos
+                  </span>
+                </div>
+
+                {/* CASH APP */}
+                <div className="p-3 bg-[#00D632]/10 border border-[#00D632]/40 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-emerald-950">CASH APP</span>
+                    <span className="text-[8px] bg-[#00D632]/20 text-emerald-950 font-black px-1 border border-[#00D632]/50">
+                      0% TAXA
+                    </span>
+                  </div>
+                  <p className="text-base font-black text-emerald-950 font-mono">
+                    ${(salesData?.paymentBreakdown?.CASHAPP?.total || 0).toFixed(2)}
+                  </p>
+                  <p className="text-[9px] text-emerald-900 uppercase font-bold">
+                    Líquido: ${(salesData?.paymentBreakdown?.CASHAPP?.net || 0).toFixed(2)}
+                  </p>
+                  <span className="text-[8px] text-emerald-900/60 block font-mono">
+                    {salesData?.paymentBreakdown?.CASHAPP?.count || 0} pedidos
                   </span>
                 </div>
 
@@ -5132,6 +5152,7 @@ export default function BackofficeDashboard() {
                   <option value="AFTERPAY">AFTERPAY (4X)</option>
                   <option value="ZELLE">ZELLE</option>
                   <option value="VENMO">VENMO</option>
+                  <option value="CASHAPP">CASH APP</option>
                   <option value="CASH">CASH</option>
                   <option value="CREDIARIO">CREDIÁRIO (CARNÊ)</option>
                 </select>
@@ -5574,6 +5595,8 @@ export default function BackofficeDashboard() {
                               ? 'bg-green-100 text-green-800 border-green-300'
                               : sale.payment_method === 'VENMO'
                               ? 'bg-blue-100 text-blue-800 border-blue-300'
+                              : sale.payment_method === 'CASHAPP'
+                              ? 'bg-[#00D632]/15 text-emerald-950 border-[#00D632]/50 font-bold'
                               : sale.payment_method === 'CARD'
                               ? 'bg-amber-100 text-amber-900 border-amber-300'
                               : sale.payment_method === 'CREDIARIO'
@@ -5819,6 +5842,16 @@ export default function BackofficeDashboard() {
                               >
                                 <MessageCircle className="w-3 h-3 text-white" />
                                 <span>RECIBO WHATSAPP</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => downloadOrderPdf(sale, { lang: 'pt' })}
+                                className="px-2 py-1 bg-gold hover:bg-deep-black text-deep-black hover:text-gold text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border border-deep-black shadow-2xs cursor-pointer"
+                                title="Baixar pedido em PDF com as peças compradas para enviar à cliente"
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>PDF CLIENTE</span>
                               </button>
 
                               <button
@@ -6378,6 +6411,15 @@ export default function BackofficeDashboard() {
                                   >
                                     + VENMO
                                   </button>
+                                  {/* Botão Baixa Cash App */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePayInstallment(selectedSaleDetail.order_id, inst.number, 'CASHAPP')}
+                                    className="px-2 py-1 bg-[#00D632] hover:bg-[#00b82b] text-deep-black text-[9px] font-black uppercase transition cursor-pointer"
+                                    title="Receber parcela via Cash App"
+                                  >
+                                    + CASH APP
+                                  </button>
                                   {/* Botão de Cobrança / Lembrete WhatsApp */}
                                   {isOverdue ? (
                                     <button
@@ -6617,6 +6659,15 @@ export default function BackofficeDashboard() {
                   >
                     <MessageCircle className="w-3.5 h-3.5" />
                     <span>WHATS</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadOrderPdf(selectedSaleDetail, { lang: 'pt' })}
+                    className="py-2.5 px-3 bg-gold hover:bg-white text-deep-black border border-deep-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                    title="Baixar pedido em PDF com foto e detalhes das peças para enviar à cliente"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>PDF</span>
                   </button>
                   <button
                     type="button"
@@ -6903,6 +6954,27 @@ export default function BackofficeDashboard() {
                           <div className="text-left">
                             <strong className="text-xs font-black uppercase block">VENMO</strong>
                             <span className="text-[8.5px] uppercase opacity-75 font-mono block">App Venmo</span>
+                          </div>
+                        </button>
+
+                        {/* CASH APP */}
+                        <button
+                          type="button"
+                          onClick={() => setPayMethodSelected('CASHAPP')}
+                          className={`p-3 border-2 transition flex items-center gap-2 cursor-pointer col-span-2 ${
+                            payMethodSelected === 'CASHAPP'
+                              ? 'bg-[#00a827] text-white border-emerald-950 shadow-md ring-2 ring-[#00D632]'
+                              : 'bg-[#00D632]/10 text-emerald-950 border-[#00D632]/50 hover:bg-[#00D632]/20'
+                          }`}
+                        >
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs font-mono ${
+                            payMethodSelected === 'CASHAPP' ? 'bg-white text-[#00a827]' : 'bg-[#00D632] text-deep-black'
+                          }`}>
+                            $
+                          </div>
+                          <div className="text-left">
+                            <strong className="text-xs font-black uppercase block">CASH APP ($CASHTAG)</strong>
+                            <span className="text-[8.5px] uppercase opacity-75 font-mono block">0% Taxa • Transferência Instantânea</span>
                           </div>
                         </button>
                       </div>

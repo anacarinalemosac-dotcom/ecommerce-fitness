@@ -357,8 +357,8 @@ export function SideCartDrawer() {
                     <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
                     <span>
                       {lang === 'pt'
-                        ? `${translateBadgeText(comboPromo.title || 'Combo', lang)} aplicado! Economia de $${comboResult.discount.toFixed(2)} USD.`
-                        : `${translateBadgeText(comboPromo.title || 'Combo', lang)} applied! You saved $${comboResult.discount.toFixed(2)} USD.`}
+                        ? `${translateBadgeText(comboPromo.title || 'Combo', lang)} elegível: economia de $${comboResult.discount.toFixed(2)} USD pagando via Zelle, Venmo ou Cash App (no cartão/Afterpay/Affirm entra o valor normal).`
+                        : `${translateBadgeText(comboPromo.title || 'Combo', lang)} eligible: save $${comboResult.discount.toFixed(2)} USD via Zelle, Venmo, or Cash App (regular price applies on Card/Afterpay/Affirm).`}
                     </span>
                   </>
                 ) : comboResult.participatingCount > 0 ? (
@@ -366,8 +366,8 @@ export function SideCartDrawer() {
                     <Sparkles className="w-4 h-4 text-gold shrink-0" />
                     <span>
                       {lang === 'pt'
-                        ? `Falta(m) ${comboResult.neededForNextCombo} peça(s) participante(s) para o ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 99).toFixed(2)})!`
-                        : `Add ${comboResult.neededForNextCombo} more combo item(s) to unlock ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 99).toFixed(2)})!`}
+                        ? `Falta(m) ${comboResult.neededForNextCombo} peça(s) participante(s) para o ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 99).toFixed(2)} no Zelle, Venmo ou Cash App)!`
+                        : `Add ${comboResult.neededForNextCombo} more combo item(s) to unlock ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 99).toFixed(2)} via Zelle, Venmo, or Cash App)!`}
                     </span>
                   </>
                 ) : null}
@@ -554,9 +554,16 @@ export function SideCartDrawer() {
                   </div>
 
                   {comboResult.hasCombo && comboResult.discount > 0 && (
-                    <div className="flex items-center justify-between text-emerald-700 font-black uppercase">
-                      <span>{lang === 'pt' ? 'Desconto Combo' : 'Combo Discount'}</span>
-                      <span className="font-mono">-${comboResult.discount.toFixed(2)}</span>
+                    <div className="space-y-0.5">
+                      <div className="flex items-center justify-between text-emerald-700 font-black uppercase">
+                        <span>{lang === 'pt' ? 'Combo (Zelle / Venmo / Cash App)' : 'Combo (Zelle / Venmo / Cash App)'}</span>
+                        <span className="font-mono">-${comboResult.discount.toFixed(2)}</span>
+                      </div>
+                      <p className="text-[9px] text-emerald-800/80 font-bold uppercase text-right">
+                        {lang === 'pt'
+                          ? '* No Cartão, Afterpay ou Affirm entra o preço normal'
+                          : '* Regular price applies on Card, Afterpay or Affirm'}
+                      </p>
                     </div>
                   )}
 

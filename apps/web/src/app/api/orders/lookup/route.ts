@@ -76,6 +76,13 @@ export async function GET(req: NextRequest) {
         else if (fStatus === 'DELIVERED') displayStatus = 'DELIVERED';
         else if (fStatus === 'AWAITING_SEPARATION') displayStatus = 'PENDENTE_ENVIO';
 
+        const parsedShippingFee =
+          meta.shipping_fee !== undefined && meta.shipping_fee !== null
+            ? Number(meta.shipping_fee) || 0
+            : (ord.channel === 'POS_COUNTER' ? 0 : 9.90);
+        const parsedSubtotal = Number(ord.subtotal_amount) || 0;
+        const parsedDiscount = Number(ord.discount_amount) || 0;
+
         allOrders.push({
           order_id: orderNumber,
           customer_name: ord.customer_name || 'Cliente Online',
@@ -85,8 +92,9 @@ export async function GET(req: NextRequest) {
           status: displayStatus,
           fulfillment_status: fStatus,
           tracking_code: meta.tracking_code || ord.tracking_code || undefined,
-          carrier: ord.channel === 'ONLINE' ? 'USPS Domestic Priority ($9.99)' : 'Retirada no Showroom (Leominster, MA)',
+          carrier: ord.channel === 'ONLINE' ? 'USPS Domestic Priority ($9.90)' : 'Retirada no Showroom (Leominster, MA)',
           estimated_delivery: '1 a 5 dias úteis com código de rastreamento USPS',
+          delivery_method: meta.delivery_method || (parsedShippingFee === 0 ? 'PICKUP' : 'DELIVERY'),
           shipping_address: meta.address || {
             address: 'Leominster Area / Online Delivery',
             apt: '',
@@ -95,11 +103,12 @@ export async function GET(req: NextRequest) {
             zip: '01453',
           },
           payment_method: ord.payment_method || 'AFTERPAY',
-          subtotal: Number(ord.subtotal_amount) || 0,
-          shipping_fee: Number(meta.shipping_fee) || 9.99,
-          discount: Number(ord.discount_amount) || 0,
-          total: Number(ord.total_amount) || ((Number(ord.subtotal_amount) || 0) + (Number(meta.shipping_fee) || 9.99)),
+          subtotal: parsedSubtotal,
+          shipping_fee: parsedShippingFee,
+          discount: parsedDiscount,
+          total: Number(ord.total_amount) || Math.max(0, parsedSubtotal - parsedDiscount + parsedShippingFee),
           items: Array.isArray(meta.items) ? meta.items : [],
+          crediario: meta.crediario || undefined,
         });
       });
     }
@@ -107,11 +116,20 @@ export async function GET(req: NextRequest) {
     console.warn('Erro ao consultar pedidos do Supabase em lookup:', e);
   }
 
-  // 2. Mescla com pedidos do backup local sem duplicar
+  // 2. Mescla com pedidos do backup local sem duplicar (enriquecendo itens/imagens se faltarem no DB)
   const backup = readBackupOrders();
   backup.forEach((b) => {
-    if (!allOrders.some((o) => o.order_id === b.order_id)) {
+    const existingIdx = allOrders.findIndex((o) => o.order_id === b.order_id);
+    if (existingIdx === -1) {
       allOrders.push(b);
+    } else {
+      const existing = allOrders[existingIdx];
+      if ((!existing.items || existing.items.length === 0) && Array.isArray(b.items) && b.items.length > 0) {
+        existing.items = b.items;
+      }
+      if (!existing.crediario && b.crediario) {
+        existing.crediario = b.crediario;
+      }
     }
   });
 

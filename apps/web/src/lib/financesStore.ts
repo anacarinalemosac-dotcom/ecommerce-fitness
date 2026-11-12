@@ -23,7 +23,7 @@ export interface ExpenseRecord {
   description: string;
   category: ExpenseCategory;
   amount: number; // $ USD
-  payment_method: 'ZELLE' | 'BANK' | 'CASH' | 'CARD' | 'VENMO' | 'OTHER';
+  payment_method: 'ZELLE' | 'BANK' | 'CASH' | 'CARD' | 'VENMO' | 'CASHAPP' | 'OTHER';
   status: 'PAID' | 'PENDING';
   due_date?: string; // YYYY-MM-DD
   paid_at?: string;

@@ -42,7 +42,7 @@ export function SettleConditionalModal({
     }));
   });
 
-  const [paymentMethod, setPaymentMethod] = useState<'ZELLE' | 'CARD' | 'CASH' | 'VENMO' | 'CREDIARIO'>('ZELLE');
+  const [paymentMethod, setPaymentMethod] = useState<'ZELLE' | 'CARD' | 'CASH' | 'VENMO' | 'CASHAPP' | 'CREDIARIO'>('ZELLE');
   const [discountAmount, setDiscountAmount] = useState<string>('0');
   const [settlementNotes, setSettlementNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -364,9 +364,10 @@ export function SettleConditionalModal({
                       className="w-full p-2.5 bg-white text-deep-black border-2 border-gold font-bold text-xs uppercase"
                     >
                       <option value="ZELLE">⚡ ZELLE</option>
+                      <option value="VENMO">📱 VENMO</option>
+                      <option value="CASHAPP">💲 CASH APP</option>
                       <option value="CARD">💳 CARTÃO DE CRÉDITO / DÉBITO</option>
                       <option value="CASH">💵 DINHEIRO (CASH)</option>
-                      <option value="VENMO">📱 VENMO</option>
                       <option value="CREDIARIO">📋 CREDIÁRIO / CARNÊ PRÓPRIO</option>
                     </select>
                   </div>

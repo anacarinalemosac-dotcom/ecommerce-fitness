@@ -1591,8 +1591,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   </div>
                   <p className="text-xs font-bold text-emerald-950 leading-relaxed">
                     {lang === 'pt'
-                      ? `Esta peça participa da promoção: ${Number(comboPromo?.required_quantity) || 3} peças pelo valor $${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Adicione essa peça na sua sacola e faltará pouco para você participar da promoção.`
-                      : `This item is part of our combo deal: ${Number(comboPromo?.required_quantity) || 3} pieces for $${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Add this piece to your bag and you're close to unlocking the promotion!`}
+                      ? `Esta peça participa da promoção: ${Number(comboPromo?.required_quantity) || 3} peças pelo valor $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (somente via Zelle, Venmo ou Cash App). No cartão, Afterpay ou Affirm entra o preço normal.`
+                      : `This item is part of our combo deal: ${Number(comboPromo?.required_quantity) || 3} pieces for $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (valid on Zelle, Venmo or Cash App only; regular price applies on Card, Afterpay or Affirm).`}
                   </p>
                 </div>
               </div>

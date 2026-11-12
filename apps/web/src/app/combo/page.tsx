@@ -272,20 +272,28 @@ export default function ComboBuilderPage() {
               <span>FRETE FIXO $9.90 OU RETIRADA GRÁTIS</span>
             </span>
             <span>•</span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 text-emerald-300">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>4X SEM JUROS NO AFTERPAY / AFFIRM</span>
+              <span>EXCLUSIVO PARA ZELLE, VENMO OU CASH APP</span>
             </span>
             <span>•</span>
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>ECONOMIA DIRETA NO CHECKOUT</span>
+              <span>CARTÃO / AFTERPAY / AFFIRM: VALOR NORMAL</span>
             </span>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 space-y-10">
+        {/* Aviso de Regra de Pagamento do Combo */}
+        <div className="bg-amber-50 border-2 border-amber-400 px-5 py-3.5 text-amber-950 text-xs sm:text-sm font-bold flex items-center gap-2.5 shadow-xs">
+          <span className="text-base shrink-0">⚠️</span>
+          <span>
+            REGRA DO COMBO: A promoção é válida <strong>exclusivamente para pagamentos via Zelle, Venmo ou Cash App</strong>. Em compras no Cartão, Apple Pay, Afterpay ou Affirm, prevalece o valor normal dos produtos.
+          </span>
+        </div>
+
         {/* Painel Sticky dos Slots Selecionados */}
         <div className="bg-white border-2 border-deep-black p-5 sm:p-7 shadow-luxury space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-deep-black/10 pb-4">
@@ -296,8 +304,8 @@ export default function ComboBuilderPage() {
               </h2>
               <p className="text-xs text-deep-black/60 font-medium">
                 {isComboComplete
-                  ? '🎉 Combo completo! Clique no botão abaixo para finalizar com o desconto fechado.'
-                  : `Selecione mais ${requiredQty - filledCount} conjunto(s) abaixo para completar seu combo.`}
+                  ? '🎉 Combo completo! No checkout, selecione Zelle, Venmo ou Cash App para pagar o valor promocional.'
+                  : `Selecione mais ${requiredQty - filledCount} conjunto(s) abaixo para completar seu combo (válido no Zelle, Venmo ou Cash App).`}
               </p>
             </div>
 
@@ -410,12 +418,12 @@ export default function ComboBuilderPage() {
               {isComboComplete && discountAmount > 0 && (
                 <p className="text-xs text-emerald-400 font-bold uppercase flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-emerald-400" />
-                  <span>VOCÊ ESTÁ ECONOMIZANDO ${discountAmount.toFixed(2)} NESTE COMBO!</span>
+                  <span>VOCÊ ECONOMIZA ${discountAmount.toFixed(2)} PAGANDO NO ZELLE, VENMO OU CASH APP!</span>
                 </p>
               )}
               {!isComboComplete && (
                 <p className="text-[11px] text-white/70 uppercase">
-                  Complete os {requiredQty} slots para destravar o valor de ${bundlePrice.toFixed(2)}.
+                  Complete os {requiredQty} slots para destravar o valor de ${bundlePrice.toFixed(2)} (válido no Zelle, Venmo ou Cash App).
                 </p>
               )}
             </div>

@@ -22,6 +22,20 @@ export interface ComboDiscountResult {
   neededForNextCombo: number;
   bundleTargetPrice: number;
   promoTitle: string;
+  ineligibleByPaymentMethod?: boolean;
+  rawPotentialDiscount?: number;
+}
+
+export const COMBO_ELIGIBLE_PAYMENT_METHODS = ['ZELLE', 'VENMO', 'CASHAPP', 'CASH_APP'] as const;
+
+export function isComboEligiblePaymentMethod(paymentMethod?: string | null): boolean {
+  const normalized = String(paymentMethod || '').toUpperCase().trim().replace(/\s+/g, '_');
+  return (
+    normalized === 'ZELLE' ||
+    normalized === 'VENMO' ||
+    normalized === 'CASHAPP' ||
+    normalized === 'CASH_APP'
+  );
 }
 
 export const CART_EXPIRATION_MS = 3 * 60 * 60 * 1000; // 3 horas
@@ -443,7 +457,8 @@ export function clearCart(): void {
 
 export function calculateComboDiscount(
   items: CartItem[],
-  promo: any
+  promo: any,
+  paymentMethod?: string | null
 ): ComboDiscountResult {
   const defaultRes: ComboDiscountResult = {
     hasCombo: false,
@@ -453,6 +468,8 @@ export function calculateComboDiscount(
     neededForNextCombo: promo?.required_quantity || 3,
     bundleTargetPrice: promo?.bundle_price || 99.0,
     promoTitle: promo?.title || 'Promoção Especial de Combo',
+    ineligibleByPaymentMethod: false,
+    rawPotentialDiscount: 0,
   };
 
   if (!promo || !promo.active || !items || items.length === 0) {
@@ -504,6 +521,8 @@ export function calculateComboDiscount(
       neededForNextCombo,
       bundleTargetPrice: bundlePrice,
       promoTitle: promo.title,
+      ineligibleByPaymentMethod: Boolean(paymentMethod) && !isComboEligiblePaymentMethod(paymentMethod),
+      rawPotentialDiscount: 0,
     };
   }
 
@@ -514,15 +533,33 @@ export function calculateComboDiscount(
   const comboUnits = participatingUnitsList.slice(0, unitsInCombos);
   const originalComboTotal = comboUnits.reduce((acc, u) => acc + u.price, 0);
   const targetComboTotal = completedCombos * bundlePrice;
-  const discount = Math.max(0, originalComboTotal - targetComboTotal);
+  const rawDiscount = Math.max(0, Number((originalComboTotal - targetComboTotal).toFixed(2)));
+
+  // Regra oficial da loja: Promoção de Combo só entra para Zelle, Venmo ou Cash App.
+  // Para Cartão, Apple Pay, Affirm, Afterpay ou qualquer outra forma, vale o valor normal ($0 de desconto de combo).
+  if (paymentMethod && !isComboEligiblePaymentMethod(paymentMethod)) {
+    return {
+      hasCombo: false,
+      discount: 0,
+      completedCombos,
+      participatingCount,
+      neededForNextCombo,
+      bundleTargetPrice: originalComboTotal,
+      promoTitle: promo.title,
+      ineligibleByPaymentMethod: true,
+      rawPotentialDiscount: rawDiscount,
+    };
+  }
 
   return {
-    hasCombo: true,
-    discount: Number(discount.toFixed(2)),
+    hasCombo: rawDiscount > 0,
+    discount: rawDiscount,
     completedCombos,
     participatingCount,
     neededForNextCombo,
     bundleTargetPrice: targetComboTotal,
     promoTitle: promo.title,
+    ineligibleByPaymentMethod: false,
+    rawPotentialDiscount: rawDiscount,
   };
 }

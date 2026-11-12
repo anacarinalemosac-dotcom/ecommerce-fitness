@@ -3,6 +3,7 @@ import { stripe, isStripeConfigured } from '@/lib/stripe';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { enrichOrderItemsWithCatalog, loadCatalogProductsForOrderMatch } from '@/lib/orderItemEnricher';
 import { loadActiveCartReservations, summarizeOtherSessionHolds } from '@/lib/cartReservationsStore';
+import { isComboEligiblePaymentMethod } from '@/lib/cart';
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,6 +17,7 @@ export async function POST(req: NextRequest) {
       shipping_address,
       coupon_code,
       discount_amount = 0,
+      combo_discount = 0,
       seller_name,
       payment_method = 'card',
       delivery_method = 'DELIVERY',
@@ -25,10 +27,21 @@ export async function POST(req: NextRequest) {
 
     const origin = req.headers.get('origin') || 'https://anafitwear.com';
 
+    // Regra comercial: promoção do combo só vale para Zelle, Venmo ou Cash App.
+    // Métodos Stripe (Cartão, Apple Pay, Affirm, Afterpay) nunca recebem desconto de combo.
+    const requestedDiscount = Math.max(0, Number(discount_amount || 0));
+    const requestedComboDiscount = Math.max(0, Number(combo_discount || 0));
+    const comboAllowedForMethod = isComboEligiblePaymentMethod(payment_method);
+    const effectiveDiscountAmount = comboAllowedForMethod
+      ? requestedDiscount
+      : Math.max(0, requestedDiscount - requestedComboDiscount);
+
     // Se a Stripe ainda não tiver a chave configurada no Vercel, retorna aviso para simulação
     if (!isStripeConfigured || !stripe) {
       return NextResponse.json({
         configured: false,
+        combo_eligible: comboAllowedForMethod,
+        effective_discount_amount: effectiveDiscountAmount,
         message: 'STRIPE_SECRET_KEY não foi configurada ainda nas variáveis de ambiente.',
       });
     }
@@ -125,8 +138,8 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    // Se houver desconto de combo ou cupom, distribui proporcionalmente entre os itens para atender à exigência da Stripe (unit_amount >= 0)
-    const totalDiscountInCents = Math.round(Number(discount_amount || 0) * 100);
+    // Se houver desconto de cupom (ou combo elegível calculado no topo), distribui proporcionalmente entre os itens para atender à exigência da Stripe (unit_amount >= 0)
+    const totalDiscountInCents = Math.round(effectiveDiscountAmount * 100);
     if (totalDiscountInCents > 0 && lineItems.length > 0) {
       const totalItemsGrossCents = lineItems.reduce((acc, it) => acc + (it.price_data.unit_amount * it.quantity), 0);
       if (totalItemsGrossCents > 0) {
@@ -223,7 +236,8 @@ export async function POST(req: NextRequest) {
         shipping_state: isPickup ? 'MA' : (shipping_address?.state || ''),
         shipping_zip: isPickup ? '01453' : (shipping_address?.zip || ''),
         shipping_fee: String(finalShippingFee),
-        discount_amount: String(discount_amount || 0),
+        discount_amount: String(effectiveDiscountAmount),
+        combo_discount_stripped: !comboAllowedForMethod && requestedComboDiscount > 0 ? String(requestedComboDiscount) : '0',
       },
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_id=${generatedOrderId}`,
       cancel_url: `${origin}/checkout?canceled=true`,

@@ -1888,8 +1888,8 @@ export default function HomePage() {
                             </div>
                             <p className="text-[10.5px] font-bold text-emerald-950 leading-snug">
                               {lang === 'pt'
-                                ? `Esta peça participa da promoção: ${Number(comboPromo?.required_quantity) || 3} peças pelo valor $${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Adicione essa peça na sua sacola e faltará pouco para você participar da promoção.`
-                                : `This piece is part of our promo: ${Number(comboPromo?.required_quantity) || 3} pieces for $${Number(comboPromo?.bundle_price || 120).toFixed(2)}. Add this piece to your bag and you're close to unlocking the deal!`}
+                                ? `Esta peça participa da promoção: ${Number(comboPromo?.required_quantity) || 3} peças pelo valor $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (válido no Zelle, Venmo ou Cash App). No cartão/Afterpay/Affirm vale o preço normal.`
+                                : `This piece is part of our promo: ${Number(comboPromo?.required_quantity) || 3} pieces for $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (valid on Zelle, Venmo or Cash App only; regular price on Card/Afterpay/Affirm).`}
                             </p>
                           </Link>
                         )}

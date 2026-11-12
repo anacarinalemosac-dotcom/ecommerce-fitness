@@ -155,7 +155,7 @@ export function SimpleFinancesView({
     description: string;
     category: ExpenseCategory;
     amount: string;
-    payment_method: 'ZELLE' | 'BANK' | 'CASH' | 'CARD' | 'VENMO' | 'OTHER';
+    payment_method: 'ZELLE' | 'BANK' | 'CASH' | 'CARD' | 'VENMO' | 'CASHAPP' | 'OTHER';
     status: 'PAID' | 'PENDING';
     due_date: string;
     notes: string;
@@ -1203,6 +1203,7 @@ export function SimpleFinancesView({
                     <option value="CASH">Dinheiro em Espécie (Caixa)</option>
                     <option value="CARD">Cartão de Crédito</option>
                     <option value="VENMO">Venmo</option>
+                    <option value="CASHAPP">Cash App</option>
                     <option value="OTHER">Outro Meio</option>
                   </select>
                 </div>

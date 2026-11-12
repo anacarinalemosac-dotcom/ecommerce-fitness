@@ -26,10 +26,11 @@ interface ExecutiveFinancialSummaryProps {
   onSelectSale?: (sale: any) => void;
 }
 
-function classifyPaymentMethod(methodStr: any): 'VENMO' | 'ZELLE' | 'CASH' | 'CARD' {
+export function classifyPaymentMethod(methodStr: any): 'VENMO' | 'ZELLE' | 'CASHAPP' | 'CASH' | 'CARD' {
   const norm = String(methodStr || '').toUpperCase().trim();
   if (norm.includes('VENMO')) return 'VENMO';
   if (norm.includes('ZELLE')) return 'ZELLE';
+  if (norm.includes('CASHAPP') || norm.includes('CASH_APP') || norm.includes('CASH APP')) return 'CASHAPP';
   if (norm.includes('CASH') || norm.includes('DINHEIRO') || norm.includes('ESPECIE')) return 'CASH';
   return 'CARD';
 }
@@ -77,6 +78,7 @@ export function ExecutiveFinancialSummary({
 
   let zelleReceived = 0;
   let venmoReceived = 0;
+  let cashAppReceived = 0;
   let cashReceived = 0;
   let cardReceived = 0;
 
@@ -97,6 +99,7 @@ export function ExecutiveFinancialSummary({
     const bucket = classifyPaymentMethod(method);
     if (bucket === 'VENMO') venmoReceived += amount;
     else if (bucket === 'ZELLE') zelleReceived += amount;
+    else if (bucket === 'CASHAPP') cashAppReceived += amount;
     else if (bucket === 'CASH') cashReceived += amount;
     else cardReceived += amount;
   };
@@ -417,12 +420,12 @@ export function ExecutiveFinancialSummary({
           </div>
         </div>
 
-        {/* Breakdown exato: Venmo, Zelle, Cash e Cartão */}
+        {/* Breakdown exato: Zelle, Venmo, Cash App, Cash e Cartão */}
         <div className="space-y-2 pt-2">
           <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/70 block">
             QUANTO FOI RECEBIDO EM CADA FORMA DE PAGAMENTO:
           </span>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {/* 1. ZELLE */}
             <div className="p-3 bg-purple-50 border-2 border-purple-400 space-y-1">
               <div className="flex items-center justify-between">
@@ -457,7 +460,24 @@ export function ExecutiveFinancialSummary({
               </span>
             </div>
 
-            {/* 3. CASH (DINHEIRO) */}
+            {/* 3. CASH APP */}
+            <div className="p-3 bg-emerald-50 border-2 border-[#00D632] space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-emerald-950 flex items-center gap-1">
+                  <DollarSign className="w-3.5 h-3.5 text-[#009e24]" />
+                  <span>CASH APP</span>
+                </span>
+                <span className="text-[8px] font-mono font-bold text-[#009e24] uppercase">0% TAXA</span>
+              </div>
+              <div className="text-xl font-black text-emerald-950 font-mono">
+                ${cashAppReceived.toFixed(2)}
+              </div>
+              <span className="text-[9px] text-emerald-800 font-bold block uppercase">
+                Recebido via Cash App
+              </span>
+            </div>
+
+            {/* 4. CASH (DINHEIRO) */}
             <div className="p-3 bg-green-50 border-2 border-green-500 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase text-green-950 flex items-center gap-1">
@@ -474,7 +494,7 @@ export function ExecutiveFinancialSummary({
               </span>
             </div>
 
-            {/* 4. CARTÃO (STRIPE / CARD) */}
+            {/* 5. CARTÃO (STRIPE / CARD) */}
             <div className="p-3 bg-gray-50 border-2 border-gray-300 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase text-gray-900 flex items-center gap-1">

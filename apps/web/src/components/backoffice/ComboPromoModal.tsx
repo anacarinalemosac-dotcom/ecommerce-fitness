@@ -277,6 +277,8 @@ export function ComboPromoModal({
             <p className="text-[11px] font-medium leading-relaxed">
               • Ao comprar <strong>{requiredQty} peças participantes</strong>, o cliente pagará exatamente <strong>${bundlePrice.toFixed(2)}</strong> no total.
               <br />
+              • Válido <strong>exclusivamente para pagamentos via Zelle, Venmo ou Cash App</strong> (no Cartão, Afterpay ou Affirm entra o valor normal das peças).
+              <br />
               • Se comprar <strong>1 ou 2 peças</strong>, nenhuma promoção é aplicada e o cliente paga o <strong>valor normal de cada peça</strong>.
             </p>
           </div>

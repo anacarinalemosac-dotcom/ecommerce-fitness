@@ -3,10 +3,11 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { CheckCircle2, Package, ArrowRight, Phone, Sparkles, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Package, Phone, ShieldCheck, Download } from 'lucide-react';
 import { useLanguage } from '../../../context/LanguageContext';
 import { trackEvent } from '../../../lib/tracking';
 import { clearCart } from '@/lib/cart';
+import { downloadOrderPdf } from '@/lib/orderPdf';
 
 function StripeSuccessContent() {
   const searchParams = useSearchParams();
@@ -14,15 +15,46 @@ function StripeSuccessContent() {
 
   const [orderId, setOrderId] = useState<string>('ANA-CONFIRMADO');
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [orderDetails, setOrderDetails] = useState<any | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   useEffect(() => {
     const oId = searchParams.get('order_id');
     const sId = searchParams.get('session_id');
     if (oId) setOrderId(oId);
-    if (sId) {
-      setSessionId(sId);
-      fetch(`/api/checkout/stripe/verify?session_id=${encodeURIComponent(sId)}`).catch(() => {});
-    }
+
+    const loadOrderSummary = async () => {
+      try {
+        const savedSnapshot = localStorage.getItem('ana_last_order_snapshot');
+        if (savedSnapshot) {
+          const parsed = JSON.parse(savedSnapshot);
+          if (!oId || parsed?.order_id === oId) {
+            setOrderDetails(parsed);
+          }
+        }
+      } catch (_) {}
+
+      if (sId) {
+        setSessionId(sId);
+        try {
+          await fetch(`/api/checkout/stripe/verify?session_id=${encodeURIComponent(sId)}`);
+        } catch (_) {}
+      }
+
+      if (oId) {
+        try {
+          const lookupRes = await fetch(`/api/orders/lookup?order_id=${encodeURIComponent(oId)}`);
+          if (lookupRes.ok) {
+            const lookupData = await lookupRes.json();
+            if (lookupData?.order) {
+              setOrderDetails(lookupData.order);
+            }
+          }
+        } catch (_) {}
+      }
+    };
+
+    loadOrderSummary();
 
     // Dispara Purchase nos Pixels e limpa carrinho local
     try {
@@ -53,6 +85,24 @@ function StripeSuccessContent() {
     } catch (e) {}
   }, [searchParams]);
 
+  const handleDownloadPdf = async () => {
+    if (downloadingPdf) return;
+    setDownloadingPdf(true);
+    try {
+      const fallbackOrder = orderDetails || {
+        order_id: orderId,
+        created_at: new Date().toISOString(),
+        payment_method: 'CARD',
+        items: [],
+      };
+      await downloadOrderPdf(fallbackOrder, { lang });
+    } catch (err) {
+      console.error('Erro ao baixar PDF do pedido:', err);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-8 animate-fadeIn">
       {/* Emblema de Sucesso */}
@@ -81,6 +131,46 @@ function StripeSuccessContent() {
         </p>
       </div>
 
+      {/* Resumo das Peças Compradas + Botão PDF */}
+      {orderDetails?.items && Array.isArray(orderDetails.items) && orderDetails.items.length > 0 && (
+        <div className="p-6 bg-white border-2 border-deep-black text-left space-y-4 max-w-xl mx-auto shadow-sm">
+          <div className="flex items-center justify-between border-b border-deep-black/10 pb-2 gap-2">
+            <h3 className="text-xs font-black uppercase tracking-wider text-deep-black">
+              {lang === 'pt'
+                ? `PEÇAS COMPRADAS (${orderDetails.items.length})`
+                : `PURCHASED PIECES (${orderDetails.items.length})`}
+            </h3>
+            <span className="text-xs font-mono font-black text-gold bg-deep-black px-2 py-0.5">
+              TOTAL: ${Number(orderDetails.total_amount ?? orderDetails.total ?? 0).toFixed(2)}
+            </span>
+          </div>
+          <div className="divide-y divide-deep-black/10 max-h-64 overflow-y-auto pr-1">
+            {orderDetails.items.map((it: any, idx: number) => (
+              <div key={idx} className="py-2.5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {it.image && (
+                    <img
+                      src={it.image}
+                      alt={it.title}
+                      className="w-11 h-14 object-cover border border-deep-black/20 shrink-0"
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-black uppercase text-deep-black truncate">{it.title}</p>
+                    <p className="text-[10px] font-mono text-deep-black/60 uppercase">
+                      TAM {it.size} • {it.color} • {it.quantity || 1}x
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-mono font-black text-deep-black shrink-0">
+                  ${((Number(it.unit_price ?? it.price) || 0) * (Number(it.quantity) || 1)).toFixed(2)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Cartão de Detalhes do Recebimento */}
       <div className="p-6 bg-white border-2 border-deep-black text-left space-y-4 max-w-xl mx-auto shadow-sm">
         <h3 className="text-xs font-black uppercase tracking-wider text-deep-black border-b border-deep-black/10 pb-2 flex items-center justify-between">
@@ -103,9 +193,22 @@ function StripeSuccessContent() {
       </div>
 
       {/* Botões de Ação */}
-      <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center pt-4">
+        <button
+          type="button"
+          disabled={downloadingPdf}
+          onClick={handleDownloadPdf}
+          className="px-6 py-4 bg-deep-black text-gold hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-luxury border-2 border-deep-black cursor-pointer disabled:opacity-60"
+        >
+          <Download className="w-4 h-4" />
+          <span>
+            {downloadingPdf
+              ? (lang === 'pt' ? 'GERANDO PDF...' : 'GENERATING PDF...')
+              : (lang === 'pt' ? 'BAIXAR PEDIDO EM PDF' : 'DOWNLOAD ORDER PDF')}
+          </span>
+        </button>
         <Link
-          href={`/pedidos`}
+          href={`/pedidos?order=${encodeURIComponent(orderId)}`}
           className="px-6 py-4 bg-gold text-deep-black hover:bg-white hover:text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow border border-gold"
         >
           <Package className="w-4 h-4 text-deep-black" />
@@ -113,7 +216,7 @@ function StripeSuccessContent() {
         </Link>
         <Link
           href="/"
-          className="px-6 py-4 bg-deep-black text-white hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-widest transition"
+          className="px-6 py-4 bg-white border-2 border-deep-black text-deep-black hover:bg-deep-black hover:text-white text-xs font-black uppercase tracking-widest transition"
         >
           {lang === 'pt' ? 'VOLTAR À LOJA' : 'RETURN TO SHOP'}
         </Link>

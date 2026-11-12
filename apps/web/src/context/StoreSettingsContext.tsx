@@ -114,6 +114,7 @@ export interface SiteInfo {
   instagram: string;
   instagramUrl: string;
   venmo?: string;
+  cashApp?: string;
   address: string;
   flatShippingRate: number;
   returnDays: number;
@@ -360,6 +361,7 @@ const DEFAULT_SITE_INFO: SiteInfo = {
   instagram: '@anafitnessweareua',
   instagramUrl: 'https://www.instagram.com/anafitnessweareua',
   venmo: '@Accleaningproservices',
+  cashApp: '$AnaFitnessWear',
   address: 'Leominster, MA 01453 • United States',
   flatShippingRate: 9.99,
   returnDays: 30,

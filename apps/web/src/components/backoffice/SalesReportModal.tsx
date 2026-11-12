@@ -323,6 +323,8 @@ export function SalesReportModal({
                             ? 'bg-green-100 text-green-900 border-green-300'
                             : sale.payment_method === 'VENMO'
                             ? 'bg-blue-100 text-blue-900 border-blue-300'
+                            : sale.payment_method === 'CASHAPP'
+                            ? 'bg-[#00D632]/15 text-emerald-950 border-[#00D632]/50'
                             : sale.payment_method === 'CARD'
                             ? 'bg-amber-100 text-amber-900 border-amber-300'
                             : sale.payment_method === 'CREDIARIO'
