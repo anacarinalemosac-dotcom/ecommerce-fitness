@@ -3296,6 +3296,20 @@ export default function BackofficeDashboard() {
                 <span>Exportar Catálogo (.csv)</span>
               </button>
 
+              {/* Botão Atalho: Relatório de Peças no Ar (Valuation USD) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('reports');
+                  setReportsSubTab('inventory');
+                }}
+                className="px-3.5 py-3 border-2 border-gold bg-gold/15 hover:bg-gold hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm"
+                title="Calcular quanto em dólar de mercadoria está no ar na vitrine (Baixar Excel .xlsx ou PDF)"
+              >
+                <DollarSign className="w-3.5 h-3.5 text-gold" />
+                <span>Estoque no Ar ($ USD)</span>
+              </button>
+
               {/* Botão Importar Planilha (Excel / CSV) */}
               <button
                 type="button"

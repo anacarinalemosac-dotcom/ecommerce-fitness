@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     // 1. Busca todos os produtos com suas categorias
     const { data: products, error: pErr } = await supabaseServer
       .from('products')
-      .select('id, title, slug, price, cost_price, images, visible_online, is_spoiler, created_at, categories(id, name), description')
+      .select('id, title, slug, description, category_id, supplier_id, created_at, categories(id, name)')
       .order('title', { ascending: true });
 
     if (pErr) {
@@ -50,21 +50,31 @@ export async function GET(req: NextRequest) {
       // Evita produtos de sistema interno
       if (prod.title?.startsWith('__')) return;
 
+      const meta = prod._meta || {};
+
       const primaryImage =
         (Array.isArray(v.images) && v.images[0]) ||
-        (Array.isArray(prod.images) && prod.images[0]) ||
+        (Array.isArray(meta.images) && meta.images[0]) ||
+        meta.primary_image ||
         '/placeholder.png';
 
-      const unitCost = Number(v.cost_price ?? prod.cost_price ?? 0) || 0;
-      const unitPrice = Number(v.price ?? prod.price ?? 0) || 0;
+      const unitCost = Number(v.cost_price ?? meta.cost_price ?? 16.0);
+      const unitPrice = Number(v.price ?? meta.price ?? meta.promotional_price ?? 44.9);
       const stock = Math.max(0, parseInt(String(v.stock_quantity ?? 0), 10) || 0);
 
       // Metadados de cor (ex: código hex caso configurado)
-      const colorMeta = Array.isArray(prod._meta?.colors)
-        ? prod._meta.colors.find((c: any) => c.name?.toLowerCase() === v.color?.toLowerCase())
+      const colorMeta = Array.isArray(meta.colors)
+        ? meta.colors.find((c: any) => c.name?.toLowerCase() === v.color?.toLowerCase())
         : null;
 
       const categoryName = prod.categories?.name || 'Sem Categoria';
+
+      // Status do produto na loja
+      const isVisibleOnline = meta.visible_online === true;
+      const isDraft = meta.is_draft === true || !isVisibleOnline;
+      const isSpoiler = meta.badge === 'SPOILER' || meta.is_spoiler === true;
+      const isLiveProduct = isVisibleOnline && !isDraft && !isSpoiler;
+      const isLiveWithStock = isLiveProduct && stock > 0;
 
       inventoryItems.push({
         id: v.id,
@@ -82,10 +92,14 @@ export async function GET(req: NextRequest) {
         unitPrice,
         totalCostValue: stock * unitCost,
         totalRetailValue: stock * unitPrice,
+        profitValue: stock * (unitPrice - unitCost),
         marginEstimate: unitPrice > 0 ? ((unitPrice - unitCost) / unitPrice) * 100 : 0,
         image: primaryImage,
-        visibleOnline: prod.visible_online !== false,
-        isSpoiler: Boolean(prod.is_spoiler),
+        visibleOnline: isVisibleOnline,
+        isDraft,
+        isSpoiler,
+        isLiveProduct,
+        isLiveWithStock,
         allowBackorder: Boolean(v.allow_backorder),
         updatedAt: v.updated_at || v.created_at,
       });
@@ -96,17 +110,26 @@ export async function GET(req: NextRequest) {
     // 4. Verifica se algum produto possui variações apenas em _meta.variants que ainda não estavam no banco
     (products || []).forEach((prod: any) => {
       if (prod.title?.startsWith('__')) return;
-      const metaVars = Array.isArray(prod._meta?.variants) ? prod._meta.variants : [];
+      const meta = prod._meta || {};
+      const metaVars = Array.isArray(meta.variants) ? meta.variants : [];
+      const isVisibleOnline = meta.visible_online === true;
+      const isDraft = meta.is_draft === true || !isVisibleOnline;
+      const isSpoiler = meta.badge === 'SPOILER' || meta.is_spoiler === true;
+      const isLiveProduct = isVisibleOnline && !isDraft && !isSpoiler;
+
       metaVars.forEach((mv: any, idx: number) => {
         const pairKey = `${prod.id}__${mv.color}__${mv.size}`;
         if (!handledProductVariantPairs.has(pairKey)) {
-          const unitCost = Number(mv.cost_price ?? prod.cost_price ?? 0) || 0;
-          const unitPrice = Number(mv.price ?? prod.price ?? 0) || 0;
+          const unitCost = Number(mv.cost_price ?? meta.cost_price ?? 16.0);
+          const unitPrice = Number(mv.price ?? meta.price ?? meta.promotional_price ?? 44.9);
           const stock = Math.max(0, parseInt(String(mv.stock_quantity ?? mv.stock ?? 0), 10) || 0);
           const primaryImage =
             (Array.isArray(mv.images) && mv.images[0]) ||
-            (Array.isArray(prod.images) && prod.images[0]) ||
+            (Array.isArray(meta.images) && meta.images[0]) ||
+            meta.primary_image ||
             '/placeholder.png';
+
+          const isLiveWithStock = isLiveProduct && stock > 0;
 
           inventoryItems.push({
             id: mv.id || `virtual-${prod.id}-${idx}`,
@@ -124,10 +147,14 @@ export async function GET(req: NextRequest) {
             unitPrice,
             totalCostValue: stock * unitCost,
             totalRetailValue: stock * unitPrice,
+            profitValue: stock * (unitPrice - unitCost),
             marginEstimate: unitPrice > 0 ? ((unitPrice - unitCost) / unitPrice) * 100 : 0,
             image: primaryImage,
-            visibleOnline: prod.visible_online !== false,
-            isSpoiler: Boolean(prod.is_spoiler),
+            visibleOnline: isVisibleOnline,
+            isDraft,
+            isSpoiler,
+            isLiveProduct,
+            isLiveWithStock,
             allowBackorder: false,
             updatedAt: prod.created_at,
           });
@@ -142,6 +169,12 @@ export async function GET(req: NextRequest) {
     let lowStockCount = 0;
     let outOfStockCount = 0;
     let inStockCount = 0;
+
+    // Totais específicos para peças que estão no ar com estoque
+    let liveVariantsCount = 0;
+    let livePiecesCount = 0;
+    let liveCostAsset = 0;
+    let liveRetailAsset = 0;
 
     const categoriesSet = new Set<string>();
     const colorsSet = new Set<string>();
@@ -161,6 +194,13 @@ export async function GET(req: NextRequest) {
         inStockCount++;
       }
 
+      if (item.isLiveWithStock) {
+        liveVariantsCount++;
+        livePiecesCount += item.stockQuantity;
+        liveCostAsset += item.totalCostValue;
+        liveRetailAsset += item.totalRetailValue;
+      }
+
       if (item.category) categoriesSet.add(item.category);
       if (item.color) colorsSet.add(item.color);
       if (item.size) sizesSet.add(item.size);
@@ -168,6 +208,9 @@ export async function GET(req: NextRequest) {
 
     const projectedProfit = totalRetailAsset - totalCostAsset;
     const overallMarginPct = totalRetailAsset > 0 ? (projectedProfit / totalRetailAsset) * 100 : 0;
+
+    const liveProjectedProfit = liveRetailAsset - liveCostAsset;
+    const liveOverallMarginPct = liveRetailAsset > 0 ? (liveProjectedProfit / liveRetailAsset) * 100 : 0;
 
     return NextResponse.json({
       success: true,
@@ -181,6 +224,13 @@ export async function GET(req: NextRequest) {
         inStockCount,
         lowStockCount,
         outOfStockCount,
+        // Indicadores específicos das peças NO AR com estoque:
+        liveVariantsCount,
+        livePiecesCount,
+        liveCostAsset,
+        liveRetailAsset,
+        liveProjectedProfit,
+        liveOverallMarginPct,
       },
       filters: {
         categories: Array.from(categoriesSet).sort(),
