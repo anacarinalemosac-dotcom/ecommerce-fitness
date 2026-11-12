@@ -1,5 +1,9 @@
 import { Metadata } from 'next';
-import { supabaseServer } from '@/lib/supabaseServer';
+import {
+  normalizeOriginFromHeaders,
+  resolveAbsoluteAssetUrl,
+  resolveProductOgData,
+} from '@/lib/productOgHelper';
 
 export async function generateMetadata({
   params,
@@ -7,66 +11,70 @@ export async function generateMetadata({
   params: { slug: string };
 }): Promise<Metadata> {
   const slug = params.slug;
-  try {
-    const { data: prod } = await supabaseServer
-      .from('products')
-      .select('*, categories(*)')
-      .eq('slug', slug)
-      .single();
+  const origin = normalizeOriginFromHeaders();
 
-    if (!prod) {
+  try {
+    const product = await resolveProductOgData(slug);
+
+    if (!product) {
       return {
+        metadataBase: new URL(origin),
         title: 'ANA Fitness Wear | Luxury Activewear',
-        description: 'Moda fitness feminina de alta performance e compressão anatômica com zero transparência comprovada.',
+        description:
+          'Moda fitness feminina de alta performance e compressão anatômica com zero transparência comprovada.',
       };
     }
 
-    let meta: any = {};
-    try {
-      if (prod.description && prod.description.startsWith('{')) {
-        meta = JSON.parse(prod.description);
-      }
-    } catch (e) {}
-
-    const title = prod.title || 'ANA Fitness Wear';
+    const title = `${product.title} | ANA Fitness Wear`;
     const description =
-      meta.bio ||
-      meta.description ||
+      product.description ||
       'Moda fitness feminina premium com tecnologia squat-proof e compressão anatômica.';
-    const price = Number(meta.promotional_price || meta.price || prod.price || 39.90).toFixed(2);
-    const imageUrl =
-      meta.primary_image ||
-      meta.images?.[0] ||
-      'https://www.anafitwear.com/logo-ana-fitness.png';
+
+    // Endpoint /api/og/product gera uma JPEG leve (<100KB) da foto real do produto para WhatsApp/Instagram/iMessage
+    const ogImageUrl = product.rawImageUrl
+      ? `${origin}/api/og/product?slug=${encodeURIComponent(slug)}`
+      : `${origin}/logo-ana-fitness.png`;
+
+    const productPageUrl = `${origin}/produto/${encodeURIComponent(slug)}`;
 
     return {
-      title: `${title} | ANA Fitness Wear`,
+      metadataBase: new URL(origin),
+      title,
       description,
       openGraph: {
-        title: `${title} | ANA Fitness Wear`,
+        title,
         description,
-        url: `https://www.anafitwear.com/produto/${slug}`,
+        url: productPageUrl,
         siteName: 'ANA Fitness Wear',
         images: [
           {
-            url: imageUrl,
+            url: ogImageUrl,
+            secureUrl: ogImageUrl.startsWith('https://') ? ogImageUrl : undefined,
             width: 800,
             height: 1000,
-            alt: title,
+            type: 'image/jpeg',
+            alt: product.title,
           },
         ],
         type: 'website',
       },
+      twitter: {
+        card: 'summary_large_image',
+        title,
+        description,
+        images: [ogImageUrl],
+      },
       other: {
-        'product:price:amount': price,
+        'product:price:amount': product.price,
         'product:price:currency': 'USD',
-        'product:availability': 'in stock',
+        'product:availability': product.inStock ? 'in stock' : 'preorder',
         'product:condition': 'new',
         'product:brand': 'ANA Fitness Wear',
       },
     };
   } catch (e) {
     return {
+      metadataBase: new URL(origin),
       title: 'ANA Fitness Wear',
     };
   }
@@ -80,49 +88,34 @@ export default async function ProductLayout({
   params: { slug: string };
 }) {
   const slug = params.slug;
+  const origin = normalizeOriginFromHeaders();
   let jsonLd: any = null;
 
   try {
-    const { data: prod } = await supabaseServer
-      .from('products')
-      .select('*, product_variants(*)')
-      .eq('slug', slug)
-      .single();
-
-    if (prod) {
-      let meta: any = {};
-      try {
-        if (prod.description && prod.description.startsWith('{')) {
-          meta = JSON.parse(prod.description);
-        }
-      } catch (e) {}
-
-      const title = prod.title || 'ANA Fitness Wear';
-      const description = meta.bio || meta.description || 'Moda fitness feminina premium.';
-      const price = Number(meta.promotional_price || meta.price || prod.price || 39.90).toFixed(2);
-      const imageUrl =
-        meta.primary_image ||
-        meta.images?.[0] ||
-        'https://www.anafitwear.com/logo-ana-fitness.png';
-      const variants = Array.isArray(prod.product_variants) ? prod.product_variants : [];
-      const inStock = variants.length === 0 || variants.some((v: any) => (v.stock_quantity || 0) > 0);
+    const product = await resolveProductOgData(slug);
+    if (product) {
+      const resolvedImg = product.rawImageUrl
+        ? resolveAbsoluteAssetUrl(product.rawImageUrl, origin)
+        : `${origin}/logo-ana-fitness.png`;
 
       jsonLd = {
         '@context': 'https://schema.org/',
         '@type': 'Product',
-        name: title,
-        image: imageUrl,
-        description: description,
+        name: product.title,
+        image: resolvedImg,
+        description: product.description,
         brand: {
           '@type': 'Brand',
           name: 'ANA Fitness Wear',
         },
         offers: {
           '@type': 'Offer',
-          url: `https://www.anafitwear.com/produto/${slug}`,
+          url: `${origin}/produto/${encodeURIComponent(slug)}`,
           priceCurrency: 'USD',
-          price: price,
-          availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/PreOrder',
+          price: product.price,
+          availability: product.inStock
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/PreOrder',
           itemCondition: 'https://schema.org/NewCondition',
         },
       };

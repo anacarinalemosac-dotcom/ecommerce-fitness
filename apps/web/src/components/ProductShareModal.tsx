@@ -61,7 +61,7 @@ export default function ProductShareModal({
 
   if (!isOpen || !product) return null;
 
-  const productUrl = `${origin || 'https://anafitnesswear.com'}/produto/${product.slug}`;
+  const productUrl = `${origin || 'https://www.anafitwear.com'}/produto/${product.slug}`;
   const productImage = product.primaryImage || product.image || '';
   const priceFormatted = `$${Number(product.price).toFixed(2)}`;
 
@@ -83,7 +83,7 @@ export default function ProductShareModal({
   )}`;
   const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(productUrl)}`;
   const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(productUrl)}`;
-  const directPaymentUrl = `${origin || 'https://anafitnesswear.com'}/checkout?direct=1&slug=${product.slug}&pay=afterpay`;
+  const directPaymentUrl = `${origin || 'https://www.anafitwear.com'}/checkout?direct=1&slug=${product.slug}&pay=afterpay`;
 
   const directWhatsappMsg =
     lang === 'pt'

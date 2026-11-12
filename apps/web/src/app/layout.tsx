@@ -12,8 +12,15 @@ import { StoreMaintenanceGuard } from '../components/StoreMaintenanceGuard';
 import { SideCartDrawer } from '../components/SideCartDrawer';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://www.anafitwear.com'),
   title: 'ANA FITNESS WEAR | ✨Wear Your Strength✨ | Official US Store',
-  description: 'Luxury activewear crafted for maximum confidence. Zero see-through, anatomical compression and sculpt fit. Shipping across all United States from Leominster, MA. Flat rate $9.99.',
+  description: 'Luxury activewear crafted for maximum confidence. Zero see-through, anatomical compression and sculpt fit. Shipping across all United States from Leominster, MA. Flat rate $9.90.',
+  openGraph: {
+    type: 'website',
+    siteName: 'ANA Fitness Wear',
+    title: 'ANA FITNESS WEAR | Luxury Activewear US',
+    description: 'Zero see-through, anatomical compression and sculpt fit. Shipping across all United States.',
+  },
   manifest: '/manifest.json',
   icons: {
     icon: '/symbol-ana-fitness.png',

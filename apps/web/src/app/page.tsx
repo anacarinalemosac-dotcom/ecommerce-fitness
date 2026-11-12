@@ -399,7 +399,30 @@ export default function HomePage() {
     }
   }, [storeProducts]);
   const [recentSoldProducts, setRecentSoldProducts] = useState<any[]>([]);
-  const [loadingRecentSold, setLoadingRecentSold] = useState(false);
+  const [loadingRecentSold, setLoadingRecentSold] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const loadRecentSold = async () => {
+      try {
+        const res = await fetch('/api/recent-sold', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active && Array.isArray(data?.items)) {
+          setRecentSoldProducts(data.items);
+        }
+      } catch (_) {
+      } finally {
+        if (active) setLoadingRecentSold(false);
+      }
+    };
+    loadRecentSold();
+    const refreshTimer = setInterval(loadRecentSold, 60000);
+    return () => {
+      active = false;
+      clearInterval(refreshTimer);
+    };
+  }, []);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [shareModalProduct, setShareModalProduct] = useState<any | null>(null);
   const [cardImageOverrides, setCardImageOverrides] = useState<Record<string, string>>({});
@@ -2165,50 +2188,72 @@ export default function HomePage() {
           </a>
         </div>
 
-        {/* Grid dos Últimos Produtos Vendidos */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-          {(recentSoldProducts.length > 0 ? recentSoldProducts.slice(0, 12) : communityPostsData).map((post: any, idx: number) => {
-            const isSoldProduct = Boolean(post.soldAt || post.slug);
-            const productHref = post.slug ? `/produto/${post.slug}` : (siteInfo.instagramUrl || "https://www.instagram.com/anafitnessweareua");
-            const customerLabel = post.customerName ? `${lang === 'pt' ? 'Comprado por' : 'Purchased by'} ${post.customerName}` : post.user;
-            const locationLabel = post.location || (lang === 'pt' ? 'EUA' : 'USA');
-            const sizeLabel = post.size ? `${lang === 'pt' ? 'TAM' : 'SIZE'} ${post.size}` : '';
+        {/* Grid dos Últimos Produtos Vendidos (somente vendas reais com fotos oficiais do catálogo) */}
+        {loadingRecentSold && recentSoldProducts.length === 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <div
+                key={`sold-skel-${idx}`}
+                className="aspect-square bg-stone-100 border border-deep-black/10 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : recentSoldProducts.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            {recentSoldProducts.slice(0, 12).map((post: any, idx: number) => {
+              const productHref = post.slug ? `/produto/${post.slug}` : '/catalogo';
+              const customerLabel = post.customerName
+                ? `${lang === 'pt' ? 'Por' : 'By'} ${post.customerName}`
+                : (lang === 'pt' ? 'Cliente VIP' : 'VIP Client');
+              const locationLabel = post.location || (lang === 'pt' ? 'EUA' : 'USA');
+              const sizeLabel = post.size ? `${lang === 'pt' ? 'TAM' : 'SIZE'} ${post.size}` : '';
 
-            return (
-              <Link
-                key={post.id || idx}
-                href={productHref}
-                className="group relative aspect-square overflow-hidden bg-stone-100 border border-deep-black/15 hover:border-gold hover:shadow-xl transition-all block"
-              >
-                <img
-                  src={post.image}
-                  alt={post.title || post.user || 'Produto Vendido'}
-                  className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-700"
-                />
+              return (
+                <Link
+                  key={post.id || idx}
+                  href={productHref}
+                  className="group relative aspect-[3/4] overflow-hidden bg-stone-100 border border-deep-black/15 hover:border-gold hover:shadow-xl transition-all flex flex-col"
+                >
+                  <div className="relative flex-1 overflow-hidden bg-white">
+                    <img
+                      src={post.image}
+                      alt={post.title || 'Produto Vendido'}
+                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
+                    />
 
-                {/* Badge Superior "Vendido" */}
-                <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-deep-black/90 text-gold border border-gold/40 text-[9px] font-black uppercase tracking-wider shadow-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>{lang === 'pt' ? 'VENDIDO' : 'SOLD'} {sizeLabel ? `• ${sizeLabel}` : ''}</span>
-                </div>
-
-                {/* Overlay Inferior com Detalhes */}
-                <div className="absolute inset-0 bg-gradient-to-t from-deep-black via-deep-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3 text-white">
-                  <span className="text-[10px] font-black uppercase tracking-wider block text-white line-clamp-1">
-                    {translateProductTitle(post.title || post.piece, lang)}
-                  </span>
-                  <div className="flex items-center justify-between text-[9px] font-bold text-gold mt-0.5">
-                    <span>{customerLabel}</span>
-                    {post.price && <span>${post.price.toFixed(2)}</span>}
+                    {/* Badge Superior "Vendido" */}
+                    <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-deep-black/90 text-gold border border-gold/40 text-[9px] font-black uppercase tracking-wider shadow-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>{lang === 'pt' ? 'VENDIDO' : 'SOLD'} {sizeLabel ? `• ${sizeLabel}` : ''}</span>
+                    </div>
                   </div>
-                  <span className="text-[8px] text-white/70 uppercase block">
-                    📍 {locationLabel}
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+
+                  {/* Barra Inferior Sempre Visível com Venda Real */}
+                  <div className="bg-deep-black text-white p-2.5 space-y-0.5 border-t border-gold/30">
+                    <span className="text-[10px] font-black uppercase tracking-wider block text-white line-clamp-1">
+                      {translateProductTitle(post.title, lang)}
+                    </span>
+                    <div className="flex items-center justify-between text-[9px] font-bold text-gold">
+                      <span className="truncate">{customerLabel}</span>
+                      {Number(post.price) > 0 && <span className="font-mono shrink-0">${Number(post.price).toFixed(2)}</span>}
+                    </div>
+                    <span className="text-[8px] text-white/70 uppercase block truncate">
+                      📍 {locationLabel}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-8 bg-stone-50 border border-deep-black/15 text-center space-y-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-deep-black/60">
+              {lang === 'pt'
+                ? 'Novos pedidos sendo separados no Showroom — confira os destaques disponíveis no catálogo.'
+                : 'New orders being prepared at our Showroom — explore our available catalog.'}
+            </p>
+          </div>
+        )}
 
         {/* Botão de Ver Todo o Catálogo / Seguir */}
         <div className="text-center pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
