@@ -56,6 +56,17 @@
     "bgColor": "#0A0A0A",
     "textColor": "#D4AF37"
   },
+  "promoOfferPopup": {
+    "active": true,
+    "badge": "⚡ OFERTA RELÂMPAGO • FRETE GRÁTIS",
+    "title": "FRETE GRÁTIS EM COMPRAS ACIMA DE $100!",
+    "description": "Válido para todos os 50 estados dos EUA via USPS Priority. Oferta especial por tempo limitado: encerra neste domingo à meia-noite (horário dos EUA)! Aproveite para garantir seus conjuntos favoritos.",
+    "ctaText": "GARANTIR MEU FRETE GRÁTIS",
+    "ctaLink": "#vitrine",
+    "expiresAt": "2026-11-15T23:59:59-05:00",
+    "freeShippingThreshold": 100,
+    "showCountdown": true
+  },
   "promoBanner": {
     "active": true,
     "badge": "DESTAQUE EXCLUSIVO • ATELIER LEOMINSTER",

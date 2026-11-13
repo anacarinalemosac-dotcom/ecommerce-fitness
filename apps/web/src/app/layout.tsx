@@ -10,6 +10,7 @@ import { AffiliateLinkTracker } from '../components/AffiliateLinkTracker';
 import { TrackingScripts } from '../components/TrackingScripts';
 import { StoreMaintenanceGuard } from '../components/StoreMaintenanceGuard';
 import { SideCartDrawer } from '../components/SideCartDrawer';
+import { PromoOfferPopup } from '../components/PromoOfferPopup';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.anafitwear.com'),
@@ -53,6 +54,7 @@ export default function RootLayout({
             <SiteFooter />
             <FloatingLanguageSwitcher />
             <SideCartDrawer />
+            <PromoOfferPopup />
             <CustomerChatWidget />
           </StoreMaintenanceGuard>
         </Providers>

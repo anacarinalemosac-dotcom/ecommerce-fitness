@@ -99,6 +99,7 @@ import { AccessReportsView } from '../../components/backoffice/AccessReportsView
 import { InventoryReportView } from '../../components/backoffice/InventoryReportView';
 import { SalesReportModal } from '../../components/backoffice/SalesReportModal';
 import CouponsManagerView from '../../components/backoffice/CouponsManagerView';
+import { PromotionsHubView } from '../../components/backoffice/PromotionsHubView';
 import { TikTokCatalogModal } from '../../components/backoffice/TikTokCatalogModal';
 import { AIModelStudioModal } from '../../components/backoffice/AIModelStudioModal';
 import { DirectPaymentLinkModal } from '../../components/backoffice/DirectPaymentLinkModal';
@@ -2837,12 +2838,12 @@ export default function BackofficeDashboard() {
                 ? 'bg-gold/20 border-gold text-gold font-black'
                 : 'bg-white/5 hover:bg-white/15 text-white/90 border-white/15 hover:border-gold/40'
             }`}
-            title="Gerenciar cupons de desconto (% ou $ fixo), frete grátis e promoções da loja"
+            title="Gerenciar pop-up de frete grátis, contagem regressiva, combos e cupons de desconto"
           >
-            <Tag className="w-5 h-5 text-gold" />
-            <span className="leading-tight text-[11px] font-black">CUPONS</span>
+            <Sparkles className="w-5 h-5 text-gold" />
+            <span className="leading-tight text-[11px] font-black">OFERTAS & PROMO</span>
             <span className="text-[8px] bg-gold/20 text-gold px-1.5 py-0.5 border border-gold/40 font-bold uppercase font-mono">
-              PROMOÇÕES
+              POP-UP & FRETE
             </span>
           </button>
 
@@ -3098,7 +3099,7 @@ export default function BackofficeDashboard() {
           </span>
         </button>
 
-        {/* Cupons de Desconto & Promoções */}
+        {/* Promoções, Ofertas, Pop-up & Cupons */}
         <button
           onClick={() => setActiveTab('coupons')}
           className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
@@ -3107,10 +3108,10 @@ export default function BackofficeDashboard() {
               : 'border-transparent text-deep-black/50 hover:text-deep-black'
           }`}
         >
-          <Tag className="w-4 h-4 text-gold" />
-          <span>CUPONS DE DESCONTO</span>
+          <Sparkles className="w-4 h-4 text-gold" />
+          <span>PROMOÇÕES & OFERTAS</span>
           <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
-            PROMOÇÕES
+            POP-UP & FRETE
           </span>
         </button>
 
@@ -8657,10 +8658,13 @@ export default function BackofficeDashboard() {
       )}
 
       {/* =========================================================================
-          TAB: CUPONS DE DESCONTO & PROMOÇÕES DA LOJA
+          TAB: CENTRAL DE PROMOÇÕES & OFERTAS (POP-UP, FRETE GRÁTIS, COMBO, CUPONS)
          ========================================================================= */}
       {activeTab === 'coupons' && (
-        <CouponsManagerView />
+        <PromotionsHubView
+          comboPromo={comboPromo}
+          onOpenComboModal={() => setShowComboPromoModal(true)}
+        />
       )}
 
       {/* =========================================================================

@@ -107,6 +107,18 @@ export interface TestimonialItem {
   textEn: string;
 }
 
+export interface PromoOfferPopupConfig {
+  active: boolean;
+  badge: string;
+  title: string;
+  description: string;
+  ctaText: string;
+  ctaLink: string;
+  expiresAt: string; // ISO string ex: "2026-11-15T23:59:59-05:00"
+  freeShippingThreshold?: number;
+  showCountdown?: boolean;
+}
+
 export interface SiteInfo {
   storeName: string;
   phone: string;
@@ -127,6 +139,7 @@ export interface SiteInfo {
   // CMS Vitrine: Banners Hero, Faixa de Topo, Promocional, Tecnologia e Depoimentos
   heroBanners?: HeroBannerSlide[];
   announcementBar?: AnnouncementBarConfig;
+  promoOfferPopup?: PromoOfferPopupConfig;
   promoBanner?: PromoBannerConfig;
   techSection?: TechSectionConfig;
   communityImages?: CommunityPostItem[];
@@ -298,6 +311,18 @@ export const DEFAULT_ANNOUNCEMENT_BAR: AnnouncementBarConfig = {
   textColor: '#D4AF37',
 };
 
+export const DEFAULT_PROMO_POPUP: PromoOfferPopupConfig = {
+  active: true,
+  badge: '⚡ OFERTA RELÂMPAGO • FRETE GRÁTIS',
+  title: 'FRETE GRÁTIS EM COMPRAS ACIMA DE $100!',
+  description: 'Válido para todos os 50 estados dos EUA via USPS Priority. Oferta especial por tempo limitado: encerra neste domingo à meia-noite (horário dos EUA)! Aproveite para garantir seus conjuntos favoritos.',
+  ctaText: 'GARANTIR MEU FRETE GRÁTIS',
+  ctaLink: '#vitrine',
+  expiresAt: '2026-11-15T23:59:59-05:00',
+  freeShippingThreshold: 100,
+  showCountdown: true,
+};
+
 export const DEFAULT_PROMO_BANNER: PromoBannerConfig = {
   active: true,
   badge: 'DESTAQUE EXCLUSIVO • ATELIER LEOMINSTER',
@@ -374,6 +399,7 @@ const DEFAULT_SITE_INFO: SiteInfo = {
   heroSubtitle: 'High-performance athletic luxury based in Massachusetts. Lab-verified zero see-through, 4-way anatomical sculpt compression, free shipping over $100 and flat $9.90 shipping across all 50 US States.',
   heroBanners: DEFAULT_HERO_BANNERS,
   announcementBar: DEFAULT_ANNOUNCEMENT_BAR,
+  promoOfferPopup: DEFAULT_PROMO_POPUP,
   promoBanner: DEFAULT_PROMO_BANNER,
   techSection: DEFAULT_TECH_SECTION,
   testimonialsList: DEFAULT_TESTIMONIALS,
