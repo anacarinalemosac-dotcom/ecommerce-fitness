@@ -116,6 +116,7 @@ import {
   printCrediarioCarnet,
 } from '@/lib/whatsappMessages';
 import { downloadOrderPdf } from '@/lib/orderPdf';
+import { ShippingLabelModal } from '@/components/ShippingLabelModal';
 
 interface ProductProfit {
   id?: string;
@@ -335,6 +336,7 @@ export default function BackofficeDashboard() {
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<any | null>(null);
   const [editingSale, setEditingSale] = useState<any | null>(null);
   const [cancellingSale, setCancellingSale] = useState<any | null>(null);
+  const [shippingLabelOrder, setShippingLabelOrder] = useState<any | null>(null);
 
   // Modal de Baixa de Pagamento / Abatimento Parcial
   const [crediarioPayModal, setCrediarioPayModal] = useState<{
@@ -5607,10 +5609,30 @@ export default function BackofficeDashboard() {
                                   📞 {sale.customer_phone}
                                 </span>
                               )}
-                              {sale.shipping_address && (
-                                <span className="text-[9px] text-gold font-bold block truncate mt-0.5" title={`${sale.shipping_address.city || ''}, ${sale.shipping_address.state || ''} ${sale.shipping_address.zip || ''}`}>
-                                  📍 {sale.shipping_address.city || ''}, {sale.shipping_address.state || ''}
-                                </span>
+                              {sale.shipping_address ? (
+                                <div className="mt-0.5 flex items-center justify-between gap-1">
+                                  <span className="text-[9px] text-gold font-bold block truncate" title={`${sale.shipping_address.city || ''}, ${sale.shipping_address.state || ''} ${sale.shipping_address.zip || ''}`}>
+                                    📍 {sale.shipping_address.city || ''}, {sale.shipping_address.state || ''}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShippingLabelOrder(sale)}
+                                    className="text-[8.5px] font-black uppercase text-blue-700 hover:text-blue-900 bg-blue-50 px-1 py-0.2 border border-blue-200 shrink-0 cursor-pointer"
+                                    title="Abrir gerador de etiqueta de envio USPS para esta cliente"
+                                  >
+                                    🏷️ ETIQUETA
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setShippingLabelOrder(sale)}
+                                  className="mt-0.5 text-[8.5px] font-bold text-deep-black/50 hover:text-deep-black uppercase flex items-center gap-1 cursor-pointer"
+                                  title="Emitir etiqueta de envio Correios / USPS"
+                                >
+                                  <Truck className="w-2.5 h-2.5" />
+                                  <span>🏷️ ETIQUETA CORREIOS</span>
+                                </button>
                               )}
                             </div>
 
@@ -6220,7 +6242,7 @@ export default function BackofficeDashboard() {
                     </span>
                   </div>
 
-                  <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-deep-black/10 pt-2 sm:pt-0 sm:pl-3">
+                  <div className="space-y-1.5 border-t sm:border-t-0 sm:border-l border-deep-black/10 pt-2 sm:pt-0 sm:pl-3">
                     <span className="text-[9px] text-gold font-black block">📍 ENDEREÇO DE ENTREGA (USPS):</span>
                     {selectedSaleDetail.shipping_address ? (
                       <div className="text-[10px] text-deep-black font-medium leading-relaxed">
@@ -6229,8 +6251,18 @@ export default function BackofficeDashboard() {
                         <div className="text-[9px] text-deep-black/50 font-mono">United States (Domestic Delivery)</div>
                       </div>
                     ) : (
-                      <span className="text-[10px] text-deep-black/60 italic">Retirada no Showroom ou endereço padrão Leominster, MA</span>
+                      <span className="text-[10px] text-deep-black/60 italic block">Retirada no Showroom ou endereço padrão Leominster, MA</span>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={() => setShippingLabelOrder(selectedSaleDetail)}
+                      className="mt-2 py-1.5 px-3 bg-blue-800 hover:bg-gold hover:text-deep-black text-white text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 border border-deep-black shadow-xs transition cursor-pointer"
+                      title="Abrir links dos Correios (USPS / Pirate Ship) para emitir a etiqueta com endereço copiado"
+                    >
+                      <Truck className="w-3.5 h-3.5 text-gold" />
+                      <span>🏷️ GERAR ETIQUETA CORREIOS (USPS)</span>
+                    </button>
                   </div>
                 </div>
 
@@ -6766,6 +6798,15 @@ export default function BackofficeDashboard() {
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>PDF</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShippingLabelOrder(selectedSaleDetail)}
+                    className="py-2.5 px-3 bg-blue-800 hover:bg-gold hover:text-deep-black text-white border border-blue-950 font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                    title="Abrir gerador de etiqueta dos Correios (USPS / Pirate Ship) com endereço da cliente pronto para colar"
+                  >
+                    <Truck className="w-3.5 h-3.5 text-gold" />
+                    <span>ETIQUETA</span>
                   </button>
                   <button
                     type="button"
@@ -8927,6 +8968,20 @@ export default function BackofficeDashboard() {
         comboPromo={comboPromo}
         onSave={handleSaveComboPromo}
         products={baseCatalogList}
+      />
+
+      {/* Modal de Emissão de Etiqueta de Envio Correios (USPS / Pirate Ship) */}
+      <ShippingLabelModal
+        isOpen={Boolean(shippingLabelOrder)}
+        onClose={() => setShippingLabelOrder(null)}
+        order={shippingLabelOrder}
+        onSaveTracking={async (orderId, trackingCode) => {
+          await handleUpdateFulfillmentStatus(orderId, 'SHIPPED', trackingCode);
+          setShippingLabelOrder((prev: any) => prev ? { ...prev, tracking_code: trackingCode, fulfillment_status: 'SHIPPED' } : prev);
+          if (selectedSaleDetail && (selectedSaleDetail.order_id === orderId || selectedSaleDetail.id === orderId)) {
+            setSelectedSaleDetail((prev: any) => prev ? { ...prev, tracking_code: trackingCode, fulfillment_status: 'SHIPPED' } : prev);
+          }
+        }}
       />
     </div>
   );

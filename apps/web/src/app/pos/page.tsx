@@ -42,9 +42,11 @@ import {
   Ban,
   ShoppingBag,
   Download,
+  Truck,
 } from 'lucide-react';
 import { StockWriteOffModal } from '../../components/StockWriteOffModal';
 import { PosInstagramChat } from '../../components/pos/PosInstagramChat';
+import { ShippingLabelModal } from '../../components/ShippingLabelModal';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 
 interface CartItem {
@@ -170,6 +172,7 @@ export default function PosTerminalPage() {
   const [completedSalePhone, setCompletedSalePhone] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState('');
   const [showWriteOffModal, setShowWriteOffModal] = useState(false);
+  const [posShippingModalOrder, setPosShippingModalOrder] = useState<any | null>(null);
 
   // Estados para Registro de Mala Condicional no PDV
   const [showPosConditionalModal, setShowPosConditionalModal] = useState(false);
@@ -468,6 +471,7 @@ export default function PosTerminalPage() {
         customer_name: customerName.trim() || 'Cliente Balcão Leominster',
         customer_phone: customerPhone.trim() || undefined,
         customer_email: customerEmail.trim() || undefined,
+        customer_address: customerAddress.trim() || undefined,
         seller_name: seller,
         coupon_code: linkedCoupon,
         payment_method: paymentMethod,
@@ -914,10 +918,29 @@ export default function PosTerminalPage() {
                   <button
                     type="button"
                     onClick={() => printCrediarioCarnet(completedSale)}
-                    className="py-2.5 px-3 bg-amber-700 hover:bg-amber-800 text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm"
+                    className="py-2.5 px-3 bg-amber-700 hover:bg-amber-800 text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
                   >
                     <Printer className="w-3.5 h-3.5" />
                     <span>IMPRIMIR CARNÊ</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => downloadOrderPdf(completedSale, { lang: 'pt' })}
+                    className="py-2.5 px-3 bg-gold hover:bg-white text-deep-black border border-deep-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>BAIXAR PEDIDO (PDF)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPosShippingModalOrder(completedSale)}
+                    className="py-2.5 px-3 bg-blue-800 hover:bg-gold hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                    title="Abrir gerador de etiqueta dos Correios (USPS / Pirate Ship)"
+                  >
+                    <Truck className="w-3.5 h-3.5 text-gold" />
+                    <span>GERAR ETIQUETA CORREIOS</span>
                   </button>
                 </div>
               </div>
@@ -998,6 +1021,16 @@ export default function PosTerminalPage() {
                   >
                     <Printer className="w-3.5 h-3.5" />
                     <span>IMPRIMIR RECIBO</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPosShippingModalOrder(completedSale)}
+                    className="py-2.5 px-3 bg-blue-800 hover:bg-gold hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                    title="Abrir links dos Correios (USPS / Pirate Ship) para emitir a etiqueta com endereço copiado"
+                  >
+                    <Truck className="w-3.5 h-3.5 text-gold" />
+                    <span>GERAR ETIQUETA CORREIOS</span>
                   </button>
                 </div>
               </div>
@@ -2532,6 +2565,28 @@ export default function PosTerminalPage() {
           <PosInstagramChat />
         </div>
       </div>
+
+      {/* Modal de Emissão de Etiqueta de Envio Correios (USPS / Pirate Ship) */}
+      <ShippingLabelModal
+        isOpen={Boolean(posShippingModalOrder)}
+        onClose={() => setPosShippingModalOrder(null)}
+        order={posShippingModalOrder}
+        onSaveTracking={async (orderId, trackingCode) => {
+          await fetch('/api/backoffice/sales', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              order_id: orderId,
+              fulfillment_status: 'SHIPPED',
+              tracking_code: trackingCode,
+            }),
+          });
+          setPosShippingModalOrder((prev: any) => prev ? { ...prev, tracking_code: trackingCode, fulfillment_status: 'SHIPPED' } : prev);
+          if (completedSale) {
+            setCompletedSale((prev: any) => prev ? { ...prev, tracking_code: trackingCode, fulfillment_status: 'SHIPPED' } : prev);
+          }
+        }}
+      />
     </div>
   );
 }
