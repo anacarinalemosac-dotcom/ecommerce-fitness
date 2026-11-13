@@ -905,7 +905,7 @@ export default function HomePage() {
           BANNER OFICIAL • BLACK FRIDAY NOVEMBRO (TODOS OS PRODUTOS NA PROMOÇÃO)
           ========================================================================= */}
       <section className="max-w-7xl mx-auto px-4 sm:px-8 -mt-8 sm:-mt-12 relative z-20">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-black via-[#111111] to-[#1a1202] border-2 border-gold/80 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_45px_rgba(212,175,55,0.35)] p-6 sm:p-10">
+        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-black via-[#111111] to-[#1a1202] border-2 border-gold/80 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_45px_rgba(212,175,55,0.35)] p-4 sm:p-10">
           {/* Subtle animated ambient gold and red glows */}
           <div className="absolute -right-24 -top-24 w-80 h-80 bg-gold/15 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -left-20 -bottom-20 w-72 h-72 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
@@ -929,24 +929,24 @@ export default function HomePage() {
 
               {/* Título Principal de Impacto */}
               <div className="space-y-2">
-                <h3 className="text-3xl sm:text-5xl font-black text-white uppercase tracking-tighter leading-none">
+                <h3 className="text-2xl sm:text-5xl font-black text-white uppercase tracking-tighter leading-none">
                   BLACK FRIDAY <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-amber-200 to-gold">NOVEMBRO</span>
                 </h3>
-                <h4 className="text-lg sm:text-2xl font-black text-amber-400 uppercase tracking-tight">
+                <h4 className="text-sm sm:text-2xl font-black text-amber-400 uppercase tracking-tight">
                   {lang === 'pt'
                     ? 'TODOS OS PRODUTOS NA PROMOÇÃO POR TEMPO LIMITADO OU ENQUANTO DURAR O ESTOQUE!'
                     : 'ALL PRODUCTS ON SALE FOR A LIMITED TIME OR WHILE SUPPLIES LAST!'}
                 </h4>
               </div>
 
-              <p className="text-sm sm:text-base font-medium text-gray-300 max-w-3xl leading-relaxed">
+              <p className="text-sm sm:text-base font-medium text-gray-300 max-w-3xl leading-relaxed hidden sm:block">
                 {lang === 'pt'
                   ? 'Aproveite descontos especiais em todos os nossos conjuntos fitness de compressão anatômica, macacões sem costura e tops. Peças exclusivas com estoque limitado e envio expresso para todos os EUA.'
                   : 'Take advantage of special discounts on all our anatomical compression fitness sets, seamless jumpsuits, and sports bras. Exclusive pieces with limited stock and fast express shipping across the US.'}
               </p>
 
               {/* Pilares com Ícones */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs font-bold text-white/90">
+              <div className="hidden sm:grid sm:grid-cols-4 gap-3 pt-2 text-xs font-bold text-white/90">
                 <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-2.5">
                   <Tag className="w-4 h-4 text-gold shrink-0" />
                   <span>{lang === 'pt' ? 'Até 50% OFF' : 'Up to 50% OFF'}</span>
@@ -967,7 +967,7 @@ export default function HomePage() {
             </div>
 
             {/* Ações / Botões */}
-            <div className="shrink-0 w-full lg:w-auto flex flex-col sm:flex-row lg:flex-col gap-3">
+            <div className="shrink-0 w-full lg:w-auto flex flex-col gap-2.5">
               <a
                 href="#vitrine"
                 onClick={(e) => {
@@ -975,31 +975,33 @@ export default function HomePage() {
                   const el = document.getElementById('vitrine');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-gold via-amber-400 to-gold text-deep-black font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-[0_8px_30px_rgba(212,175,55,0.4)] transition-all hover:scale-[1.03] active:scale-[0.98] text-center cursor-pointer"
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-gradient-to-r from-gold via-amber-400 to-gold text-deep-black font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] text-center cursor-pointer"
               >
                 <Flame className="w-5 h-5 text-deep-black fill-deep-black" />
                 <span>{lang === 'pt' ? 'VER PRODUTOS EM PROMOÇÃO' : 'SHOP BLACK FRIDAY DEALS'}</span>
               </a>
 
-              <Link
-                href="/combo"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 bg-amber-400 hover:bg-amber-300 text-deep-black font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-[0_6px_20px_rgba(251,191,36,0.35)] transition-all hover:scale-[1.03] active:scale-[0.98] text-center"
-              >
-                <Sparkles className="w-5 h-5 text-deep-black shrink-0" />
-                <span>{lang === 'pt' ? '⚡ MONTE SEU COMBO (3 CONJUNTOS) →' : '⚡ BUILD YOUR COMBO (3 SETS) →'}</span>
-              </Link>
+              <div className="grid grid-cols-2 lg:flex lg:flex-col gap-2">
+                <Link
+                  href="/combo"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:px-8 sm:py-3.5 bg-amber-400 hover:bg-amber-300 text-deep-black font-black text-[10.5px] sm:text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all hover:scale-[1.02] text-center"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-deep-black shrink-0" />
+                  <span>{lang === 'pt' ? '⚡ COMBO (3 PEÇAS)' : '⚡ BUILD COMBO'}</span>
+                </Link>
 
-              <a
-                href={lang === 'pt'
-                  ? 'https://wa.me/19783139452?text=Ol%C3%A1%21%20Quero%20aproveitar%20a%20Black%20Friday%20de%20Novembro%20da%20Ana%20Fitness%21%20Quais%20produtos%20est%C3%A3o%20na%20promo%C3%A7%C3%A3o%3F'
-                  : 'https://wa.me/19783139452?text=Hello%21%20I%20want%20to%20take%20advantage%20of%20the%20November%20Black%20Friday%20sale%21%20Which%20items%20are%20available%3F'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-[0_6px_25px_rgba(16,185,129,0.35)] transition-all hover:scale-[1.03] active:scale-[0.98] text-center"
-              >
-                <MessageCircle className="w-5 h-5 shrink-0" />
-                <span>{lang === 'pt' ? 'PEDIR NO WHATSAPP • (978) 313-9452' : 'ORDER ON WHATSAPP • (978) 313-9452'}</span>
-              </a>
+                <a
+                  href={lang === 'pt'
+                    ? 'https://wa.me/19783139452?text=Ol%C3%A1%21%20Quero%20aproveitar%20a%20Black%20Friday%20de%20Novembro%20da%20Ana%20Fitness%21%20Quais%20produtos%20est%C3%A3o%20na%20promo%C3%A7%C3%A3o%3F'
+                    : 'https://wa.me/19783139452?text=Hello%21%20I%20want%20to%20take%20advantage%20of%20the%20November%20Black%20Friday%20sale%21%20Which%20items%20are%20available%3F'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:px-8 sm:py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10.5px] sm:text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all hover:scale-[1.02] text-center"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{lang === 'pt' ? 'WHATSAPP' : 'WHATSAPP'}</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -1535,7 +1537,7 @@ export default function HomePage() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-7">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2.5 sm:gap-4 lg:gap-6">
                 {filteredProducts.map((product) => {
                   const isHovered = hoveredProduct === product.id;
                   const isSpoiler = isProductSpoiler(product);
@@ -1610,7 +1612,7 @@ export default function HomePage() {
                           });
                         }
                       }}
-                      className="group flex flex-col bg-white border border-deep-black/15 transition-all hover:border-deep-black hover:shadow-luxury"
+                      className="group flex flex-col bg-white border border-deep-black/15 transition-all hover:border-deep-black hover:shadow-luxury overflow-hidden"
                     >
                       {/* 1. Imagem do Produto em Proporção Atlética 4:5 */}
                       <div className="relative aspect-[4/5] bg-deep-black/5 overflow-hidden">
@@ -1625,16 +1627,16 @@ export default function HomePage() {
 
                         {/* Tag ESGOTADO em Vermelho ou Badges Promocionais no Topo Esquerdo */}
                         {isOutOfStock && (
-                          <div className="absolute top-3 left-3 z-10 pointer-events-none">
-                            <span className="text-[9.5px] uppercase tracking-widest px-2.5 py-1 font-black shadow-md bg-red-600 text-white border border-red-700">
+                          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 pointer-events-none">
+                            <span className="text-[8px] sm:text-[9.5px] uppercase tracking-widest px-1.5 py-0.5 sm:px-2.5 sm:py-1 font-black shadow-md bg-red-600 text-white border border-red-700">
                               {lang === 'pt' ? 'ESGOTADO' : 'SOLD OUT'}
                             </span>
                           </div>
                         )}
                         {showTopPromoBadge && !isOutOfStock && (
-                          <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10 pointer-events-none">
+                          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1 z-10 pointer-events-none">
                             <span
-                              className={`text-[9px] uppercase tracking-widest px-2.5 py-1 font-black shadow-sm ${product.badgeStyle}`}
+                              className={`text-[7.5px] sm:text-[9px] uppercase tracking-widest px-1.5 py-0.5 sm:px-2.5 sm:py-1 font-black shadow-sm ${product.badgeStyle}`}
                             >
                               {translateBadgeText(lang === 'pt' ? product.badgePt : product.badgeEn, lang)}
                             </span>
@@ -1642,7 +1644,7 @@ export default function HomePage() {
                         )}
 
                         {/* Botões do Topo Direito (Favoritos e Compartilhar Peça) */}
-                        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 flex items-center gap-1 sm:gap-1.5">
                           <button
                             type="button"
                             onClick={(e) => {
@@ -1650,11 +1652,11 @@ export default function HomePage() {
                               e.stopPropagation();
                               setShareModalProduct(product);
                             }}
-                            className="p-2 bg-white/90 hover:bg-gold hover:text-deep-black text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
+                            className="p-1 sm:p-2 bg-white/90 hover:bg-gold hover:text-deep-black text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
                             title={lang === 'pt' ? 'Compartilhar produto' : 'Share product'}
                             aria-label={lang === 'pt' ? 'Compartilhar produto' : 'Share product'}
                           >
-                            <Share2 className="w-4 h-4" />
+                            <Share2 className="w-3 h-3 sm:w-4 sm:h-4" />
                           </button>
 
                           <button
@@ -1662,11 +1664,11 @@ export default function HomePage() {
                               e.preventDefault();
                               toggleWishlist(product.id);
                             }}
-                            className="p-2 bg-white/90 hover:bg-white text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
+                            className="p-1 sm:p-2 bg-white/90 hover:bg-white text-deep-black backdrop-blur-md rounded-full shadow-sm transition-all hover:scale-110"
                             aria-label="Save to Wishlist"
                           >
                             <Heart
-                              className={`w-4 h-4 transition ${
+                              className={`w-3 h-3 sm:w-4 sm:h-4 transition ${
                                 isFavorited ? 'fill-gold text-gold' : 'text-deep-black'
                               }`}
                             />
@@ -1675,7 +1677,7 @@ export default function HomePage() {
 
                         {/* ASSINATURA GYMSHARK: GAVETA DE QUICK ADD DE TAMANHOS NO HOVER */}
                         <div
-                          className={`absolute bottom-0 left-0 right-0 z-20 bg-deep-black/95 backdrop-blur-md border-t border-gold/30 p-3 transition-all duration-300 transform ${
+                          className={`hidden sm:block absolute bottom-0 left-0 right-0 z-20 bg-deep-black/95 backdrop-blur-md border-t border-gold/30 p-3 transition-all duration-300 transform ${
                             isHovered || wasJustAdded
                               ? 'translate-y-0 opacity-100'
                               : 'translate-y-full opacity-0 pointer-events-none'
@@ -1784,11 +1786,11 @@ export default function HomePage() {
                       </div>
 
                       {/* 2. Informações do Produto com GRADE DE TAMANHO EM DESTAQUE */}
-                      <div className="p-4 flex-1 flex flex-col justify-between space-y-3 bg-white">
+                      <div className="p-2 sm:p-4 flex-1 flex flex-col justify-between space-y-2 sm:space-y-3 bg-white">
                         <div>
                           {/* Swatches de Cores (Bolinhas) */}
                           <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1 sm:gap-1.5">
                               {product.colors.map((color, cIdx) => {
                                 const matchingVar = Array.isArray(product.variants)
                                   ? product.variants.find(
@@ -1819,7 +1821,7 @@ export default function HomePage() {
                                         setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
                                       }
                                     }}
-                                    className={`w-4 h-4 rounded-full border border-deep-black/40 shadow-xs cursor-pointer transition hover:scale-125 ${
+                                    className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-deep-black/30 shadow-2xs cursor-pointer transition hover:scale-125 ${
                                       isColorSelected ? 'ring-2 ring-offset-1 ring-deep-black scale-110' : ''
                                     }`}
                                     style={{ backgroundColor: color.hex }}
@@ -1830,10 +1832,10 @@ export default function HomePage() {
                               })}
                             </div>
 
-                            <div className="flex items-center gap-1 text-[11px] font-bold text-deep-black/60">
-                              <Star className="w-3 h-3 fill-gold text-gold" />
+                            <div className="flex items-center gap-0.5 sm:gap-1 text-[9px] sm:text-[11px] font-bold text-deep-black/60">
+                              <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-gold text-gold" />
                               <span className="text-deep-black font-black">{product.rating.toFixed(1)}</span>
-                              <span>({product.reviewsCount})</span>
+                              <span className="hidden xs:inline">({product.reviewsCount})</span>
                             </div>
                           </div>
 
@@ -1845,16 +1847,16 @@ export default function HomePage() {
                                   {lang === 'pt' ? 'ESGOTADO' : 'SOLD OUT'}
                                 </span>
                               )}
-                              <h3 className="text-sm font-black uppercase tracking-wider text-deep-black group-hover:text-gold transition line-clamp-1">
+                              <h3 className="text-xs sm:text-sm font-bold sm:font-black uppercase tracking-wide text-deep-black group-hover:text-gold transition line-clamp-1">
                               {translateProductTitle(product.title, lang)}
                               </h3>
                             </div>
                           </Link>
 
                           {/* TAMANHOS DISPONÍVEIS EM ESTOQUE (Exibição Imediata na Vitrine) */}
-                          <div className="mt-2.5 pt-2 border-t border-deep-black/10 flex items-center justify-between gap-1 flex-wrap">
+                          <div className="mt-1.5 pt-1.5 sm:mt-2 sm:pt-2 border-t border-deep-black/10 flex items-center justify-between gap-1 flex-wrap">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/60">
+                              <span className="text-[7.5px] sm:text-[9px] font-bold uppercase tracking-wider text-deep-black/60 hidden xs:inline">
                                 {lang === 'pt' ? 'Tamanhos:' : 'Sizes:'}
                               </span>
                               {selectableSizes.length > 0 ? (
@@ -1873,7 +1875,7 @@ export default function HomePage() {
                                           e.stopPropagation();
                                           setCardSelectedSizes((prev) => ({ ...prev, [product.id]: sz }));
                                         }}
-                                        className={`text-[10px] font-black px-2.5 py-1 border uppercase tracking-wider rounded-xs transition cursor-pointer ${
+                                        className={`text-[8px] sm:text-[10px] font-black px-1.5 py-0.5 sm:px-2.5 sm:py-1 border uppercase tracking-wider rounded-xs transition cursor-pointer ${
                                           isSzActive
                                             ? 'border-deep-black bg-deep-black text-gold shadow-xs ring-1 ring-gold'
                                             : 'border-deep-black/25 bg-neutral-50 text-deep-black hover:border-deep-black'
@@ -1893,7 +1895,7 @@ export default function HomePage() {
                             </div>
 
                             {inStockSizes.length > 0 && !isSpoiler && (
-                              <span className="text-[8.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 border border-emerald-200 uppercase tracking-tight shrink-0">
+                              <span className="text-[7.5px] sm:text-[8.5px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 sm:px-1.5 sm:py-0.5 border border-emerald-200 uppercase tracking-tight shrink-0 hidden sm:inline">
                                 {lang === 'pt' ? 'Pronta Entrega' : 'In Stock'}
                               </span>
                             )}
@@ -1903,13 +1905,13 @@ export default function HomePage() {
                         {isProductInCombo(product) && !isSpoiler && !isOutOfStock && (
                           <Link
                             href={`/produto/${product.slug}`}
-                            className="p-2.5 bg-emerald-50 border-2 border-emerald-500 text-emerald-950 block space-y-1 hover:bg-emerald-100/80 transition"
+                            className="p-1 sm:p-2 bg-emerald-50 border border-emerald-500/70 text-emerald-950 block hover:bg-emerald-100/80 transition rounded-xs"
                           >
-                            <div className="flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider text-emerald-800">
-                              <Sparkles className="w-3 h-3 text-emerald-600 shrink-0" />
+                            <div className="flex items-center gap-1 text-[7.5px] sm:text-[9.5px] font-black uppercase tracking-wider text-emerald-800">
+                              <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-600 shrink-0" />
                               <span>{translateBadgeText(comboPromo?.badge_text || 'COMBO 3 PEÇAS', lang)}</span>
                             </div>
-                            <p className="text-[10.5px] font-bold text-emerald-950 leading-snug">
+                            <p className="text-[9.5px] font-bold text-emerald-950 leading-tight hidden sm:block mt-0.5">
                               {lang === 'pt'
                                 ? `Esta peça participa da promoção: ${Number(comboPromo?.required_quantity) || 3} peças pelo valor $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (válido no Zelle, Venmo ou Cash App). No cartão/Afterpay/Affirm vale o preço normal.`
                                 : `This piece is part of our promo: ${Number(comboPromo?.required_quantity) || 3} pieces for $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (valid on Zelle, Venmo or Cash App only; regular price on Card/Afterpay/Affirm).`}
@@ -1918,14 +1920,14 @@ export default function HomePage() {
                         )}
 
                         {/* Preço em Dólar ($) e Frete Fixo $9.90 */}
-                        <div className="pt-2.5 border-t border-deep-black/10 flex items-baseline justify-between">
+                        <div className="pt-1.5 sm:pt-2.5 border-t border-deep-black/10 flex items-baseline justify-between gap-1 flex-wrap">
                           <div>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-base font-black text-deep-black uppercase tracking-wider">
+                            <div className="flex items-baseline gap-1 sm:gap-2">
+                              <span className="text-xs sm:text-base font-black text-deep-black uppercase tracking-wider">
                                 ${product.price.toFixed(2)}
                               </span>
                               {product.originalPrice && product.originalPrice > product.price && (
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1 sm:gap-1.5">
                                   <span className="text-xs text-deep-black/40 line-through font-bold">
                                     ${product.originalPrice.toFixed(2)}
                                   </span>
@@ -1935,13 +1937,13 @@ export default function HomePage() {
                                 </div>
                               )}
                             </div>
-                            <span className="text-[9px] block text-deep-black/60 font-bold uppercase tracking-wider">
+                            <span className="text-[7.5px] sm:text-[9px] block text-deep-black/60 font-bold uppercase tracking-wider">
                             $9.90 FLAT RATE US SHIPPING
                             </span>
                           </div>
 
                           <span
-                            className={`text-[10px] font-bold tracking-wide px-2.5 py-1 border shrink-0 ${
+                            className={`text-[8px] sm:text-[10px] font-bold tracking-wide px-1.5 py-0.5 sm:px-2.5 sm:py-1 border shrink-0 hidden xs:inline ${
                               isSpoiler
                                 ? 'bg-deep-black text-gold border-gold shadow-sm font-black'
                                 : 'bg-white text-deep-black border-deep-black'
@@ -1959,9 +1961,9 @@ export default function HomePage() {
                             ? (selectedCardSize === 'S' ? 'P' : selectedCardSize === 'L' ? 'G' : selectedCardSize === 'XL' ? 'GG' : selectedCardSize)
                             : selectedCardSize;
                           return (
-                            <div className="space-y-1.5">
+                            <div className="space-y-1">
                               {selectedVariantStock === 1 && !isSelectedSizeMaxedInBag && !isSelectedHeldByOtherShopper && (
-                                <span className="block text-[9.5px] font-black uppercase text-amber-700 tracking-wider text-center">
+                                <span className="block text-[8px] sm:text-[9.5px] font-black uppercase text-amber-700 tracking-wider text-center">
                                   ⚠️ {lang === 'pt' ? 'Última unidade em estoque!' : 'Only 1 left in stock!'}
                                 </span>
                               )}
@@ -1972,7 +1974,7 @@ export default function HomePage() {
                                   if (isSelectedHeldByOtherShopper || isSelectedSizeMaxedInBag) return;
                                   handleQuickAdd(product.id, selectedCardSize, e, activeColor);
                                 }}
-                                className={`w-full py-2.5 px-3 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm border-2 ${
+                                className={`w-full py-1.5 sm:py-2.5 px-1.5 sm:px-3 text-[9px] sm:text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-1.5 transition-all shadow-xs border cursor-pointer ${
                                   isSelectedHeldByOtherShopper
                                     ? 'bg-amber-50 text-amber-950 border-amber-400 cursor-not-allowed'
                                     : isSelectedSizeMaxedInBag
@@ -1983,31 +1985,32 @@ export default function HomePage() {
                                 }`}
                               >
                                 {isSelectedHeldByOtherShopper ? (
-                                  <>
-                                    <span>
-                                      {lang === 'pt'
-                                        ? '⏳ EM OUTRA SACOLA (LIBERA EM 3H)'
-                                        : '⏳ HELD IN BAG (RELEASES IN 3H)'}
-                                    </span>
-                                  </>
+                                  <span className="truncate text-[8px] sm:text-[10px]">
+                                    {lang === 'pt'
+                                      ? '⏳ EM OUTRA SACOLA (LIBERA EM 3H)'
+                                      : '⏳ HELD IN BAG (RELEASES IN 3H)'}
+                                  </span>
                                 ) : isSelectedSizeMaxedInBag ? (
-                                  <>
-                                    <Check className="w-3.5 h-3.5 stroke-[3] text-emerald-700" />
+                                  <span className="truncate text-[8px] sm:text-[10px] flex items-center justify-center gap-1">
+                                    <Check className="w-3 h-3 stroke-[3] text-emerald-700" />
                                     <span>
                                       {lang === 'pt'
                                         ? `✓ MÁX. NO CARRINHO (${qtyInBagForSelected}/${selectedVariantStock})`
                                         : `✓ MAX IN BAG (${qtyInBagForSelected}/${selectedVariantStock})`}
                                     </span>
-                                  </>
+                                  </span>
                                 ) : wasJustAdded ? (
-                                  <>
-                                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                  <span className="truncate text-[8px] sm:text-[10px] flex items-center justify-center gap-1">
+                                    <Check className="w-3 h-3 stroke-[3]" />
                                     <span>{lang === 'pt' ? 'ADICIONADO NO CARRINHO!' : 'ADDED TO BAG!'}</span>
-                                  </>
+                                  </span>
                                 ) : (
                                   <>
-                                    <ShoppingBag className="w-3.5 h-3.5" />
-                                    <span>
+                                    <ShoppingBag className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                                    <span className="truncate sm:hidden">
+                                      {lang === 'pt' ? '+ CARRINHO' : '+ BAG'}
+                                    </span>
+                                    <span className="hidden sm:inline">
                                       {lang === 'pt'
                                         ? `ADICIONAR NO CARRINHO • ${displaySelectedSz}`
                                         : `ADD TO BAG • ${selectedCardSize}`}
