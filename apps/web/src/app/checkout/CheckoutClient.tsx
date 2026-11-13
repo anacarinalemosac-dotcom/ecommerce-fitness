@@ -545,8 +545,13 @@ export default function CheckoutPage() {
   // Opção de Entrega / Retirada no Showroom
   const [deliveryMethod, setDeliveryMethod] = useState<'DELIVERY' | 'PICKUP'>('DELIVERY');
   const [copiedAddress, setCopiedAddress] = useState(false);
-  const shippingRate = deliveryMethod === 'PICKUP' ? 0 : (isFreeShipping ? 0 : 9.90);
-  const total = subtotal > 0 ? Math.max(0, subtotal - totalDiscount) + shippingRate : 0;
+  const netSubtotal = Math.max(0, subtotal - totalDiscount);
+  // Regra oficial: Frete grátis automático em compras a partir de $100 (ou via cupom)
+  const isOver100FreeShipping = netSubtotal >= 100;
+  const effectiveFreeShipping = isFreeShipping || isOver100FreeShipping;
+  const shippingRate = deliveryMethod === 'PICKUP' ? 0 : (effectiveFreeShipping ? 0 : 9.90);
+  const total = subtotal > 0 ? netSubtotal + shippingRate : 0;
+  const freeShippingRemaining = Math.max(0, 100 - netSubtotal);
 
   const handleRemoveCartItem = (targetIdx?: number) => {
     if (typeof targetIdx === 'number' && cartItems.length > 0) {
@@ -1190,8 +1195,8 @@ export default function CheckoutPage() {
           </h1>
           <p className="text-xs uppercase tracking-wider text-deep-black/60 font-medium leading-relaxed">
             {lang === 'pt'
-              ? 'Você ainda não selecionou nenhuma peça. Escolha seu modelo favorito na vitrine para finalizar sua compra com frete fixo de $9.90 para todos os EUA ou retirada grátis no showroom.'
-              : 'You haven\'t added any items to your bag yet. Explore our zero-transparency sets and rompers with flat $9.90 shipping anywhere in the US or free showroom pickup.'}
+              ? 'Você ainda não selecionou nenhuma peça. Escolha seu modelo favorito na vitrine para finalizar sua compra com frete grátis acima de $100 (ou taxa fixa de $9.90 para todos os EUA) ou retirada grátis no showroom.'
+              : 'You haven\'t added any items to your bag yet. Explore our zero-transparency sets and rompers with free shipping over $100 (or flat $9.90 shipping across the US) or free showroom pickup.'}
           </p>
         </div>
 
@@ -1573,7 +1578,7 @@ export default function CheckoutPage() {
               <span className="text-[10px] font-black uppercase tracking-wider text-gold font-mono">
                 {deliveryMethod === 'PICKUP'
                   ? (lang === 'pt' ? 'RETIRADA GRÁTIS' : 'FREE PICKUP')
-                  : (isFreeShipping ? (lang === 'pt' ? 'FRETE GRÁTIS' : 'FREE SHIPPING') : 'FLAT RATE $9.90')}
+                  : (effectiveFreeShipping ? (lang === 'pt' ? 'FRETE GRÁTIS' : 'FREE SHIPPING') : 'FLAT RATE $9.90')}
               </span>
             </div>
 
@@ -1581,6 +1586,48 @@ export default function CheckoutPage() {
               <div className="p-3 bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold flex items-center gap-2">
                 <Lock className="w-4 h-4 text-amber-700 shrink-0" />
                 <span>{lang === 'pt' ? '🔒 Cadastre-se ou faça login na Etapa 1 acima para liberar este formulário.' : '🔒 Register or sign in in Step 1 above to unlock this form.'}</span>
+              </div>
+            )}
+
+            {/* BARRA DE FRETE GRÁTIS (COMPRAS ACIMA DE $100) */}
+            {subtotal > 0 && (
+              <div className="p-3 sm:p-4 bg-stone-50 border-2 border-deep-black/15 space-y-2">
+                <div className="flex items-center justify-between text-xs font-black uppercase tracking-wide">
+                  <span className="flex items-center gap-2 text-deep-black">
+                    <Truck className="w-4 h-4 text-gold shrink-0" />
+                    <span>
+                      {effectiveFreeShipping
+                        ? (lang === 'pt'
+                            ? 'PARABÉNS! SEU PEDIDO GANHOU FRETE GRÁTIS!'
+                            : 'CONGRATULATIONS! YOU UNLOCKED FREE SHIPPING!')
+                        : (lang === 'pt'
+                            ? `FALTA APENAS $${freeShippingRemaining.toFixed(2)} PARA FRETE GRÁTIS!`
+                            : `ADD $${freeShippingRemaining.toFixed(2)} MORE FOR FREE SHIPPING!`)}
+                    </span>
+                  </span>
+                  <span className="font-mono text-[11px] font-black px-2 py-0.5 bg-deep-black text-gold">
+                    {effectiveFreeShipping ? '100%' : `${Math.min(99, Math.round((netSubtotal / 100) * 100))}%`}
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-stone-200 overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      effectiveFreeShipping ? 'bg-emerald-600' : 'bg-gold'
+                    }`}
+                    style={{
+                      width: `${Math.min(100, effectiveFreeShipping ? 100 : Math.max(6, (netSubtotal / 100) * 100))}%`,
+                    }}
+                  />
+                </div>
+                <p className="text-[10.5px] text-deep-black/70 font-semibold leading-relaxed">
+                  {effectiveFreeShipping
+                    ? (lang === 'pt'
+                        ? '✓ Pedido qualificado para frete expresso gratuito via USPS Priority para todos os EUA.'
+                        : '✓ Your order qualified for free USPS Priority express shipping to all 50 US states.')
+                    : (lang === 'pt'
+                        ? 'Adicione mais peças para atingir $100 em produtos e zerar automaticamente o frete de $9.90.'
+                        : 'Add more items to reach $100 and waive the standard $9.90 shipping fee.')}
+                </p>
               </div>
             )}
 
@@ -1621,7 +1668,7 @@ export default function CheckoutPage() {
                     </div>
                     <div className="text-right shrink-0">
                       <span className="text-xs font-mono font-black text-deep-black">
-                        {isFreeShipping ? (lang === 'pt' ? 'GRÁTIS' : 'FREE') : '$9.90'}
+                        {effectiveFreeShipping ? (lang === 'pt' ? 'GRÁTIS' : 'FREE') : '$9.90'}
                       </span>
                     </div>
                   </div>
@@ -2620,8 +2667,8 @@ export default function CheckoutPage() {
               </div>
               <p className="text-[11px] text-emerald-900 font-medium">
                 {lang === 'pt'
-                  ? `${comboResult.completedCombos}x combo (${comboResult.completedCombos * (comboPromo?.required_quantity || 3)} conjuntos fechados por $${comboResult.bundleTargetPrice.toFixed(2)} via ${paymentMethod === 'CASHAPP' ? 'Cash App' : paymentMethod})!`
-                  : `${comboResult.completedCombos}x combo (${comboResult.completedCombos * (comboPromo?.required_quantity || 3)} sets for $${comboResult.bundleTargetPrice.toFixed(2)} via ${paymentMethod === 'CASHAPP' ? 'Cash App' : paymentMethod})!`}
+                  ? `${comboResult.completedCombos}x combo (${comboResult.completedCombos * (comboPromo?.required_quantity || 3)} conjuntos fechados por $${comboResult.bundleTargetPrice.toFixed(2)})! Válido para Zelle, Venmo, Cash App e Parcelamento (Cartão, Afterpay, Affirm).`
+                  : `${comboResult.completedCombos}x combo (${comboResult.completedCombos * (comboPromo?.required_quantity || 3)} sets for $${comboResult.bundleTargetPrice.toFixed(2)})! Valid for Zelle, Venmo, Cash App & Installments.`}
               </p>
             </div>
           ) : comboResult.ineligibleByPaymentMethod && comboResult.rawPotentialDiscount > 0 && comboPromo?.active ? (
@@ -2681,8 +2728,8 @@ export default function CheckoutPage() {
               </div>
               <p className="text-xs text-emerald-950 font-bold leading-relaxed">
                 {lang === 'pt'
-                  ? `Esta peça participa da promoção: ${comboPromo?.required_quantity || 3} peças por $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (exclusivo no Zelle, Venmo ou Cash App; cartão/Afterpay/Affirm mantém o valor normal). Você já tem ${comboResult.participatingCount} na sacola — adicione mais ${comboResult.neededForNextCombo}!`
-                  : `You have ${comboResult.participatingCount} eligible piece(s) for our ${comboPromo?.required_quantity || 3} for $${Number(comboPromo?.bundle_price || 120).toFixed(2)} deal (valid on Zelle, Venmo, or Cash App only; regular prices on Card/Afterpay/Affirm). Add ${comboResult.neededForNextCombo} more!`}
+                  ? `Esta peça participa da promoção: ${comboPromo?.required_quantity || 3} peças por $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (válido para Zelle, Venmo, Cash App e Parcelamento no Cartão/Afterpay/Affirm). Você já tem ${comboResult.participatingCount} na sacola — adicione mais ${comboResult.neededForNextCombo}!`
+                  : `You have ${comboResult.participatingCount} eligible piece(s) for our ${comboPromo?.required_quantity || 3} for $${Number(comboPromo?.bundle_price || 120).toFixed(2)} deal (valid on Zelle, Venmo, Cash App & Installments). Add ${comboResult.neededForNextCombo} more!`}
               </p>
               <div className="pt-1">
                 <Link
@@ -2764,8 +2811,14 @@ export default function CheckoutPage() {
               <span className="flex items-center gap-1">
                 <span>{lang === 'pt' ? 'FRETE DOMÉSTICO (EUA):' : 'DOMESTIC US SHIPPING:'}</span>
               </span>
-              <span className={`font-mono font-bold ${isFreeShipping ? 'text-green-700' : ''}`}>
-                {isFreeShipping ? (lang === 'pt' ? 'GRÁTIS (CUPOM)' : 'FREE (PROMO)') : `$${shippingRate.toFixed(2)}`}
+              <span className={`font-mono font-bold ${deliveryMethod === 'PICKUP' || effectiveFreeShipping ? 'text-green-700' : ''}`}>
+                {deliveryMethod === 'PICKUP'
+                  ? (lang === 'pt' ? 'RETIRADA ($0.00)' : 'PICKUP ($0.00)')
+                  : isOver100FreeShipping
+                  ? (lang === 'pt' ? 'GRÁTIS (COMPRAS $100+)' : 'FREE (ORDERS $100+)')
+                  : isFreeShipping
+                  ? (lang === 'pt' ? 'GRÁTIS (CUPOM)' : 'FREE (PROMO)')
+                  : `$${shippingRate.toFixed(2)}`}
               </span>
             </div>
 

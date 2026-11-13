@@ -14,6 +14,7 @@ import {
   Check,
   ChevronLeft,
   Clock,
+  Truck,
 } from 'lucide-react';
 import {
   CartItem,
@@ -225,6 +226,9 @@ export function SideCartDrawer() {
   const subtotal = items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
   const comboResult = calculateComboDiscount(items, comboPromo);
   const netSubtotal = Math.max(0, Number((subtotal - (comboResult.hasCombo ? comboResult.discount : 0)).toFixed(2)));
+  const isFreeShipping = netSubtotal >= 100;
+  const freeShippingRemaining = Math.max(0, Number((100 - netSubtotal).toFixed(2)));
+  const freeShippingProgress = Math.min(100, Math.max(0, (netSubtotal / 100) * 100));
 
   return (
     <>
@@ -343,6 +347,35 @@ export function SideCartDrawer() {
               );
             })()}
 
+            {/* Barra de Progresso de Frete Grátis ($100+) */}
+            {items.length > 0 && (
+              <div className="px-5 py-2.5 bg-neutral-100 border-b border-deep-black/10 space-y-1.5 shrink-0">
+                <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wide">
+                  <span className="flex items-center gap-1.5 text-deep-black">
+                    <Truck className="w-3.5 h-3.5 text-gold shrink-0" />
+                    <span>
+                      {isFreeShipping
+                        ? (lang === 'pt'
+                            ? 'PARABÉNS! VOCÊ GANHOU FRETE GRÁTIS!'
+                            : 'CONGRATULATIONS! YOU UNLOCKED FREE SHIPPING!')
+                        : (lang === 'pt'
+                            ? `Falta apenas $${freeShippingRemaining.toFixed(2)} para FRETE GRÁTIS!`
+                            : `Add $${freeShippingRemaining.toFixed(2)} more for FREE SHIPPING!`)}
+                    </span>
+                  </span>
+                  <span className="font-mono text-[10px] font-black px-1.5 py-0.2 bg-deep-black text-gold">
+                    {isFreeShipping ? '100%' : `${Math.min(99, Math.round(freeShippingProgress))}%`}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-neutral-200 overflow-hidden rounded-full">
+                  <div
+                    className={`h-full transition-all duration-300 ${isFreeShipping ? 'bg-emerald-500' : 'bg-gold'}`}
+                    style={{ width: `${Math.min(100, isFreeShipping ? 100 : Math.max(5, freeShippingProgress))}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Banner de Promoção Combo (se ativa) */}
             {comboPromo?.active && items.length > 0 && (
               <div
@@ -357,8 +390,8 @@ export function SideCartDrawer() {
                     <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
                     <span>
                       {lang === 'pt'
-                        ? `${translateBadgeText(comboPromo.title || 'Combo', lang)} elegível: economia de $${comboResult.discount.toFixed(2)} USD pagando via Zelle, Venmo ou Cash App (no cartão/Afterpay/Affirm entra o valor normal).`
-                        : `${translateBadgeText(comboPromo.title || 'Combo', lang)} eligible: save $${comboResult.discount.toFixed(2)} USD via Zelle, Venmo, or Cash App (regular price applies on Card/Afterpay/Affirm).`}
+                        ? `${translateBadgeText(comboPromo.title || 'Combo', lang)} elegível: economia de $${comboResult.discount.toFixed(2)} USD (válido para Zelle, Venmo, Cash App e Parcelamento no Cartão/Afterpay/Affirm)!`
+                        : `${translateBadgeText(comboPromo.title || 'Combo', lang)} eligible: save $${comboResult.discount.toFixed(2)} USD (valid for Zelle, Venmo, Cash App & Installments)!`}
                     </span>
                   </>
                 ) : comboResult.participatingCount > 0 ? (
@@ -366,8 +399,8 @@ export function SideCartDrawer() {
                     <Sparkles className="w-4 h-4 text-gold shrink-0" />
                     <span>
                       {lang === 'pt'
-                        ? `Falta(m) ${comboResult.neededForNextCombo} peça(s) participante(s) para o ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 99).toFixed(2)} no Zelle, Venmo ou Cash App)!`
-                        : `Add ${comboResult.neededForNextCombo} more combo item(s) to unlock ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 99).toFixed(2)} via Zelle, Venmo, or Cash App)!`}
+                        ? `Falta(m) ${comboResult.neededForNextCombo} peça(s) participante(s) para o ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 99).toFixed(2)})!`
+                        : `Add ${comboResult.neededForNextCombo} more combo item(s) to unlock ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 99).toFixed(2)})!`}
                     </span>
                   </>
                 ) : null}
@@ -556,20 +589,26 @@ export function SideCartDrawer() {
                   {comboResult.hasCombo && comboResult.discount > 0 && (
                     <div className="space-y-0.5">
                       <div className="flex items-center justify-between text-emerald-700 font-black uppercase">
-                        <span>{lang === 'pt' ? 'Combo (Zelle / Venmo / Cash App)' : 'Combo (Zelle / Venmo / Cash App)'}</span>
+                        <span>{lang === 'pt' ? 'Combo Promocional' : 'Bundle Deal'}</span>
                         <span className="font-mono">-${comboResult.discount.toFixed(2)}</span>
                       </div>
                       <p className="text-[9px] text-emerald-800/80 font-bold uppercase text-right">
                         {lang === 'pt'
-                          ? '* No Cartão, Afterpay ou Affirm entra o preço normal'
-                          : '* Regular price applies on Card, Afterpay or Affirm'}
+                          ? '✓ Válido para Zelle, Venmo, Cash App e Parcelamento'
+                          : '✓ Valid for Zelle, Venmo, Cash App & Installments'}
                       </p>
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between text-[11px] text-deep-black/60 font-bold uppercase">
-                    <span>{lang === 'pt' ? 'Frete Fixo EUA (USPS)' : 'Flat US Shipping (USPS)'}</span>
-                    <span className="font-mono">$9.90 {lang === 'pt' ? 'no checkout' : 'at checkout'}</span>
+                  <div className="flex items-center justify-between text-[11px] font-bold uppercase">
+                    <span className="text-deep-black/60">
+                      {lang === 'pt' ? 'Frete EUA (USPS Priority)' : 'US Shipping (USPS Priority)'}
+                    </span>
+                    <span className={`font-mono ${isFreeShipping ? 'text-emerald-700 font-black' : 'text-deep-black/60'}`}>
+                      {isFreeShipping
+                        ? (lang === 'pt' ? 'GRÁTIS ($100+)' : 'FREE ($100+)')
+                        : `$9.90 ${lang === 'pt' ? 'no checkout' : 'at checkout'}`}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-deep-black/15 text-sm font-black uppercase">

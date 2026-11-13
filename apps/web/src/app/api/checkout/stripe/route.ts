@@ -27,8 +27,7 @@ export async function POST(req: NextRequest) {
 
     const origin = req.headers.get('origin') || 'https://anafitwear.com';
 
-    // Regra comercial: promoção do combo só vale para Zelle, Venmo ou Cash App.
-    // Métodos Stripe (Cartão, Apple Pay, Affirm, Afterpay) nunca recebem desconto de combo.
+    // Regra comercial: promoção do combo é válida para Zelle, Venmo, Cash App e também para formas parceladas (Cartão, Afterpay, Affirm, Klarna).
     const requestedDiscount = Math.max(0, Number(discount_amount || 0));
     const requestedComboDiscount = Math.max(0, Number(combo_discount || 0));
     const comboAllowedForMethod = isComboEligiblePaymentMethod(payment_method);
@@ -160,9 +159,17 @@ export async function POST(req: NextRequest) {
     }
 
     const isPickup = delivery_method === 'PICKUP' || shipping_address?.delivery_method === 'PICKUP';
-    const finalShippingFee = isPickup ? 0 : (shipping_fee !== undefined ? Number(shipping_fee) : 9.90);
+    // Subtotal líquido dos itens para qualificação de frete grátis (>= $100)
+    const grossItemsAmount = enrichedItems.reduce((acc, it) => acc + (Number(it.unit_price) * Number(it.quantity)), 0);
+    const netItemsAmount = Math.max(0, grossItemsAmount - effectiveDiscountAmount);
+    const isOver100FreeShipping = netItemsAmount >= 100;
+    const finalShippingFee = isPickup
+      ? 0
+      : (isOver100FreeShipping || shipping_fee === 0
+          ? 0
+          : (shipping_fee !== undefined ? Number(shipping_fee) : 9.90));
 
-    // Se for retirada no showroom, não cobra frete ($0.00). Se for entrega, cobra $9.90 (ou grátis via cupom)
+    // Se for retirada no showroom, não cobra frete ($0.00). Se for entrega, cobra $9.90 (ou grátis para compras $100+ / cupom)
     if (isPickup) {
       lineItems.push({
         price_data: {
@@ -184,6 +191,20 @@ export async function POST(req: NextRequest) {
             description: 'Entrega expressa para todos os Estados Unidos (1 a 5 dias úteis com rastreamento)',
           },
           unit_amount: Math.round(finalShippingFee * 100),
+        },
+        quantity: 1,
+      });
+    } else {
+      lineItems.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'Frete Grátis Cortesia (USPS Priority)',
+            description: isOver100FreeShipping
+              ? 'Promoção oficial: Frete grátis para compras a partir de $100 • $0.00'
+              : 'Promoção / Cupom de frete grátis • $0.00',
+          },
+          unit_amount: 0,
         },
         quantity: 1,
       });

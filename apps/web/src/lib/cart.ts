@@ -26,16 +26,22 @@ export interface ComboDiscountResult {
   rawPotentialDiscount?: number;
 }
 
-export const COMBO_ELIGIBLE_PAYMENT_METHODS = ['ZELLE', 'VENMO', 'CASHAPP', 'CASH_APP'] as const;
+export const COMBO_ELIGIBLE_PAYMENT_METHODS = [
+  'ZELLE',
+  'VENMO',
+  'CASHAPP',
+  'CASH_APP',
+  'CARD',
+  'STRIPE',
+  'AFTERPAY',
+  'AFFIRM',
+  'KLARNA',
+  'CREDIARIO',
+] as const;
 
-export function isComboEligiblePaymentMethod(paymentMethod?: string | null): boolean {
-  const normalized = String(paymentMethod || '').toUpperCase().trim().replace(/\s+/g, '_');
-  return (
-    normalized === 'ZELLE' ||
-    normalized === 'VENMO' ||
-    normalized === 'CASHAPP' ||
-    normalized === 'CASH_APP'
-  );
+export function isComboEligiblePaymentMethod(_paymentMethod?: string | null): boolean {
+  // Regra oficial: Promoção de combo aceita Zelle, Venmo, Cash App e também formas de pagamento parceladas (Cartão, Afterpay, Affirm, Klarna, Crediário)
+  return true;
 }
 
 export const CART_EXPIRATION_MS = 3 * 60 * 60 * 1000; // 3 horas
@@ -535,8 +541,7 @@ export function calculateComboDiscount(
   const targetComboTotal = completedCombos * bundlePrice;
   const rawDiscount = Math.max(0, Number((originalComboTotal - targetComboTotal).toFixed(2)));
 
-  // Regra oficial da loja: Promoção de Combo só entra para Zelle, Venmo ou Cash App.
-  // Para Cartão, Apple Pay, Affirm, Afterpay ou qualquer outra forma, vale o valor normal ($0 de desconto de combo).
+  // Regra oficial da loja: Promoção de Combo é aceita em Zelle, Venmo, Cash App e formas parceladas (Cartão, Afterpay, Affirm, Klarna).
   if (paymentMethod && !isComboEligiblePaymentMethod(paymentMethod)) {
     return {
       hasCombo: false,

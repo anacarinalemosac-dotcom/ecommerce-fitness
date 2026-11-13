@@ -1,0 +1,108 @@
+[
+  {
+    "id": "cond-1001",
+    "conditional_number": "COND-1042",
+    "customer_name": "Camila Fernandes",
+    "customer_phone": "9785550192",
+    "customer_address": "Central St, Leominster, MA",
+    "seller_name": "Beatriz Figueredo",
+    "dispatch_date": "2026-11-09",
+    "expected_return_date": "2026-11-12",
+    "notes": "Mala rosa entregue no trabalho dela. Provar com amigas.",
+    "status": "OPEN",
+    "total_items": 4,
+    "total_value": 179.6,
+    "items": [
+      {
+        "sku": "TOP-CIR-P",
+        "title": "TOP CIRRÊ GLOSS",
+        "size": "M",
+        "color": "Preto Ônix",
+        "quantity": 1,
+        "unit_price": 39.9,
+        "cost_price": 14,
+        "image": "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80"
+      },
+      {
+        "sku": "LEG-MON-M",
+        "title": "MONIQUE FLARE PANTS SET",
+        "size": "M",
+        "color": "Champagne Gold",
+        "quantity": 1,
+        "unit_price": 49.9,
+        "cost_price": 19,
+        "image": "https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=900&q=80"
+      },
+      {
+        "sku": "MAC-BEA-M",
+        "title": "MACACÃO FITNESS SUPLEX",
+        "size": "M",
+        "color": "Azul Marinho",
+        "quantity": 1,
+        "unit_price": 49.9,
+        "cost_price": 18,
+        "image": "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=900&q=80"
+      },
+      {
+        "sku": "REG-FIT-M",
+        "title": "REGATÃO DRY FIT CAVADO",
+        "size": "M",
+        "color": "Café",
+        "quantity": 1,
+        "unit_price": 39.9,
+        "cost_price": 12,
+        "image": "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=900&q=80"
+      }
+    ],
+    "created_at": "2026-11-09T22:39:18.233Z",
+    "updated_at": "2026-11-09T22:39:18.233Z"
+  },
+  {
+    "id": "cond-1002",
+    "conditional_number": "COND-1043",
+    "customer_name": "Juliana Paiva",
+    "customer_phone": "5085558234",
+    "customer_address": "Fitchburg, MA",
+    "seller_name": "Ana Karina",
+    "dispatch_date": "2026-11-07",
+    "expected_return_date": "2026-11-10",
+    "notes": "Levou para experimentar antes da viagem de fim de semana.",
+    "status": "OPEN",
+    "total_items": 3,
+    "total_value": 139.7,
+    "items": [
+      {
+        "sku": "KEL-BLK-L",
+        "title": "KELY PANTS SET",
+        "size": "L",
+        "color": "Preto Ônix",
+        "quantity": 1,
+        "unit_price": 49.9,
+        "cost_price": 16,
+        "image": "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=900&q=80"
+      },
+      {
+        "sku": "SHORT-ANA-L",
+        "title": "SHORTS ANATÔMICO DUPLO",
+        "size": "L",
+        "color": "Vinho Bordô",
+        "quantity": 1,
+        "unit_price": 44.9,
+        "cost_price": 15,
+        "image": "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80"
+      },
+      {
+        "sku": "TOP-CRO-L",
+        "title": "TOP CROPPED COSTA NUA",
+        "size": "L",
+        "color": "Preto",
+        "quantity": 1,
+        "unit_price": 44.9,
+        "cost_price": 14,
+        "image": "https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=900&q=80"
+      }
+    ],
+    "created_at": "2026-11-07T22:39:18.233Z",
+    "updated_at": "2026-11-07T22:39:18.233Z"
+  }
+]

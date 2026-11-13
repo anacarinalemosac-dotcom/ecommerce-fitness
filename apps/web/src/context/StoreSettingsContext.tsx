@@ -117,6 +117,7 @@ export interface SiteInfo {
   cashApp?: string;
   address: string;
   flatShippingRate: number;
+  freeShippingThreshold?: number;
   returnDays: number;
   tickerSlogan: string;
   tickerShipping: string;
@@ -363,13 +364,14 @@ const DEFAULT_SITE_INFO: SiteInfo = {
   venmo: '@Accleaningproservices',
   cashApp: '$AnaFitnessWear',
   address: 'Leominster, MA 01453 • United States',
-  flatShippingRate: 9.99,
+  flatShippingRate: 9.90,
+  freeShippingThreshold: 100,
   returnDays: 30,
   tickerSlogan: '✨ WEAR YOUR STRENGTH ✨',
-  tickerShipping: 'FLAT RATE SHIPPING $9.99 ACROSS ALL 50 US STATES',
+  tickerShipping: 'FRETE GRÁTIS ACIMA DE $100 • TAXA FIXA $9.90 P/ TODOS OS ESTADOS (USPS)',
   heroTitle1: 'WEAR YOUR',
   heroTitle2: 'STRENGTH.',
-  heroSubtitle: 'High-performance athletic luxury based in Massachusetts. Lab-verified zero see-through, 4-way anatomical sculpt compression, and flat $9.99 shipping across all 50 US States.',
+  heroSubtitle: 'High-performance athletic luxury based in Massachusetts. Lab-verified zero see-through, 4-way anatomical sculpt compression, free shipping over $100 and flat $9.90 shipping across all 50 US States.',
   heroBanners: DEFAULT_HERO_BANNERS,
   announcementBar: DEFAULT_ANNOUNCEMENT_BAR,
   promoBanner: DEFAULT_PROMO_BANNER,

@@ -1,0 +1,846 @@
+[
+  {
+    "id": "mkt-1794450619234-4516",
+    "name": "Teste Automatico PDF",
+    "phone": "+1 (978) 000-9999",
+    "phone_digits": "19780009999",
+    "email": "teste-pdf@example.com",
+    "city": "Boston",
+    "state": "MA",
+    "sizes_bought": [
+      "M"
+    ],
+    "orders_count": 3,
+    "total_spent": 326.7,
+    "last_product": "Conjunto Sculpt Teste",
+    "last_order_date": "2026-11-12T16:26:50.793Z",
+    "sources": [
+      "SITE"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-12T02:30:19.234Z",
+    "updated_at": "2026-11-12T16:26:53.450Z"
+  },
+  {
+    "id": "mkt-1794438714922-9308",
+    "name": "REGINA MSHANGA",
+    "phone": "+1 (978) 340-3152",
+    "phone_digits": "19783403152",
+    "email": "",
+    "city": "Leominster",
+    "state": "MA",
+    "sizes_bought": [
+      "M"
+    ],
+    "orders_count": 0,
+    "total_spent": 0,
+    "last_product": "SET VITORIA CARAMEL BROWN",
+    "last_order_date": "2026-11-11T23:11:54.922Z",
+    "sources": [
+      "EDICAO"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T23:11:54.922Z",
+    "updated_at": "2026-11-11T23:11:54.922Z"
+  },
+  {
+    "id": "mkt-1794438309018-2534",
+    "name": "dana padilha",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "ONE SIZE"
+    ],
+    "orders_count": 1,
+    "total_spent": 44.9,
+    "last_product": "JUMPSUIT Compressão Kênia",
+    "last_order_date": "2026-11-11T23:05:08.422Z",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T23:05:09.018Z",
+    "updated_at": "2026-11-11T23:05:09.018Z"
+  },
+  {
+    "id": "mkt-1794436788213-8949",
+    "name": "DANIELE FERNANDES",
+    "phone": "+1 (757) 310-9448",
+    "phone_digits": "17573109448",
+    "email": "niele.fortunato@hotmail.com",
+    "city": "Chesapeake",
+    "state": "VA",
+    "sizes_bought": [
+      "M"
+    ],
+    "orders_count": 1,
+    "total_spent": 109.7,
+    "last_product": "SET BORDÔ COM BEGE (Bordô com Bege • TAM P)",
+    "last_order_date": "2026-11-11T16:14:00+00:00",
+    "sources": [
+      "SITE"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.213Z",
+    "updated_at": "2026-11-11T22:39:48.213Z"
+  },
+  {
+    "id": "mkt-1794436759134-6733",
+    "name": "Camila Fernandes",
+    "phone": "+1 (978) 555-0192",
+    "phone_digits": "19785550192",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "M"
+    ],
+    "orders_count": 0,
+    "total_spent": 0,
+    "last_product": "TOP CIRRÊ GLOSS",
+    "last_order_date": "2026-11-09T22:39:18.233Z",
+    "sources": [
+      "CONDICIONAL"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:19.134Z",
+    "updated_at": "2026-11-11T22:39:48.215Z"
+  },
+  {
+    "id": "mkt-1794436759134-4545",
+    "name": "Juliana Paiva",
+    "phone": "+1 (508) 555-8234",
+    "phone_digits": "15085558234",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "L"
+    ],
+    "orders_count": 0,
+    "total_spent": 0,
+    "last_product": "KELY PANTS SET",
+    "last_order_date": "2026-11-07T22:39:18.233Z",
+    "sources": [
+      "CONDICIONAL"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:19.134Z",
+    "updated_at": "2026-11-11T22:39:48.215Z"
+  },
+  {
+    "id": "mkt-1794436788213-6742",
+    "name": "PATRICIA MIRANDA",
+    "phone": "+1 (978) 401-7125",
+    "phone_digits": "19784017125",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "G"
+    ],
+    "orders_count": 1,
+    "total_spent": 110,
+    "last_product": "CONJUNTO PROMOCAO 3 POR $110",
+    "last_order_date": "2026-11-07T02:47:00+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.213Z",
+    "updated_at": "2026-11-11T22:39:48.213Z"
+  },
+  {
+    "id": "mkt-1794436788213-8964",
+    "name": "LEIDIANE PEREIRA",
+    "phone": "+1 (857) 326-4529",
+    "phone_digits": "18573264529",
+    "email": "leidykaio@outlook.com",
+    "city": "Malden",
+    "state": "MA",
+    "sizes_bought": [
+      "M"
+    ],
+    "orders_count": 1,
+    "total_spent": 129.99,
+    "last_product": "3 CONJUNTOS PROMOÇÃO AFTERPAY (Preto Ônix • TAM M)",
+    "last_order_date": "2026-11-07T02:19:00+00:00",
+    "sources": [
+      "SITE"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.213Z",
+    "updated_at": "2026-11-11T22:39:48.213Z"
+  },
+  {
+    "id": "mkt-1794436788213-115",
+    "name": "ana carina",
+    "phone": "+1 (978) 313-9452",
+    "phone_digits": "19783139452",
+    "email": "alexfragamiranda@gmail.com",
+    "city": "Leominster",
+    "state": "MA",
+    "sizes_bought": [
+      "P",
+      "M",
+      "G"
+    ],
+    "orders_count": 3,
+    "total_spent": 500.49,
+    "last_product": "TEAL GREEN & TERRACOTTA",
+    "last_order_date": "2026-11-12T02:27:09.997Z",
+    "sources": [
+      "SITE"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.213Z",
+    "updated_at": "2026-11-12T02:27:10.890Z"
+  },
+  {
+    "id": "mkt-1794436788214-2080",
+    "name": "Valeria",
+    "phone": "+1 (978) 419-3948",
+    "phone_digits": "19784193948",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "G"
+    ],
+    "orders_count": 1,
+    "total_spent": 262.9,
+    "last_product": "CONJUNTO BICOLOR ",
+    "last_order_date": "2026-11-04T00:04:51.110941+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-9396",
+    "name": "CRISTINA",
+    "phone": "+1 (339) 242-7185",
+    "phone_digits": "13392427185",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "M",
+      "ONE SIZE"
+    ],
+    "orders_count": 2,
+    "total_spent": 427.3,
+    "last_product": "DEISE DRY MESH TOP",
+    "last_order_date": "2026-10-23T22:42:17.268418+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-7943",
+    "name": "Estefany Alves florida",
+    "phone": "+1 (561) 674-4454",
+    "phone_digits": "15616744454",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "M",
+      "P"
+    ],
+    "orders_count": 1,
+    "total_spent": 120,
+    "last_product": "CONJUNTO ANA",
+    "last_order_date": "2026-10-23T22:37:27.925574+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788213-1029",
+    "name": "Nayara",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "M"
+    ],
+    "orders_count": 1,
+    "total_spent": 110,
+    "last_product": "CONJUNTO PROMOCAO 3 POR $110",
+    "last_order_date": "2026-11-08T15:42:30.319369+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.213Z",
+    "updated_at": "2026-11-11T22:39:48.213Z"
+  },
+  {
+    "id": "mkt-1794436788213-1715",
+    "name": "ROBERTA RAMOS",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "M",
+      "P"
+    ],
+    "orders_count": 1,
+    "total_spent": 89.7,
+    "last_product": "CONJUNTO PROMOCAO",
+    "last_order_date": "2026-11-07T02:52:45.33016+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.213Z",
+    "updated_at": "2026-11-11T22:39:48.213Z"
+  },
+  {
+    "id": "mkt-1794436788213-4345",
+    "name": "MICHELE FELIX",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "M",
+      "G",
+      "P"
+    ],
+    "orders_count": 1,
+    "total_spent": 199.7,
+    "last_product": "MACACAO PROMOCAO",
+    "last_order_date": "2026-11-07T01:42:00+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.213Z",
+    "updated_at": "2026-11-11T22:39:48.213Z"
+  },
+  {
+    "id": "mkt-1794436788213-9700",
+    "name": "daniele fernades",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "M",
+      "ONE SIZE",
+      "P"
+    ],
+    "orders_count": 1,
+    "total_spent": 97.7,
+    "last_product": "CONJUNTO BICOLOR ",
+    "last_order_date": "2026-11-06T01:43:13.333458+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.213Z",
+    "updated_at": "2026-11-11T22:39:48.213Z"
+  },
+  {
+    "id": "mkt-1794436788214-8687",
+    "name": "hayra almeida",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "P",
+      "G",
+      "M"
+    ],
+    "orders_count": 1,
+    "total_spent": 230,
+    "last_product": "FRETE",
+    "last_order_date": "2026-11-06T01:39:26.181208+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-4039",
+    "name": "Meire rodrigues",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "G"
+    ],
+    "orders_count": 1,
+    "total_spent": 280,
+    "last_product": "CONJUNTO BICOLOR ",
+    "last_order_date": "2026-11-05T22:49:44.827977+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-6162",
+    "name": "LUCIENE GARDNER",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "M"
+    ],
+    "orders_count": 1,
+    "total_spent": 39.9,
+    "last_product": "CONJUNTO BICOLOR ",
+    "last_order_date": "2026-11-04T23:21:12.256081+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-6775",
+    "name": "larissa lashes",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "GG"
+    ],
+    "orders_count": 1,
+    "total_spent": 110,
+    "last_product": "CONJUNTO BICOLOR ",
+    "last_order_date": "2026-11-04T15:05:17.689693+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-2931",
+    "name": "tanise",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "P",
+      "ONE SIZE"
+    ],
+    "orders_count": 1,
+    "total_spent": 179.8,
+    "last_product": "CONJUNTO BICOLOR ",
+    "last_order_date": "2026-11-01T22:18:22.371697+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-5058",
+    "name": "marisa",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "G"
+    ],
+    "orders_count": 1,
+    "total_spent": 189.6,
+    "last_product": "CONJUNTO BICOLOR ",
+    "last_order_date": "2026-11-01T21:15:57.173698+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-3200",
+    "name": "vitoria",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "GG"
+    ],
+    "orders_count": 1,
+    "total_spent": 169.7,
+    "last_product": "CONJUNTO BICOLOR ",
+    "last_order_date": "2026-11-01T21:11:13.697571+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-7613",
+    "name": "tamara",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "M"
+    ],
+    "orders_count": 1,
+    "total_spent": 129.9,
+    "last_product": "CONJUNTO BICOLOR ",
+    "last_order_date": "2026-11-01T21:06:33.513483+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-5124",
+    "name": "natalia morgana",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "G"
+    ],
+    "orders_count": 1,
+    "total_spent": 59.8,
+    "last_product": "CONJUNTO BICOLOR ",
+    "last_order_date": "2026-11-01T20:56:19.971128+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-8631",
+    "name": "FRANCIANE",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "P",
+      "ONE SIZE"
+    ],
+    "orders_count": 3,
+    "total_spent": 210,
+    "last_product": "CONJUNTO BICOLOR ",
+    "last_order_date": "2026-11-01T20:54:31.467407+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-3088",
+    "name": "Perla",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "M",
+      "ONE SIZE"
+    ],
+    "orders_count": 3,
+    "total_spent": 249.7,
+    "last_product": "CONJUNTO BICOLOR ",
+    "last_order_date": "2026-11-01T20:48:10.326856+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-1786",
+    "name": "CAMILA",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "P"
+    ],
+    "orders_count": 1,
+    "total_spent": 110,
+    "last_product": "CONJUNTO ANA",
+    "last_order_date": "2026-10-23T22:45:00+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-7568",
+    "name": "MARIA",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "ONE SIZE"
+    ],
+    "orders_count": 1,
+    "total_spent": 89.8,
+    "last_product": "FLARE COMPRESSION PANTS + MILENA TOP",
+    "last_order_date": "2026-10-22T19:57:00+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-7309",
+    "name": "carla",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "M",
+      "ONE SIZE",
+      "G"
+    ],
+    "orders_count": 2,
+    "total_spent": 189.9,
+    "last_product": "TOP TELINHA DRY",
+    "last_order_date": "2026-10-22T01:02:46.266302+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-1969",
+    "name": "MORGANA",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "ONE SIZE"
+    ],
+    "orders_count": 1,
+    "total_spent": 89.8,
+    "last_product": "JUMPSUIT FLARE POLIAMIDA FIT MONIQUE",
+    "last_order_date": "2026-10-20T18:54:00+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-2438",
+    "name": "julia suelen",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "ONE SIZE"
+    ],
+    "orders_count": 1,
+    "total_spent": 44.9,
+    "last_product": "ROMPER BEACH SAMANTA",
+    "last_order_date": "2026-10-19T12:30:16.293606+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-7451",
+    "name": "luciane",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "ONE SIZE"
+    ],
+    "orders_count": 1,
+    "total_spent": 23,
+    "last_product": "ROMPER BEACH SAMANTA",
+    "last_order_date": "2026-10-19T12:28:57.728989+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-5496",
+    "name": "aline",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "ONE SIZE"
+    ],
+    "orders_count": 1,
+    "total_spent": 44.9,
+    "last_product": "BASIC LEGGINGS COMPRESSION + MIRELA TOP",
+    "last_order_date": "2026-10-18T01:41:05.27153+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-6020",
+    "name": "LETICIA",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "ONE SIZE"
+    ],
+    "orders_count": 1,
+    "total_spent": 44.9,
+    "last_product": "BASIC JACQUARD 3D LEGGINGS + RENATA TANK TOP",
+    "last_order_date": "2026-10-15T21:54:00+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  },
+  {
+    "id": "mkt-1794436788214-2050",
+    "name": "JULIANA",
+    "phone": "",
+    "phone_digits": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "P"
+    ],
+    "orders_count": 1,
+    "total_spent": 25.8,
+    "last_product": "TOP TELINHA",
+    "last_order_date": "2026-10-12T02:05:00+00:00",
+    "sources": [
+      "BALCAO_PDV"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-11T22:39:48.214Z",
+    "updated_at": "2026-11-11T22:39:48.214Z"
+  }
+]

@@ -61,6 +61,8 @@ export async function GET(req: NextRequest) {
     }
 
     const orderId = `ANA-${Math.floor(100000 + Math.random() * 900000)}`;
+    const totalProductAmount = productPrice * qty;
+    const isFreeShipping = totalProductAmount >= 100;
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -77,17 +79,29 @@ export async function GET(req: NextRequest) {
           },
           quantity: qty,
         },
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'USPS Domestic Priority Shipping (Flat Rate)',
-              description: 'Entrega rápida para todos os Estados Unidos (1 a 5 dias úteis com rastreamento)',
+        isFreeShipping
+          ? {
+              price_data: {
+                currency: 'usd',
+                product_data: {
+                  name: 'Frete Grátis Cortesia (USPS Priority)',
+                  description: 'Promoção oficial: Frete grátis para compras a partir de $100 • $0.00',
+                },
+                unit_amount: 0,
+              },
+              quantity: 1,
+            }
+          : {
+              price_data: {
+                currency: 'usd',
+                product_data: {
+                  name: 'USPS Domestic Priority Shipping (Flat Rate)',
+                  description: 'Entrega rápida para todos os Estados Unidos (1 a 5 dias úteis com rastreamento)',
+                },
+                unit_amount: 990, // $9.90
+              },
+              quantity: 1,
             },
-            unit_amount: 999, // $9.99
-          },
-          quantity: 1,
-        },
       ],
       shipping_address_collection: {
         allowed_countries: ['US'],
