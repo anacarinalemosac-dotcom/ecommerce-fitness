@@ -25,6 +25,7 @@ import {
   Power,
   Eye,
   AlertTriangle,
+  Mail,
 } from 'lucide-react';
 import { useStoreSettings } from '../../context/StoreSettingsContext';
 
@@ -314,6 +315,24 @@ export function TechnicalSettingsView() {
         <p className="text-xs text-deep-black/70 uppercase tracking-wide">
           Gerencie gateways de pagamento (Stripe / Zelle), tabela de frete USPS e controle de permissões de usuários.
         </p>
+      </div>
+
+      {/* Banner de Atalho para E-mails & Notificações de Venda */}
+      <div className="bg-gradient-to-r from-amber-50 to-gold/10 border-2 border-gold p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center shrink-0 border border-gold/40">
+            <Mail className="w-5 h-5 text-deep-black" />
+          </div>
+          <div>
+            <h4 className="text-xs font-black uppercase text-deep-black tracking-wider flex items-center gap-2">
+              <span>📧 Disparos de E-mail de Compras & Provedores (Gmail / Resend)</span>
+              <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded uppercase">Destaque</span>
+            </h4>
+            <p className="text-[11px] text-deep-black/70 mt-0.5">
+              Cadastre seu Gmail com Senha de App de 16 letras ou Resend API, teste o envio e veja a caixa de saída (outbox) diretamente na aba dedicada <strong>📧 E-MAILS & NOTIFICAÇÕES</strong> na barra superior do Backoffice.
+            </p>
+          </div>
+        </div>
       </div>
 
       {saveSettingsSuccess && (

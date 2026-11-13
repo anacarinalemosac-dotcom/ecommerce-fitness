@@ -91,6 +91,7 @@ import { DashboardMetricsView } from '../../components/backoffice/DashboardMetri
 import { AppearanceCmsView, CmsSubTab } from '../../components/backoffice/AppearanceCmsView';
 import { CustomersReviewsView } from '../../components/backoffice/CustomersReviewsView';
 import { TechnicalSettingsView } from '../../components/backoffice/TechnicalSettingsView';
+import { EmailSettingsView } from '../../components/backoffice/EmailSettingsView';
 import { InstagramDirectView } from '../../components/backoffice/InstagramDirectView';
 import { SimpleFinancesView } from '../../components/backoffice/SimpleFinancesView';
 import { SuppliersManagementView } from '../../components/backoffice/SuppliersManagementView';
@@ -251,7 +252,7 @@ export default function BackofficeDashboard() {
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'catalog' | 'out-of-stock' | 'sales' | 'conditionals' | 'commissions' | 'finances' | 'invoices' | 'coupons' | 'reports' | 'cms' | 'customers' | 'settings' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
+    'dashboard' | 'catalog' | 'out-of-stock' | 'sales' | 'conditionals' | 'commissions' | 'finances' | 'invoices' | 'coupons' | 'reports' | 'cms' | 'customers' | 'settings' | 'emails' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
   >('dashboard');
   const [cmsSubTab, setCmsSubTab] = useState<CmsSubTab>('categories');
   const [reportsSubTab, setReportsSubTab] = useState<'inventory' | 'accesses'>('inventory');
@@ -531,6 +532,50 @@ export default function BackofficeDashboard() {
       alert(`Falha ao disparar e-mail de avaliação: ${err.message}`);
     } finally {
       setSendingReviewEmailId(null);
+    }
+  };
+
+  // 1.1b Disparo manual/avulso de confirmação do pedido por e-mail com fotos e dados
+  const [resendingConfirmationId, setResendingConfirmationId] = useState<string | null>(null);
+  const handleResendOrderConfirmationEmail = async (orderId: string, customerEmail?: string, customerName?: string) => {
+    let finalEmail = customerEmail?.trim();
+    if (!finalEmail || !finalEmail.includes('@')) {
+      const entered = window.prompt(
+        `📧 Disparar Confirmação do Pedido por E-mail\n\nInforme o e-mail de ${customerName || 'da cliente'}:`,
+        customerEmail || ''
+      );
+      if (!entered || !entered.includes('@')) {
+        return;
+      }
+      finalEmail = entered.trim();
+    }
+
+    if (!window.confirm(`Disparar e-mail de confirmação de compra com as fotos das peças para ${customerName || 'a cliente'} (${finalEmail}) no pedido #${orderId}?`)) {
+      return;
+    }
+
+    setResendingConfirmationId(orderId);
+    try {
+      const res = await fetch('/api/backoffice/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: orderId,
+          type: 'ORDER_CONFIRMATION',
+          email: finalEmail,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`✓ E-mail de confirmação de compra enviado com sucesso para ${finalEmail}!`);
+        fetchSalesData();
+      } else {
+        alert(`Aviso: ${data.error || 'Não foi possível disparar o e-mail.'}`);
+      }
+    } catch (err: any) {
+      alert(`Falha ao disparar e-mail: ${err.message}`);
+    } finally {
+      setResendingConfirmationId(null);
     }
   };
 
@@ -2898,6 +2943,16 @@ export default function BackofficeDashboard() {
               <Instagram className="w-3 h-3 text-pink-400" />
               <span>Direct Instagram & Bot</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('emails')}
+              className="px-3 py-1.5 bg-gold/15 hover:bg-gold hover:text-deep-black text-gold font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-gold/40 cursor-pointer shadow-xs"
+              title="Cadastrar provedor de e-mail (Gmail, Resend, SMTP) e gerenciar envios para clientes"
+            >
+              <Mail className="w-3 h-3 text-gold" />
+              <span>📧 E-mails de Compras</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -3212,6 +3267,24 @@ export default function BackofficeDashboard() {
         >
           <Instagram className="w-4 h-4 text-pink-600" />
           <span>📸 DIRECT INSTAGRAM & BOT</span>
+        </button>
+
+        {/* Gestão de E-mails e Notificações de Compras */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('emails')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'emails'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/60 hover:text-deep-black font-bold'
+          }`}
+          title="Cadastrar provedor de e-mail (Gmail, Resend, SMTP) e gerenciar disparos de confirmação de compra"
+        >
+          <Mail className="w-4 h-4 text-gold" />
+          <span>📧 E-MAILS & NOTIFICAÇÕES</span>
+          <span className="bg-gold text-deep-black text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest">
+            COMPRAS
+          </span>
         </button>
       </div>
 
@@ -5870,6 +5943,17 @@ export default function BackofficeDashboard() {
 
                               <button
                                 type="button"
+                                disabled={resendingConfirmationId === sale.order_id}
+                                onClick={() => handleResendOrderConfirmationEmail(sale.order_id, sale.customer_email, sale.customer_name)}
+                                className="px-2 py-1 bg-deep-black hover:bg-gold text-white hover:text-deep-black text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border border-gold shadow-2xs cursor-pointer disabled:opacity-50"
+                                title="Disparar/Reenviar e-mail oficial com fotos e dados do pedido para a cliente"
+                              >
+                                <Mail className="w-3 h-3 text-gold" />
+                                <span>{resendingConfirmationId === sale.order_id ? 'ENVIANDO...' : 'E-MAIL COMPRA'}</span>
+                              </button>
+
+                              <button
+                                type="button"
                                 onClick={() => {
                                   const cleanPhone = String(sale.customer_phone || '').replace(/\D/g, '');
                                   const fullPhone = cleanPhone.length === 10 ? `1${cleanPhone}` : cleanPhone;
@@ -6682,6 +6766,16 @@ export default function BackofficeDashboard() {
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>PDF</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={resendingConfirmationId === selectedSaleDetail.order_id}
+                    onClick={() => handleResendOrderConfirmationEmail(selectedSaleDetail.order_id, selectedSaleDetail.customer_email, selectedSaleDetail.customer_name)}
+                    className="py-2.5 px-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white border border-gold font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer disabled:opacity-50"
+                    title="Disparar/Reenviar e-mail oficial com fotos e dados do pedido para a cliente"
+                  >
+                    <Mail className="w-3.5 h-3.5 text-gold" />
+                    <span>{resendingConfirmationId === selectedSaleDetail.order_id ? 'ENVIANDO...' : 'E-MAIL COMPRA'}</span>
                   </button>
                   <button
                     type="button"
@@ -8713,6 +8807,9 @@ export default function BackofficeDashboard() {
 
       {/* 12. Direct Instagram & Atendimento Automatizado (Robô Meta API) */}
       {activeTab === 'instagram-direct' && <InstagramDirectView />}
+
+      {/* 13. Gestão e Configuração de E-mails e Notificações de Vendas */}
+      {activeTab === 'emails' && <EmailSettingsView />}
 
       {/* Modal Oficial de Baixa / Saída de Estoque Sem Custo (Uso Próprio, Brindes, Amostras) */}
       <StockWriteOffModal

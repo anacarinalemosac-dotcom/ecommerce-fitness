@@ -1,5 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import nodemailer from 'nodemailer';
+import { getEmailConfig, EmailConfig } from '@/lib/emailConfig';
 
 export interface EmailRecord {
   id: string;
@@ -440,7 +442,7 @@ export function generateShippingConfirmationHtml(order: any, trackingCode: strin
 }
 
 // ============================================================================
-// ENVIO EFETIVO VIA RESEND OU SIMULAÇÃO PERSISTIDA
+// ENVIO EFETIVO MULTI-PROVEDOR (GMAIL SMTP, RESEND API OU SMTP PERSONALIZADO)
 // ============================================================================
 
 export interface SendEmailOptions {
@@ -451,20 +453,159 @@ export interface SendEmailOptions {
   type: 'ORDER_CONFIRMATION' | 'SHIPPING_NOTIFICATION' | 'OWNER_SALE_NOTIFICATION' | 'GENERAL';
 }
 
-export async function sendEmail(opts: SendEmailOptions): Promise<{ success: boolean; simulated?: boolean; messageId?: string; error?: string }> {
+export async function sendEmail(opts: SendEmailOptions): Promise<{
+  success: boolean;
+  provider?: string;
+  simulated?: boolean;
+  messageId?: string;
+  error?: string;
+}> {
   const { to, subject, html, order_id, type } = opts;
 
   if (!to || !to.includes('@')) {
     console.warn(`[EMAIL] Destinatário inválido ignorado para o pedido #${order_id}:`, to);
-    return { success: false, error: 'E-mail inválido' };
+    return { success: false, error: 'E-mail do destinatário inválido.' };
   }
 
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.EMAIL_FROM || 'ANA Fitness Wear <orders@anafitwear.com>';
+  const config = getEmailConfig();
+  const effectiveFromName = config.fromName || 'ANA Fitness Wear';
 
-  // 1. Envio Real se houver chave do Resend configurada
-  if (resendApiKey) {
+  // --------------------------------------------------------------------------
+  // PROVEDOR 1: GMAIL / GOOGLE WORKSPACE SMTP (RECOMENDADO)
+  // --------------------------------------------------------------------------
+  const gmailUser = (config.gmailUser || process.env.GMAIL_USER || '').trim();
+  const gmailPass = (config.gmailAppPassword || process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '').trim();
+
+  if (config.provider === 'gmail' || (!config.provider && gmailUser && gmailPass) || (config.provider !== 'resend' && config.provider !== 'custom_smtp' && gmailUser && gmailPass)) {
     try {
+      if (!gmailUser || !gmailPass) {
+        throw new Error('Usuário ou Senha de Aplicativo do Gmail não configurados.');
+      }
+
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: gmailUser,
+          pass: gmailPass,
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: `"${effectiveFromName}" <${gmailUser}>`,
+        to,
+        subject,
+        html,
+      });
+
+      console.log(`✓ [EMAIL GMAIL ENVIADO] Para: ${to} | Assunto: ${subject} | MsgID: ${info.messageId}`);
+
+      saveEmailRecord({
+        id: `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        order_id,
+        to,
+        subject,
+        type,
+        status: 'SENT',
+        provider_id: info.messageId,
+        created_at: new Date().toISOString(),
+        html_preview: html,
+      });
+
+      return { success: true, provider: 'gmail', messageId: info.messageId };
+    } catch (err: any) {
+      console.error(`⚠ [ERRO GMAIL SMTP]:`, err.message || err);
+      let errMsg = err.message || 'Falha ao autenticar no Gmail.';
+      if (errMsg.includes('Invalid login') || errMsg.includes('535-5.7.8')) {
+        errMsg = 'Senha de App do Google incorreta ou expirada. Gere uma nova senha de 16 letras em myaccount.google.com/apppasswords.';
+      }
+
+      saveEmailRecord({
+        id: `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        order_id,
+        to,
+        subject,
+        type,
+        status: 'FAILED',
+        error: `[Gmail SMTP] ${errMsg}`,
+        created_at: new Date().toISOString(),
+        html_preview: html,
+      });
+
+      return { success: false, provider: 'gmail', error: errMsg };
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // PROVEDOR 2: SMTP PERSONALIZADO (ZOHO, OUTLOOK, HOSTINGER, CPANEL, AWS SES)
+  // --------------------------------------------------------------------------
+  if (config.provider === 'custom_smtp' && config.smtpHost && config.smtpUser && config.smtpPass) {
+    try {
+      const port = Number(config.smtpPort) || 465;
+      const secure = config.smtpSecure ?? (port === 465);
+
+      const transporter = nodemailer.createTransport({
+        host: config.smtpHost,
+        port,
+        secure,
+        auth: {
+          user: config.smtpUser,
+          pass: config.smtpPass,
+        },
+      });
+
+      const fromAddress = config.fromEmail || config.smtpUser;
+      const info = await transporter.sendMail({
+        from: `"${effectiveFromName}" <${fromAddress}>`,
+        to,
+        subject,
+        html,
+      });
+
+      console.log(`✓ [EMAIL SMTP ENVIADO] Para: ${to} | MsgID: ${info.messageId}`);
+
+      saveEmailRecord({
+        id: `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        order_id,
+        to,
+        subject,
+        type,
+        status: 'SENT',
+        provider_id: info.messageId,
+        created_at: new Date().toISOString(),
+        html_preview: html,
+      });
+
+      return { success: true, provider: 'custom_smtp', messageId: info.messageId };
+    } catch (err: any) {
+      console.error(`⚠ [ERRO CUSTOM SMTP]:`, err.message || err);
+      saveEmailRecord({
+        id: `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        order_id,
+        to,
+        subject,
+        type,
+        status: 'FAILED',
+        error: `[Custom SMTP] ${err.message}`,
+        created_at: new Date().toISOString(),
+        html_preview: html,
+      });
+
+      return { success: false, provider: 'custom_smtp', error: err.message };
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // PROVEDOR 3: RESEND API
+  // --------------------------------------------------------------------------
+  const resendApiKey = config.resendApiKey || process.env.RESEND_API_KEY;
+  const fromEmail = config.fromEmail
+    ? `"${effectiveFromName}" <${config.fromEmail}>`
+    : (process.env.EMAIL_FROM || 'ANA Fitness Wear <orders@anafitwear.com>');
+
+  if (config.provider === 'resend' || (!config.provider && resendApiKey)) {
+    try {
+      if (!resendApiKey) throw new Error('Chave de API do Resend não informada.');
+
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -482,7 +623,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ success: bool
       const resData = await response.json();
 
       if (response.ok && resData.id) {
-        console.log(`✓ [EMAIL REAL ENVIADO] Para: ${to} | Assunto: ${subject} | Resend ID: ${resData.id}`);
+        console.log(`✓ [EMAIL RESEND ENVIADO] Para: ${to} | Resend ID: ${resData.id}`);
         saveEmailRecord({
           id: `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           order_id,
@@ -494,11 +635,11 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ success: bool
           created_at: new Date().toISOString(),
           html_preview: html,
         });
-        return { success: true, messageId: resData.id };
+        return { success: true, provider: 'resend', messageId: resData.id };
       } else {
-        // Fallback inteligente: se o domínio próprio ainda não foi verificado no DNS do Resend, tenta com onboarding@resend.dev
+        // Fallback para onboarding se domínio não foi verificado
         if (resData.message && (resData.message.includes('domain') || resData.message.includes('verify')) && fromEmail !== 'ANA Fitness Wear <onboarding@resend.dev>') {
-          console.log('Domínio próprio ainda não verificado no Resend. Tentando fallback com onboarding@resend.dev...');
+          console.log('Domínio próprio não verificado no Resend. Tentando fallback...');
           try {
             const fbResponse = await fetch('https://api.resend.com/emails', {
               method: 'POST',
@@ -515,7 +656,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ success: bool
             });
             const fbData = await fbResponse.json();
             if (fbResponse.ok && fbData.id) {
-              console.log(`✓ [EMAIL REAL ENVIADO COM SUCESSO VIA RESEND ONBOARDING] Para: ${to} | ID: ${fbData.id}`);
+              console.log(`✓ [EMAIL RESEND ONBOARDING ENVIADO] Para: ${to} | ID: ${fbData.id}`);
               saveEmailRecord({
                 id: `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
                 order_id,
@@ -527,14 +668,11 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ success: bool
                 created_at: new Date().toISOString(),
                 html_preview: html,
               });
-              return { success: true, messageId: fbData.id };
+              return { success: true, provider: 'resend', messageId: fbData.id };
             }
-          } catch (fbErr) {
-            console.warn('Falha no fallback do Resend:', fbErr);
-          }
+          } catch (_) {}
         }
 
-        console.warn(`⚠ [RESEND API ERRO]:`, resData);
         saveEmailRecord({
           id: `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           order_id,
@@ -542,11 +680,11 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ success: bool
           subject,
           type,
           status: 'FAILED',
-          error: resData.message || JSON.stringify(resData),
+          error: `[Resend] ${resData.message || JSON.stringify(resData)}`,
           created_at: new Date().toISOString(),
           html_preview: html,
         });
-        return { success: false, error: resData.message || 'Falha no Resend' };
+        return { success: false, provider: 'resend', error: resData.message || 'Falha no Resend' };
       }
     } catch (err: any) {
       console.error(`Erro ao disparar via Resend:`, err);
@@ -557,17 +695,18 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ success: bool
         subject,
         type,
         status: 'FAILED',
-        error: err.message,
+        error: `[Resend] ${err.message}`,
         created_at: new Date().toISOString(),
         html_preview: html,
       });
-      return { success: false, error: err.message };
+      return { success: false, provider: 'resend', error: err.message };
     }
   }
 
-  // 2. Modo Simulação transparente (quando chave ainda não estiver no .env)
-  // Grava na outbox para que a Ana veja que o e-mail foi preparado e gerado
-  console.log(`✉ [EMAIL SIMULADO & REGISTRADO NA OUTBOX]`);
+  // --------------------------------------------------------------------------
+  // PROVEDOR 4: MODO SIMULADO / SEM PROVEDOR CONFIGURADO
+  // --------------------------------------------------------------------------
+  console.log(`✉ [EMAIL SIMULADO & REGISTRADO NA CAIXA DE SAÍDA]`);
   console.log(`   Destinatário: ${to}`);
   console.log(`   Assunto: ${subject}`);
   console.log(`   Pedido: #${order_id} | Tipo: ${type}`);
@@ -584,7 +723,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ success: bool
     html_preview: html,
   });
 
-  return { success: true, simulated: true, messageId: mockId };
+  return { success: true, simulated: true, provider: 'simulated', messageId: mockId };
 }
 
 // Disparo facilitado de Confirmação de Pedido
@@ -818,9 +957,12 @@ export async function sendOwnerSaleNotificationEmail(order: any) {
   const discount = Number(order.discount_amount || 0);
   const total = Number(order.total_amount || Math.max(0, subtotal + shippingFee - discount));
 
-  const configuredOwners = process.env.STORE_OWNER_EMAIL
-    ? process.env.STORE_OWNER_EMAIL.split(',').map((s) => s.trim()).filter(Boolean)
-    : ['anafitweareua@gmail.com', 'anacarinalemos.ac@gmail.com'];
+  const config = getEmailConfig();
+  const configuredOwners = config.ownerNotificationEmail
+    ? config.ownerNotificationEmail.split(',').map((s) => s.trim()).filter(Boolean)
+    : (process.env.STORE_OWNER_EMAIL
+      ? process.env.STORE_OWNER_EMAIL.split(',').map((s) => s.trim()).filter(Boolean)
+      : ['anafitweareua@gmail.com', 'anacarinalemos.ac@gmail.com']);
 
   const uniqueRecipients = Array.from(new Set(configuredOwners));
   const subject = `🛍️ NOVA VENDA! Pedido #${orderId} • ${formatCurrency(total)} (${customerName})`;
@@ -1184,5 +1326,113 @@ export async function sendMarketingLaunchEmail(opts: {
     type: 'GENERAL',
   });
 }
+
+// ============================================================================
+// TEMPLATE 6: E-MAIL DE TESTE DE CONECTIVIDADE
+// ============================================================================
+export function generateTestEmailHtml(toEmail: string, providerName: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teste de Conexão de E-mail - ANA Fitness Wear</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f6f6f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding: 30px 10px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background: #ffffff; border: 2px solid #0b0b0b; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+          <tr>
+            <td style="background-color: #0b0b0b; padding: 32px 24px; text-align: center; border-bottom: 3px solid #d4af37;">
+              <div style="color: #d4af37; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;">
+                SISTEMA OFICIAL DE NOTIFICAÇÕES &bull; LEOMINSTER, MA
+              </div>
+              <h1 style="color: #ffffff; font-size: 24px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; margin: 8px 0 0 0;">
+                ANA FITNESS WEAR
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 28px 30px;">
+              <div style="background-color: #ecfdf5; border: 2px solid #10b981; padding: 16px 20px; border-radius: 6px; text-align: center; margin-bottom: 24px;">
+                <div style="font-size: 24px; margin-bottom: 4px;">⚡ ✅</div>
+                <h2 style="font-size: 18px; font-weight: 900; color: #065f46; margin: 0; text-transform: uppercase;">
+                  CONEXÃO DE E-MAIL ATIVA COM SUCESSO!
+                </h2>
+                <p style="font-size: 13px; color: #047857; margin: 6px 0 0 0;">
+                  Seus clientes agora receberão a confirmação de compra e código de rastreamento automaticamente.
+                </p>
+              </div>
+
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fafafa; border: 1px solid #eee; padding: 16px; font-size: 13px; line-height: 1.6; margin-bottom: 24px;">
+                <tr>
+                  <td><strong>Provedor Ativo:</strong></td>
+                  <td align="right" style="font-weight: 800; text-transform: uppercase; color: #b45309;">${providerName}</td>
+                </tr>
+                <tr>
+                  <td><strong>Destinatário do Teste:</strong></td>
+                  <td align="right" style="font-family: monospace;">${toEmail}</td>
+                </tr>
+                <tr>
+                  <td><strong>Data e Hora:</strong></td>
+                  <td align="right" style="color: #666;">${new Date().toLocaleString('pt-BR')}</td>
+                </tr>
+                <tr>
+                  <td><strong>Status de Envio:</strong></td>
+                  <td align="right" style="color: #059669; font-weight: 800;">✓ AUTENTICADO & ENTREGUE</td>
+                </tr>
+              </table>
+
+              <p style="font-size: 12px; color: #666; line-height: 1.5; margin: 0 0 20px 0;">
+                Quando uma cliente fizer uma compra no site ou pelo WhatsApp/PDV, o e-mail de confirmação com a foto das peças, tamanhos, cores, endereço de entrega e código do pedido será disparado através desta mesma configuração.
+              </p>
+
+              <div style="text-align: center;">
+                <a href="https://anafitwear.com/backoffice" style="display: inline-block; background-color: #0b0b0b; color: #d4af37; padding: 12px 28px; font-size: 11px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; text-decoration: none; border: 2px solid #d4af37;">
+                  VOLTAR AO BACKOFFICE &rarr;
+                </a>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f2f2f2; padding: 18px 24px; text-align: center; border-top: 1px solid #e0e0e0; font-size: 11px; color: #777;">
+              ANA FITNESS WEAR LLC &bull; Leominster, Massachusetts &bull; USA
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+export async function sendTestEmail(targetEmail?: string) {
+  const config = getEmailConfig();
+  const recipient = (targetEmail || config.ownerNotificationEmail?.split(',')[0] || config.gmailUser || 'anafitweareua@gmail.com').trim();
+
+  const providerName =
+    config.provider === 'gmail'
+      ? 'Google Workspace / Gmail SMTP'
+      : config.provider === 'resend'
+      ? 'Resend API'
+      : config.provider === 'custom_smtp'
+      ? 'SMTP Personalizado'
+      : 'Modo Simulado';
+
+  const subject = `⚡ Teste de Envio de E-mail Confirmado - ANA Fitness Wear (${providerName})`;
+  const html = generateTestEmailHtml(recipient, providerName);
+
+  return sendEmail({
+    to: recipient,
+    subject,
+    html,
+    order_id: 'TEST-CONNECTION',
+    type: 'GENERAL',
+  });
+}
+
 
 
