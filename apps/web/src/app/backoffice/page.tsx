@@ -304,7 +304,7 @@ export default function BackofficeDashboard() {
     active: true,
     title: 'Promoção Especial de Combo',
     required_quantity: 3,
-    bundle_price: 99.0,
+    bundle_price: 120.0,
     badge_text: 'COMBO 3 PEÇAS',
     description: 'Selecione quaisquer 3 conjuntos participantes e feche o combo pelo valor promocional configurado!',
     product_ids: [],

@@ -93,7 +93,7 @@ export default function ComboBuilderPage() {
   }, []);
 
   const requiredQty = promo?.required_quantity || 3;
-  const bundlePrice = promo?.bundle_price || 99.0;
+  const bundlePrice = promo?.bundle_price || 120.0;
   const promoProductIds = new Set((promo?.product_ids || []).map((id) => String(id).toLowerCase()));
   const promoProductSlugs = new Set((promo?.product_slugs || []).map((s) => String(s).toLowerCase()));
 
@@ -418,12 +418,12 @@ export default function ComboBuilderPage() {
               {isComboComplete && discountAmount > 0 && (
                 <p className="text-xs text-emerald-400 font-bold uppercase flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-emerald-400" />
-                  <span>VOCÊ ECONOMIZA ${discountAmount.toFixed(2)} PAGANDO NO ZELLE, VENMO OU CASH APP!</span>
+                  <span>VOCÊ ECONOMIZA ${discountAmount.toFixed(2)} ($120 NO ZELLE/VENMO OU $129,90 NO AFTERPAY/CARTÃO)!</span>
                 </p>
               )}
               {!isComboComplete && (
                 <p className="text-[11px] text-white/70 uppercase">
-                  Complete os {requiredQty} slots para destravar o valor de ${bundlePrice.toFixed(2)} (válido no Zelle, Venmo ou Cash App).
+                  Complete os {requiredQty} slots para destravar o valor de $120 no Zelle/Venmo ou $129,90 no cartão/Afterpay!
                 </p>
               )}
             </div>

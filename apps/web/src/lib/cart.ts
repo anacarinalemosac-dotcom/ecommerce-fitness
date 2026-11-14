@@ -485,10 +485,7 @@ export function calculateComboDiscount(
   promo: any,
   paymentMethod?: string | null
 ): ComboDiscountResult {
-  const isGateway = isGatewayPaymentMethod(paymentMethod);
-  const defaultBundlePrice = isGateway
-    ? Number(promo?.installment_bundle_price || 120.0)
-    : Number(promo?.bundle_price || 99.0);
+  const defaultBundlePrice = Number(promo?.bundle_price || 120.0);
 
   const defaultRes: ComboDiscountResult = {
     hasCombo: false,
@@ -507,9 +504,7 @@ export function calculateComboDiscount(
   }
 
   const reqQty = Number(promo.required_quantity) || 3;
-  const bundlePrice = isGateway
-    ? Number(promo.installment_bundle_price || 120.0)
-    : Number(promo.bundle_price || 99.0);
+  const bundlePrice = Number(promo.bundle_price || 120.0);
   const promoProductIds = new Set((promo.product_ids || []).map((id: string) => String(id).toLowerCase()));
   const promoProductSlugs = new Set((promo.product_slugs || []).map((s: string) => String(s).toLowerCase()));
 

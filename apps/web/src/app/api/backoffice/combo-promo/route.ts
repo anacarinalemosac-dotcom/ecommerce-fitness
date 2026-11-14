@@ -22,7 +22,7 @@ const DEFAULT_CONFIG: ComboPromoConfig = {
   active: true,
   title: 'Promoção Especial de Combo',
   required_quantity: 3,
-  bundle_price: 99.0,
+  bundle_price: 120.0,
   badge_text: 'COMBO 3 PEÇAS',
   description: 'Selecione quaisquer 3 conjuntos participantes e garanta o valor promocional de combo no fechamento do pedido!',
   product_ids: [],

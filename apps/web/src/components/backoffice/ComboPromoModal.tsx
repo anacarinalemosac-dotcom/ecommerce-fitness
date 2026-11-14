@@ -34,7 +34,7 @@ export function ComboPromoModal({
   const [active, setActive] = useState(comboPromo?.active ?? true);
   const [title, setTitle] = useState(comboPromo?.title || 'Promoção Especial de Combo');
   const [requiredQty, setRequiredQty] = useState<number>(comboPromo?.required_quantity || 3);
-  const [bundlePrice, setBundlePrice] = useState<number>(comboPromo?.bundle_price || 99.0);
+  const [bundlePrice, setBundlePrice] = useState<number>(comboPromo?.bundle_price || 120.0);
   const [badgeText, setBadgeText] = useState(comboPromo?.badge_text || 'COMBO 3 PEÇAS');
   const [description, setDescription] = useState(
     comboPromo?.description || 'Selecione quaisquer 3 conjuntos participantes e feche o combo pelo valor promocional configurado!'
@@ -48,7 +48,7 @@ export function ComboPromoModal({
       setActive(comboPromo.active ?? true);
       setTitle(comboPromo.title || 'Promoção Especial de Combo');
       setRequiredQty(comboPromo.required_quantity || 3);
-      setBundlePrice(comboPromo.bundle_price || 99.0);
+      setBundlePrice(comboPromo.bundle_price || 120.0);
       setBadgeText(comboPromo.badge_text || 'COMBO 3 PEÇAS');
       setDescription(
         comboPromo.description ||
@@ -218,10 +218,10 @@ export function ComboPromoModal({
                 min={1}
                 required
                 value={bundlePrice}
-                onChange={(e) => setBundlePrice(Number(e.target.value) || 99.0)}
+                onChange={(e) => setBundlePrice(Number(e.target.value) || 120.0)}
                 className="w-full px-3.5 py-2.5 text-sm font-mono font-black border border-deep-black/30 focus:outline-none focus:border-deep-black bg-white"
               />
-              <span className="text-[10px] text-deep-black/50 block">Ex: 99.00 (Os 3 fecham por $99)</span>
+              <span className="text-[10px] text-deep-black/50 block">Ex: 120.00 (Os 3 fecham por $120 no Zelle ou $129,90 no cartão)</span>
             </div>
 
             <div className="space-y-1.5">

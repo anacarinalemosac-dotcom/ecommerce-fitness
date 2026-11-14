@@ -390,8 +390,8 @@ export function SideCartDrawer() {
                     <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
                     <span>
                       {lang === 'pt'
-                        ? `${translateBadgeText(comboPromo.title || 'Combo', lang)} ativo: $99 no Zelle/Venmo ou $120 + $9.90 frete no Afterpay/Affirm/Cartão (4x $32.48)!`
-                        : `${translateBadgeText(comboPromo.title || 'Combo', lang)} active: $99 on Zelle/Venmo or $120 + $9.90 shipping on Afterpay/Affirm/Card (4x $32.48)!`}
+                        ? `${translateBadgeText(comboPromo.title || 'Combo', lang)} ativo: $120 no Zelle/Venmo ou $129,90 no Afterpay/Affirm/Cartão (4x $32.48)!`
+                        : `${translateBadgeText(comboPromo.title || 'Combo', lang)} active: $120 on Zelle/Venmo or $129.90 on Afterpay/Affirm/Card (4x $32.48)!`}
                     </span>
                   </>
                 ) : comboResult.participatingCount > 0 ? (
@@ -399,8 +399,8 @@ export function SideCartDrawer() {
                     <Sparkles className="w-4 h-4 text-gold shrink-0" />
                     <span>
                       {lang === 'pt'
-                        ? `Falta(m) ${comboResult.neededForNextCombo} peça(s) participante(s) para o ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 99).toFixed(2)})!`
-                        : `Add ${comboResult.neededForNextCombo} more combo item(s) to unlock ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 99).toFixed(2)})!`}
+                        ? `Falta(m) ${comboResult.neededForNextCombo} peça(s) participante(s) para o ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 120).toFixed(2)})!`
+                        : `Add ${comboResult.neededForNextCombo} more combo item(s) to unlock ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 120).toFixed(2)})!`}
                     </span>
                   </>
                 ) : null}
@@ -594,8 +594,8 @@ export function SideCartDrawer() {
                       </div>
                       <p className="text-[9px] text-emerald-800/80 font-bold uppercase text-right">
                         {lang === 'pt'
-                          ? '✓ $99 Zelle/Venmo • $120 + frete Afterpay/Cartão (4x $32.48)'
-                          : '✓ $99 Zelle/Venmo • $120 + shipping Afterpay/Card (4x $32.48)'}
+                          ? '✓ $120 Zelle/Venmo (frete incluso) • $129,90 Afterpay/Cartão (4x $32.48)'
+                          : '✓ $120 Zelle/Venmo (shipping included) • $129.90 Afterpay/Card (4x $32.48)'}
                       </p>
                     </div>
                   )}
