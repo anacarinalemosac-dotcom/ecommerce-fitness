@@ -32,6 +32,7 @@ interface LiveStoreData {
 
 const RADAR_PRODUCT_ID = '00000000-0000-0000-0000-000000000099';
 const RADAR_SLUG = '__live_radar_state__';
+const RADAR_CLOUD_OBJECT_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a1dc24ac572cfd';
 const LIVE_STORE_FILE = path.join(process.cwd(), 'live_store_db.json');
 
 // Cache em memória para aceleração entre requisições
@@ -48,6 +49,7 @@ async function readStore(): Promise<LiveStoreData> {
     return memoryStore;
   }
 
+  // 1. Tenta carregar do Supabase
   try {
     const { data: row, error } = await supabaseServer
       .from('products')
@@ -72,7 +74,29 @@ async function readStore(): Promise<LiveStoreData> {
     console.warn('Erro ao ler radar do Supabase:', err);
   }
 
-  // Fallback para arquivo local se existir
+  // 2. Camada de Nuvem Resiliente (sincronização Vercel multi-instância mesmo se o banco atingir cota)
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(RADAR_CLOUD_OBJECT_URL, {
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+    clearTimeout(timer);
+    if (res.ok) {
+      const json = await res.json();
+      if (json?.data?.visitors && typeof json.data.visitors === 'object') {
+        memoryStore = {
+          visitors: json.data.visitors || {},
+          events: Array.isArray(json.data.events) ? json.data.events : [],
+        };
+        lastLoadedFromSupabase = now;
+        return memoryStore;
+      }
+    }
+  } catch (_) {}
+
+  // 3. Fallback para arquivo local se existir
   try {
     if (fs.existsSync(LIVE_STORE_FILE)) {
       const raw = fs.readFileSync(LIVE_STORE_FILE, 'utf8');
@@ -113,7 +137,7 @@ async function writeStore(data: LiveStoreData): Promise<void> {
 
   const serialized = JSON.stringify(data);
 
-  // 1. Grava no Supabase (sincronização na nuvem em tempo real para Vercel)
+  // 1. Grava no Supabase (se disponível)
   try {
     await supabaseServer.from('products').upsert({
       id: RADAR_PRODUCT_ID,
@@ -125,7 +149,23 @@ async function writeStore(data: LiveStoreData): Promise<void> {
     console.warn('Erro ao salvar radar no Supabase:', err);
   }
 
-  // 2. Grava no arquivo local (quando permitido pelo ambiente)
+  // 2. Grava na Nuvem Resiliente (garante persistência multi-instância na Vercel)
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    await fetch(RADAR_CLOUD_OBJECT_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'ana_fitness_live_state',
+        data: { visitors: prunedVisitors, events: data.events },
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+  } catch (_) {}
+
+  // 3. Grava no arquivo local (quando permitido pelo ambiente)
   try {
     fs.writeFileSync(LIVE_STORE_FILE, serialized, 'utf8');
   } catch (_) {}

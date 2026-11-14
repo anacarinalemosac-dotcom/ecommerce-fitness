@@ -15,6 +15,7 @@ import {
   Activity,
   Lock,
   ChevronDown,
+  ShoppingCart,
 } from 'lucide-react';
 
 interface WixHeaderProps {
@@ -24,6 +25,8 @@ interface WixHeaderProps {
   storeOffline?: boolean;
   onToggleStoreOffline?: () => void;
   liveVisitorsCount?: number;
+  activeCartsCount?: number;
+  abandonedCartsCount?: number;
   soundEnabled: boolean;
   onToggleSound: () => void;
   browserNotificationsActive: boolean;
@@ -40,6 +43,8 @@ export function WixHeader({
   storeOffline = false,
   onToggleStoreOffline,
   liveVisitorsCount = 0,
+  activeCartsCount = 0,
+  abandonedCartsCount = 0,
   soundEnabled,
   onToggleSound,
   browserNotificationsActive,
@@ -104,19 +109,38 @@ export function WixHeader({
 
       {/* Lado Direito: Ações Rápidas */}
       <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* Radar Ao Vivo */}
+        {/* Radar Ao Vivo & Carrinhos */}
         <button
           type="button"
           onClick={onOpenLiveFeed}
-          className="hidden md:flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-md transition"
-          title="Ver visitantes em tempo real"
+          className="hidden md:flex items-center gap-2 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-md transition border border-gray-200"
+          title="Ver visitantes e carrinhos em tempo real"
         >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          <span className="flex items-center gap-1">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="font-mono text-emerald-700 font-bold">{liveVisitorsCount}</span>
+            <span className="text-gray-500 text-[11px]">online</span>
           </span>
-          <span className="font-mono text-emerald-700 font-bold">{liveVisitorsCount}</span>
-          <span className="text-gray-500 text-[11px]">online</span>
+
+          <span className="text-gray-300">|</span>
+
+          <span className="flex items-center gap-1 text-[11px] text-gray-700">
+            <ShoppingCart className="w-3.5 h-3.5 text-amber-600" />
+            <span className="font-mono font-bold text-amber-700">{activeCartsCount}</span>
+            <span className="text-gray-500">carrinho{activeCartsCount === 1 ? '' : 's'}</span>
+          </span>
+
+          {abandonedCartsCount > 0 && (
+            <span
+              className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded-xs font-mono font-bold text-[10px]"
+              title={`${abandonedCartsCount} carrinhos abandonados há mais de meia hora`}
+            >
+              {abandonedCartsCount} abandonado{abandonedCartsCount === 1 ? '' : 's'}
+            </span>
+          )}
         </button>
 
         {/* Som On/Off */}

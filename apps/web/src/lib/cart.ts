@@ -113,18 +113,41 @@ function syncReservationsWithServer(items: CartItem[], expiresAt?: number | null
       return;
     }
 
+    let visitorId = '';
+    try {
+      visitorId = sessionStorage.getItem('ana_vis_id') || '';
+    } catch (_) {}
+
+    let customerName = '';
+    let customerPhone = '';
+    try {
+      const savedCheckout = localStorage.getItem('ana_checkout_draft');
+      if (savedCheckout) {
+        const parsed = JSON.parse(savedCheckout);
+        customerName = parsed.name || parsed.customerName || '';
+        customerPhone = parsed.phone || parsed.customerPhone || '';
+      }
+    } catch (_) {}
+
     fetch('/api/cart/reservations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,
       body: JSON.stringify({
         session_id: sessionId,
+        visitor_id: visitorId,
+        customer_name: customerName,
+        customer_phone: customerPhone,
         items: items.map((it) => ({
-          sku: it.sku,
+          id: it.id,
+          title: it.title || 'Peça Fitness',
           slug: it.slug,
           size: it.size,
           color: it.color,
+          sku: it.sku,
+          price: Number(it.price) || 0,
           quantity: it.quantity || 1,
+          image: it.image || '',
         })),
         expires_at: expiresAt || Date.now() + CART_EXPIRATION_MS,
       }),

@@ -5,6 +5,7 @@ import {
   summarizeOtherSessionHolds,
   upsertSessionCartReservations,
 } from '@/lib/cartReservationsStore';
+import { upsertTrackedCart } from '@/lib/cartTrackerStore';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -49,6 +50,31 @@ export async function POST(req: NextRequest) {
     const active = await upsertSessionCartReservations(sessionId, items, expiresAt);
     const { byKey, nearestExpiry } = summarizeOtherSessionHolds(active, sessionId);
 
+    // Registra no rastreador de carrinhos em tempo real (ativos agora vs abandonados há +30m)
+    try {
+      await upsertTrackedCart({
+        sessionId,
+        visitorId: body?.visitor_id,
+        items: items.map((it: any) => ({
+          id: it.id,
+          title: it.title || 'Peça Fitness',
+          slug: it.slug,
+          size: it.size,
+          color: it.color,
+          sku: it.sku,
+          price: Number(it.price) || 0,
+          quantity: Number(it.quantity) || 1,
+          image: it.image || '',
+        })),
+        customerName: body?.customer_name,
+        customerPhone: body?.customer_phone,
+        customerEmail: body?.customer_email,
+        city: body?.city,
+        region: body?.region,
+        device: body?.device,
+      });
+    } catch (_) {}
+
     return NextResponse.json({
       success: true,
       byKey,
@@ -66,6 +92,9 @@ export async function DELETE(req: NextRequest) {
     const sessionId = searchParams.get('session_id') || '';
     if (sessionId) {
       await clearSessionCartReservations(sessionId);
+      try {
+        await upsertTrackedCart({ sessionId, items: [] });
+      } catch (_) {}
     }
     return NextResponse.json({ success: true });
   } catch (err: any) {

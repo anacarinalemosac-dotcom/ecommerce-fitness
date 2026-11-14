@@ -28,6 +28,8 @@ import {
   ExternalLink,
   Calendar,
   CalendarDays,
+  ShoppingCart,
+  MessageCircle,
 } from 'lucide-react';
 import { computeSaleFinancials } from '@/lib/salesFinancials';
 import { isOrderPendingShipping, sortOrdersPendingFirst } from '@/lib/orderPriority';
@@ -939,6 +941,201 @@ export function DashboardMetricsView({
             </div>
           )}
         </div>
+
+        {/* =========================================================================
+            2. MONITOR DE CARRINHOS: ATIVOS AGORA vs ABANDONADOS HÁ +30 MINUTOS
+           ========================================================================= */}
+        {(() => {
+          const cartStats = liveFeed?.cartStats || {
+            activeCount: 0,
+            abandonedCount: 0,
+            activeCarts: [],
+            abandonedCarts: [],
+            totalActiveValue: 0,
+            totalAbandonedValue: 0,
+          };
+
+          const formatCartTime = (ts: number) => {
+            const diffMin = Math.max(0, Math.floor((Date.now() - ts) / (60 * 1000)));
+            if (diffMin < 1) return 'há instantes';
+            if (diffMin < 60) return `há ${diffMin} min`;
+            const h = Math.floor(diffMin / 60);
+            const m = diffMin % 60;
+            return `há ${h}h ${m > 0 ? `${m}m` : ''}`;
+          };
+
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+              {/* CARD ESQUERDO: CARRINHOS SENDO ENCHIDOS NO MOMENTO (< 30 MIN) */}
+              <div className="bg-white border-2 border-emerald-600 p-5 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-emerald-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+                        <ShoppingCart className="w-4 h-4 text-emerald-600" />
+                        <span>CARRINHOS SENDO ENCHIDOS AGORA</span>
+                      </h4>
+                      <p className="text-[10px] text-gray-500 font-medium">
+                        Clientes com peças na sacola interagindo nos últimos 30 min
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-mono font-black uppercase rounded-xs">
+                    {cartStats.activeCount} ATIVO{cartStats.activeCount === 1 ? '' : 'S'}
+                  </span>
+                </div>
+
+                <div className="flex items-baseline justify-between">
+                  <div className="text-2xl sm:text-3xl font-black text-gray-900 font-mono">
+                    {cartStats.activeCount} <span className="text-xs text-gray-500 font-sans font-bold">carrinho{cartStats.activeCount === 1 ? '' : 's'}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-gray-500 uppercase font-bold block">POTENCIAL EM COMPRAS</span>
+                    <span className="text-lg font-black text-emerald-700 font-mono">${cartStats.totalActiveValue.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Lista de Carrinhos Ativos */}
+                {cartStats.activeCarts.length > 0 ? (
+                  <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1 divide-y divide-gray-100">
+                    {cartStats.activeCarts.map((c: any, cIdx: number) => (
+                      <div key={cIdx} className="pt-2.5 first:pt-0 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-gray-900 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <span>{c.customerName || (c.city ? `Cliente de ${c.city}, ${c.region || 'US'}` : `Visitante #${cIdx + 1}`)}</span>
+                            {c.device && <span className="text-[10px] text-gray-400 font-normal">({c.device})</span>}
+                          </span>
+                          <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-xs">
+                            {formatCartTime(c.lastUpdatedAt)}
+                          </span>
+                        </div>
+
+                        {/* Itens do Carrinho */}
+                        <div className="space-y-1 pl-3.5 border-l-2 border-emerald-200">
+                          {c.items.map((it: any, itIdx: number) => (
+                            <div key={itIdx} className="flex items-center justify-between text-xs text-gray-700">
+                              <span className="truncate pr-2">
+                                • {it.title} <strong className="text-gray-900 font-mono">[{it.size}]</strong> {it.quantity > 1 ? `x${it.quantity}` : ''}
+                              </span>
+                              <span className="font-mono text-gray-900 font-semibold shrink-0">
+                                ${(it.price * it.quantity).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between items-center text-xs font-black text-gray-900 pt-1">
+                            <span>TOTAL NA SACOLA:</span>
+                            <span className="font-mono text-emerald-700">${Number(c.subtotal || 0).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-gray-50 border border-gray-200 text-center text-xs text-gray-500 rounded-xs">
+                    Nenhum carrinho com peças no momento. Assim que um cliente adicionar um produto, aparecerá aqui instantaneamente.
+                  </div>
+                )}
+              </div>
+
+              {/* CARD DIREITO: CARRINHOS ABANDONADOS HÁ +30 MINUTOS */}
+              <div className="bg-white border-2 border-amber-500 p-5 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-amber-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-amber-950 flex items-center gap-1.5">
+                        <span>CARRINHOS ABANDONADOS (+30 MIN)</span>
+                      </h4>
+                      <p className="text-[10px] text-gray-500 font-medium">
+                        Carrinhos com peças montadas sem finalização há mais de meia hora
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-mono font-black uppercase rounded-xs">
+                    {cartStats.abandonedCount} ABANDONADO{cartStats.abandonedCount === 1 ? '' : 'S'}
+                  </span>
+                </div>
+
+                <div className="flex items-baseline justify-between">
+                  <div className="text-2xl sm:text-3xl font-black text-gray-900 font-mono">
+                    {cartStats.abandonedCount} <span className="text-xs text-gray-500 font-sans font-bold">carrinho{cartStats.abandonedCount === 1 ? '' : 's'}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-gray-500 uppercase font-bold block">VALOR A RECUPERAR</span>
+                    <span className="text-lg font-black text-amber-700 font-mono">${cartStats.totalAbandonedValue.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Lista de Carrinhos Abandonados */}
+                {cartStats.abandonedCarts.length > 0 ? (
+                  <div className="space-y-3 max-h-72 overflow-y-auto pr-1 divide-y divide-gray-100">
+                    {cartStats.abandonedCarts.map((c: any, cIdx: number) => {
+                      const summaryText = c.items?.map((it: any) => `${it.title} (${it.size})`).join(', ') || 'peças da sua sacola';
+                      const waText = `Olá${c.customerName ? ` ${c.customerName}` : ''}! Vi que você escolheu ${summaryText} na Ana Fitness Wear mas não concluiu o pedido. Posso te ajudar a finalizar com envio rápido dos Correios ou tirar alguma dúvida sobre o tamanho?`;
+                      const waPhone = (c.customerPhone || '19783139452').replace(/\D/g, '');
+                      const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(waText)}`;
+
+                      return (
+                        <div key={cIdx} className="pt-2.5 first:pt-0 space-y-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-gray-900 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-amber-500" />
+                              <span>{c.customerName || (c.city ? `Cliente de ${c.city}, ${c.region || 'US'}` : `Carrinho #${cIdx + 1}`)}</span>
+                              {c.customerPhone && <span className="text-[10px] text-gray-500 font-mono">({c.customerPhone})</span>}
+                            </span>
+                            <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-xs">
+                              Parou {formatCartTime(c.lastUpdatedAt)}
+                            </span>
+                          </div>
+
+                          {/* Itens Abandonados */}
+                          <div className="space-y-1 pl-3.5 border-l-2 border-amber-300">
+                            {c.items.map((it: any, itIdx: number) => (
+                              <div key={itIdx} className="flex items-center justify-between text-xs text-gray-700">
+                                <span className="truncate pr-2">
+                                  • {it.title} <strong className="text-gray-900 font-mono">[{it.size}]</strong> {it.quantity > 1 ? `x${it.quantity}` : ''}
+                                </span>
+                                <span className="font-mono text-gray-900 font-semibold shrink-0">
+                                  ${(it.price * it.quantity).toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
+                            <div className="flex justify-between items-center text-xs font-black text-gray-900 pt-1">
+                              <span>TOTAL ABANDONADO:</span>
+                              <span className="font-mono text-amber-700">${Number(c.subtotal || 0).toFixed(2)}</span>
+                            </div>
+                          </div>
+
+                          {/* Botão de Recuperação no WhatsApp */}
+                          <div className="pt-1">
+                            <a
+                              href={waUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-[10px] uppercase tracking-wider rounded-xs transition shadow-2xs"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 text-deep-black" />
+                              <span>Recuperar Venda no WhatsApp</span>
+                            </a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-gray-50 border border-gray-200 text-center text-xs text-gray-500 rounded-xs">
+                    Nenhum carrinho abandonado há mais de 30 minutos.
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
       </section>
 

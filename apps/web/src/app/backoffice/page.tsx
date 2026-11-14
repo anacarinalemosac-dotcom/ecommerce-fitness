@@ -76,6 +76,7 @@ import {
   AlertTriangle,
   Phone,
   Power,
+  ShoppingCart,
 } from 'lucide-react';
 import { computeSaleFinancials } from '@/lib/salesFinancials';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
@@ -1394,11 +1395,27 @@ export default function BackofficeDashboard() {
     activeVisitors: any[];
     topCities: { city: string; count: number }[];
     recentEvents: any[];
+    cartStats?: {
+      activeCount: number;
+      abandonedCount: number;
+      activeCarts: any[];
+      abandonedCarts: any[];
+      totalActiveValue: number;
+      totalAbandonedValue: number;
+    };
   }>({
     activeCount: 4,
     activeVisitors: [],
     topCities: [],
     recentEvents: [],
+    cartStats: {
+      activeCount: 0,
+      abandonedCount: 0,
+      activeCarts: [],
+      abandonedCarts: [],
+      totalActiveValue: 0,
+      totalAbandonedValue: 0,
+    },
   });
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [browserNotificationsActive, setBrowserNotificationsActive] = useState(false);
@@ -2563,6 +2580,8 @@ export default function BackofficeDashboard() {
             storeOffline={siteInfo.storeOffline}
             onToggleStoreOffline={() => updateSiteInfo({ storeOffline: !siteInfo.storeOffline })}
             liveVisitorsCount={liveFeed?.activeCount || onlineCount}
+            activeCartsCount={liveFeed?.cartStats?.activeCount || 0}
+            abandonedCartsCount={liveFeed?.cartStats?.abandonedCount || 0}
             soundEnabled={soundEnabled}
             onToggleSound={() => setSoundEnabled(!soundEnabled)}
             browserNotificationsActive={browserNotificationsActive}
@@ -6091,6 +6110,189 @@ export default function BackofficeDashboard() {
               </tbody>
             </table>
           </div>
+
+          {/* ========================================================
+              RADAR DE CARRINHOS: SENDO ENCHIDOS AGORA vs ABANDONADOS (+30 MIN)
+             ======================================================== */}
+          {(() => {
+            const cartStats = liveFeed?.cartStats || {
+              activeCount: 0,
+              abandonedCount: 0,
+              activeCarts: [],
+              abandonedCarts: [],
+              totalActiveValue: 0,
+              totalAbandonedValue: 0,
+            };
+
+            const formatCartTime = (ts: number) => {
+              const diffMin = Math.max(0, Math.floor((Date.now() - ts) / (60 * 1000)));
+              if (diffMin < 1) return 'há instantes';
+              if (diffMin < 60) return `há ${diffMin} min`;
+              const h = Math.floor(diffMin / 60);
+              const m = diffMin % 60;
+              return `há ${h}h ${m > 0 ? `${m}m` : ''}`;
+            };
+
+            return (
+              <div className="space-y-4">
+                <div className="bg-white border-2 border-deep-black p-6 space-y-4 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-deep-black/10 pb-3">
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart className="w-5 h-5 text-amber-600" />
+                      <div>
+                        <h3 className="text-sm font-black uppercase tracking-wider text-deep-black">
+                          RADAR DE CARRINHOS EM TEMPO REAL
+                        </h3>
+                        <p className="text-[11px] text-gray-500 font-medium">
+                          Monitore quem está colocando peças na sacola agora e recupere carrinhos abandonados
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-mono font-bold rounded-xs">
+                        🛒 {cartStats.activeCount} sendo enchidos agora (${cartStats.totalActiveValue.toFixed(2)})
+                      </span>
+                      <span className="px-2.5 py-1 bg-amber-100 text-amber-900 font-mono font-bold rounded-xs">
+                        ⚠️ {cartStats.abandonedCount} abandonados (+30m) (${cartStats.totalAbandonedValue.toFixed(2)})
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Grid de 2 Colunas: Ativos vs Abandonados */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Coluna 1: Sendo Enchidos Agora */}
+                    <div className="border border-emerald-300 bg-emerald-50/30 p-4 rounded-xs space-y-3">
+                      <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
+                        <span className="text-xs font-black uppercase text-emerald-900 flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping inline-block" />
+                          <span>SENDO ENCHIDOS NO MOMENTO ({cartStats.activeCount})</span>
+                        </span>
+                        <span className="font-mono text-xs font-bold text-emerald-800">
+                          Total: ${cartStats.totalActiveValue.toFixed(2)}
+                        </span>
+                      </div>
+
+                      {cartStats.activeCarts.length > 0 ? (
+                        <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                          {cartStats.activeCarts.map((c: any, idx: number) => (
+                            <div key={idx} className="bg-white p-3 border border-emerald-200 rounded-xs space-y-2 shadow-2xs">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-bold text-gray-900">
+                                  {c.customerName || (c.city ? `Cliente de ${c.city}, ${c.region || 'US'}` : `Visitante #${idx + 1}`)}
+                                </span>
+                                <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-xs font-bold">
+                                  {formatCartTime(c.lastUpdatedAt)}
+                                </span>
+                              </div>
+
+                              <div className="space-y-1.5 pl-2 border-l-2 border-emerald-400">
+                                {c.items.map((it: any, iIdx: number) => (
+                                  <div key={iIdx} className="flex items-center justify-between text-xs text-gray-800">
+                                    <div className="flex items-center gap-2 truncate pr-2">
+                                      {it.image && (
+                                        <img src={it.image} alt={it.title} className="w-7 h-9 object-cover rounded-2xs shrink-0 border border-gray-200" />
+                                      )}
+                                      <span className="truncate">
+                                        {it.title} <strong className="font-mono text-gray-900">[{it.size}]</strong> {it.quantity > 1 ? `x${it.quantity}` : ''}
+                                      </span>
+                                    </div>
+                                    <span className="font-mono text-gray-900 font-bold shrink-0">
+                                      ${(it.price * it.quantity).toFixed(2)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+
+                              <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-xs">
+                                <span className="text-gray-500 text-[10px] uppercase font-bold">{c.itemCount} peça(s)</span>
+                                <span className="font-mono font-black text-emerald-700">Subtotal: ${Number(c.subtotal || 0).toFixed(2)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500 py-4 text-center">
+                          Nenhum cliente montando carrinho neste instante.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Coluna 2: Abandonados há +30m */}
+                    <div className="border border-amber-300 bg-amber-50/30 p-4 rounded-xs space-y-3">
+                      <div className="flex items-center justify-between border-b border-amber-200 pb-2">
+                        <span className="text-xs font-black uppercase text-amber-950 flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                          <span>ABANDONADOS HÁ +30 MIN ({cartStats.abandonedCount})</span>
+                        </span>
+                        <span className="font-mono text-xs font-bold text-amber-800">
+                          Recuperável: ${cartStats.totalAbandonedValue.toFixed(2)}
+                        </span>
+                      </div>
+
+                      {cartStats.abandonedCarts.length > 0 ? (
+                        <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                          {cartStats.abandonedCarts.map((c: any, idx: number) => {
+                            const summaryText = c.items?.map((it: any) => `${it.title} (${it.size})`).join(', ') || 'peças da sua sacola';
+                            const waText = `Olá${c.customerName ? ` ${c.customerName}` : ''}! Vi que você escolheu ${summaryText} na Ana Fitness Wear mas não concluiu o pedido. Posso te ajudar a finalizar com envio rápido dos Correios ou tirar alguma dúvida sobre o tamanho?`;
+                            const waPhone = (c.customerPhone || '19783139452').replace(/\D/g, '');
+                            const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(waText)}`;
+
+                            return (
+                              <div key={idx} className="bg-white p-3 border border-amber-300 rounded-xs space-y-2 shadow-2xs">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="font-bold text-gray-900">
+                                    {c.customerName || (c.city ? `Cliente de ${c.city}, ${c.region || 'US'}` : `Carrinho #${idx + 1}`)}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-xs font-bold">
+                                    Parou {formatCartTime(c.lastUpdatedAt)}
+                                  </span>
+                                </div>
+
+                                <div className="space-y-1.5 pl-2 border-l-2 border-amber-400">
+                                  {c.items.map((it: any, iIdx: number) => (
+                                    <div key={iIdx} className="flex items-center justify-between text-xs text-gray-800">
+                                      <div className="flex items-center gap-2 truncate pr-2">
+                                        {it.image && (
+                                          <img src={it.image} alt={it.title} className="w-7 h-9 object-cover rounded-2xs shrink-0 border border-gray-200" />
+                                        )}
+                                        <span className="truncate">
+                                          {it.title} <strong className="font-mono text-gray-900">[{it.size}]</strong> {it.quantity > 1 ? `x${it.quantity}` : ''}
+                                        </span>
+                                      </div>
+                                      <span className="font-mono text-gray-900 font-bold shrink-0">
+                                        ${(it.price * it.quantity).toFixed(2)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-xs">
+                                  <span className="font-mono font-black text-amber-700">Total: ${Number(c.subtotal || 0).toFixed(2)}</span>
+                                  <a
+                                    href={waUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-[10px] uppercase tracking-wider rounded-xs transition shadow-2xs"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5 text-deep-black" />
+                                    <span>Recuperar no WhatsApp</span>
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500 py-4 text-center">
+                          Nenhum carrinho abandonado há mais de 30 minutos.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Feed de Eventos Recentes (Estilo Linha do Tempo ao Vivo Wix) */}
           <div className="bg-white border-2 border-deep-black p-6 space-y-4 shadow-sm">
