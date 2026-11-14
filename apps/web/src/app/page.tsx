@@ -1422,8 +1422,16 @@ export default function HomePage() {
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             onError={(e) => {
                               const t = e.currentTarget;
-                              if (!t.src.includes('unsplash.com')) {
-                                t.src = 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
+                              const currentSrc = t.src || '';
+                              if (currentSrc.includes('supabase.co')) {
+                                const filename = currentSrc.split('/').pop()?.split('?')[0];
+                                if (filename && !currentSrc.includes('/products/')) {
+                                  t.src = `/products/${filename}`;
+                                  return;
+                                }
+                              }
+                              if (!t.src.includes('symbol-ana-fitness.png')) {
+                                t.src = '/symbol-ana-fitness.png';
                               }
                             }}
                           />

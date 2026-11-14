@@ -2668,6 +2668,20 @@ export default function CheckoutPage() {
                   src={item.image}
                   alt={item.title}
                   className="w-14 h-18 object-cover border border-deep-black/20 shrink-0"
+                  onError={(e) => {
+                    const t = e.currentTarget;
+                    const currentSrc = t.src || '';
+                    if (currentSrc.includes('supabase.co')) {
+                      const filename = currentSrc.split('/').pop()?.split('?')[0];
+                      if (filename && !currentSrc.includes('/products/')) {
+                        t.src = `/products/${filename}`;
+                        return;
+                      }
+                    }
+                    if (!t.src.includes('symbol-ana-fitness.png')) {
+                      t.src = '/symbol-ana-fitness.png';
+                    }
+                  }}
                 />
                 <div className="flex-1 space-y-1 min-w-0">
                   <h4 className="text-xs font-black uppercase tracking-wider text-deep-black truncate">

@@ -1542,8 +1542,16 @@ export default function PosTerminalPage() {
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             const t = e.currentTarget;
-                            if (!t.src.includes('unsplash.com')) {
-                              t.src = 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=300&q=80';
+                            const currentSrc = t.src || '';
+                            if (currentSrc.includes('supabase.co')) {
+                              const filename = currentSrc.split('/').pop()?.split('?')[0];
+                              if (filename && !currentSrc.includes('/products/')) {
+                                t.src = `/products/${filename}`;
+                                return;
+                              }
+                            }
+                            if (!t.src.includes('symbol-ana-fitness.png')) {
+                              t.src = '/symbol-ana-fitness.png';
                             }
                           }}
                         />
@@ -1599,8 +1607,16 @@ export default function PosTerminalPage() {
                           className="w-10 h-12 object-cover border border-deep-black/20"
                           onError={(e) => {
                             const t = e.currentTarget;
-                            if (!t.src.includes('unsplash.com')) {
-                              t.src = 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=300&q=80';
+                            const currentSrc = t.src || '';
+                            if (currentSrc.includes('supabase.co')) {
+                              const filename = currentSrc.split('/').pop()?.split('?')[0];
+                              if (filename && !currentSrc.includes('/products/')) {
+                                t.src = `/products/${filename}`;
+                                return;
+                              }
+                            }
+                            if (!t.src.includes('symbol-ana-fitness.png')) {
+                              t.src = '/symbol-ana-fitness.png';
                             }
                           }}
                         />

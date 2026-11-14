@@ -358,6 +358,20 @@ export default function ComboBuilderPage() {
                       src={slot.image}
                       alt={slot.product.title}
                       className="w-16 h-20 object-cover border border-deep-black/20 shrink-0"
+                      onError={(e) => {
+                        const t = e.currentTarget;
+                        const currentSrc = t.src || '';
+                        if (currentSrc.includes('supabase.co')) {
+                          const filename = currentSrc.split('/').pop()?.split('?')[0];
+                          if (filename && !currentSrc.includes('/products/')) {
+                            t.src = `/products/${filename}`;
+                            return;
+                          }
+                        }
+                        if (!t.src.includes('symbol-ana-fitness.png')) {
+                          t.src = '/symbol-ana-fitness.png';
+                        }
+                      }}
                     />
                     <div className="space-y-1 min-w-0">
                       <h4 className="text-xs font-black uppercase text-deep-black truncate">
@@ -529,6 +543,20 @@ export default function ComboBuilderPage() {
                         src={img}
                         alt={prod.title}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        onError={(e) => {
+                          const t = e.currentTarget;
+                          const currentSrc = t.src || '';
+                          if (currentSrc.includes('supabase.co')) {
+                            const filename = currentSrc.split('/').pop()?.split('?')[0];
+                            if (filename && !currentSrc.includes('/products/')) {
+                              t.src = `/products/${filename}`;
+                              return;
+                            }
+                          }
+                          if (!t.src.includes('symbol-ana-fitness.png')) {
+                            t.src = '/symbol-ana-fitness.png';
+                          }
+                        }}
                       />
                       <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[9px] font-black uppercase px-2 py-0.5 border border-emerald-800 shadow-xs">
                         {translateBadgeText(promo?.badge_text || 'COMBO 3 PEÇAS', lang)}
@@ -600,10 +628,24 @@ export default function ComboBuilderPage() {
                   activeProductForSlot.primary_image ||
                   activeProductForSlot.primaryImage ||
                   activeProductForSlot.variants?.[0]?.image ||
-                  'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80'
+                  '/symbol-ana-fitness.png'
                 }
                 alt={activeProductForSlot.title}
                 className="w-20 h-24 object-cover border border-deep-black/20"
+                onError={(e) => {
+                  const t = e.currentTarget;
+                  const currentSrc = t.src || '';
+                  if (currentSrc.includes('supabase.co')) {
+                    const filename = currentSrc.split('/').pop()?.split('?')[0];
+                    if (filename && !currentSrc.includes('/products/')) {
+                      t.src = `/products/${filename}`;
+                      return;
+                    }
+                  }
+                  if (!t.src.includes('symbol-ana-fitness.png')) {
+                    t.src = '/symbol-ana-fitness.png';
+                  }
+                }}
               />
               <div className="space-y-1 text-xs uppercase">
                 <p className="font-black text-deep-black">

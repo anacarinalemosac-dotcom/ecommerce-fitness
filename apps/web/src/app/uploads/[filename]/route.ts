@@ -9,7 +9,16 @@ export async function GET(
   try {
     const filename = params.filename;
     const safeFilename = path.basename(filename);
-    const filePath = path.join(process.cwd(), 'public', 'uploads', safeFilename);
+    let filePath = path.join(process.cwd(), 'public', 'uploads', safeFilename);
+    if (!fs.existsSync(filePath)) {
+      filePath = path.join(process.cwd(), 'public', 'products', safeFilename);
+    }
+    if (!fs.existsSync(filePath)) {
+      filePath = path.join(process.cwd(), 'apps', 'web', 'public', 'products', safeFilename);
+    }
+    if (!fs.existsSync(filePath)) {
+      filePath = path.join(process.cwd(), 'apps', 'web', 'public', 'uploads', safeFilename);
+    }
 
     if (!fs.existsSync(filePath)) {
       return new NextResponse('Arquivo não encontrado', { status: 404 });
