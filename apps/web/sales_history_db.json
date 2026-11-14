@@ -1,11 +1,11 @@
 [
   {
-    "id": "1adb9a76-744e-4cab-86f9-1604de9f0683",
+    "id": "bb2885ec-075d-4659-8d3d-1ce417369f78",
     "order_id": "ANA-604501",
-    "created_at": "2026-11-14T23:19:41.467Z",
+    "created_at": "2026-11-14T22:31:00.000Z",
     "customer_name": "Rayanne c s viana",
     "customer_email": "rayanneviana2001@gmail.com",
-    "customer_phone": "",
+    "customer_phone": "7744980258",
     "shipping_address": {
       "address": "13 Guadalcanal Road",
       "apt": "",
@@ -14,7 +14,7 @@
       "zip": "01702",
       "delivery_method": "DELIVERY",
       "customer_email": "rayanneviana2001@gmail.com",
-      "customer_phone": ""
+      "customer_phone": "7744980258"
     },
     "channel": "ONLINE",
     "seller_name": "Loja Oficial Online",
@@ -25,20 +25,42 @@
     "discount_amount": 0,
     "payment_fee": 4.07,
     "commission_amount": 0,
-    "cost_of_goods": 0,
-    "net_profit": 125.83,
-    "profit_margin_pct": 96.9,
+    "cost_of_goods": 40,
+    "net_profit": 85.83,
+    "profit_margin_pct": 66.1,
     "items": [
       {
-        "title": "COMBO PROMOCAO 3 CONJUNTOS",
-        "size": "Único",
-        "color": "Padrão",
-        "sku": "STRIPE-ORDER",
-        "slug": "",
-        "image": "",
+        "sku": "SET-RED-M",
+        "size": "M",
+        "color": "RED AND GRAY",
+        "image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794249020836-0sb8v.png",
+        "title": "SET RED & BEIGE",
         "quantity": 1,
-        "unit_price": 129.9,
-        "cost_price": 0
+        "cost_price": 16,
+        "unit_price": 40,
+        "manual_cost_edited": true
+      },
+      {
+        "sku": "SET-NAV-M",
+        "size": "M",
+        "color": "Navy Blue & Yellow",
+        "image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794260586166-c3dgb.jpeg",
+        "title": "SET NAVY BLUE & YELLOW",
+        "quantity": 1,
+        "cost_price": 12,
+        "unit_price": 40,
+        "manual_cost_edited": true
+      },
+      {
+        "sku": "SET-TER-M",
+        "size": "M",
+        "color": "TERRACOTTA BROWN AND BEIGE",
+        "image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794259916404-3teblg.jpeg",
+        "title": "TERRACOTTA BROWN AND BEIGE",
+        "quantity": 1,
+        "cost_price": 12,
+        "unit_price": 40,
+        "manual_cost_edited": true
       }
     ],
     "total_amount": 129.9,

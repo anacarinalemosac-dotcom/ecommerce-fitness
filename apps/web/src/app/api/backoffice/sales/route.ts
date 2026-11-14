@@ -272,6 +272,7 @@ export async function GET(req: NextRequest) {
               seller_name: sellerName,
               coupon_code: ord.coupon_code || meta.coupon_code || undefined,
               payment_method: pMethod,
+              total_amount: grossTotal,
               subtotal_products: gross,
               shipping_fee: shipFee,
               shipping_cost: shipCost,

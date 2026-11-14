@@ -6989,7 +6989,7 @@
     "price": 49.9,
     "cost_price": 12,
     "costPrice": 12,
-    "visible_online": false,
+    "visible_online": true,
     "is_draft": true,
     "visible_pos": true,
     "composition": "SUPLEX",
@@ -7007,8 +7007,8 @@
         "size": "M",
         "sku": "SET-CHO-M-LJCZ",
         "barcode": "789188597342",
-        "stock_quantity": 0,
-        "stock": 0,
+        "stock_quantity": 1,
+        "stock": 1,
         "price": 49.9,
         "cost_price": 12,
         "costPrice": 12,
@@ -7022,8 +7022,9 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794259742205-xmdcl8.mov"
       }
     ],
-    "total_stock": 0,
-    "is_combo": false
+    "total_stock": 1,
+    "is_combo": false,
+    "stock": 1
   },
   {
     "id": "e0000000-0000-4000-8000-002700000000",
@@ -14549,7 +14550,7 @@
     "price": 49.9,
     "cost_price": 12,
     "costPrice": 12,
-    "visible_online": false,
+    "visible_online": true,
     "is_draft": false,
     "visible_pos": true,
     "composition": "",
@@ -14565,8 +14566,8 @@
         "size": "M",
         "sku": "SET-CHO-M",
         "barcode": "789810396712",
-        "stock_quantity": 0,
-        "stock": 0,
+        "stock_quantity": 1,
+        "stock": 1,
         "price": 49.9,
         "cost_price": 12,
         "costPrice": 12,
@@ -14580,10 +14581,9 @@
         "video_url": null
       }
     ],
-    "total_stock": 0,
+    "total_stock": 1,
     "is_combo": true,
-    "stock": 0,
-    "ribbon": "ESGOTADO"
+    "stock": 1
   },
   {
     "id": "e0000000-0000-4000-8000-004c00000000",
