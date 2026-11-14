@@ -160,22 +160,6 @@ export default function ComboBuilderPage() {
     const variantStock = matchedVariant
       ? Math.max(0, Number(matchedVariant.stock_quantity ?? matchedVariant.stock ?? 0))
       : Math.max(0, Number(activeProductForSlot.stock ?? 0));
-    const usedInOtherSlots = selectedSlots.filter(
-      (s, i) =>
-        i !== tempSlotIndex &&
-        s !== null &&
-        s.sku === sku &&
-        s.product?.id === activeProductForSlot.id
-    ).length;
-
-    if (variantStock > 0 && usedInOtherSlots >= variantStock) {
-      alert(
-        `Limite de estoque atingido: só temos ${variantStock} ${
-          variantStock === 1 ? 'unidade disponível' : 'unidades disponíveis'
-        } desta variação (${tempSize} / ${tempColor}). Escolha outra peça ou tamanho para este slot do combo.`
-      );
-      return;
-    }
 
     const img =
       matchedVariant?.image ||

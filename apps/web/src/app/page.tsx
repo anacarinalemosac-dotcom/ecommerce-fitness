@@ -325,26 +325,10 @@ export default function HomePage() {
     e.preventDefault();
     e.stopPropagation();
     const prod = activeProducts.find((p) => p.id === id);
-    let hitLimit = false;
-    let resolvedMaxStock = 0;
 
     if (prod) {
       const chosenColor = preferredColor || cardSelectedColors[id] || '';
       const matchedVariant = getCardVariantFor(prod, size, chosenColor);
-      const rawVariantMax = matchedVariant
-        ? Math.max(0, Number(matchedVariant.stock_quantity ?? matchedVariant.stock ?? 0))
-        : Math.max(0, Number(prod.stock ?? 0));
-      const heldByOthers = getReservedQtyForCandidate(otherHoldsByKey, {
-        sku: matchedVariant?.sku,
-        slug: prod.slug,
-        size,
-        color: matchedVariant?.color || chosenColor,
-      });
-      resolvedMaxStock = Math.max(0, rawVariantMax - heldByOthers);
-
-      if (resolvedMaxStock <= 0) {
-        return;
-      }
 
       const variantImg = matchedVariant
         ? (Array.isArray(matchedVariant.images) && matchedVariant.images.length > 0 ? matchedVariant.images[0] : matchedVariant.image)
@@ -358,17 +342,15 @@ export default function HomePage() {
         sku: matchedVariant?.sku || `${prod.slug}-${size}`,
         price: Number(matchedVariant?.price || prod.price) || 44.9,
         quantity: 1,
-        maxStock: resolvedMaxStock,
         image: cardImageOverrides[prod.id] || variantImg || prod.primaryImage,
         isBackorder: false,
         productionDays: 0,
         is_combo_item: isProductInCombo(prod),
       });
-      hitLimit = Boolean(result.limitReached);
       setCartItemsSnapshot(result.items);
     }
 
-    setQuickAddedItem({ id, size, limitReached: hitLimit, maxStock: resolvedMaxStock });
+    setQuickAddedItem({ id, size, limitReached: false });
     setTimeout(() => {
       setQuickAddedItem(null);
     }, 3000);
@@ -1392,8 +1374,7 @@ export default function HomePage() {
                         color: selectedVariantObj?.color || activeColor,
                       })
                     : 0;
-                  const isSelectedSizeMaxedInBag =
-                    selectedVariantStock > 0 && qtyInBagForSelected >= selectedVariantStock;
+                  const isSelectedSizeMaxedInBag = false;
 
                   return (
                     <div
@@ -1558,7 +1539,7 @@ export default function HomePage() {
                                     size,
                                     color: szVar?.color || activeColor,
                                   });
-                                  const isSzMaxed = (szStock > 0 && szInBag >= szStock) || (rawSzStock > 0 && szStock <= 0);
+                                  const isSzMaxed = false;
                                   return (
                                     <button
                                       key={size}

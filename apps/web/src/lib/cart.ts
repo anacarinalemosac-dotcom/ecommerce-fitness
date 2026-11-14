@@ -346,48 +346,8 @@ export function resolveVariantStockFromCatalog(products: any[], item: Partial<Ca
 
 export function reconcileCartStockWithCatalog(products: any[]): { items: CartItem[]; adjusted: boolean } {
   const current = getCartItems();
-  if (!Array.isArray(products) || products.length === 0 || current.length === 0) {
-    return { items: current, adjusted: false };
-  }
-
-  let changed = false;
-  let adjusted = false;
-  const reconciled: CartItem[] = [];
-
-  for (const item of current) {
-    const liveStock = resolveVariantStockFromCatalog(products, item);
-    if (liveStock === null) {
-      reconciled.push(item);
-      continue;
-    }
-
-    if (liveStock <= 0 && !item.isBackorder) {
-      changed = true;
-      adjusted = true;
-      continue;
-    }
-
-    const currentQty = Math.max(1, Number(item.quantity) || 1);
-    const clampedQty = liveStock > 0 ? Math.min(currentQty, liveStock) : currentQty;
-    if (clampedQty !== currentQty) {
-      changed = true;
-      adjusted = true;
-    }
-    if (item.maxStock !== liveStock) {
-      changed = true;
-    }
-
-    reconciled.push({
-      ...item,
-      quantity: clampedQty,
-      maxStock: liveStock,
-    });
-  }
-
-  if (changed) {
-    saveCartItems(reconciled, { preserveExpiry: true });
-  }
-  return { items: reconciled, adjusted };
+  // Sem limite de peças no carrinho: o cliente pode comprar quantas peças desejar sem restrição de estoque.
+  return { items: current, adjusted: false };
 }
 
 export function addToCart(
@@ -396,50 +356,29 @@ export function addToCart(
   const current = getCartItems();
   const existingIdx = current.findIndex((it) => isSameCartLine(it, newItem));
 
-  const incomingMax =
-    typeof newItem.maxStock === 'number' && !isNaN(newItem.maxStock)
-      ? Math.max(0, Number(newItem.maxStock))
-      : undefined;
-  const existingMax =
-    existingIdx >= 0 && typeof current[existingIdx].maxStock === 'number' && !isNaN(current[existingIdx].maxStock!)
-      ? Math.max(0, Number(current[existingIdx].maxStock))
-      : undefined;
-  const effectiveMax = incomingMax !== undefined ? incomingMax : existingMax;
-
-  if (effectiveMax !== undefined && effectiveMax <= 0) {
-    const totalCount = current.reduce((sum, it) => sum + (it.quantity || 1), 0);
-    return { items: current, totalCount, addedQuantity: 0, limitReached: true, maxStock: 0 };
-  }
-
   let updated: CartItem[];
   let addedQuantity = 0;
-  let limitReached = false;
+  const limitReached = false;
+
+  const reqQty = Math.max(1, Number(newItem.quantity) || 1);
 
   if (existingIdx >= 0) {
     updated = [...current];
     const existingQty = Math.max(1, Number(updated[existingIdx].quantity) || 1);
-    const addReq = Math.max(1, Number(newItem.quantity) || 1);
-    const desiredQty = existingQty + addReq;
-    const finalQty = effectiveMax !== undefined ? Math.min(effectiveMax, desiredQty) : desiredQty;
-    limitReached = effectiveMax !== undefined && desiredQty > effectiveMax;
-    addedQuantity = Math.max(0, finalQty - existingQty);
+    const finalQty = existingQty + reqQty;
+    addedQuantity = reqQty;
 
     updated[existingIdx] = {
       ...updated[existingIdx],
       quantity: finalQty,
-      maxStock: effectiveMax ?? updated[existingIdx].maxStock,
     };
   } else {
-    const reqQty = Math.max(1, Number(newItem.quantity) || 1);
-    const finalQty = effectiveMax !== undefined ? Math.min(effectiveMax, reqQty) : reqQty;
-    limitReached = effectiveMax !== undefined && reqQty > effectiveMax;
-    addedQuantity = finalQty;
+    addedQuantity = reqQty;
     updated = [
       ...current,
       {
         ...newItem,
-        quantity: finalQty,
-        maxStock: effectiveMax,
+        quantity: reqQty,
       },
     ];
   }
@@ -448,40 +387,30 @@ export function addToCart(
   if (typeof window !== 'undefined') {
     window.dispatchEvent(
       new CustomEvent('ana_cart_item_added', {
-        detail: { item: newItem, addedQuantity, limitReached, maxStock: effectiveMax },
+        detail: { item: newItem, addedQuantity, limitReached: false },
       })
     );
   }
   const totalCount = updated.reduce((sum, it) => sum + (it.quantity || 1), 0);
-  return { items: updated, totalCount, addedQuantity, limitReached, maxStock: effectiveMax };
+  return { items: updated, totalCount, addedQuantity, limitReached: false };
 }
 
 export function updateCartItemQuantity(
   index: number,
   quantity: number,
-  explicitMaxStock?: number
+  _explicitMaxStock?: number
 ): CartItem[] {
   const current = getCartItems();
   if (index < 0 || index >= current.length) return current;
 
-  const targetItem = current[index];
-  const cap =
-    typeof explicitMaxStock === 'number' && !isNaN(explicitMaxStock)
-      ? Math.max(0, Number(explicitMaxStock))
-      : typeof targetItem.maxStock === 'number' && !isNaN(targetItem.maxStock)
-      ? Math.max(0, Number(targetItem.maxStock))
-      : undefined;
-
   let updated: CartItem[];
-  if (quantity <= 0 || (cap !== undefined && cap <= 0)) {
+  if (quantity <= 0) {
     updated = current.filter((_, idx) => idx !== index);
   } else {
-    const finalQty = cap !== undefined ? Math.min(cap, quantity) : quantity;
     updated = [...current];
     updated[index] = {
       ...updated[index],
-      quantity: finalQty,
-      maxStock: cap ?? updated[index].maxStock,
+      quantity,
     };
   }
 

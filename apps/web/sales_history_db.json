@@ -1,5 +1,52 @@
 [
   {
+    "id": "1adb9a76-744e-4cab-86f9-1604de9f0683",
+    "order_id": "ANA-604501",
+    "created_at": "2026-11-14T23:19:41.467Z",
+    "customer_name": "Rayanne c s viana",
+    "customer_email": "rayanneviana2001@gmail.com",
+    "customer_phone": "",
+    "shipping_address": {
+      "address": "13 Guadalcanal Road",
+      "apt": "",
+      "city": "Framingham",
+      "state": "MA",
+      "zip": "01702",
+      "delivery_method": "DELIVERY",
+      "customer_email": "rayanneviana2001@gmail.com",
+      "customer_phone": ""
+    },
+    "channel": "ONLINE",
+    "seller_name": "Loja Oficial Online",
+    "payment_method": "CARD",
+    "subtotal_products": 120,
+    "shipping_fee": 9.9,
+    "shipping_cost": 0,
+    "discount_amount": 0,
+    "payment_fee": 4.07,
+    "commission_amount": 0,
+    "cost_of_goods": 0,
+    "net_profit": 125.83,
+    "profit_margin_pct": 96.9,
+    "items": [
+      {
+        "title": "COMBO PROMOCAO 3 CONJUNTOS",
+        "size": "Único",
+        "color": "Padrão",
+        "sku": "STRIPE-ORDER",
+        "slug": "",
+        "image": "",
+        "quantity": 1,
+        "unit_price": 129.9,
+        "cost_price": 0
+      }
+    ],
+    "total_amount": 129.9,
+    "status": "COMPLETED",
+    "fulfillment_status": "AWAITING_SEPARATION",
+    "payment_status": "PAID"
+  },
+  {
     "id": "efbb9183-eff4-4853-a108-3cdc9c111ab0",
     "order_id": "POS-LEO-7306",
     "created_at": "2026-10-12T02:05:00+00:00",

@@ -55,58 +55,7 @@ export async function POST(req: NextRequest) {
       catalogProducts
     );
 
-    // Valida rigorosamente se a quantidade solicitada de cada item não ultrapassa o estoque disponível
-    if (Array.isArray(catalogProducts) && catalogProducts.length > 0) {
-      const activeHolds = await loadActiveCartReservations();
-      const { byKey: otherHoldsByKey } = summarizeOtherSessionHolds(activeHolds, cart_session_id);
-      const requestedPerSku = new Map<string, { qty: number; available: number; title: string }>();
-      for (const it of enrichedItems) {
-        const matchedProd = catalogProducts.find(
-          (cp) =>
-            (it.slug && cp.slug === it.slug) ||
-            cp.variants.some((v) => it.sku && v.sku && v.sku.toUpperCase() === String(it.sku).toUpperCase()) ||
-            cp.title.trim().toUpperCase() === String(it.title || '').trim().toUpperCase()
-        );
-        if (!matchedProd) continue;
-        const matchedVar =
-          matchedProd.variants.find((v) => it.sku && v.sku && v.sku.toUpperCase() === String(it.sku).toUpperCase()) ||
-          matchedProd.variants.find(
-            (v) =>
-              (!it.size || v.size.toUpperCase() === String(it.size).toUpperCase()) &&
-              (!it.color || v.color.toLowerCase() === String(it.color).toLowerCase())
-          ) ||
-          matchedProd.variants.find((v) => !it.size || v.size.toUpperCase() === String(it.size).toUpperCase());
-        if (!matchedVar || matchedVar.allow_backorder) continue;
-
-        const key = (matchedVar.sku || `${matchedProd.slug}-${matchedVar.color}-${matchedVar.size}`).toUpperCase();
-        const skuHoldKey = matchedVar.sku ? `SKU:${String(matchedVar.sku).trim().toUpperCase()}` : '';
-        const ssHoldKey = `SS:${String(matchedProd.slug || '').trim().toLowerCase()}::${String(matchedVar.size || '').trim().toUpperCase()}`;
-        const heldByOthers = Math.max(0, Number((skuHoldKey && otherHoldsByKey[skuHoldKey]) ?? otherHoldsByKey[ssHoldKey] ?? 0));
-        const rawStock = Math.max(0, Number(matchedVar.stock_quantity ?? 0));
-        const available = Math.max(0, rawStock - heldByOthers);
-        const prev = requestedPerSku.get(key) || { qty: 0, available, title: `${matchedProd.title} (${matchedVar.size})` };
-        prev.qty += Math.max(1, Number(it.quantity) || 1);
-        requestedPerSku.set(key, prev);
-      }
-
-      for (const entry of Array.from(requestedPerSku.values())) {
-        if (entry.qty > entry.available) {
-          return NextResponse.json(
-            {
-              error:
-                entry.available <= 0
-                  ? `O item "${entry.title}" acabou de esgotar e não pode ser comprado.`
-                  : `Estoque insuficiente para "${entry.title}": apenas ${entry.available} ${
-                      entry.available === 1 ? 'unidade disponível' : 'unidades disponíveis'
-                    }.`,
-              insufficientStock: true,
-            },
-            { status: 409 }
-          );
-        }
-      }
-    }
-
+    // Sem bloqueio de estoque: o cliente pode comprar quantas peças desejar sem restrição de quantidade
     // Calcula os itens no formato exigido pela Stripe (em centavos de dólar)
     const lineItems: any[] = enrichedItems.map((it: any) => {
       const unitAmountInCents = Math.round(Number(it.unit_price || it.price || 44.90) * 100);

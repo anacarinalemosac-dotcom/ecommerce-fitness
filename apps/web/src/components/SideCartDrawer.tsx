@@ -146,23 +146,12 @@ export function SideCartDrawer() {
       syncCart();
       refreshOtherHolds();
     };
-    const handleAdded = (evt: any) => {
+    const handleAdded = (_evt: any) => {
       syncCart();
       refreshOtherHolds();
       setIsOpen(true);
-      const detail = evt?.detail;
-      if (detail?.limitReached) {
-        const cap = detail.maxStock ?? 1;
-        setStockNotice(
-          lang === 'pt'
-            ? `Limite do estoque atingido (${cap} ${cap === 1 ? 'unidade disponível' : 'unidades disponíveis'}).`
-            : `Stock limit reached (${cap} ${cap === 1 ? 'unit available' : 'units available'}).`
-        );
-        setTimeout(() => setStockNotice(null), 4000);
-      } else {
-        setJustHighlighted(true);
-        setTimeout(() => setJustHighlighted(false), 1800);
-      }
+      setJustHighlighted(true);
+      setTimeout(() => setJustHighlighted(false), 1800);
     };
     const handleOpen = () => {
       syncCart();
@@ -433,16 +422,6 @@ export function SideCartDrawer() {
               ) : (
                 items.map((item, idx) => {
                   const qty = Math.max(1, Number(item.quantity) || 1);
-                  const liveCap = resolveVariantStockFromCatalog(liveCatalogProducts || [], item);
-                  const rawCap = liveCap !== null ? liveCap : (typeof item.maxStock === 'number' ? item.maxStock : undefined);
-                  const heldByOthers = getReservedQtyForCandidate(otherHoldsByKey, {
-                    sku: item.sku,
-                    slug: item.slug,
-                    size: item.size,
-                    color: item.color,
-                  });
-                  const maxAllowed = rawCap !== undefined ? Math.max(0, rawCap - heldByOthers) : undefined;
-                  const isAtMaxStock = typeof maxAllowed === 'number' && qty >= maxAllowed;
                   const lineTotal = (Number(item.price) || 0) * qty;
                   return (
                     <div
@@ -510,7 +489,7 @@ export function SideCartDrawer() {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  updateCartItemQuantity(idx, qty - 1, maxAllowed);
+                                  updateCartItemQuantity(idx, qty - 1);
                                   syncCart();
                                 }}
                                 className="w-7 h-7 flex items-center justify-center text-deep-black hover:bg-neutral-100 transition cursor-pointer"
@@ -523,40 +502,17 @@ export function SideCartDrawer() {
                               </span>
                               <button
                                 type="button"
-                                disabled={isAtMaxStock}
                                 onClick={() => {
-                                  if (isAtMaxStock) return;
-                                  updateCartItemQuantity(idx, qty + 1, maxAllowed);
+                                  updateCartItemQuantity(idx, qty + 1);
                                   syncCart();
                                 }}
-                                className={`w-7 h-7 flex items-center justify-center transition ${
-                                  isAtMaxStock
-                                    ? 'bg-neutral-100 text-deep-black/25 cursor-not-allowed'
-                                    : 'text-deep-black hover:bg-neutral-100 cursor-pointer'
-                                }`}
-                                title={
-                                  isAtMaxStock
-                                    ? (lang === 'pt' ? `Máximo disponível: ${maxAllowed} un` : `Max available: ${maxAllowed}`)
-                                    : (lang === 'pt' ? 'Aumentar quantidade' : 'Increase quantity')
-                                }
+                                className="w-7 h-7 flex items-center justify-center text-deep-black hover:bg-neutral-100 cursor-pointer transition"
+                                title={lang === 'pt' ? 'Aumentar quantidade' : 'Increase quantity'}
                                 aria-label={lang === 'pt' ? 'Aumentar quantidade' : 'Increase quantity'}
                               >
                                 <Plus className="w-3 h-3" />
                               </button>
                             </div>
-                            {typeof maxAllowed === 'number' && (
-                              <span
-                                className={`block text-[9px] font-bold uppercase ${
-                                  isAtMaxStock ? 'text-amber-700' : 'text-deep-black/45'
-                                }`}
-                              >
-                                {isAtMaxStock
-                                  ? (lang === 'pt'
-                                      ? `Máx. no estoque (${maxAllowed} un)`
-                                      : `Max stock (${maxAllowed} left)`)
-                                  : (lang === 'pt' ? `${maxAllowed} em estoque` : `${maxAllowed} in stock`)}
-                              </span>
-                            )}
                           </div>
 
                           <div className="text-right">

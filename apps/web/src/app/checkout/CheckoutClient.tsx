@@ -589,17 +589,7 @@ export default function CheckoutPage() {
   }, [liveCatalogProducts]);
 
   const handleUpdateItemQuantity = (targetIdx: number, newQty: number) => {
-    const targetItem = cartItems[targetIdx];
-    const liveCap = targetItem
-      ? resolveVariantStockFromCatalog(liveCatalogProducts || [], targetItem)
-      : null;
-    const maxCap =
-      liveCap !== null
-        ? liveCap
-        : typeof (targetItem as any)?.maxStock === 'number'
-        ? (targetItem as any).maxStock
-        : undefined;
-    const updated = updateCartItemQuantity(targetIdx, newQty, maxCap);
+    const updated = updateCartItemQuantity(targetIdx, newQty);
     setCartItems(updated);
     setCartItem(updated[0] || null);
   };
@@ -2692,57 +2682,26 @@ export default function CheckoutPage() {
                   </p>
 
                   <div className="flex items-center gap-3 pt-1 flex-wrap">
-                    {(() => {
-                      const liveCap = resolveVariantStockFromCatalog(liveCatalogProducts || [], item as any);
-                      const maxCap =
-                        liveCap !== null
-                          ? liveCap
-                          : typeof (item as any).maxStock === 'number'
-                          ? (item as any).maxStock
-                          : undefined;
-                      const isAtMaxStock = typeof maxCap === 'number' && (item.quantity || 1) >= maxCap;
-                      return (
-                        <>
-                          {/* Stepper de Quantidade */}
-                          <div className="flex items-center border border-deep-black/20 bg-stone-50">
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateItemQuantity(idx, (item.quantity || 1) - 1)}
-                              className="px-2 py-0.5 text-xs font-bold text-deep-black hover:bg-gold/20 cursor-pointer"
-                            >
-                              -
-                            </button>
-                            <span className="px-2 text-xs font-mono font-bold">{item.quantity || 1}</span>
-                            <button
-                              type="button"
-                              disabled={isAtMaxStock}
-                              onClick={() => {
-                                if (isAtMaxStock) return;
-                                handleUpdateItemQuantity(idx, (item.quantity || 1) + 1);
-                              }}
-                              className={`px-2 py-0.5 text-xs font-bold ${
-                                isAtMaxStock
-                                  ? 'text-deep-black/25 cursor-not-allowed'
-                                  : 'text-deep-black hover:bg-gold/20 cursor-pointer'
-                              }`}
-                              title={
-                                isAtMaxStock
-                                  ? (lang === 'pt' ? `Estoque máximo: ${maxCap} un` : `Max stock: ${maxCap}`)
-                                  : undefined
-                              }
-                            >
-                              +
-                            </button>
-                          </div>
-
-                          {typeof maxCap === 'number' && isAtMaxStock && (
-                            <span className="text-[9.5px] font-bold uppercase text-amber-700">
-                              {lang === 'pt' ? `Máx. estoque (${maxCap} un)` : `Max stock (${maxCap})`}
-                            </span>
-                          )}
-                        </>
-                      );
-                    })()}
+                    {/* Stepper de Quantidade Livre */}
+                    <div className="flex items-center border border-deep-black/20 bg-stone-50">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateItemQuantity(idx, (item.quantity || 1) - 1)}
+                        className="px-2 py-0.5 text-xs font-bold text-deep-black hover:bg-gold/20 cursor-pointer"
+                        aria-label="Diminuir quantidade"
+                      >
+                        -
+                      </button>
+                      <span className="px-2 text-xs font-mono font-bold">{item.quantity || 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateItemQuantity(idx, (item.quantity || 1) + 1)}
+                        className="px-2 py-0.5 text-xs font-bold text-deep-black hover:bg-gold/20 cursor-pointer"
+                        aria-label="Aumentar quantidade"
+                      >
+                        +
+                      </button>
+                    </div>
 
                     <button
                       type="button"

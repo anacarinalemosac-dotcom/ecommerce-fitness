@@ -1065,7 +1065,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     size: selectedSize,
     color: selectedColor,
   });
-  const isCurrentVariantMaxedInBag = currentStock > 0 && qtyInBagForCurrent >= currentStock;
+  const isCurrentVariantMaxedInBag = false;
 
   // Link de Pagamento Direto no Afterpay (1-Clique sem precisar navegar no site)
   const currentSiteOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://anafitwear.com';
@@ -1150,17 +1150,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         v.color.toLowerCase() === selectedColor.toLowerCase() &&
         v.size.toUpperCase() === selectedSize.toUpperCase()
     );
-    const rawStockQty = matchedVariant
-      ? Math.max(0, Number(matchedVariant.stock ?? 0))
-      : Math.max(0, Number(productData.stock ?? 0));
-    const heldByOthers = getReservedQtyForCandidate(otherHoldsByKey, {
-      sku: matchedVariant?.sku,
-      slug,
-      size: selectedSize,
-      color: selectedColor,
-    });
-    const stockQty = Math.max(0, rawStockQty - heldByOthers);
-    if (stockQty <= 0) return; // Bloqueio estrito: sem estoque disponível não adiciona à sacola
 
     const cartItemToSave = {
       id: productData.id,
@@ -1171,7 +1160,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       sku: matchedVariant?.sku || `${slug}-${selectedColor.slice(0, 3)}-${selectedSize}`,
       price: matchedVariant?.price || productData.price,
       quantity: 1,
-      maxStock: stockQty,
       image: matchedVariant?.image || productData.media[selectedMediaIdx]?.url || productData.media[0]?.url,
       isBackorder: false,
       productionDays: 0,
@@ -1183,28 +1171,25 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       localStorage.setItem('ana_delivery_method', fulfillmentMode === 'pickup' ? 'PICKUP' : 'DELIVERY');
     }
 
-    let addResult: { limitReached?: boolean } = {};
     try {
-      addResult = addToCart(cartItemToSave);
+      addToCart(cartItemToSave);
     } catch (e) {
       localStorage.setItem('ana_cart_item', JSON.stringify(cartItemToSave));
       window.dispatchEvent(new Event('ana_cart_updated'));
     }
     setCartItemsSnapshot(getCartItems());
 
-    if (!addResult?.limitReached) {
-      // Dispara evento de AddToCart nos Pixels de Rastreamento (Meta, Google, TikTok, Pinterest)
-      trackEvent.addToCart({
-        id: slug,
-        title: productData.title,
-        price: currentVariant?.price || productData.price,
-        quantity: 1,
-        size: selectedSize,
-        color: selectedColor,
-      });
-    }
+    // Dispara evento de AddToCart nos Pixels de Rastreamento (Meta, Google, TikTok, Pinterest)
+    trackEvent.addToCart({
+      id: slug,
+      title: productData.title,
+      price: currentVariant?.price || productData.price,
+      quantity: 1,
+      size: selectedSize,
+      color: selectedColor,
+    });
 
-    setCartFeedback(addResult?.limitReached ? 'maxed' : 'added');
+    setCartFeedback('added');
     setTimeout(() => setCartFeedback(null), 4000);
   };
 
