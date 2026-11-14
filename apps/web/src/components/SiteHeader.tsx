@@ -67,7 +67,14 @@ export function SiteHeader() {
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
-  if (pathname === '/links' || pathname === '/bio') {
+  const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
+  if (
+    currentPath.includes('/backoffice') ||
+    currentPath.includes('/pos') ||
+    currentPath.includes('/admin') ||
+    currentPath === '/links' ||
+    currentPath === '/bio'
+  ) {
     return null;
   }
 

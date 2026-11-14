@@ -118,6 +118,9 @@ import {
 } from '@/lib/whatsappMessages';
 import { downloadOrderPdf } from '@/lib/orderPdf';
 import { ShippingLabelModal } from '@/components/ShippingLabelModal';
+import { WixSidebar } from '../../components/backoffice/WixSidebar';
+import { WixHeader } from '../../components/backoffice/WixHeader';
+import { WixProductTable } from '../../components/backoffice/WixProductTable';
 
 interface ProductProfit {
   id?: string;
@@ -259,6 +262,7 @@ export default function BackofficeDashboard() {
   const [cmsSubTab, setCmsSubTab] = useState<CmsSubTab>('categories');
   const [reportsSubTab, setReportsSubTab] = useState<'inventory' | 'accesses'>('inventory');
   const [onlineCount, setOnlineCount] = useState(0);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Catálogo de produtos
   const [products, setProducts] = useState<CatalogProduct[]>(INITIAL_CATALOG);
@@ -2445,7 +2449,7 @@ export default function BackofficeDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10 space-y-8 bg-white selection:bg-deep-black selection:text-gold relative">
+    <div className="min-h-screen bg-[#f7f8fa] flex flex-col font-sans selection:bg-stone-900 selection:text-gold relative">
       {/* =========================================================================
           NOTIFICAÇÕES FLUTUANTES EM TEMPO REAL (ESTILO WIX LIVE NOTIFIER)
          ========================================================================= */}
@@ -2453,19 +2457,19 @@ export default function BackofficeDashboard() {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`pointer-events-auto p-4 border-2 shadow-2xl transition-all transform animate-fadeIn ${
+            className={`pointer-events-auto p-4 border rounded-lg shadow-xl transition-all transform animate-fadeIn ${
               toast.type === 'order'
-                ? 'bg-deep-black text-white border-gold'
-                : 'bg-white text-deep-black border-deep-black'
+                ? 'bg-stone-900 text-white border-gold/50'
+                : 'bg-white text-gray-900 border-gray-200'
             }`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="relative flex h-3 w-3">
+                <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-gold"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-gold"></span>
                 </span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-gold">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gold">
                   {toast.title}
                 </span>
               </div>
@@ -2477,11 +2481,11 @@ export default function BackofficeDashboard() {
                 ✕
               </button>
             </div>
-            <p className="text-xs font-bold uppercase mt-1 leading-snug">
+            <p className="text-xs font-semibold mt-1 leading-snug">
               {toast.desc}
             </p>
-            <div className="mt-2 pt-2 border-t border-deep-black/10 flex items-center justify-between text-[10px] uppercase font-mono">
-              <span className="flex items-center gap-1 text-gold font-bold">
+            <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] font-mono">
+              <span className="flex items-center gap-1 text-gold font-medium">
                 <MapPin className="w-3 h-3 text-gold" />
                 <span>{toast.city}</span>
               </span>
@@ -2491,819 +2495,126 @@ export default function BackofficeDashboard() {
         ))}
       </div>
 
-      {/* Header do ERP Backoffice */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-deep-black text-white p-6 sm:p-8 border border-gold/30 shadow-luxury">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 bg-white/10 text-[10px] font-black uppercase tracking-widest text-gold border border-gold/30 mb-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
-            <span>PAINEL MASTER • {adminUser?.name?.toUpperCase() || 'ADMINISTRADORA'}</span>
-          </div>
-          <span className="text-[10px] uppercase font-black text-gold tracking-widest flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" /> GESTÃO OFICIAL: CATÁLOGO, VENDAS, LUCRO REAL & ESTOQUE (USD)
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wider flex items-center gap-3">
-            <img src="/symbol-ana-fitness.png" alt="Ana Fitness" className="w-8 h-8 object-contain" />
-            <span>ERP BACKOFFICE ANA FITNESS WEAR</span>
-          </h1>
-          <p className="text-xs text-white/60 uppercase tracking-wider">
-            Sede em Leominster, MA • Moeda oficial Dólar ($ USD) • Frete Fixo $9.99 (USPS).
-          </p>
-        </div>
-
-        {/* Visitantes Online & Controles de Som/Notificação Wix */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5">
-          {/* Botão de Som On/Off */}
-          <button
-            type="button"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`p-2.5 border transition flex items-center gap-1.5 text-xs font-black uppercase tracking-wider ${
-              soundEnabled
-                ? 'bg-gold text-deep-black border-gold shadow'
-                : 'bg-white/10 text-white/70 border-white/20 hover:text-white'
-            }`}
-            title={soundEnabled ? 'Som ativado (clique para silenciar)' : 'Som desativado (clique para ativar)'}
-          >
-            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            <span className="hidden md:inline">{soundEnabled ? 'SOM ATIVO' : 'MUDO'}</span>
-          </button>
-
-          {/* Botão de Notificações do Navegador */}
-          <button
-            type="button"
-            onClick={handleEnableBrowserNotifications}
-            className={`p-2 sm:p-2.5 border transition flex items-center gap-1.5 text-xs font-black uppercase tracking-wider ${
-              browserNotificationsActive
-                ? 'bg-gold text-deep-black border-gold shadow-sm'
-                : 'bg-white/10 text-white/80 border-white/20 hover:text-white'
-            }`}
-            title="Receber notificações no computador/celular"
-          >
-            {browserNotificationsActive ? <BellRing className="w-4 h-4 text-deep-black" /> : <Bell className="w-4 h-4 text-gold" />}
-            <span className="text-[10px] sm:text-xs font-black">{browserNotificationsActive ? 'ALERTAS ATIVOS' : 'ALERTAS PUSH'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('live')}
-            className="flex items-center gap-3 bg-white/10 border border-gold/30 px-3.5 py-2 hover:border-gold transition cursor-pointer"
-          >
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-gold"></span>
-            </span>
-            <div className="text-left text-xs uppercase tracking-wider">
-              <span className="text-[9px] text-white/60 block font-bold">RADAR AO VIVO:</span>
-              <span className="text-sm font-black text-gold font-mono">{liveFeed.activeCount} VISITANTES</span>
-            </div>
-          </button>
-
-          {/* Botão de Status da Loja: No Ar / Fora do Ar */}
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('settings');
-              if (typeof window !== 'undefined') {
-                window.scrollTo({ top: 300, behavior: 'smooth' });
-              }
-            }}
-            className={`p-2 sm:p-2.5 border transition flex items-center gap-1.5 text-xs font-black uppercase tracking-wider cursor-pointer ${
-              siteInfo.storeOffline
-                ? 'bg-red-600 text-white border-red-500 animate-pulse shadow-md'
-                : 'bg-green-500/20 text-green-400 border-green-500/40 hover:bg-green-500/30'
-            }`}
-            title={siteInfo.storeOffline ? 'Loja está FORA DO AR (Modo Manutenção). Clique para configurar.' : 'Loja está ONLINE e no ar. Clique para configurar.'}
-          >
-            <Power className={`w-4 h-4 ${siteInfo.storeOffline ? 'text-white' : 'text-green-400'}`} />
-            <span className="text-[10px] sm:text-xs font-black">
-              {siteInfo.storeOffline ? '🔴 FORA DO AR' : '🟢 LOJA NO AR'}
-            </span>
-          </button>
-
-          {/* Botão de Bloquear Painel / Sair da Sessão */}
-          <button
-            type="button"
-            onClick={logoutAdmin}
-            className="p-2.5 bg-red-600/10 hover:bg-red-600 hover:text-white text-red-500 border border-red-500/30 transition flex items-center gap-1.5 text-xs font-black uppercase tracking-wider shadow-sm"
-            title="Bloquear painel imediatamente"
-          >
-            <Lock className="w-4 h-4 text-red-500" />
-            <span className="hidden md:inline">BLOQUEAR / SAIR</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Alerta de Loja Fora do Ar (Modo Manutenção Ativo) */}
-      {siteInfo.storeOffline && (
-        <div className="bg-red-600 text-white px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-2 border-red-800 shadow-luxury animate-fadeIn">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-white text-red-600 font-black shrink-0 shadow-sm">
-              <Power className="w-5 h-5 text-red-600 animate-pulse" />
-            </div>
-            <div>
-              <p className="text-xs font-black uppercase tracking-wider text-white">
-                ⚠️ A SUA LOJA ESTÁ FORA DO AR PARA O PÚBLICO (MODO MANUTENÇÃO ATIVO)
-              </p>
-              <p className="text-[11px] text-white/90 font-medium">
-                Os clientes estão vendo a tela de manutenção. Você pode continuar mexendo no catálogo e nas configurações livremente.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm('Deseja colocar a loja NO AR agora para todos os clientes comprarem?')) {
-                  updateSiteInfo({ storeOffline: false });
-                }
-              }}
-              className="px-4 py-2 bg-white hover:bg-gold hover:text-deep-black text-red-700 font-black text-xs uppercase tracking-wider transition shadow cursor-pointer"
-            >
-              🟢 COLOCAR NO AR AGORA
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('settings')}
-              className="px-3 py-2 bg-red-900/60 hover:bg-red-900 text-white border border-white/20 font-bold text-xs uppercase tracking-wider transition cursor-pointer"
-            >
-              Ajustar Textos
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* DESTAQUE #1 NO COMPUTADOR E CELULAR: PEDIDOS PENDENTES DE ENVIO SEMPRE EM PRIMEIRO LUGAR */}
-      <PendingOrdersSpotlight
-        sales={salesData?.sales || []}
-        onUpdateFulfillmentStatus={handleUpdateFulfillmentStatus}
-        onSelectOrder={(ord) => {
-          setSelectedSaleDetail(ord);
-        }}
-        onEditOrder={(ord) => {
-          setEditingSale(ord);
-        }}
-        onViewAllSales={() => {
-          setActiveTab('sales');
-          setSalesUnfulfilledOnly(true);
-          fetchSalesData();
-        }}
-      />
-
-      {/* Banner de Ativação de Notificações Push para Celular */}
-      {!browserNotificationsActive && (
-        <div className="bg-amber-50 border-2 border-gold p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fadeIn">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gold text-deep-black font-black shrink-0 shadow-xs">
-              <BellRing className="w-5 h-5 text-deep-black animate-bounce" />
-            </div>
-            <div>
-              <p className="text-xs font-black uppercase text-deep-black tracking-wide">
-                ATIVAR AVISO DE VENDAS NO CELULAR
-              </p>
-              <p className="text-[11px] text-deep-black/80 font-medium">
-                Toque no botão ao lado para seu celular tocar o som de caixa registradora e notificar toda nova venda!
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleEnableBrowserNotifications}
-            className="px-4 py-2.5 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 border border-gold shrink-0 cursor-pointer shadow-md"
-          >
-            <Bell className="w-4 h-4 text-gold" />
-            <span>ATIVAR ALERTAS NO MEU CELULAR</span>
-          </button>
-        </div>
-      )}
-
-      {/* =========================================================================
-          CENTRO DE COMANDO & AÇÕES RÁPIDAS DA ADMINISTRAÇÃO (ACESSO DIRETO NO TOPO)
-          Todos os botões principais concentrados no topo para nunca precisar rolar a página
-         ========================================================================= */}
-      <section className="bg-gradient-to-r from-deep-black via-zinc-950 to-deep-black border-2 border-gold p-4 sm:p-5 shadow-luxury space-y-3.5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-gold/20 pb-2.5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-2.5 h-2.5 bg-gold rounded-full animate-pulse shadow-xs" />
-            <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-gold" />
-              <span>CENTRO DE COMANDO & AÇÕES RÁPIDAS DA ADMINISTRAÇÃO</span>
-            </span>
-            <span className="hidden lg:inline-block text-[9px] bg-gold/20 text-gold border border-gold/40 px-2 py-0.5 font-bold uppercase font-mono">
-              PAINEL EXECUTIVO
-            </span>
-          </div>
-          <p className="text-[11px] text-white/70 uppercase font-medium">
-            Acesso instantâneo com 1 clique para todas as rotinas do negócio (sem rolar a tela)
-          </p>
-        </div>
-
-        {/* Grade de Ações Rápidas de Alta Prioridade */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-2">
-          {/* 1. Cadastrar Novo Produto */}
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('catalog');
-              setEditingProduct(null);
-              setShowAddForm(true);
-              if (typeof window !== 'undefined') {
-                window.scrollTo({ top: 350, behavior: 'smooth' });
-              }
-            }}
-            className="p-3 bg-gold hover:bg-white text-deep-black font-black text-xs uppercase tracking-wider transition flex flex-col items-center justify-center text-center gap-1.5 shadow-md border border-gold cursor-pointer group"
-            title="Abrir formulário de cadastro de novo produto com grade cor x tamanho"
-          >
-            <PlusCircle className="w-5 h-5 text-deep-black group-hover:scale-110 transition-transform" />
-            <span className="leading-tight text-[11px] font-black">+ NOVO PRODUTO</span>
-            <span className="text-[8px] opacity-75 font-bold">Com Grade</span>
-          </button>
-
-          {/* 2. PDV Balcão (Venda no Showroom) */}
-          <Link
-            href="/pos"
-            target="_blank"
-            className="p-3 bg-white/10 hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-wider transition flex flex-col items-center justify-center text-center gap-1.5 border border-white/20 hover:border-gold shadow-sm group"
-            title="Abrir o PDV Balcão para registrar vendas físicas no showroom"
-          >
-            <Store className="w-5 h-5 text-gold group-hover:text-deep-black transition-colors" />
-            <span className="leading-tight text-[11px] font-black">PDV BALCÃO</span>
-            <span className="text-[8px] text-gold/80 group-hover:text-deep-black/80 font-bold">Vender Agora ↗</span>
-          </Link>
-
-          {/* 3. Retirada / Uso Próprio & Brindes */}
-          <button
-            type="button"
-            onClick={() => {
-              setWriteOffModalTab('NEW');
-              setShowWriteOffModal(true);
-            }}
-            className="p-3 bg-red-600/20 hover:bg-red-600 hover:text-white text-red-400 border border-red-500/40 hover:border-red-500 font-black text-xs uppercase tracking-wider transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm cursor-pointer group"
-            title="Registrar saída de peças para uso próprio, brinde influencer ou mostruário sem custo"
-          >
-            <PackageMinus className="w-5 h-5 text-red-400 group-hover:text-white transition-colors" />
-            <span className="leading-tight text-[11px] font-black">- RETIRADA PEÇA</span>
-            <span className="text-[8px] opacity-80 font-bold">Uso Próprio/Brinde</span>
-          </button>
-
-          {/* 4. Histórico de Retiradas / Despesas */}
-          <button
-            type="button"
-            onClick={() => {
-              setWriteOffModalTab('HISTORY');
-              setShowWriteOffModal(true);
-            }}
-            className="p-3 bg-white/5 hover:bg-white/15 text-white/90 border border-white/15 hover:border-gold/40 font-black text-xs uppercase tracking-wider transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm cursor-pointer"
-            title="Ver histórico de saídas de mercadoria e total lançado como despesa"
-          >
-            <Receipt className="w-5 h-5 text-amber-400" />
-            <span className="leading-tight text-[11px] font-black">HISTÓRICO SAÍDAS</span>
-            <span className="text-[8px] text-amber-300 font-bold font-mono">
-              -${(writeOffsData?.summary?.totalCostValue || 0).toFixed(2)}
-            </span>
-          </button>
-
-          {/* 5. Vendas & Lucro Real */}
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('sales');
+      <div className="flex flex-1 min-h-screen">
+        {/* Menu Lateral Wix Oficial */}
+        <WixSidebar
+          activeTab={activeTab}
+          onNavigateTab={(t) => {
+            setActiveTab(t);
+            if (t === 'sales') fetchSalesData();
+            if (t === 'finances') {
               fetchSalesData();
               fetchWriteOffs();
+            }
+          }}
+          productsCount={supabaseProducts.length || products.length}
+          outOfStockCount={outOfStockCatalogCount}
+          pendingOrdersCount={salesData?.sales?.filter((s: any) => s.fulfillment_status === 'PENDING').length || 0}
+          totalOrdersCount={salesData?.sales?.length || 0}
+          pendingSellersCount={sellers.filter((s: any) => s.approval_status === 'PENDING').length || 0}
+          adminName={adminUser?.name || 'Ana'}
+          storeOffline={siteInfo.storeOffline}
+          onToggleStoreOffline={() => updateSiteInfo({ storeOffline: !siteInfo.storeOffline })}
+          onOpenNewProductForm={() => {
+            setActiveTab('catalog');
+            setEditingProduct(null);
+            setShowAddForm(true);
+          }}
+          onOpenCategoriesModal={() => setShowCategoryModal(true)}
+          onOpenWriteOffModal={() => {
+            setWriteOffModalTab('NEW');
+            setShowWriteOffModal(true);
+          }}
+          onOpenWhatsAppCatalogModal={() => setShowWhatsAppCatalogModal(true)}
+          onOpenTikTokModal={() => setShowTikTokModal(true)}
+          onOpenAIStudioModal={() => {
+            setAiStudioTargetProduct(null);
+            setShowAIStudioModal(true);
+          }}
+          onOpenComboPromoModal={() => setShowComboPromoModal(true)}
+          onLogout={logoutAdmin}
+          isOpenMobile={mobileSidebarOpen}
+          onCloseMobile={() => setMobileSidebarOpen(false)}
+        />
+
+        {/* Área Central Principal (Layout Wix) */}
+        <div className="flex-1 lg:pl-72 flex flex-col min-w-0">
+          {/* Barra Superior Wix */}
+          <WixHeader
+            onToggleMobileSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            searchValue={productSearch}
+            onSearchChange={(val) => {
+              setProductSearch(val);
+              if (activeTab !== 'catalog' && val.trim().length > 0) {
+                setActiveTab('catalog');
+              }
             }}
-            className={`p-3 transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm border cursor-pointer ${
-              activeTab === 'sales'
-                ? 'bg-gold/20 border-gold text-gold font-black'
-                : 'bg-white/5 hover:bg-white/15 text-white/90 border-white/15 hover:border-gold/40'
-            }`}
-            title="Ir para o Painel de Vendas e Lucro Real"
-          >
-            <BarChart3 className="w-5 h-5 text-gold" />
-            <span className="leading-tight text-[11px] font-black">VENDAS & LUCRO</span>
-            <span className="text-[8px] opacity-75 font-bold font-mono">
-              {salesData?.sales?.length || 0} pedidos
-            </span>
-          </button>
+            storeOffline={siteInfo.storeOffline}
+            onToggleStoreOffline={() => updateSiteInfo({ storeOffline: !siteInfo.storeOffline })}
+            liveVisitorsCount={liveFeed?.activeCount || onlineCount}
+            soundEnabled={soundEnabled}
+            onToggleSound={() => setSoundEnabled(!soundEnabled)}
+            browserNotificationsActive={browserNotificationsActive}
+            onEnableBrowserNotifications={handleEnableBrowserNotifications}
+            onOpenLiveFeed={() => setActiveTab('live')}
+            onLogout={logoutAdmin}
+            adminName={adminUser?.name || 'Ana'}
+          />
 
-          {/* 5.1 Condicionais & Consignação */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('conditionals')}
-            className={`p-3 transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm border cursor-pointer ${
-              activeTab === 'conditionals'
-                ? 'bg-gold/20 border-gold text-gold font-black'
-                : 'bg-white/5 hover:bg-white/15 text-white/90 border-white/15 hover:border-gold/40'
-            }`}
-            title="Gerenciar Malas Condicionais e Consignação para clientes provarem em casa"
-          >
-            <ShoppingBag className="w-5 h-5 text-gold" />
-            <span className="leading-tight text-[11px] font-black">CONDICIONAIS</span>
-            <span className="text-[8px] bg-gold/20 text-gold px-1.5 py-0.5 border border-gold/40 font-bold uppercase font-mono">
-              MALAS DE ROUPA
-            </span>
-          </button>
+          {/* Conteúdo da Página */}
+          <main className="p-4 sm:p-6 lg:p-8 flex-1 space-y-6">
+            {/* Alerta Discreto de Loja em Manutenção */}
+            {siteInfo.storeOffline && (
+              <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs animate-fadeIn">
+                <div className="flex items-center gap-2.5">
+                  <Power className="w-4 h-4 text-red-600 animate-pulse shrink-0" />
+                  <div>
+                    <span className="font-bold block">LOJA EM MODO MANUTENÇÃO (FORA DO AR PARA CLIENTES)</span>
+                    <span className="text-red-700">Seus clientes estão vendo a tela de manutenção. Você pode configurar o site livremente.</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Deseja colocar a loja NO AR agora para todos os clientes comprarem?')) {
+                      updateSiteInfo({ storeOffline: false });
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded font-bold transition shrink-0"
+                >
+                  Colocar no Ar Agora
+                </button>
+              </div>
+            )}
 
-          {/* 6. Catálogo WhatsApp (PDF) */}
-          <button
-            type="button"
-            onClick={() => setShowWhatsAppCatalogModal(true)}
-            className="p-3 bg-emerald-600/20 hover:bg-[#25d366] hover:text-black text-[#25d366] border border-emerald-500/40 hover:border-[#25d366] font-black text-xs uppercase tracking-wider transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm cursor-pointer group"
-            title="Gerar catálogo PDF formatado para envio no WhatsApp"
-          >
-            <Smartphone className="w-5 h-5 text-[#25d366] group-hover:text-black transition-colors" />
-            <span className="leading-tight text-[11px] font-black">CATÁLOGO PDF</span>
-            <span className="text-[8px] opacity-80 font-bold">WhatsApp</span>
-          </button>
+            {/* Notificação de Sucesso */}
+            {saveSuccessMessage && (
+              <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg flex items-center justify-between text-xs font-medium animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Produto gravado com sucesso no Supabase! Grade de variantes persistida e catálogo atualizado.</span>
+                </div>
+                <Link href="/" target="_blank" className="text-emerald-700 hover:underline font-bold flex items-center gap-1">
+                  <span>Ver na Loja</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            )}
 
-          {/* 7. Entrada de Notas Fiscais */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('invoices')}
-            className={`p-3 transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm border cursor-pointer ${
-              activeTab === 'invoices'
-                ? 'bg-gold/20 border-gold text-gold font-black'
-                : 'bg-white/5 hover:bg-white/15 text-white/90 border-white/15 hover:border-gold/40'
-            }`}
-            title="Lançar notas fiscais de confecção, verificar notas já salvas e calcular custos"
-          >
-            <Receipt className="w-5 h-5 text-gold" />
-            <span className="leading-tight text-[11px] font-black">ENTRADA DE NOTAS</span>
-            <span className="text-[8px] opacity-75 font-bold">Arquivo de NF</span>
-          </button>
-
-          {/* 8. Cupons de Desconto & Promoções */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('coupons')}
-            className={`p-3 transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm border cursor-pointer ${
-              activeTab === 'coupons'
-                ? 'bg-gold/20 border-gold text-gold font-black'
-                : 'bg-white/5 hover:bg-white/15 text-white/90 border-white/15 hover:border-gold/40'
-            }`}
-            title="Gerenciar pop-up de frete grátis, contagem regressiva, combos e cupons de desconto"
-          >
-            <Sparkles className="w-5 h-5 text-gold" />
-            <span className="leading-tight text-[11px] font-black">OFERTAS & PROMO</span>
-            <span className="text-[8px] bg-gold/20 text-gold px-1.5 py-0.5 border border-gold/40 font-bold uppercase font-mono">
-              POP-UP & FRETE
-            </span>
-          </button>
-
-          {/* 9. Vendedoras & Afiliadas */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('commissions')}
-            className={`p-3 transition flex flex-col items-center justify-center text-center gap-1.5 shadow-sm border cursor-pointer ${
-              activeTab === 'commissions'
-                ? 'bg-gold/20 border-gold text-gold font-black'
-                : 'bg-white/5 hover:bg-white/15 text-white/90 border-white/15 hover:border-gold/40'
-            }`}
-            title="Gerenciar vendedoras e comissões"
-          >
-            <Users className="w-5 h-5 text-gold" />
-            <span className="leading-tight text-[11px] font-black">VENDEDORAS</span>
-            <span className="text-[8px] opacity-75 font-bold font-mono">
-              {sellers.length} cadastradas
-            </span>
-          </button>
-        </div>
-
-        {/* Segunda Linha de Ferramentas / Ações Secundárias */}
-        <div className="flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-white/10 text-xs">
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setActiveTab('cms')}
-              className="px-3 py-1.5 bg-gold/15 hover:bg-gold hover:text-deep-black text-gold font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-gold/40 cursor-pointer shadow-xs"
-            >
-              <Palette className="w-3 h-3 text-gold" />
-              <span>Banners & Vitrine (CMS)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowTikTokModal(true)}
-              className="px-3 py-1.5 bg-black hover:bg-gold hover:text-deep-black text-white font-black text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-gold/50 cursor-pointer shadow-xs"
-              title="Abrir Central de Links e Catálogo do TikTok"
-            >
-              <span className="text-xs">🎵</span>
-              <span>Links TikTok Shop</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setAiStudioTargetProduct(null);
-                setShowAIStudioModal(true);
-              }}
-              className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-gold hover:from-gold hover:to-amber-400 text-deep-black font-black text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-gold cursor-pointer shadow-sm"
-              title="Abrir Estúdio IA de Modelos Virtuais (Virtual Try-On Padrão TikTok)"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-deep-black" />
-              <span>Estúdio Modelo IA</span>
-              <span className="px-1 py-0.2 bg-deep-black text-gold text-[8px] font-black">NOVO</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowCategoryModal(true)}
-              className="px-3 py-1.5 bg-white/5 hover:bg-gold hover:text-deep-black text-white/80 font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-white/15 cursor-pointer"
-            >
-              <Tag className="w-3 h-3 text-gold" />
-              <span>+ Gerenciar Categorias</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowCsvImportModal(true)}
-              className="px-3 py-1.5 bg-white/5 hover:bg-gold hover:text-deep-black text-white/80 font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-white/15 cursor-pointer"
-            >
-              <Upload className="w-3 h-3 text-gold" />
-              <span>Importar Planilha (Excel/CSV)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleExportCatalogCsv}
-              className="px-3 py-1.5 bg-white/5 hover:bg-white hover:text-deep-black text-white/80 font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-white/15 cursor-pointer"
-            >
-              <Download className="w-3 h-3" />
-              <span>Exportar Catálogo (.csv)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('customers')}
-              className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 hover:text-white text-emerald-300 font-black text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-emerald-500/40 cursor-pointer"
-            >
-              <Users className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Contatos & Marketing</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('instagram-direct')}
-              className="px-3 py-1.5 bg-pink-500/10 hover:bg-pink-600 hover:text-white text-pink-300 font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-pink-500/30 cursor-pointer"
-            >
-              <Instagram className="w-3 h-3 text-pink-400" />
-              <span>Direct Instagram & Bot</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('emails')}
-              className="px-3 py-1.5 bg-gold/15 hover:bg-gold hover:text-deep-black text-gold font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-gold/40 cursor-pointer shadow-xs"
-              title="Cadastrar provedor de e-mail (Gmail, Resend, SMTP) e gerenciar envios para clientes"
-            >
-              <Mail className="w-3 h-3 text-gold" />
-              <span>📧 E-mails de Compras</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <Link
-              href="/links"
-              target="_blank"
-              className="px-3 py-1.5 bg-gold/10 hover:bg-gold hover:text-deep-black text-gold font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-gold/40"
-            >
-              <ExternalLink className="w-3 h-3" />
-              <span>Link da Bio (/links)</span>
-            </Link>
-
-            <Link
-              href="/"
-              target="_blank"
-              className="px-3 py-1.5 bg-white/10 hover:bg-white hover:text-deep-black text-white font-bold text-[10px] uppercase tracking-wider transition flex items-center gap-1.5 border border-white/20"
-            >
-              <ExternalLink className="w-3 h-3" />
-              <span>Ver Loja Online</span>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Tabs de Navegação do Backoffice - Os 7 Pilares Profissionais */}
-      <div className="flex border-b-2 border-deep-black/10 gap-2 sm:gap-4 text-xs font-black uppercase tracking-widest overflow-x-auto pb-1 scrollbar-none">
-        {/* 1. Painel Geral (Dashboard & Métricas) */}
-        <button
-          onClick={() => setActiveTab('dashboard')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'dashboard'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4 text-gold" />
-          <span>1. DASHBOARD & MÉTRICAS</span>
-        </button>
-
-        {/* 2. Gestão de Catálogo e Produtos */}
-        <button
-          onClick={() => setActiveTab('catalog')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'catalog'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Package className="w-4 h-4 text-gold" />
-          <span>2. CATÁLOGO & PRODUTOS ({supabaseProducts.length || products.length})</span>
-        </button>
-
-        {/* Aba Exclusiva: PRODUTO ESGOTADO (fora do site) */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('out-of-stock')}
-          className={`pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 cursor-pointer ${
-            activeTab === 'out-of-stock'
-              ? 'border-red-600 text-red-700 font-black'
-              : 'border-transparent text-red-700/80 hover:text-red-700'
-          }`}
-        >
-          <span>🚫 PRODUTO ESGOTADO</span>
-          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
-            outOfStockCatalogCount > 0 ? 'bg-red-600 text-white' : 'bg-deep-black/10 text-deep-black'
-          }`}>
-            {outOfStockCatalogCount}
-          </span>
-        </button>
-
-        {/* 3. Vendas, Pedidos e Omnichannel */}
-        <button
-          onClick={() => {
-            setActiveTab('sales');
-            fetchSalesData();
-          }}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'sales'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Receipt className="w-4 h-4 text-gold" />
-          <span>3. PAINEL DE VENDAS & RESULTADOS</span>
-          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
-            {salesData?.sales?.length || 0}
-          </span>
-        </button>
-
-        {/* 3.1 Condicionais & Consignação */}
-        <button
-          onClick={() => setActiveTab('conditionals')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'conditionals'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <ShoppingBag className="w-4 h-4 text-gold" />
-          <span>CONDICIONAIS (MALAS)</span>
-          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
-            CONSIGNAÇÃO
-          </span>
-        </button>
-
-        {/* 4. Vendedoras, Cupons e Comissões */}
-        <button
-          onClick={() => setActiveTab('commissions')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'commissions'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Users className="w-4 h-4 text-gold" />
-          <span>4. VENDEDORAS & CUPONS</span>
-          {sellers.filter((s: any) => s.approval_status === 'PENDING').length > 0 ? (
-            <span className="bg-amber-500 text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse shadow-xs">
-              {sellers.filter((s: any) => s.approval_status === 'PENDING').length} PENDENTE(S)
-            </span>
-          ) : (
-            <span className="bg-deep-black/10 text-deep-black text-[8px] font-bold px-1.5 py-0.5 rounded-full">
-              {sellers.length}
-            </span>
-          )}
-        </button>
-
-        {/* Entrada de Notas Fiscais de Fábrica */}
-        <button
-          onClick={() => setActiveTab('invoices')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'invoices'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Receipt className="w-4 h-4 text-gold" />
-          <span>ENTRADA DE NOTAS (NF)</span>
-          <span className="bg-emerald-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">
-            ARQUIVO
-          </span>
-        </button>
-
-        {/* Promoções, Ofertas, Pop-up & Cupons */}
-        <button
-          onClick={() => setActiveTab('coupons')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'coupons'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Sparkles className="w-4 h-4 text-gold" />
-          <span>PROMOÇÕES & OFERTAS</span>
-          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
-            POP-UP & FRETE
-          </span>
-        </button>
-
-        {/* 5. Financeiro da Loja */}
-        <button
-          onClick={() => setActiveTab('finances')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'finances'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Wallet className="w-4 h-4 text-gold" />
-          <span>5. FINANCEIRO DA LOJA</span>
-          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
-            DRE & CAIXA
-          </span>
-        </button>
-
-        {/* Fornecedores & Confecções */}
-        <button
-          onClick={() => setActiveTab('suppliers')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'suppliers'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Building2 className="w-4 h-4 text-gold" />
-          <span>FORNECEDORES</span>
-          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
-            CONFECÇÕES
-          </span>
-        </button>
-
-        {/* Relatórios de Estoque & Tráfego */}
-        <button
-          onClick={() => setActiveTab('reports')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'reports'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4 text-gold" />
-          <span>RELATÓRIOS</span>
-          <span className="bg-gold text-deep-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
-            ESTOQUE & TRÁFEGO
-          </span>
-        </button>
-
-        {/* 6. Aparência da Loja (CMS Visual) */}
-        <button
-          onClick={() => setActiveTab('cms')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'cms'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Palette className="w-4 h-4 text-gold" />
-          <span>6. APARÊNCIA DA LOJA (CMS)</span>
-        </button>
-
-        {/* 7. Contatos, Marketing e Prova Social (Reviews) */}
-        <button
-          onClick={() => setActiveTab('customers')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'customers'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Star className="w-4 h-4 text-gold" />
-          <span>7. CONTATOS, MARKETING & REVIEWS</span>
-        </button>
-
-        {/* 8. Configurações Técnicas e Acessos */}
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'settings'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Settings className="w-4 h-4 text-gold" />
-          <span>8. CONFIGURAÇÕES & ACESSOS</span>
-        </button>
-
-        {/* Atalhos Rápidos */}
-        <button
-          onClick={() => setActiveTab('live')}
-          className={`pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 ${
-            activeTab === 'live'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Activity className="w-4 h-4 text-gold" />
-          <span>RADAR AO VIVO</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('backorders')}
-          className={`pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 ${
-            activeTab === 'backorders'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <Factory className="w-4 h-4 text-gold" />
-          <span>PRÉ-VENDAS</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('margins')}
-          className={`pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 ${
-            activeTab === 'margins'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/50 hover:text-deep-black'
-          }`}
-        >
-          <DollarSign className="w-4 h-4 text-gold" />
-          <span>MARGENS</span>
-        </button>
-
-        {/* Botão de Destaque: Catálogo WhatsApp (PDF) */}
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('whatsapp-catalog');
-            setShowWhatsAppCatalogModal(true);
-          }}
-          className={`pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 ${
-            activeTab === 'whatsapp-catalog'
-              ? 'border-green-600 text-green-700 font-black'
-              : 'border-transparent text-green-700 hover:text-green-900 font-black cursor-pointer'
-          }`}
-          title="Ver e gerar catálogo em PDF para divulgação no WhatsApp"
-        >
-          <Smartphone className="w-4 h-4 text-green-600" />
-          <span>📲 CATÁLOGO WHATSAPP (PDF)</span>
-        </button>
-
-        {/* Botão de Destaque: Direct Instagram & Bot */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('instagram-direct')}
-          className={`pb-3 flex items-center gap-1.5 transition border-b-2 shrink-0 ${
-            activeTab === 'instagram-direct'
-              ? 'border-pink-600 text-pink-700 font-black'
-              : 'border-transparent text-pink-700 hover:text-pink-900 font-black cursor-pointer'
-          }`}
-          title="Atendimento do Direct do Instagram e Respostas Automáticas do Robô"
-        >
-          <Instagram className="w-4 h-4 text-pink-600" />
-          <span>📸 DIRECT INSTAGRAM & BOT</span>
-        </button>
-
-        {/* Gestão de E-mails e Notificações de Compras */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('emails')}
-          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
-            activeTab === 'emails'
-              ? 'border-gold text-deep-black font-black'
-              : 'border-transparent text-deep-black/60 hover:text-deep-black font-bold'
-          }`}
-          title="Cadastrar provedor de e-mail (Gmail, Resend, SMTP) e gerenciar disparos de confirmação de compra"
-        >
-          <Mail className="w-4 h-4 text-gold" />
-          <span>📧 E-MAILS & NOTIFICAÇÕES</span>
-          <span className="bg-gold text-deep-black text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest">
-            COMPRAS
-          </span>
-        </button>
-      </div>
-
-      {/* Notificação de Sucesso */}
-      {saveSuccessMessage && (
-        <div className="p-4 bg-emerald-950 text-emerald-100 border-2 border-emerald-500 flex items-center justify-between text-xs font-black uppercase tracking-wider animate-fadeIn shadow-lg shadow-emerald-950/40">
-          <div className="flex items-center gap-2 text-emerald-400">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-            <span className="text-white">✓ Produto gravado com sucesso no Supabase! Grade de variantes persistida e catálogo atualizado.</span>
-          </div>
-          <Link href="/" target="_blank" className="text-emerald-400 hover:text-white underline flex items-center gap-1 font-bold">
-            <span>Ver na Loja</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      )}
+            {/* Destaque Prioritário: Pedidos Pendentes de Envio */}
+            {(activeTab === 'dashboard' || activeTab === 'sales') && (
+              <PendingOrdersSpotlight
+                sales={salesData?.sales || []}
+                onUpdateFulfillmentStatus={handleUpdateFulfillmentStatus}
+                onSelectOrder={(ord) => setSelectedSaleDetail(ord)}
+                onEditOrder={(ord) => setEditingSale(ord)}
+                onViewAllSales={() => {
+                  setActiveTab('sales');
+                  setSalesUnfulfilledOnly(true);
+                  fetchSalesData();
+                }}
+              />
+            )}
 
       {/* =========================================================================
           TAB 1: PAINEL GERAL (DASHBOARD & MÉTRICAS)
@@ -3336,179 +2647,7 @@ export default function BackofficeDashboard() {
           TAB 2: CATÁLOGO & CADASTRO ÚNICO DE PRODUTOS COM GRADE
          ========================================================================= */}
       {activeTab === 'catalog' && (
-        <div className="space-y-8">
-          {/* Barra de Ações Superior */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border-2 border-deep-black p-5">
-            <div>
-              <h2 className="text-lg font-black uppercase tracking-wider text-deep-black flex items-center gap-2">
-                <Package className="w-5 h-5 text-gold" />
-                <span>CENTRAL OFICIAL DE PRODUTOS • SUPABASE INTEGRADO</span>
-              </h2>
-              <p className="text-xs text-deep-black/70 uppercase tracking-wide mt-0.5">
-                Tela única oficial para gerenciar dados de vitrine, fotos, custos, fornecedores e matriz SKU (Cor × Tamanho).
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              {/* Botão Baixar Modelo Excel / CSV */}
-              <button
-                type="button"
-                onClick={downloadExcelTemplate}
-                className="px-3.5 py-3 border-2 border-deep-black bg-white hover:bg-gold hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm"
-                title="Baixar planilha modelo Excel (.xlsx) para importação em massa"
-              >
-                <Download className="w-3.5 h-3.5 text-gold" />
-                <span>Baixar Modelo Excel (.xlsx)</span>
-              </button>
-
-              {/* Botão Exportar Catálogo Atual (CSV) */}
-              <button
-                type="button"
-                onClick={handleExportCatalogCsv}
-                className="px-3.5 py-3 border-2 border-deep-black bg-white hover:bg-gold hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm"
-                title="Exportar todo o catálogo cadastrado no Supabase em formato CSV"
-              >
-                <Download className="w-3.5 h-3.5 text-deep-black" />
-                <span>Exportar Catálogo (.csv)</span>
-              </button>
-
-              {/* Botão Atalho: Relatório de Peças no Ar (Valuation USD) */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('reports');
-                  setReportsSubTab('inventory');
-                }}
-                className="px-3.5 py-3 border-2 border-gold bg-gold/15 hover:bg-gold hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm"
-                title="Calcular quanto em dólar de mercadoria está no ar na vitrine (Baixar Excel .xlsx ou PDF)"
-              >
-                <DollarSign className="w-3.5 h-3.5 text-gold" />
-                <span>Estoque no Ar ($ USD)</span>
-              </button>
-
-              {/* Botão Importar Planilha (Excel / CSV) */}
-              <button
-                type="button"
-                onClick={() => setShowCsvImportModal(true)}
-                className="px-4 py-3 bg-gold hover:bg-deep-black hover:text-white text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border-2 border-deep-black"
-                title="Importar produtos em massa a partir de um arquivo Excel (.xlsx) ou CSV"
-              >
-                <Upload className="w-4 h-4 text-deep-black" />
-                <span>Importar Planilha (Excel / CSV)</span>
-              </button>
-
-              {/* Botão Saída / Baixa de Estoque sem Custo (Uso Próprio e Vendedoras) */}
-              <button
-                type="button"
-                onClick={() => setShowWriteOffModal(true)}
-                className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border-2 border-deep-black"
-                title="Dar saída no estoque para uso próprio da dona, mostruário de vendedoras sem custo ou brindes"
-              >
-                <PackageMinus className="w-4 h-4 text-white" />
-                <span>- RETIRADA / USO PRÓPRIO & MOSTRUÁRIO</span>
-              </button>
-
-              {/* Botão Gerar Catálogo WhatsApp (PDF) */}
-              <button
-                type="button"
-                onClick={() => setShowWhatsAppCatalogModal(true)}
-                className="px-4 py-3 bg-[#25d366] hover:bg-[#1ebd5b] text-black font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border-2 border-deep-black cursor-pointer"
-                title="Gerar catálogo com foto, preço original, promoção e estoque por tamanho para divulgação no WhatsApp"
-              >
-                <Smartphone className="w-4 h-4 text-black" />
-                <span>CATÁLOGO WHATSAPP (PDF)</span>
-              </button>
-
-              {/* Botão Trocar Capas das Categorias */}
-              <button
-                type="button"
-                onClick={() => {
-                  setCmsSubTab('categories');
-                  setActiveTab('cms');
-                }}
-                className="px-3.5 py-3 border-2 border-gold bg-gold/10 hover:bg-gold hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm"
-                title="Trocar fotos de capa das categorias (Sets, Rompers, Tops, etc) na página inicial"
-              >
-                <Layers className="w-3.5 h-3.5 text-gold" />
-                <span>Capas das Categorias</span>
-              </button>
-
-              {/* Botão Central de Links TikTok */}
-              <button
-                type="button"
-                onClick={() => setShowTikTokModal(true)}
-                className="px-4 py-3 border-2 border-deep-black bg-black text-white hover:bg-gold hover:text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm cursor-pointer"
-                title="Abrir Central de Links e Catálogo do TikTok"
-              >
-                <span className="text-sm">🎵</span>
-                <span>Links TikTok</span>
-                <span className="px-1.5 py-0.5 bg-gold text-deep-black text-[9px] font-black">
-                  FEED PRONTO
-                </span>
-              </button>
-
-              {/* Botão Estúdio de Modelos IA */}
-              <button
-                type="button"
-                onClick={() => {
-                  setAiStudioTargetProduct(null);
-                  setShowAIStudioModal(true);
-                }}
-                className="px-4 py-3 border-2 border-gold bg-gradient-to-r from-amber-500 to-gold hover:from-gold hover:to-amber-400 text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm cursor-pointer"
-                title="Abrir Estúdio IA de Modelos Virtuais (Virtual Try-On Padrão TikTok)"
-              >
-                <Sparkles className="w-4 h-4 text-deep-black" />
-                <span>Estúdio Modelo IA</span>
-                <span className="px-1.5 py-0.5 bg-deep-black text-gold text-[9px] font-black">
-                  TRY-ON
-                </span>
-              </button>
-
-              {/* Botão Gerenciar Categorias */}
-              <button
-                type="button"
-                onClick={() => setShowCategoryModal(true)}
-                className="px-3.5 py-3 border-2 border-deep-black bg-white hover:bg-gold hover:text-deep-black text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-sm cursor-pointer"
-                title="Cadastrar novas categorias, excluir ou organizar o catálogo"
-              >
-                <Tag className="w-3.5 h-3.5 text-gold" />
-                <span>+ Categorias</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={fetchSupabaseProducts}
-                className="px-3 py-3 border-2 border-deep-black hover:bg-deep-black hover:text-white text-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5"
-                title="Recarregar produtos do Supabase"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${loadingSupabase ? 'animate-spin' : ''}`} />
-                <span>Atualizar</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowComboPromoModal(true)}
-                className="px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-deep-black font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border-2 border-deep-black cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4 text-deep-black" />
-                <span>PROMOÇÃO DE COMBO (3 POR $X)</span>
-                <span className="px-1.5 py-0.5 bg-deep-black text-gold text-[9px] font-mono">
-                  {comboPromo?.active ? `${comboPromo?.product_ids?.length || 0} PEÇAS` : 'PAUSADA'}
-                </span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setEditingProduct(null);
-                  setShowAddForm(!showAddForm);
-                }}
-                className="px-5 py-3 bg-deep-black hover:bg-gold hover:text-deep-black text-white font-black text-xs uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border border-gold/40"
-              >
-                <PlusCircle className="w-4 h-4 text-gold group-hover:text-deep-black" />
-                <span>{showAddForm ? 'FECHAR FORMULÁRIO' : '+ CADASTRAR NOVO PRODUTO COM GRADE'}</span>
-              </button>
-            </div>
-          </div>
+        <div className="space-y-6">
 
           {/* Modal de Gerenciamento de Categorias */}
           <CategoryManagementModal
@@ -3645,700 +2784,71 @@ export default function BackofficeDashboard() {
             </div>
           )}
 
-          {/* BARRA DE PESQUISA E FILTROS DO CATÁLOGO DE PRODUTOS */}
-          <div className="bg-white border-2 border-deep-black p-4 space-y-3 shadow-sm">
-            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-              {/* Campo de Busca Rápida com Ícone e Botão Limpar */}
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  placeholder="DIGITE O NOME DO PRODUTO, SKU, CATEGORIA, FORNECEDOR OU COR/TAMANHO..."
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  className="w-full pl-9 pr-9 py-2.5 text-xs uppercase tracking-wider border-2 border-deep-black/30 focus:border-deep-black focus:outline-none font-bold placeholder:text-deep-black/40 bg-warm-light/20"
-                />
-                <Search className="w-4 h-4 text-deep-black/50 absolute left-3 top-3" />
-                {productSearch && (
-                  <button
-                    type="button"
-                    onClick={() => setProductSearch('')}
-                    className="absolute right-2.5 top-2.5 p-1 hover:bg-deep-black/10 text-deep-black/60 hover:text-deep-black"
-                    title="Limpar busca"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              {/* Filtro de Tamanho P (S), M (M), G (L), GG (XL) */}
-              <div className="flex items-center gap-1.5 border border-deep-black/30 px-3 py-2 bg-warm-light/20 shrink-0">
-                <Ruler className="w-3.5 h-3.5 text-gold" />
-                <span className="text-[10px] font-black uppercase text-deep-black/60">TAMANHO:</span>
-                <select
-                  value={productSizeFilter}
-                  onChange={(e) => setProductSizeFilter(e.target.value as any)}
-                  className="text-xs font-black uppercase bg-transparent border-0 focus:outline-none cursor-pointer"
-                >
-                  <option value="ALL">TODOS OS TAMANHOS</option>
-                  <option value="P">P (S)</option>
-                  <option value="M">M (M)</option>
-                  <option value="G">G (L)</option>
-                  <option value="GG">GG (XL)</option>
-                  <option value="UN">TAMANHO ÚNICO (ONE SIZE)</option>
-                </select>
-              </div>
-
-              {/* Filtro de Categoria */}
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 border border-deep-black/30 px-3 py-2 bg-warm-light/20 shrink-0">
-                  <Filter className="w-3.5 h-3.5 text-gold" />
-                  <span className="text-[10px] font-black uppercase text-deep-black/60">CATEGORIA:</span>
-                  <select
-                    value={productCategoryFilter}
-                    onChange={(e) => setProductCategoryFilter(e.target.value)}
-                    className="text-xs font-black uppercase bg-transparent border-0 focus:outline-none cursor-pointer"
-                  >
-                    <option value="ALL">TODAS AS CATEGORIAS ({totalCatalogCount})</option>
-                    {availableCatalogCategories.map((cat) => {
-                      const count = baseCatalogList.filter((p: any) => (p.categories?.name || p.category || '').toString().trim().toUpperCase() === cat).length;
-                      return (
-                        <option key={cat} value={cat}>
-                          {cat} ({count})
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Abas e Filtros Estruturados de Produtos */}
-            <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-deep-black/10">
-              <span className="text-[9px] font-black uppercase tracking-wider text-deep-black/50 mr-1">ABAS DO CATÁLOGO:</span>
-
-              {/* Aba TODOS */}
-              <button
-                type="button"
-                onClick={() => setProductStatusFilter('ALL')}
-                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border transition cursor-pointer ${
-                  productStatusFilter === 'ALL'
-                    ? 'bg-deep-black text-white border-deep-black shadow-xs'
-                    : 'bg-white text-deep-black/70 border-deep-black/20 hover:border-deep-black'
-                }`}
-              >
-                TODOS ({totalCatalogCount})
-              </button>
-
-              {/* Aba CRIADOS HOJE */}
-              <button
-                type="button"
-                onClick={() => setProductStatusFilter('TODAY')}
-                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1.5 cursor-pointer ${
-                  productStatusFilter === 'TODAY'
-                    ? 'bg-amber-500 text-deep-black border-amber-600 shadow-xs font-black'
-                    : 'bg-amber-50 text-amber-900 border-amber-300 hover:border-amber-500'
-                }`}
-                title="Produtos cadastrados hoje no ERP"
-              >
-                <span>⚡</span>
-                <span>CRIADOS HOJE ({todayCatalogCount})</span>
-              </button>
-
-              {/* Aba NO AR NA LOJA */}
-              <button
-                type="button"
-                onClick={() => setProductStatusFilter('ACTIVE')}
-                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1.5 cursor-pointer ${
-                  productStatusFilter === 'ACTIVE'
-                    ? 'bg-green-700 text-white border-green-800 shadow-xs'
-                    : 'bg-white text-green-700 border-green-300 hover:border-green-700'
-                }`}
-                title="Produtos ativos e visíveis na loja virtual"
-              >
-                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span>NO AR NA LOJA ({activeCatalogCount})</span>
-              </button>
-
-              {/* Aba RASCUNHOS / OCULTOS */}
-              <button
-                type="button"
-                onClick={() => setProductStatusFilter('DRAFT')}
-                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1.5 cursor-pointer ${
-                  productStatusFilter === 'DRAFT' || productStatusFilter === 'HIDDEN'
-                    ? 'bg-gray-800 text-white border-gray-900 shadow-xs font-black'
-                    : 'bg-gray-100 text-gray-700 border-gray-300 hover:border-gray-700'
-                }`}
-                title="Produtos em rascunho, ocultos ou sem publicação ativa"
-              >
-                <span>📝</span>
-                <span>RASCUNHOS / OCULTOS ({draftCatalogCount})</span>
-              </button>
-
-              {/* Aba EM ESTOQUE */}
-              <button
-                type="button"
-                onClick={() => setProductStatusFilter('IN_STOCK')}
-                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1.5 cursor-pointer ${
-                  productStatusFilter === 'IN_STOCK'
-                    ? 'bg-blue-800 text-white border-blue-900 shadow-xs'
-                    : 'bg-white text-blue-900 border-blue-200 hover:border-blue-800'
-                }`}
-                title="Produtos com pronta entrega em estoque"
-              >
-                <span>📦</span>
-                <span>EM ESTOQUE ({inStockCatalogCount})</span>
-              </button>
-
-              {/* Aba PRODUTO ESGOTADO */}
-              <button
-                type="button"
-                onClick={() => setProductStatusFilter('OUT_OF_STOCK')}
-                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border transition flex items-center gap-1.5 cursor-pointer ${
-                  productStatusFilter === 'OUT_OF_STOCK'
-                    ? 'bg-red-600 text-white border-red-700 font-black shadow-xs'
-                    : 'bg-red-50 text-red-800 border-red-300 hover:border-red-600'
-                }`}
-                title="Produtos com estoque zerado (ocultos do site)"
-              >
-                <span>🚫</span>
-                <span>PRODUTO ESGOTADO ({outOfStockCatalogCount})</span>
-              </button>
-
-              {(productSearch || productCategoryFilter !== 'ALL' || productStatusFilter !== 'ALL') && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProductSearch('');
-                    setProductCategoryFilter('ALL');
-                    setProductStatusFilter('ALL');
-                  }}
-                  className="ml-auto px-2 py-1 text-[9px] font-black uppercase text-red-600 hover:bg-red-50 border border-red-200 transition cursor-pointer"
-                >
-                  ✕ LIMPAR FILTROS
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* BARRA DE AÇÕES EM MASSA FLUTUANTE / FIXA */}
-          {selectedCatalogIds.length > 0 && (
-            <div className="sticky top-4 z-40 p-4 bg-deep-black text-white border-2 border-gold shadow-2xl flex flex-wrap items-center justify-between gap-3 animate-fadeIn">
-              <div className="flex items-center gap-2.5">
-                <span className="w-3 h-3 rounded-full bg-gold animate-pulse" />
-                <span className="text-xs font-black uppercase text-gold font-mono">
-                  {selectedCatalogIds.length} PRODUTO(S) SELECIONADO(S)
-                </span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowBulkPriceModal(true)}
-                  className="px-3 py-2 bg-white/10 hover:bg-gold hover:text-deep-black text-white text-[11px] font-black uppercase tracking-wider transition border border-white/20 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>💵</span>
-                  <span>MUDAR PREÇO</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowBulkSizeGuideModal(true)}
-                  className="px-3 py-2 bg-white/10 hover:bg-gold hover:text-deep-black text-white text-[11px] font-black uppercase tracking-wider transition border border-white/20 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>📐</span>
-                  <span>ADICIONAR MEDIDAS</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowBulkDescModal(true)}
-                  className="px-3 py-2 bg-white/10 hover:bg-gold hover:text-deep-black text-white text-[11px] font-black uppercase tracking-wider transition border border-white/20 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>📝</span>
-                  <span>MUDAR DESCRIÇÃO</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleBulkAddToCombo}
-                  disabled={isBulkSubmitting}
-                  className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-deep-black text-[11px] font-black uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <span>⚡</span>
-                  <span>INCLUIR NO COMBO ({comboPromo?.badge_text || 'COMBO 3 PEÇAS'})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleBulkRemoveFromCombo}
-                  disabled={isBulkSubmitting}
-                  className="px-3 py-2 bg-white/10 hover:bg-red-600 text-white text-[11px] font-black uppercase tracking-wider transition border border-white/20 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>✕</span>
-                  <span>REMOVER DO COMBO</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowComboPromoModal(true)}
-                  className="px-3 py-2 bg-amber-500/20 hover:bg-amber-400 hover:text-deep-black text-amber-300 text-[11px] font-black uppercase tracking-wider transition border border-amber-500/40 flex items-center gap-1.5 cursor-pointer"
-                  title="Configurar valor promocional fechado das 3 peças do combo"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>CONFIGURAR VALOR DO COMBO ({comboPromo?.bundle_price ? `$${Number(comboPromo.bundle_price).toFixed(2)}` : '$99.00'})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedCatalogIds([])}
-                  className="px-2.5 py-2 text-white/60 hover:text-white text-[10px] font-bold uppercase transition cursor-pointer"
-                >
-                  LIMPAR SELEÇÃO
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Tabela de Produtos Cadastrados no Catálogo */}
-          <div className="bg-white border-2 border-deep-black overflow-x-auto shadow-sm">
-            <div className="p-4 bg-deep-black/5 border-b border-deep-black/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Grid className="w-4 h-4 text-gold" />
-                <span className="text-xs font-black uppercase tracking-wider text-deep-black">
-                  PRODUTOS CADASTRADOS NO ERP (TABELAS 'PRODUCTS' & 'PRODUCT_VARIANTS')
-                </span>
-              </div>
-              <span className="text-[10px] font-mono text-deep-black/60 uppercase font-bold">
-                {productSearch || productCategoryFilter !== 'ALL' || productStatusFilter !== 'ALL'
-                  ? `EXIBINDO ${filteredCatalogProducts.length} DE ${totalCatalogCount} PRODUTOS`
-                  : `${totalCatalogCount} PRODUTOS NO ERP`}
-              </span>
-            </div>
-
-            <table className="w-full text-left text-xs uppercase tracking-wider">
-              <thead className="bg-deep-black text-white text-[10px] font-black">
-                <tr>
-                  <th className="p-4 w-12 text-center">
-                    <input
-                      type="checkbox"
-                      checked={
-                        filteredCatalogProducts.length > 0 &&
-                        filteredCatalogProducts.every((p: any) => selectedCatalogIds.includes(p.id))
-                      }
-                      onChange={handleToggleSelectAllFiltered}
-                      className="w-4 h-4 accent-gold cursor-pointer rounded"
-                      title="Selecionar todos os produtos filtrados"
-                    />
-                  </th>
-                  <th className="p-4">FOTO</th>
-                  <th className="p-4">PRODUTO & FORNECEDOR</th>
-                  <th className="p-4">GRADE DE VARIAÇÕES (COR × TAMANHO)</th>
-                  <th className="p-4">PREÇO DE VENDA</th>
-                  <th className="p-4">CUSTO</th>
-                  <th className="p-4">ESTOQUE TOTAL</th>
-                  <th className="p-4">STATUS</th>
-                  <th className="p-4">VISIBILIDADE NA LOJA</th>
-                  <th className="p-4 text-right">AÇÕES</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-deep-black/10">
-                {filteredCatalogProducts.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="p-10 text-center bg-warm-light/10">
-                      <div className="max-w-md mx-auto space-y-2">
-                        <Search className="w-8 h-8 text-deep-black/30 mx-auto" />
-                        <p className="text-sm font-black uppercase text-deep-black">
-                          NENHUM PRODUTO ENCONTRADO COM ESSES TERMOS
-                        </p>
-                        <p className="text-xs text-deep-black/60 uppercase">
-                          {productSearch ? `Nenhum resultado para "${productSearch}".` : 'Nenhum produto atende aos filtros de categoria/status selecionados.'}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProductSearch('');
-                            setProductCategoryFilter('ALL');
-                            setProductStatusFilter('ALL');
-                          }}
-                          className="mt-3 px-4 py-2 bg-deep-black text-white hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-wider transition border border-deep-black shadow-sm"
-                        >
-                          LIMPAR BUSCA E RESTAURAR LISTA
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredCatalogProducts.map((item: any) => {
-                  const itemVariants = item.variants || (item.sizes ? item.sizes.map((sz: string) => ({
-                    size: sz,
-                    color: item.colorName || 'Preto Ônix',
-                    sku: `${item.sku || 'PROD'}-${sz}`,
-                    stock_quantity: Math.round((item.stock || 0) / item.sizes.length),
-                  })) : []);
-
-                  const totalStock = item.total_stock ?? item.stock ?? itemVariants.reduce((s: number, v: any) => s + (v.stock_quantity || 0), 0);
-                  const firstImage = item.meta?.primary_image || item.primary_image || item.primaryImage || itemVariants[0]?.images?.[0] || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
-                  const supplierName = item.suppliers?.company_name || 'Confecções FitPro Brasil';
-                  const categoryName = item.categories?.name || item.category || 'CONJUNTOS';
-                  const basePrice = item.meta?.promotional_price ?? item.meta?.price ?? item.price ?? itemVariants[0]?.price ?? 44.9;
-                  const baseCost = itemVariants[0]?.cost_price ?? item.costPrice ?? 16.0;
-
-                  const isRowSelected = selectedCatalogIds.includes(item.id);
-                  return (
-                    <tr key={item.id} className={isRowSelected ? "bg-amber-500/10 border-l-4 border-l-amber-500 hover:bg-amber-500/15 transition" : "hover:bg-deep-black/5 transition"}>
-                      <td className="p-4 w-12 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isRowSelected}
-                          onChange={() => handleToggleSelectProduct(item.id)}
-                          className="w-4 h-4 accent-gold cursor-pointer rounded"
-                        />
-                      </td>
-                      <td className="p-4">
-                        <div className="w-14 h-18 sm:w-16 sm:h-20 bg-stone-100 overflow-hidden border-2 border-deep-black/20 relative shrink-0 flex items-center justify-center p-0.5 group shadow-2xs">
-                          <img
-                            src={firstImage}
-                            alt={item.title}
-                            className="w-full h-full object-contain transition-transform group-hover:scale-105"
-                          />
-                          {itemVariants.length > 1 && (
-                            <span className="absolute bottom-0 right-0 bg-deep-black text-gold text-[7px] font-black px-1 shadow-xs">
-                              {itemVariants.length}v
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="p-4">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {totalStock <= 0 && (
-                            <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] font-black uppercase border border-red-700 shadow-xs">
-                              ESGOTADO
-                            </span>
-                          )}
-                          <span className="font-black text-deep-black block">{item.title}</span>
-                          {isCreatedToday(item) && (
-                            <span className="px-1.5 py-0.5 bg-amber-400 text-deep-black text-[8px] font-black uppercase border border-amber-600 flex items-center gap-0.5 animate-pulse shadow-xs">
-                              <span>⚡</span>
-                              <span>CRIADO HOJE</span>
-                            </span>
-                          )}
-                          {isDraftProduct(item) && (
-                            <span className="px-1.5 py-0.5 bg-gray-200 text-gray-800 text-[8px] font-black uppercase border border-gray-400 flex items-center gap-0.5">
-                              <span>📝</span>
-                              <span>RASCUNHO</span>
-                            </span>
-                          )}
-                          {item.meta?.ribbon && (
-                            <span className="px-1.5 py-0.5 bg-gold text-deep-black text-[8px] font-black uppercase border border-deep-black">
-                              {item.meta.ribbon}
-                            </span>
-                          )}
-                          {comboPromo?.active && (
-                            (comboPromo.product_ids || []).includes(item.id) ||
-                            (comboPromo.product_slugs || []).includes(item.slug)
-                          ) && (
-                            <span className="px-1.5 py-0.5 bg-amber-500 text-deep-black text-[8px] font-black uppercase border border-deep-black shadow-xs flex items-center gap-0.5">
-                              <span>🔥</span>
-                              <span>{comboPromo?.badge_text || 'COMBO'}</span>
-                            </span>
-                          )}
-                          {(item.material || item.meta?.material) && (
-                            <span className="px-1.5 py-0.5 bg-neutral-100 text-deep-black text-[8px] font-black uppercase border border-deep-black/30">
-                              🧵 {item.material || item.meta?.material}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[10px] text-gold font-bold">{categoryName}</span>
-                          <span className="text-deep-black/30">•</span>
-                          <span className="text-[9px] text-deep-black/60 font-bold truncate max-w-[140px]" title={supplierName}>
-                            {supplierName}
-                          </span>
-                          {(item.meta?.general_sku || item.sku) && (
-                            <>
-                              <span className="text-deep-black/30">•</span>
-                              <span className="text-[8.5px] font-mono text-deep-black/50">
-                                SKU: {item.meta?.general_sku || item.sku}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="p-4">
-                        <div className="flex flex-wrap gap-1.5 max-w-xs">
-                          {itemVariants.map((vr: any, vIdx: number) => (
-                            <span
-                              key={vIdx}
-                              className={`text-[8px] font-mono font-black px-1.5 py-0.5 border flex items-center gap-1 ${
-                                (vr.stock_quantity || 0) > 0
-                                    ? 'bg-deep-black/5 text-deep-black border-deep-black/20'
-                                    : 'bg-gold/10 text-deep-black border-gold/40'
-                              }`}
-                              title={`SKU: ${vr.sku || 'N/A'} | Estoque: ${vr.stock_quantity ?? 0} unid`}
-                            >
-                              <span>{vr.color?.slice(0, 4) || 'COR'}-{vr.size}</span>
-                              <span className="text-deep-black/50">({vr.stock_quantity ?? 0})</span>
-                            </span>
-                          ))}
-                          {itemVariants.length === 0 && (
-                            <span className="text-[9px] text-deep-black/40">Sem grade gerada</span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="p-4 font-mono font-black text-deep-black">
-                        <div>
-                          <div className="flex items-center gap-1">
-                            <span>$</span>
-                            <input
-                              type="number"
-                              step="0.5"
-                              value={Number(basePrice)}
-                              onChange={(e) => updatePrice(item.id, parseFloat(e.target.value) || 0)}
-                              className="w-16 p-1 border border-deep-black/20 hover:border-deep-black text-xs font-mono font-bold bg-white focus:outline-none focus:border-gold"
-                              title="Preço de Venda (atualiza automaticamente no Supabase e na Loja Virtual)"
-                            />
-                            {(savingPriceId === item.id || savingPriceId === item.sku || (item.slug && savingPriceId === item.slug)) && (
-                              <span className="text-[8px] bg-green-100 text-green-800 px-1 py-0.5 border border-green-400 font-black animate-pulse">✓ SALVO</span>
-                            )}
-                          </div>
-                          {item.meta?.compare_price && Number(item.meta.compare_price) > Number(basePrice) && (
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <span className="text-[10px] text-deep-black/40 line-through">
-                                ${Number(item.meta.compare_price).toFixed(2)}
-                              </span>
-                              <span className="text-[8px] bg-red-600 text-white font-black px-1">
-                                -{Math.round(((Number(item.meta.compare_price) - Number(basePrice)) / Number(item.meta.compare_price)) * 100)}%
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="p-4 font-mono text-deep-black/70">
-                        <div className="flex items-center gap-1">
-                          <span>$</span>
-                          <input
-                            type="number"
-                            step="0.5"
-                            value={Number(baseCost)}
-                            onChange={(e) => updateCost(item.id, parseFloat(e.target.value) || 0)}
-                            className="w-16 p-1 border border-deep-black/20 hover:border-deep-black text-xs font-mono font-bold bg-white focus:outline-none focus:border-gold"
-                            title="Preço de Custo (atualiza automaticamente no Supabase)"
-                          />
-                          {(savingCostId === item.id || savingCostId === item.sku || (item.slug && savingCostId === item.slug)) && (
-                            <span className="text-[8px] bg-green-100 text-green-800 px-1 py-0.5 border border-green-400 font-black animate-pulse">✓ SALVO</span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="p-4 font-mono font-bold">
-                        <span className={totalStock > 0 ? 'text-deep-black' : 'text-gold'}>
-                          {totalStock} UNID.
-                        </span>
-                      </td>
-
-                      <td className="p-4">
-                        {totalStock > 0 ? (
-                          <span className="px-2 py-0.5 bg-deep-black text-white text-[9px] font-black border border-deep-black inline-block">
-                            PRONTA ENTREGA
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 bg-red-600 text-white text-[9px] font-black border border-red-700 inline-block shadow-xs">
-                            ESGOTADO
-                          </span>
-                        )}
-                      </td>
-
-                      {/* VISIBILIDADE NA VITRINE / CONTROLE RÁPIDO */}
-                      <td className="p-4">
-                        <div className="flex flex-col gap-1.5 items-start">
-                          {totalStock <= 0 ? (
-                            <span className="px-2 py-0.5 bg-red-600 text-white text-[9px] font-black border border-red-800 flex items-center gap-1 shadow-xs">
-                              <span>🚫 PRODUTO ESGOTADO (FORA DO SITE)</span>
-                            </span>
-                          ) : item.visible_online ? (
-                            <span className="px-2 py-0.5 bg-green-700 text-white text-[9px] font-black border border-green-800 flex items-center gap-1 shadow-xs">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                              <span>NO AR NA LOJA</span>
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 bg-gray-200 text-gray-800 text-[9px] font-black border border-gray-400 flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-gray-600" />
-                              <span>📝 RASCUNHO / OCULTO</span>
-                            </span>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={() => handleToggleVisibility(item.id, !item.visible_online)}
-                            className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 border transition flex items-center gap-1 cursor-pointer ${
-                              item.visible_online
-                                ? 'border-red-300 text-red-600 hover:bg-red-600 hover:text-white'
-                                : 'border-deep-black bg-deep-black text-gold hover:bg-gold hover:text-deep-black shadow-xs'
-                            }`}
-                            title={item.visible_online ? 'Mover este produto para rascunho (ocultar da loja virtual)' : 'Publicar este produto no ar na loja virtual'}
-                          >
-                            {item.visible_online ? '✕ Mover p/ Rascunho' : '✓ Publicar no Ar'}
-                          </button>
-                        </div>
-                      </td>
-
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingProduct({
-                                ...item,
-                                price: basePrice,
-                                defaultPrice: basePrice,
-                                cost_price: baseCost,
-                                costPrice: baseCost,
-                                variants: itemVariants,
-                                primaryImage: item.meta?.primary_image || item.primary_image || item.primaryImage || firstImage,
-                                primary_image: item.meta?.primary_image || item.primary_image || item.primaryImage || firstImage,
-                                images: item.images || item.galleryImages || item.meta?.images || item.meta?.gallery || (firstImage ? [firstImage] : []),
-                              });
-                              setShowAddForm(true);
-                              window.scrollTo({ top: 300, behavior: 'smooth' });
-                            }}
-                            className="p-1.5 border border-deep-black hover:bg-deep-black hover:text-white transition flex items-center gap-1 text-[10px] font-black cursor-pointer shadow-xs"
-                            title="Editar Produto e Grade no Supabase"
-                          >
-                            <Edit3 className="w-3.5 h-3.5 text-gold" />
-                            <span>EDITAR</span>
-                          </button>
-
-                          {/* Botão Rápido de Combo Promocional */}
-                          {(() => {
-                            const isInCombo =
-                              (comboPromo?.product_ids || []).includes(item.id) ||
-                              (comboPromo?.product_slugs || []).includes(item.slug);
-                            return (
-                              <button
-                                type="button"
-                                onClick={() => handleToggleSingleProductCombo(item.id, item.slug)}
-                                className={`p-1.5 border transition flex items-center gap-1 text-[10px] font-black cursor-pointer shadow-xs ${
-                                  isInCombo
-                                    ? 'bg-amber-500 hover:bg-amber-400 text-deep-black border-deep-black'
-                                    : 'bg-white hover:bg-amber-50 text-deep-black border-deep-black/30'
-                                }`}
-                                title={
-                                  isInCombo
-                                    ? 'Remover este produto da promoção de combo'
-                                    : 'Incluir este produto na promoção de combo'
-                                }
-                              >
-                                <Sparkles className={`w-3.5 h-3.5 ${isInCombo ? 'text-deep-black' : 'text-amber-600'}`} />
-                                <span>{isInCombo ? '✓ NO COMBO' : '+ COMBO'}</span>
-                              </button>
-                            );
-                          })()}
-
-                          {/* Botão Duplicar Produto no ERP com 1 clique */}
-                          <button
-                            type="button"
-                            onClick={() => handleDuplicateProduct(item)}
-                            className="p-1.5 border border-purple-500 bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-900 transition flex items-center gap-1 text-[10px] font-black cursor-pointer shadow-xs"
-                            title="Duplicar este produto para cadastrar outro similar com 1 clique"
-                          >
-                            <Copy className="w-3.5 h-3.5 text-purple-700 hover:text-white" />
-                            <span>DUPLICAR</span>
-                          </button>
-
-                          {/* Botão Copiar Link TikTok */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const productUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://anafitwear.com'}/produto/${item.slug}?utm_source=tiktok&utm_medium=social&utm_campaign=product_showcase`;
-                              try {
-                                if (navigator.clipboard) {
-                                  navigator.clipboard.writeText(productUrl);
-                                }
-                              } catch (e) {}
-                              setCopiedTikTokSlug(item.slug || item.id);
-                              setTimeout(() => setCopiedTikTokSlug(null), 3000);
-                            }}
-                            className={`p-1.5 border transition flex items-center gap-1 text-[10px] font-black cursor-pointer shadow-xs ${
-                              copiedTikTokSlug === (item.slug || item.id)
-                                ? 'bg-green-600 border-green-700 text-white'
-                                : 'border-deep-black bg-black text-white hover:bg-gold hover:text-deep-black hover:border-gold'
-                            }`}
-                            title="Copiar link formatado no padrão TikTok com rastreamento UTM"
-                          >
-                            <span>🎵</span>
-                            <span>{copiedTikTokSlug === (item.slug || item.id) ? '✓ COPIADO!' : 'LINK TIKTOK'}</span>
-                          </button>
-
-                          {/* Botão Gerar Link de Pagamento Direto (Afterpay 4x) */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDirectPaymentProduct(item);
-                              setShowDirectPaymentModal(true);
-                            }}
-                            className="p-1.5 border border-[#7ae3c0] bg-[#b2fce4]/30 hover:bg-[#b2fce4] text-deep-black transition flex items-center gap-1 text-[10px] font-black cursor-pointer shadow-xs"
-                            title="Gerar link de pagamento direto com 4x no Afterpay para enviar no WhatsApp do cliente"
-                          >
-                            <CreditCard className="w-3.5 h-3.5 text-emerald-800" />
-                            <span>LINK AFTERPAY</span>
-                          </button>
-
-                          {/* Botão Abrir Estúdio IA para esta Peça */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setAiStudioTargetProduct(item);
-                              setShowAIStudioModal(true);
-                            }}
-                            className="p-1.5 border border-gold bg-gold/10 hover:bg-gold hover:text-deep-black text-deep-black transition flex items-center gap-1 text-[10px] font-black cursor-pointer shadow-xs"
-                            title="Gerar modelo fitness vestindo esta peça com IA (Padrão TikTok)"
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-gold group-hover:text-deep-black" />
-                            <span>MODELO IA</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            disabled={syncingTikTokId === item.id}
-                            onClick={() => handleSyncSingleProductTikTok(item)}
-                            className="p-1.5 border border-deep-black bg-stone-100 hover:bg-gold hover:text-deep-black text-deep-black transition flex items-center gap-1 text-[10px] font-black cursor-pointer disabled:opacity-50"
-                            title="Sincronizar este produto diretamente com o TikTok Shop US"
-                          >
-                            <Radio className="w-3.5 h-3.5 text-deep-black" />
-                            <span>{syncingTikTokId === item.id ? 'ENVIANDO...' : 'TIKTOK'}</span>
-                          </button>
-
-                          {item.id && !item.id.startsWith('p') && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteSupabaseProduct(item.id, item.title)}
-                              className="p-1.5 border border-red-300 text-red-600 hover:bg-red-600 hover:text-white transition"
-                              title="Excluir do Supabase"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-
-                          <Link
-                            href={`/produto/${item.slug || 'samanta-romper'}`}
-                            target="_blank"
-                            className="p-1.5 bg-white border border-deep-black hover:bg-gold hover:text-deep-black text-deep-black font-black text-[10px] transition inline-flex items-center gap-1"
-                            title="Ver produto na vitrine pública"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                }))}
-              </tbody>
-            </table>
-          </div>
+          {/* Tabela Limpa de Produtos Oficial Padrão Wix */}
+          <WixProductTable
+            products={filteredCatalogProducts}
+            totalCatalogCount={totalCatalogCount}
+            todayCatalogCount={todayCatalogCount}
+            activeCatalogCount={activeCatalogCount}
+            draftCatalogCount={draftCatalogCount}
+            inStockCatalogCount={inStockCatalogCount}
+            outOfStockCatalogCount={outOfStockCatalogCount}
+            availableCategories={availableCatalogCategories}
+            productSearch={productSearch}
+            setProductSearch={setProductSearch}
+            productCategoryFilter={productCategoryFilter}
+            setProductCategoryFilter={setProductCategoryFilter}
+            productStatusFilter={productStatusFilter}
+            setProductStatusFilter={setProductStatusFilter}
+            productSizeFilter={productSizeFilter}
+            setProductSizeFilter={setProductSizeFilter}
+            selectedCatalogIds={selectedCatalogIds}
+            onToggleSelectProduct={handleToggleSelectProduct}
+            onToggleSelectAllFiltered={handleToggleSelectAllFiltered}
+            onOpenAddForm={() => {
+              setEditingProduct(null);
+              setShowAddForm(true);
+            }}
+            onEditProduct={(item) => {
+              const itemVariants = item.variants || (item.sizes ? item.sizes.map((sz) => ({
+                size: sz,
+                color: item.colorName || 'Preto Ônix',
+                sku: `${item.sku || 'PROD'}-${sz}`,
+                stock_quantity: Math.round((item.stock || 0) / item.sizes.length),
+              })) : []);
+              const firstImage = item.meta?.primary_image || item.primary_image || item.primaryImage || itemVariants[0]?.images?.[0] || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
+              setEditingProduct({
+                ...item,
+                variants: itemVariants,
+                primaryImage: firstImage,
+                primary_image: firstImage,
+                images: item.images || item.galleryImages || item.meta?.images || item.meta?.gallery || (firstImage ? [firstImage] : []),
+              });
+              setShowAddForm(true);
+            }}
+            onDuplicateProduct={handleDuplicateProduct}
+            onDeleteProduct={handleDeleteSupabaseProduct}
+            onOpenDirectPaymentModal={(p) => {
+              setDirectPaymentProduct(p);
+              setShowDirectPaymentModal(true);
+            }}
+            onOpenAIStudioModal={(p) => {
+              setAiStudioTargetProduct(p);
+              setShowAIStudioModal(true);
+            }}
+            onExportCsv={handleExportCatalogCsv}
+            onImportCsv={() => setShowCsvImportModal(true)}
+            onDownloadExcelTemplate={downloadExcelTemplate}
+            onRefreshProducts={fetchSupabaseProducts}
+            loadingRefresh={loadingSupabase}
+            onBulkPrice={() => setShowBulkPriceModal(true)}
+            onBulkSizeGuide={() => setShowBulkSizeGuideModal(true)}
+            onBulkDesc={() => setShowBulkDescModal(true)}
+            onBulkAddToCombo={handleBulkAddToCombo}
+            onBulkRemoveFromCombo={handleBulkRemoveFromCombo}
+            onClearSelection={() => setSelectedCatalogIds([])}
+            comboBadgeText={comboPromo?.badge_text}
+          />
         </div>
       )}
 
@@ -8987,6 +7497,9 @@ export default function BackofficeDashboard() {
           }
         }}
       />
+          </main>
+        </div>
+      </div>
     </div>
   );
 }
