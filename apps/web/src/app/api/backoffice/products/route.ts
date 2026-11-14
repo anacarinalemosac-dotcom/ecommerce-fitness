@@ -47,6 +47,51 @@ function reconcileProductVariants(dbVariants: any[], metaVariants: any[]) {
   return Array.from(map.values());
 }
 
+import fs from 'fs';
+import path from 'path';
+
+function getFallbackCatalogPath(): string {
+  const p1 = path.join(process.cwd(), 'src', 'lib', 'catalogProductsFallback.json');
+  if (fs.existsSync(p1)) return p1;
+  const p2 = path.join(process.cwd(), 'apps', 'web', 'src', 'lib', 'catalogProductsFallback.json');
+  if (fs.existsSync(p2)) return p2;
+  return p1;
+}
+
+let cachedFallbackProducts: any[] | null = null;
+
+function loadFallbackProducts(): any[] {
+  if (cachedFallbackProducts && cachedFallbackProducts.length > 0) {
+    return cachedFallbackProducts;
+  }
+  try {
+    const fPath = getFallbackCatalogPath();
+    if (fs.existsSync(fPath)) {
+      const content = fs.readFileSync(fPath, 'utf8');
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        cachedFallbackProducts = parsed;
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn('Erro ao carregar catalogProductsFallback.json:', err);
+  }
+  return [];
+}
+
+function saveFallbackProducts(products: any[]) {
+  cachedFallbackProducts = products;
+  try {
+    const fPath = getFallbackCatalogPath();
+    const dir = path.dirname(fPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(fPath, JSON.stringify(products, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('Erro ao salvar catalogProductsFallback.json:', err);
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -67,6 +112,20 @@ export async function GET(req: NextRequest) {
       const { data: product, error: prodErr } = await prodQuery.maybeSingle();
 
       if (prodErr || !product) {
+        const fallbackList = loadFallbackProducts();
+        const found = fallbackList.find((p) => p.id === id || p.slug === id || p.title === id);
+        if (found) {
+          return NextResponse.json(
+            { product: found, variants: found.variants },
+            {
+              headers: {
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                'CDN-Cache-Control': 'no-store',
+                'Vercel-CDN-Cache-Control': 'no-store',
+              },
+            }
+          );
+        }
         return NextResponse.json({ error: 'Produto não encontrado.' }, { status: 404 });
       }
 
@@ -197,9 +256,19 @@ export async function GET(req: NextRequest) {
       .neq('slug', '__instagram_direct_state__')
       .order('created_at', { ascending: false });
 
-    if (prodsErr) {
-      console.warn('Erro ao buscar produtos do Supabase:', prodsErr);
-      return NextResponse.json({ products: [] });
+    if (prodsErr || !products || products.length === 0) {
+      console.warn('Supabase indisponível ou sem resposta. Carregando catálogo completo local:', prodsErr);
+      const fallbackList = loadFallbackProducts();
+      return NextResponse.json(
+        { products: fallbackList },
+        {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'CDN-Cache-Control': 'no-store',
+            'Vercel-CDN-Cache-Control': 'no-store',
+          },
+        }
+      );
     }
 
     const visibleDbProducts = (products || []).filter(
@@ -314,8 +383,12 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    const finalProducts = (enrichedProducts && enrichedProducts.length > 0)
+      ? enrichedProducts
+      : loadFallbackProducts();
+
     return NextResponse.json(
-      { products: enrichedProducts },
+      { products: finalProducts },
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -325,8 +398,9 @@ export async function GET(req: NextRequest) {
       }
     );
   } catch (err: any) {
-    console.error('Erro no GET de produtos:', err);
-    return NextResponse.json({ products: [] }, { status: 500 });
+    console.error('Erro no GET de produtos, usando fallback:', err);
+    const fallbackList = loadFallbackProducts();
+    return NextResponse.json({ products: fallbackList });
   }
 }
 
@@ -1133,7 +1207,42 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (!currentProduct) {
-      return NextResponse.json({ error: 'Produto não encontrado no Supabase.' }, { status: 404 });
+      const fallbackList = loadFallbackProducts();
+      const fIdx = fallbackList.findIndex(
+        (p) =>
+          p.id === id ||
+          p.slug === id ||
+          p.title?.toLowerCase() === String(id).toLowerCase() ||
+          p.variants?.some((v: any) => v.id === id || v.sku === id || v.barcode === id)
+      );
+      if (fIdx !== -1) {
+        const item = fallbackList[fIdx];
+        if (visible_online !== undefined) {
+          item.visible_online = Boolean(visible_online);
+          item.is_draft = !Boolean(visible_online);
+          if (item.meta) {
+            item.meta.visible_online = Boolean(visible_online);
+            item.meta.is_draft = !Boolean(visible_online);
+          }
+        }
+        if (visible_pos !== undefined) {
+          item.visible_pos = Boolean(visible_pos);
+          if (item.meta) item.meta.visible_pos = Boolean(visible_pos);
+        }
+        if (price !== undefined && !isNaN(Number(price))) {
+          item.price = Number(price);
+          if (item.meta) item.meta.price = Number(price);
+        }
+        if (stock !== undefined || stock_quantity !== undefined) {
+          const newQty = Number(stock ?? stock_quantity);
+          item.total_stock = newQty;
+          if (item.variants?.[0]) item.variants[0].stock_quantity = newQty;
+        }
+        fallbackList[fIdx] = item;
+        saveFallbackProducts(fallbackList);
+        return NextResponse.json({ success: true, product: item, message: 'Produto atualizado com sucesso no catálogo local!' });
+      }
+      return NextResponse.json({ error: 'Produto não encontrado no Supabase ou catálogo local.' }, { status: 404 });
     }
 
     let meta: any = {};
