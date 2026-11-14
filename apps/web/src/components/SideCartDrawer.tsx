@@ -226,7 +226,7 @@ export function SideCartDrawer() {
   const subtotal = items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
   const comboResult = calculateComboDiscount(items, comboPromo);
   const netSubtotal = Math.max(0, Number((subtotal - (comboResult.hasCombo ? comboResult.discount : 0)).toFixed(2)));
-  const isFreeShipping = netSubtotal >= 100;
+  const isFreeShipping = netSubtotal >= 100 && !comboResult.hasCombo;
   const freeShippingRemaining = Math.max(0, Number((100 - netSubtotal).toFixed(2)));
   const freeShippingProgress = Math.min(100, Math.max(0, (netSubtotal / 100) * 100));
 
@@ -390,8 +390,8 @@ export function SideCartDrawer() {
                     <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
                     <span>
                       {lang === 'pt'
-                        ? `${translateBadgeText(comboPromo.title || 'Combo', lang)} elegível: economia de $${comboResult.discount.toFixed(2)} USD (válido para Zelle, Venmo, Cash App e Parcelamento no Cartão/Afterpay/Affirm)!`
-                        : `${translateBadgeText(comboPromo.title || 'Combo', lang)} eligible: save $${comboResult.discount.toFixed(2)} USD (valid for Zelle, Venmo, Cash App & Installments)!`}
+                        ? `${translateBadgeText(comboPromo.title || 'Combo', lang)} ativo: $99 no Zelle/Venmo ou $120 + $9.90 frete no Afterpay/Affirm/Cartão (4x $32.48)!`
+                        : `${translateBadgeText(comboPromo.title || 'Combo', lang)} active: $99 on Zelle/Venmo or $120 + $9.90 shipping on Afterpay/Affirm/Card (4x $32.48)!`}
                     </span>
                   </>
                 ) : comboResult.participatingCount > 0 ? (
@@ -594,8 +594,8 @@ export function SideCartDrawer() {
                       </div>
                       <p className="text-[9px] text-emerald-800/80 font-bold uppercase text-right">
                         {lang === 'pt'
-                          ? '✓ Válido para Zelle, Venmo, Cash App e Parcelamento'
-                          : '✓ Valid for Zelle, Venmo, Cash App & Installments'}
+                          ? '✓ $99 Zelle/Venmo • $120 + frete Afterpay/Cartão (4x $32.48)'
+                          : '✓ $99 Zelle/Venmo • $120 + shipping Afterpay/Card (4x $32.48)'}
                       </p>
                     </div>
                   )}

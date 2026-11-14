@@ -39,6 +39,25 @@ export const COMBO_ELIGIBLE_PAYMENT_METHODS = [
   'CREDIARIO',
 ] as const;
 
+export function isDirectCashPaymentMethod(paymentMethod?: string | null): boolean {
+  if (!paymentMethod) return true;
+  const m = paymentMethod.trim().toUpperCase().replace(/[-_]/g, '');
+  return (
+    m === 'ZELLE' ||
+    m === 'VENMO' ||
+    m === 'CASHAPP' ||
+    m === 'CASH' ||
+    m === 'PICKUP' ||
+    m === 'RETIRADA' ||
+    m === 'STORE'
+  );
+}
+
+export function isGatewayPaymentMethod(paymentMethod?: string | null): boolean {
+  if (!paymentMethod) return false;
+  return !isDirectCashPaymentMethod(paymentMethod);
+}
+
 export function isComboEligiblePaymentMethod(_paymentMethod?: string | null): boolean {
   // Regra oficial: Promoção de combo aceita Zelle, Venmo, Cash App e também formas de pagamento parceladas (Cartão, Afterpay, Affirm, Klarna, Crediário)
   return true;
@@ -466,13 +485,18 @@ export function calculateComboDiscount(
   promo: any,
   paymentMethod?: string | null
 ): ComboDiscountResult {
+  const isGateway = isGatewayPaymentMethod(paymentMethod);
+  const defaultBundlePrice = isGateway
+    ? Number(promo?.installment_bundle_price || 120.0)
+    : Number(promo?.bundle_price || 99.0);
+
   const defaultRes: ComboDiscountResult = {
     hasCombo: false,
     discount: 0,
     completedCombos: 0,
     participatingCount: 0,
     neededForNextCombo: promo?.required_quantity || 3,
-    bundleTargetPrice: promo?.bundle_price || 99.0,
+    bundleTargetPrice: defaultBundlePrice,
     promoTitle: promo?.title || 'Promoção Especial de Combo',
     ineligibleByPaymentMethod: false,
     rawPotentialDiscount: 0,
@@ -483,7 +507,9 @@ export function calculateComboDiscount(
   }
 
   const reqQty = Number(promo.required_quantity) || 3;
-  const bundlePrice = Number(promo.bundle_price) || 99.0;
+  const bundlePrice = isGateway
+    ? Number(promo.installment_bundle_price || 120.0)
+    : Number(promo.bundle_price || 99.0);
   const promoProductIds = new Set((promo.product_ids || []).map((id: string) => String(id).toLowerCase()));
   const promoProductSlugs = new Set((promo.product_slugs || []).map((s: string) => String(s).toLowerCase()));
 

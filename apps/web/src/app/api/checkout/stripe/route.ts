@@ -159,15 +159,22 @@ export async function POST(req: NextRequest) {
     }
 
     const isPickup = delivery_method === 'PICKUP' || shipping_address?.delivery_method === 'PICKUP';
+    const isComboOrder = requestedComboDiscount > 0;
     // Subtotal líquido dos itens para qualificação de frete grátis (>= $100)
     const grossItemsAmount = enrichedItems.reduce((acc, it) => acc + (Number(it.unit_price) * Number(it.quantity)), 0);
     const netItemsAmount = Math.max(0, grossItemsAmount - effectiveDiscountAmount);
-    const isOver100FreeShipping = netItemsAmount >= 100;
+    // Regra oficial Ana Fitness Wear:
+    // Para compras normais sem combo acima de $100, o frete é grátis ($0.00).
+    // Para combo parcelado em gateways (Afterpay, Affirm, Cartão), SEMPRE cobra $120.00 + $9.90 de frete (Total $129.90).
+    // O frete só é $0.00 no combo se for Retirada no Showroom (PICKUP).
+    const isOver100FreeShipping = !isComboOrder && netItemsAmount >= 100;
     const finalShippingFee = isPickup
       ? 0
-      : (isOver100FreeShipping || shipping_fee === 0
-          ? 0
-          : (shipping_fee !== undefined ? Number(shipping_fee) : 9.90));
+      : (isComboOrder
+          ? 9.90
+          : (isOver100FreeShipping || shipping_fee === 0
+              ? 0
+              : (shipping_fee !== undefined ? Number(shipping_fee) : 9.90)));
 
     // Se for retirada no showroom, não cobra frete ($0.00). Se for entrega, cobra $9.90 (ou grátis para compras $100+ / cupom)
     if (isPickup) {

@@ -22,6 +22,7 @@ import {
   resolveVariantStockFromCatalog,
   reconcileCartStockWithCatalog,
   getOrCreateCartSessionId,
+  isGatewayPaymentMethod,
   CartItem as BaseCartItem,
 } from '../../lib/cart';
 import {
@@ -529,7 +530,9 @@ export default function CheckoutPage() {
   const cashAppHandleNormalized = cashAppTag.startsWith('$') ? cashAppTag : `$${cashAppTag}`;
   const cashAppUrl = `https://cash.app/${cashAppHandleNormalized}`;
 
-  // Desconto Automático da Promoção de Combo (somente válido para Zelle, Venmo ou Cash App)
+  // Desconto Automático da Promoção de Combo
+  // - Zelle, Venmo ou Retirada na Loja: $99.00 por combo (à vista)
+  // - Afterpay, Affirm, Cartão (Stripe) ou outros gateways: $120.00 por combo (parcelado)
   const comboResult = calculateComboDiscount(effectiveItems, comboPromo, paymentMethod);
   const comboDiscount = comboResult.discount;
 
@@ -546,9 +549,16 @@ export default function CheckoutPage() {
   const [deliveryMethod, setDeliveryMethod] = useState<'DELIVERY' | 'PICKUP'>('DELIVERY');
   const [copiedAddress, setCopiedAddress] = useState(false);
   const netSubtotal = Math.max(0, subtotal - totalDiscount);
-  // Regra oficial: Frete grátis automático em compras a partir de $100 (ou via cupom)
-  const isOver100FreeShipping = netSubtotal >= 100;
-  const effectiveFreeShipping = isFreeShipping || isOver100FreeShipping;
+
+  // Regra oficial da Ana Fitness Wear:
+  // Se o cliente selecionar a opção do Afterpay, Affirm, cartão ou qualquer outra forma de pagamento
+  // que não seja retirada na loja, Zelle ou Venmo, cobra os 120 dólares MAIS 9,90 do frete ($129.90 no total).
+  // NÃO se aplica frete grátis para combo parcelado em gateway.
+  // Se for Retirada no Showroom (PICKUP), o frete é $0.00.
+  // Para compras normais sem combo acima de $100, ou com cupom de frete grátis, o frete continua grátis ($0.00).
+  const isGatewayCombo = comboResult.hasCombo && isGatewayPaymentMethod(paymentMethod);
+  const isOver100FreeShipping = netSubtotal >= 100 && !isGatewayCombo;
+  const effectiveFreeShipping = (isFreeShipping && !isGatewayCombo) || isOver100FreeShipping;
   const shippingRate = deliveryMethod === 'PICKUP' ? 0 : (effectiveFreeShipping ? 0 : 9.90);
   const total = subtotal > 0 ? netSubtotal + shippingRate : 0;
   const freeShippingRemaining = Math.max(0, 100 - netSubtotal);
@@ -2038,14 +2048,35 @@ export default function CheckoutPage() {
             )}
 
             {/* Abas de Seleção de Pagamento */}
-            {comboPromo?.active && comboResult.participatingCount > 0 && (
-              <div className="p-3 border border-emerald-500/40 bg-emerald-50 text-emerald-950 text-[11px] font-bold flex items-start gap-2">
+            {comboPromo?.active && comboResult.participatingCount >= (comboPromo.required_quantity || 3) && (
+              <div
+                className={`p-3.5 border rounded-lg text-[11px] font-bold flex items-start gap-2.5 transition-colors ${
+                  isGatewayPaymentMethod(paymentMethod)
+                    ? 'border-emerald-500/50 bg-emerald-50 text-emerald-950'
+                    : 'border-gold bg-amber-50 text-amber-950'
+                }`}
+              >
                 <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <span>
-                  {lang === 'pt'
-                    ? 'Promoção do Combo: válida SOMENTE pagando via Zelle, Venmo ou Cash App. Em Cartão, Apple Pay, Affirm e Afterpay vale o preço normal das peças.'
-                    : 'Combo Deal Rule: valid ONLY for Zelle, Venmo, or Cash App. Card, Apple Pay, Affirm, and Afterpay charge regular product prices.'}
-                </span>
+                <div className="space-y-0.5">
+                  <p className="font-black uppercase tracking-wide">
+                    {isGatewayPaymentMethod(paymentMethod)
+                      ? (lang === 'pt'
+                          ? 'COMBO PARCELADO: $120.00 + $9.90 DO FRETE (EM ATÉ 4X NO AFTERPAY / AFFIRM / CARTÃO)'
+                          : 'INSTALLMENT COMBO: $120.00 + $9.90 SHIPPING (UP TO 4X ON AFTERPAY / AFFIRM / CARD)')
+                      : (lang === 'pt'
+                          ? 'COMBO À VISTA: $99.00 NO ZELLE / VENMO / RETIRADA NA LOJA'
+                          : 'CASH COMBO: $99.00 ON ZELLE / VENMO / STORE PICKUP')}
+                  </p>
+                  <p className="text-[10px] opacity-90 font-medium leading-relaxed">
+                    {isGatewayPaymentMethod(paymentMethod)
+                      ? (lang === 'pt'
+                          ? 'Para Afterpay, Affirm, Cartão ou pagamento parcelado, o combo de 3 peças é $120.00 mais $9.90 do frete USPS ($129.90 no total, em 4x de $32.48 sem juros). Se optar por Retirada no Showroom, o frete é $0.00. Para pagar apenas $99.00 à vista, selecione Zelle ou Venmo!'
+                          : 'For Afterpay, Affirm, Card, or installment methods, the 3-piece combo is $120.00 plus $9.90 USPS shipping ($129.90 total, 4x $32.48 interest-free). For local Showroom pickup, shipping is $0.00. To pay only $99.00, choose Zelle or Venmo!')
+                      : (lang === 'pt'
+                          ? 'Você garantiu o valor promocional de $99.00 pelas 3 peças no Zelle / Venmo! Retirada no showroom: frete grátis ($0.00). Envio para os EUA: frete $9.90.'
+                          : 'You unlocked the $99.00 deal for 3 pieces via Zelle / Venmo! Showroom pickup: $0.00 shipping. US shipping: $9.90.')}
+                  </p>
+                </div>
               </div>
             )}
 
@@ -2059,9 +2090,9 @@ export default function CheckoutPage() {
                     : 'border-deep-black/20 text-deep-black hover:border-gold bg-white'
                 }`}
               >
-                {comboPromo?.active && comboResult.participatingCount > 0 && (
-                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 uppercase">
-                    {lang === 'pt' ? 'VALOR NORMAL' : 'REG PRICE'}
+                {comboPromo?.active && comboResult.participatingCount >= (comboPromo.required_quantity || 3) && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 uppercase">
+                    {lang === 'pt' ? 'COMBO $120 + FRETE' : 'COMBO $120 + SHIP'}
                   </span>
                 )}
                 <CreditCard className="w-4 h-4 text-gold" />
@@ -2080,9 +2111,9 @@ export default function CheckoutPage() {
                     : 'border-deep-black/20 text-deep-black hover:border-gold bg-white'
                 }`}
               >
-                {comboPromo?.active && comboResult.participatingCount > 0 && (
-                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 uppercase">
-                    {lang === 'pt' ? 'VALOR NORMAL' : 'REG PRICE'}
+                {comboPromo?.active && comboResult.participatingCount >= (comboPromo.required_quantity || 3) && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 uppercase">
+                    {lang === 'pt' ? 'COMBO $120 + FRETE' : 'COMBO $120 + SHIP'}
                   </span>
                 )}
                 <Sparkles className="w-4 h-4 text-gold" />
@@ -2101,9 +2132,9 @@ export default function CheckoutPage() {
                     : 'border-deep-black/20 text-deep-black hover:border-[#004BFF] bg-white'
                 }`}
               >
-                {comboPromo?.active && comboResult.participatingCount > 0 && (
-                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 uppercase">
-                    {lang === 'pt' ? 'VALOR NORMAL' : 'REG PRICE'}
+                {comboPromo?.active && comboResult.participatingCount >= (comboPromo.required_quantity || 3) && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 uppercase">
+                    {lang === 'pt' ? 'COMBO $120 + FRETE' : 'COMBO $120 + SHIP'}
                   </span>
                 )}
                 <span className={`font-black text-xs tracking-tight ${paymentMethod === 'AFFIRM' ? 'text-white' : 'text-[#004BFF]'}`}>
@@ -2124,9 +2155,9 @@ export default function CheckoutPage() {
                     : 'border-deep-black/20 text-deep-black hover:border-[#10b981] bg-white'
                 }`}
               >
-                {comboPromo?.active && comboResult.participatingCount > 0 && (
-                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 uppercase">
-                    {lang === 'pt' ? 'VALOR NORMAL' : 'REG PRICE'}
+                {comboPromo?.active && comboResult.participatingCount >= (comboPromo.required_quantity || 3) && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 uppercase">
+                    {lang === 'pt' ? 'COMBO $120 + FRETE' : 'COMBO $120 + SHIP'}
                   </span>
                 )}
                 <span className="font-black text-xs tracking-tight text-deep-black">
@@ -2147,9 +2178,9 @@ export default function CheckoutPage() {
                     : 'border-deep-black/20 text-deep-black hover:border-gold bg-white'
                 }`}
               >
-                {comboPromo?.active && comboResult.participatingCount > 0 && (
-                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-emerald-500 text-white uppercase">
-                    {lang === 'pt' ? 'ACEITA COMBO' : 'COMBO OK'}
+                {comboPromo?.active && comboResult.participatingCount >= (comboPromo.required_quantity || 3) && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-gold text-deep-black uppercase">
+                    {lang === 'pt' ? 'COMBO $99 (À VISTA)' : 'COMBO $99 CASH'}
                   </span>
                 )}
                 <span className="font-mono text-gold font-black text-xs">ZELLE</span>
@@ -2168,9 +2199,9 @@ export default function CheckoutPage() {
                     : 'border-deep-black/20 text-deep-black hover:border-[#008CFF] bg-white'
                 }`}
               >
-                {comboPromo?.active && comboResult.participatingCount > 0 && (
-                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-emerald-500 text-white uppercase">
-                    {lang === 'pt' ? 'ACEITA COMBO' : 'COMBO OK'}
+                {comboPromo?.active && comboResult.participatingCount >= (comboPromo.required_quantity || 3) && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-gold text-deep-black uppercase">
+                    {lang === 'pt' ? 'COMBO $99 (À VISTA)' : 'COMBO $99 CASH'}
                   </span>
                 )}
                 <span className="font-mono text-[#008CFF] font-black text-xs">VENMO</span>
@@ -2189,9 +2220,9 @@ export default function CheckoutPage() {
                     : 'border-deep-black/20 text-deep-black hover:border-[#00D632] bg-white'
                 }`}
               >
-                {comboPromo?.active && comboResult.participatingCount > 0 && (
-                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-emerald-500 text-white uppercase">
-                    {lang === 'pt' ? 'ACEITA COMBO' : 'COMBO OK'}
+                {comboPromo?.active && comboResult.participatingCount >= (comboPromo.required_quantity || 3) && (
+                  <span className="text-[7px] font-mono font-black px-1.5 py-0.5 bg-gold text-deep-black uppercase">
+                    {lang === 'pt' ? 'COMBO $99 (À VISTA)' : 'COMBO $99 CASH'}
                   </span>
                 )}
                 <span className="font-mono text-[#00D632] font-black text-xs">$ CASH APP</span>
@@ -2666,9 +2697,27 @@ export default function CheckoutPage() {
                 </span>
               </div>
               <p className="text-[11px] text-emerald-900 font-medium">
-                {lang === 'pt'
-                  ? `${comboResult.completedCombos}x combo (${comboResult.completedCombos * (comboPromo?.required_quantity || 3)} conjuntos fechados por $${comboResult.bundleTargetPrice.toFixed(2)})! Válido para Zelle, Venmo, Cash App e Parcelamento (Cartão, Afterpay, Affirm).`
-                  : `${comboResult.completedCombos}x combo (${comboResult.completedCombos * (comboPromo?.required_quantity || 3)} sets for $${comboResult.bundleTargetPrice.toFixed(2)})! Valid for Zelle, Venmo, Cash App & Installments.`}
+                {lang === 'pt' ? (
+                  isGatewayCombo ? (
+                    <>
+                      {comboResult.completedCombos}x Combo Parcelado: <strong>${comboResult.bundleTargetPrice.toFixed(2)}</strong> ({comboResult.completedCombos * (comboPromo?.required_quantity || 3)} peças) + <strong>$9.90 frete USPS</strong> = <strong>${total.toFixed(2)}</strong> (em <strong>4x de ${(total / 4).toFixed(2)} sem juros</strong> no Afterpay / Affirm / Cartão).
+                    </>
+                  ) : (
+                    <>
+                      {comboResult.completedCombos}x Combo Especial: <strong>${comboResult.bundleTargetPrice.toFixed(2)}</strong> ({comboResult.completedCombos * (comboPromo?.required_quantity || 3)} peças) no Zelle, Venmo ou Retirada!
+                    </>
+                  )
+                ) : (
+                  isGatewayCombo ? (
+                    <>
+                      {comboResult.completedCombos}x Installment Combo: <strong>${comboResult.bundleTargetPrice.toFixed(2)}</strong> + <strong>$9.90 USPS shipping</strong> = <strong>${total.toFixed(2)}</strong> (in <strong>4x ${(total / 4).toFixed(2)}</strong> on Afterpay / Affirm / Card).
+                    </>
+                  ) : (
+                    <>
+                      {comboResult.completedCombos}x Bundle Deal: <strong>${comboResult.bundleTargetPrice.toFixed(2)}</strong> on Zelle, Venmo or Showroom Pickup!
+                    </>
+                  )
+                )}
               </p>
             </div>
           ) : comboResult.ineligibleByPaymentMethod && comboResult.rawPotentialDiscount > 0 && comboPromo?.active ? (
@@ -2785,8 +2834,12 @@ export default function CheckoutPage() {
               <div className="flex justify-between text-emerald-700 font-black">
                 <span>
                   {lang === 'pt'
-                    ? 'DESCONTO COMBO (ZELLE / VENMO / CASH APP):'
-                    : 'COMBO DISCOUNT (ZELLE / VENMO / CASH APP):'}
+                    ? isGatewayCombo
+                      ? 'COMBO PARCELADO (AFTERPAY / AFFIRM / CARTÃO):'
+                      : 'COMBO ESPECIAL (ZELLE / VENMO / RETIRADA):'
+                    : isGatewayCombo
+                    ? 'INSTALLMENT COMBO (AFTERPAY / AFFIRM / CARD):'
+                    : 'SPECIAL COMBO (ZELLE / VENMO / PICKUP):'}
                 </span>
                 <span className="font-mono">-${comboDiscount.toFixed(2)}</span>
               </div>
@@ -2813,7 +2866,9 @@ export default function CheckoutPage() {
               </span>
               <span className={`font-mono font-bold ${deliveryMethod === 'PICKUP' || effectiveFreeShipping ? 'text-green-700' : ''}`}>
                 {deliveryMethod === 'PICKUP'
-                  ? (lang === 'pt' ? 'RETIRADA ($0.00)' : 'PICKUP ($0.00)')
+                  ? (lang === 'pt' ? 'RETIRADA NO SHOWROOM ($0.00)' : 'SHOWROOM PICKUP ($0.00)')
+                  : isGatewayCombo
+                  ? `$9.90 ${lang === 'pt' ? '(FRETE USPS)' : '(USPS SHIPPING)'}`
                   : isOver100FreeShipping
                   ? (lang === 'pt' ? 'GRÁTIS (COMPRAS $100+)' : 'FREE (ORDERS $100+)')
                   : isFreeShipping
