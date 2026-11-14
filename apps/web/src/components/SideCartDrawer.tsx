@@ -390,8 +390,8 @@ export function SideCartDrawer() {
                     <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
                     <span>
                       {lang === 'pt'
-                        ? `${translateBadgeText(comboPromo.title || 'Combo', lang)} ativo: $120 no Zelle/Venmo ou $129,90 no Afterpay/Affirm/Cartão (4x $32.48)!`
-                        : `${translateBadgeText(comboPromo.title || 'Combo', lang)} active: $120 on Zelle/Venmo or $129.90 on Afterpay/Affirm/Card (4x $32.48)!`}
+                        ? `${translateBadgeText(comboPromo.title || 'Combo', lang)} ativo: $120 na retirada ou $129,90 com frete USPS (4x de $32.48 sem juros)!`
+                        : `${translateBadgeText(comboPromo.title || 'Combo', lang)} active: $120 for pickup or $129.90 with USPS shipping (4x $32.48 interest-free)!`}
                     </span>
                   </>
                 ) : comboResult.participatingCount > 0 ? (

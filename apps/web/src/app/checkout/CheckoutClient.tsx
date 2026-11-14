@@ -551,14 +551,15 @@ export default function CheckoutPage() {
   const netSubtotal = Math.max(0, subtotal - totalDiscount);
 
   // Regra oficial da Ana Fitness Wear:
-  // Se o cliente selecionar a opção do Afterpay, Affirm, cartão ou qualquer outra forma de pagamento
-  // que não seja retirada na loja, Zelle ou Venmo, cobra os 120 dólares MAIS 9,90 do frete ($129.90 no total).
-  // NÃO se aplica frete grátis para combo parcelado em gateway.
-  // Se for Retirada no Showroom (PICKUP), o frete é $0.00.
-  // Para compras normais sem combo acima de $100, ou com cupom de frete grátis, o frete continua grátis ($0.00).
-  const isGatewayCombo = comboResult.hasCombo && isGatewayPaymentMethod(paymentMethod);
-  const isOver100FreeShipping = netSubtotal >= 100 && !isGatewayCombo;
-  const effectiveFreeShipping = (isFreeShipping && !isGatewayCombo) || isOver100FreeShipping;
+  // Se houver COMBO no carrinho (ex: 3 peças promocionais):
+  // - Retirada no Showroom (PICKUP): frete é $0.00 -> total = $120.00
+  // - Entrega / Envio (DELIVERY): frete fixo USPS é SEMPRE $9.90 -> total = $129.90 ($120 combo + $9.90 frete)
+  //   Isso vale para TODAS as formas de pagamento (Zelle, Venmo, Cash App, Cartão, Afterpay, Affirm),
+  //   garantindo que o cliente sempre transfira o frete ($129.90) e a Ana não tenha que pagar o frete do próprio bolso.
+  // - A isenção de Frete Grátis acima de $100 se aplica apenas para compras NORMAIS (sem combo promocional).
+  const isComboOrder = comboResult.hasCombo;
+  const isOver100FreeShipping = netSubtotal >= 100 && !isComboOrder;
+  const effectiveFreeShipping = (isFreeShipping && !isComboOrder) || isOver100FreeShipping;
   const shippingRate = deliveryMethod === 'PICKUP' ? 0 : (effectiveFreeShipping ? 0 : 9.90);
   const total = subtotal > 0 ? netSubtotal + shippingRate : 0;
   const freeShippingRemaining = Math.max(0, 100 - netSubtotal);
@@ -2422,14 +2423,40 @@ export default function CheckoutPage() {
 
             {/* Instruções Zelle */}
             {paymentMethod === 'ZELLE' && (
-              <div className="p-4 border border-gold bg-gold/5 space-y-2 animate-fadeIn text-xs text-deep-black">
-                <h4 className="font-black uppercase tracking-wider text-deep-black">
-                  {lang === 'pt' ? 'COMO PAGAR VIA ZELLE:' : 'HOW TO PAY VIA ZELLE:'}
-                </h4>
+              <div className="p-4 border border-gold bg-gold/5 space-y-3 animate-fadeIn text-xs text-deep-black">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-black uppercase tracking-wider text-deep-black flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#7414CA] inline-block" />
+                    <span>{lang === 'pt' ? 'PAGAMENTO VIA ZELLE:' : 'PAYMENT VIA ZELLE:'}</span>
+                  </h4>
+                  <span className="text-[9px] font-mono font-black text-[#7414CA] uppercase bg-white px-2 py-0.5 border border-[#7414CA]/30 shadow-2xs">
+                    ZELLE OFICIAL
+                  </span>
+                </div>
+
+                {/* Box de Valor Exato a Transferir */}
+                <div className="p-3 bg-white border-2 border-gold rounded-xs space-y-1 shadow-2xs">
+                  <div className="flex items-center justify-between text-xs font-black">
+                    <span className="text-deep-black uppercase tracking-wider">
+                      {lang === 'pt' ? 'VALOR A TRANSFERIR:' : 'AMOUNT TO TRANSFER:'}
+                    </span>
+                    <span className="text-base font-mono font-black text-gold">
+                      ${total.toFixed(2)} USD
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-700 font-medium">
+                    {deliveryMethod === 'PICKUP'
+                      ? (lang === 'pt' ? '✓ Retirada no Showroom (sem frete): $120.00' : '✓ Showroom Pickup (no shipping): $120.00')
+                      : isComboOrder
+                      ? (lang === 'pt' ? '✓ $120.00 do combo + $9.90 frete dos Correios (USPS)' : '✓ $120.00 combo + $9.90 USPS shipping')
+                      : (lang === 'pt' ? `✓ Inclui frete USPS ($${shippingRate.toFixed(2)})` : `✓ Includes USPS shipping ($${shippingRate.toFixed(2)})`)}
+                  </p>
+                </div>
+
                 <p className="text-deep-black/80 font-medium leading-relaxed">
                   {lang === 'pt'
-                    ? 'Envie o valor total para o Zelle oficial da loja: '
-                    : 'Send the total amount to the official store Zelle: '}
+                    ? 'Envie o valor exato para o Zelle oficial da loja: '
+                    : 'Send the exact amount to our official store Zelle: '}
                   <strong className="text-deep-black font-mono font-bold">+1 (978) 313-9452</strong> ou <strong className="text-deep-black font-mono">anafitweareua@gmail.com</strong>.
                 </p>
                 <p className="text-[10px] text-deep-black/60 uppercase">
@@ -2467,10 +2494,30 @@ export default function CheckoutPage() {
                     VENMO OFICIAL
                   </span>
                 </div>
+
+                {/* Box de Valor Exato a Transferir */}
+                <div className="p-3 bg-white border-2 border-[#008CFF] rounded-xs space-y-1 shadow-2xs">
+                  <div className="flex items-center justify-between text-xs font-black">
+                    <span className="text-deep-black uppercase tracking-wider">
+                      {lang === 'pt' ? 'VALOR A TRANSFERIR:' : 'AMOUNT TO TRANSFER:'}
+                    </span>
+                    <span className="text-base font-mono font-black text-[#008CFF]">
+                      ${total.toFixed(2)} USD
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-700 font-medium">
+                    {deliveryMethod === 'PICKUP'
+                      ? (lang === 'pt' ? '✓ Retirada no Showroom (sem frete): $120.00' : '✓ Showroom Pickup (no shipping): $120.00')
+                      : isComboOrder
+                      ? (lang === 'pt' ? '✓ $120.00 do combo + $9.90 frete dos Correios (USPS)' : '✓ $120.00 combo + $9.90 USPS shipping')
+                      : (lang === 'pt' ? `✓ Inclui frete USPS ($${shippingRate.toFixed(2)})` : `✓ Includes USPS shipping ($${shippingRate.toFixed(2)})`)}
+                  </p>
+                </div>
+
                 <p className="text-deep-black/85 font-medium leading-relaxed">
                   {lang === 'pt'
-                    ? 'Envie o valor total da compra para o Venmo oficial da loja: '
-                    : 'Send the total purchase amount to our official Venmo account: '}
+                    ? 'Envie o valor exato da compra para o Venmo oficial da loja: '
+                    : 'Send the exact purchase amount to our official Venmo account: '}
                   <strong className="text-deep-black font-mono font-black text-sm block sm:inline mt-1 sm:mt-0 bg-white px-1.5 py-0.5 border border-deep-black/20">
                     @Accleaningproservices
                   </strong>
@@ -2524,10 +2571,30 @@ export default function CheckoutPage() {
                     CASH APP OFICIAL • ACEITA COMBO
                   </span>
                 </div>
+
+                {/* Box de Valor Exato a Transferir */}
+                <div className="p-3 bg-white border-2 border-[#00D632] rounded-xs space-y-1 shadow-2xs">
+                  <div className="flex items-center justify-between text-xs font-black">
+                    <span className="text-deep-black uppercase tracking-wider">
+                      {lang === 'pt' ? 'VALOR A TRANSFERIR:' : 'AMOUNT TO TRANSFER:'}
+                    </span>
+                    <span className="text-base font-mono font-black text-[#009e24]">
+                      ${total.toFixed(2)} USD
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-700 font-medium">
+                    {deliveryMethod === 'PICKUP'
+                      ? (lang === 'pt' ? '✓ Retirada no Showroom (sem frete): $120.00' : '✓ Showroom Pickup (no shipping): $120.00')
+                      : isComboOrder
+                      ? (lang === 'pt' ? '✓ $120.00 do combo + $9.90 frete dos Correios (USPS)' : '✓ $120.00 combo + $9.90 USPS shipping')
+                      : (lang === 'pt' ? `✓ Inclui frete USPS ($${shippingRate.toFixed(2)})` : `✓ Includes USPS shipping ($${shippingRate.toFixed(2)})`)}
+                  </p>
+                </div>
+
                 <p className="text-deep-black/85 font-medium leading-relaxed">
                   {lang === 'pt'
-                    ? 'Envie o valor total da compra pelo Cash App para o $Cashtag oficial da loja: '
-                    : 'Send the total purchase amount via Cash App to our official $Cashtag: '}
+                    ? 'Envie o valor exato da compra pelo Cash App para o $Cashtag oficial da loja: '
+                    : 'Send the exact purchase amount via Cash App to our official $Cashtag: '}
                   <strong className="text-deep-black font-mono font-black text-sm block sm:inline mt-1 sm:mt-0 bg-white px-2 py-0.5 border border-deep-black/20">
                     {cashAppHandleNormalized}
                   </strong>
@@ -2698,23 +2765,23 @@ export default function CheckoutPage() {
               </div>
               <p className="text-[11px] text-emerald-900 font-medium">
                 {lang === 'pt' ? (
-                  isGatewayCombo ? (
+                  deliveryMethod === 'PICKUP' ? (
                     <>
-                      {comboResult.completedCombos}x Combo Parcelado: <strong>${comboResult.bundleTargetPrice.toFixed(2)}</strong> ({comboResult.completedCombos * (comboPromo?.required_quantity || 3)} peças) + <strong>$9.90 frete USPS</strong> = <strong>${total.toFixed(2)}</strong> (em <strong>4x de ${(total / 4).toFixed(2)} sem juros</strong> no Afterpay / Affirm / Cartão).
+                      {comboResult.completedCombos}x Combo: <strong>$120.00</strong> ({comboResult.completedCombos * (comboPromo?.required_quantity || 3)} peças) com retirada grátis no Showroom!
                     </>
                   ) : (
                     <>
-                      {comboResult.completedCombos}x Combo: <strong>$120.00</strong> ({comboResult.completedCombos * (comboPromo?.required_quantity || 3)} peças) no Zelle ou Venmo com <strong>frete grátis incluso</strong>!
+                      {comboResult.completedCombos}x Combo: <strong>$120.00</strong> ({comboResult.completedCombos * (comboPromo?.required_quantity || 3)} peças) + <strong>$9.90 frete USPS</strong> = <strong>${total.toFixed(2)}</strong> {isGatewayPaymentMethod(paymentMethod) ? `(em 4x de $${(total / 4).toFixed(2)} sem juros no Afterpay / Affirm / Cartão)` : '(no Zelle, Venmo ou Cash App)'}.
                     </>
                   )
                 ) : (
-                  isGatewayCombo ? (
+                  deliveryMethod === 'PICKUP' ? (
                     <>
-                      {comboResult.completedCombos}x Installment Combo: <strong>${comboResult.bundleTargetPrice.toFixed(2)}</strong> + <strong>$9.90 USPS shipping</strong> = <strong>${total.toFixed(2)}</strong> (in <strong>4x ${(total / 4).toFixed(2)}</strong> on Afterpay / Affirm / Card).
+                      {comboResult.completedCombos}x Bundle Deal: <strong>$120.00</strong> ({comboResult.completedCombos * (comboPromo?.required_quantity || 3)} items) with free Showroom Pickup!
                     </>
                   ) : (
                     <>
-                      {comboResult.completedCombos}x Bundle Deal: <strong>${comboResult.bundleTargetPrice.toFixed(2)}</strong> on Zelle, Venmo or Showroom Pickup!
+                      {comboResult.completedCombos}x Bundle Deal: <strong>$120.00</strong> + <strong>$9.90 USPS shipping</strong> = <strong>${total.toFixed(2)}</strong> {isGatewayPaymentMethod(paymentMethod) ? `(in 4x $${(total / 4).toFixed(2)} on Afterpay / Affirm / Card)` : '(on Zelle, Venmo or Cash App)'}.
                     </>
                   )
                 )}
@@ -2834,12 +2901,12 @@ export default function CheckoutPage() {
               <div className="flex justify-between text-emerald-700 font-black">
                 <span>
                   {lang === 'pt'
-                    ? isGatewayCombo
-                      ? 'COMBO PROMOCIONAL (OUTRAS FORMAS - $129,90):'
-                      : 'COMBO PROMOCIONAL (ZELLE / VENMO - $120.00):'
-                    : isGatewayCombo
-                    ? 'PROMO COMBO (OTHER METHODS - $129.90):'
-                    : 'PROMO COMBO (ZELLE / VENMO - $120.00):'}
+                    ? deliveryMethod === 'PICKUP'
+                      ? 'COMBO PROMOCIONAL (RETIRADA - $120.00):'
+                      : 'COMBO PROMOCIONAL ($120.00 + FRETE USPS $9.90):'
+                    : deliveryMethod === 'PICKUP'
+                    ? 'PROMO COMBO (PICKUP - $120.00):'
+                    : 'PROMO COMBO ($120.00 + USPS SHIPPING $9.90):'}
                 </span>
                 <span className="font-mono">-${comboDiscount.toFixed(2)}</span>
               </div>
@@ -2867,7 +2934,7 @@ export default function CheckoutPage() {
               <span className={`font-mono font-bold ${deliveryMethod === 'PICKUP' || effectiveFreeShipping ? 'text-green-700' : ''}`}>
                 {deliveryMethod === 'PICKUP'
                   ? (lang === 'pt' ? 'RETIRADA NO SHOWROOM ($0.00)' : 'SHOWROOM PICKUP ($0.00)')
-                  : isGatewayCombo
+                  : isComboOrder
                   ? `$9.90 ${lang === 'pt' ? '(FRETE USPS)' : '(USPS SHIPPING)'}`
                   : isOver100FreeShipping
                   ? (lang === 'pt' ? 'GRÁTIS (COMPRAS $100+)' : 'FREE (ORDERS $100+)')
