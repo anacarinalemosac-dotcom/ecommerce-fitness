@@ -1536,7 +1536,17 @@ export default function PosTerminalPage() {
                       className="p-2 border border-deep-black/15 hover:border-deep-black hover:bg-deep-black/5 transition text-left flex items-center gap-2.5 group cursor-pointer"
                     >
                       <div className="w-11 h-14 bg-deep-black/10 shrink-0 overflow-hidden border border-deep-black/10">
-                        <img src={prod.primaryImage} alt={prod.title} className="w-full h-full object-cover" />
+                        <img
+                          src={prod.primaryImage}
+                          alt={prod.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const t = e.currentTarget;
+                            if (!t.src.includes('unsplash.com')) {
+                              t.src = 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=300&q=80';
+                            }
+                          }}
+                        />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-[10.5px] font-black uppercase tracking-tight text-deep-black truncate group-hover:text-gold" title={prod.title}>
@@ -1583,7 +1593,17 @@ export default function PosTerminalPage() {
                   <div key={item.sku} className="py-3 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       {item.image && (
-                        <img src={item.image} alt={item.name} className="w-10 h-12 object-cover border border-deep-black/20" />
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-10 h-12 object-cover border border-deep-black/20"
+                          onError={(e) => {
+                            const t = e.currentTarget;
+                            if (!t.src.includes('unsplash.com')) {
+                              t.src = 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=300&q=80';
+                            }
+                          }}
+                        />
                       )}
                       <div>
                         <h3 className="text-xs font-black uppercase tracking-wider text-deep-black">

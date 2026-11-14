@@ -1420,6 +1420,12 @@ export default function HomePage() {
                             src={cardImageOverrides[product.id] || (isHovered ? product.secondaryImage : product.primaryImage)}
                             alt={product.title}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            onError={(e) => {
+                              const t = e.currentTarget;
+                              if (!t.src.includes('unsplash.com')) {
+                                t.src = 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
+                              }
+                            }}
                           />
                         </Link>
 

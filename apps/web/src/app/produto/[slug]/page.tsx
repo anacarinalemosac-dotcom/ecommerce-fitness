@@ -1273,7 +1273,17 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                       </div>
                     </div>
                   ) : (
-                    <img src={item.url} alt={item.label} className="w-full h-full object-cover" />
+                    <img
+                      src={item.url}
+                      alt={item.label}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const t = e.currentTarget;
+                        if (!t.src.includes('unsplash.com')) {
+                          t.src = 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
+                        }
+                      }}
+                    />
                   )}
                 </button>
               ))}
@@ -1307,6 +1317,12 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                       isZoomed ? 'scale-150' : 'group-hover:scale-105'
                     }`}
                     onClick={() => setIsZoomed(!isZoomed)}
+                    onError={(e) => {
+                      const t = e.currentTarget;
+                      if (!t.src.includes('unsplash.com')) {
+                        t.src = 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
+                      }
+                    }}
                   />
                   {productData.media.some((m: any) => m.type === 'video') && (
                     <button
