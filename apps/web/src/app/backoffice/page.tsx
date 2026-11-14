@@ -294,7 +294,7 @@ export default function BackofficeDashboard() {
   // Filtros e Busca Rápida no Catálogo de Produtos
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('ALL');
-  const [productStatusFilter, setProductStatusFilter] = useState<'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK'>('ALL');
+  const [productStatusFilter, setProductStatusFilter] = useState<'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'IN_COMBO'>('ALL');
   const [productSizeFilter, setProductSizeFilter] = useState<'ALL' | 'P' | 'M' | 'G' | 'GG' | 'UN'>('ALL');
 
   // Seleção e Edição em Massa (Bulk Update) de Produtos
@@ -2294,6 +2294,11 @@ export default function BackofficeDashboard() {
   const hiddenCatalogCount = draftCatalogCount;
   const inStockCatalogCount = baseCatalogList.filter((p: any) => getProductTotalStock(p) > 0).length;
   const outOfStockCatalogCount = baseCatalogList.filter((p: any) => getProductTotalStock(p) <= 0).length;
+  const comboCatalogCount = baseCatalogList.filter((p: any) =>
+    (comboPromo?.product_ids || []).includes(p.id) ||
+    (comboPromo?.product_slugs || []).includes(p.slug) ||
+    p.is_combo_item === true
+  ).length;
 
   const filteredCatalogProducts = baseCatalogList.filter((item: any) => {
     const itemVariants = item.variants || (item.sizes ? item.sizes.map((sz: string) => ({
@@ -2303,6 +2308,11 @@ export default function BackofficeDashboard() {
       stock_quantity: Math.round((item.stock || 0) / item.sizes.length),
     })) : []);
     const totalStock = getProductTotalStock(item);
+    const isInCombo = Boolean(
+      (comboPromo?.product_ids || []).includes(item.id) ||
+      (comboPromo?.product_slugs || []).includes(item.slug) ||
+      item.is_combo_item === true
+    );
 
     // Filtro por Status / Aba
     if (productStatusFilter === 'TODAY' && !isCreatedToday(item)) return false;
@@ -2310,6 +2320,7 @@ export default function BackofficeDashboard() {
     if ((productStatusFilter === 'DRAFT' || productStatusFilter === 'HIDDEN') && !isDraftProduct(item)) return false;
     if (productStatusFilter === 'IN_STOCK' && totalStock <= 0) return false;
     if (productStatusFilter === 'OUT_OF_STOCK' && totalStock > 0) return false;
+    if (productStatusFilter === 'IN_COMBO' && !isInCombo) return false;
 
     // Filtro por Tamanho P (S), M (M), G (L), GG (XL)
     if (productSizeFilter !== 'ALL') {
@@ -2848,6 +2859,9 @@ export default function BackofficeDashboard() {
             onBulkRemoveFromCombo={handleBulkRemoveFromCombo}
             onClearSelection={() => setSelectedCatalogIds([])}
             comboBadgeText={comboPromo?.badge_text}
+            comboCatalogCount={comboCatalogCount}
+            comboPromo={comboPromo}
+            onToggleProductCombo={handleToggleSingleProductCombo}
           />
         </div>
       )}

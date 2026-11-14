@@ -33,12 +33,15 @@ interface WixProductTableProps {
   draftCatalogCount: number;
   inStockCatalogCount: number;
   outOfStockCatalogCount: number;
+  comboCatalogCount?: number;
+  comboPromo?: any;
+  onToggleProductCombo?: (productId: string, productSlug?: string) => void;
   availableCategories: string[];
   productSearch: string;
   setProductSearch: (s: string) => void;
   productCategoryFilter: string;
   setProductCategoryFilter: (c: string) => void;
-  productStatusFilter: 'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK';
+  productStatusFilter: 'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'IN_COMBO';
   setProductStatusFilter: (st: any) => void;
   productSizeFilter: 'ALL' | 'P' | 'M' | 'G' | 'GG' | 'UN';
   setProductSizeFilter: (sz: any) => void;
@@ -73,6 +76,9 @@ export function WixProductTable({
   draftCatalogCount,
   inStockCatalogCount,
   outOfStockCatalogCount,
+  comboCatalogCount = 0,
+  comboPromo,
+  onToggleProductCombo,
   availableCategories,
   productSearch,
   setProductSearch,
@@ -288,6 +294,20 @@ export function WixProductTable({
             >
               ⚡ Criados hoje ({todayCatalogCount})
             </button>
+
+            <button
+              type="button"
+              onClick={() => setProductStatusFilter('IN_COMBO')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
+                productStatusFilter === 'IN_COMBO'
+                  ? 'bg-amber-500 text-gray-950 font-bold shadow-xs'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title="Filtrar apenas os produtos participantes da promoção de combo"
+            >
+              <span>🔥</span>
+              <span>No Combo ({comboCatalogCount || (comboPromo?.product_ids?.length || 0)})</span>
+            </button>
           </div>
 
           {/* Ferramentas: Filtrar e Buscar */}
@@ -499,6 +519,7 @@ export function WixProductTable({
                 <th className="p-3">Preço</th>
                 <th className="p-3">Estoque</th>
                 <th className="p-3">Categorias</th>
+                <th className="p-3 text-center whitespace-nowrap">Combo (3 peças)</th>
                 <th className="p-3 w-16 text-right">Ações</th>
               </tr>
             </thead>
@@ -507,7 +528,7 @@ export function WixProductTable({
             <tbody className="divide-y divide-gray-150">
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center text-gray-500">
+                  <td colSpan={9} className="p-12 text-center text-gray-500">
                     <div className="max-w-sm mx-auto space-y-2">
                       <Search className="w-8 h-8 text-gray-300 mx-auto" />
                       <p className="font-semibold text-gray-700">Nenhum produto encontrado</p>
@@ -567,6 +588,11 @@ export function WixProductTable({
 
                   const isSelected = selectedCatalogIds.includes(item.id);
                   const isActionMenuOpen = openActionRowId === item.id;
+                  const isInCombo = Boolean(
+                    (comboPromo?.product_ids || []).includes(item.id) ||
+                    (comboPromo?.product_slugs || []).includes(item.slug) ||
+                    item.is_combo_item === true
+                  );
 
                   // Status de estoque no estilo Wix
                   let stockStatusText = 'Em estoque';
@@ -609,14 +635,22 @@ export function WixProductTable({
                             className="w-11 h-11 rounded-md object-cover border border-gray-200 shrink-0 bg-gray-50"
                           />
                           <div className="min-w-0">
-                            <button
-                              type="button"
-                              onClick={() => onEditProduct(item)}
-                              className="font-semibold text-gray-900 hover:text-blue-600 text-xs text-left truncate block max-w-[240px] sm:max-w-[320px]"
-                              title={item.title}
-                            >
-                              {item.title}
-                            </button>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => onEditProduct(item)}
+                                className="font-semibold text-gray-900 hover:text-blue-600 text-xs text-left truncate block max-w-[220px] sm:max-w-[300px]"
+                                title={item.title}
+                              >
+                                {item.title}
+                              </button>
+                              {isInCombo && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-bold uppercase tracking-tight shadow-2xs">
+                                  <span>🔥</span>
+                                  <span>{comboBadgeText || 'COMBO'}</span>
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[11px] text-gray-500 font-normal block">
                               {itemVariants.length > 0
                                 ? `${itemVariants.length} variantes`
@@ -663,6 +697,23 @@ export function WixProductTable({
                         </span>
                       </td>
 
+                      {/* Combo Promocional: Botão Rápido de Ativação / Desativação Direto na Lista */}
+                      <td className="p-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => onToggleProductCombo?.(item.id, item.slug)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition shadow-2xs border cursor-pointer ${
+                            isInCombo
+                              ? 'bg-amber-500 hover:bg-amber-400 text-gray-950 border-amber-600 ring-2 ring-amber-300/50'
+                              : 'bg-white hover:bg-gray-100 text-gray-600 border-gray-300 hover:border-gray-400'
+                          }`}
+                          title={isInCombo ? 'Clique para remover do Combo Promocional' : 'Clique para adicionar ao Combo Promocional'}
+                        >
+                          <Sparkles className={`w-3.5 h-3.5 ${isInCombo ? 'text-gray-950 fill-current' : 'text-gray-400'}`} />
+                          <span>{isInCombo ? '✓ No Combo' : '+ Adicionar'}</span>
+                        </button>
+                      </td>
+
                       {/* Menu de Ações (Os 3 pontinhos do Wix) */}
                       <td className="p-3 text-right relative">
                         <button
@@ -677,9 +728,21 @@ export function WixProductTable({
                         {/* Menu Dropdown de Ações */}
                         {isActionMenuOpen && (
                           <div
-                            className="absolute right-3 top-10 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-30 text-left text-xs animate-fadeIn"
+                            className="absolute right-3 top-10 w-52 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-30 text-left text-xs animate-fadeIn"
                             onMouseLeave={() => setOpenActionRowId(null)}
                           >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionRowId(null);
+                                onToggleProductCombo?.(item.id, item.slug);
+                              }}
+                              className="w-full px-3.5 py-2 hover:bg-gray-50 text-gray-700 flex items-center gap-2 font-medium"
+                            >
+                              <Sparkles className={`w-3.5 h-3.5 ${isInCombo ? 'text-amber-500 fill-current' : 'text-gray-400'}`} />
+                              <span>{isInCombo ? 'Remover do Combo' : 'Incluir no Combo'}</span>
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => {
