@@ -379,12 +379,12 @@
       "price": 49.9,
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "SET-PRE-M-CP",
       "product_type": "physical",
-      "visible_online": true,
-      "is_draft": false,
+      "visible_online": false,
+      "is_draft": true,
       "visible_pos": true,
       "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794326687476-y2mgwh.jpeg",
       "images": [
@@ -476,8 +476,8 @@
     "price": 49.9,
     "cost_price": 12,
     "costPrice": 12,
-    "visible_online": true,
-    "is_draft": false,
+    "visible_online": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "Suplex",
@@ -494,8 +494,8 @@
         "size": "G",
         "sku": "SET-BEI-G",
         "barcode": "789384763339",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 12,
         "costPrice": 12,
@@ -509,7 +509,7 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794326688850-i1nctn.mov"
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": true
   },
   {
@@ -2444,12 +2444,12 @@
       "price": 49.9,
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "SET-SAG-M-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP",
       "product_type": "physical",
-      "visible_online": true,
-      "is_draft": false,
+      "visible_online": false,
+      "is_draft": true,
       "visible_pos": true,
       "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794309563028-slyhy7.jpeg",
       "images": [
@@ -2541,8 +2541,8 @@
     "price": 49.9,
     "cost_price": 12,
     "costPrice": 12,
-    "visible_online": true,
-    "is_draft": false,
+    "visible_online": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "SUPLEX",
     "material": "Suplex",
@@ -2559,8 +2559,8 @@
         "size": "M",
         "sku": "SET-RED-M",
         "barcode": "789599229054",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 12,
         "costPrice": 12,
@@ -2574,7 +2574,7 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794309564282-9q1ve.mov"
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": true
   },
   {
@@ -2612,12 +2612,12 @@
       "price": 49.9,
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "SET-SAG-M-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP",
       "product_type": "physical",
-      "visible_online": true,
-      "is_draft": false,
+      "visible_online": false,
+      "is_draft": true,
       "visible_pos": true,
       "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794309372518-l7p0cuf.jpeg",
       "images": [
@@ -2709,8 +2709,8 @@
     "price": 49.9,
     "cost_price": 12,
     "costPrice": 12,
-    "visible_online": true,
-    "is_draft": false,
+    "visible_online": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "SUPLEX",
     "material": "Suplex",
@@ -2727,8 +2727,8 @@
         "size": "M",
         "sku": "SET-CAR-M",
         "barcode": "789609854266",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 12,
         "costPrice": 12,
@@ -2742,7 +2742,7 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794309374025-o6ql8p.mov"
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": true
   },
   {
@@ -2948,12 +2948,12 @@
       "price": 49.9,
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "SET-SAG-M-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP",
       "product_type": "physical",
-      "visible_online": true,
-      "is_draft": false,
+      "visible_online": false,
+      "is_draft": true,
       "visible_pos": true,
       "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794308576216-uid7oh.jpeg",
       "images": [
@@ -3045,8 +3045,8 @@
     "price": 49.9,
     "cost_price": 12,
     "costPrice": 12,
-    "visible_online": true,
-    "is_draft": false,
+    "visible_online": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "SUPLEX",
     "material": "Suplex",
@@ -3063,8 +3063,8 @@
         "size": "M",
         "sku": "SET-PIN-M",
         "barcode": "789702782756",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 12,
         "costPrice": 12,
@@ -3078,7 +3078,7 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794308577488-hrtezm.mov"
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": true
   },
   {
@@ -4712,12 +4712,12 @@
       "price": 49.9,
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "SET-SAG-M-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP",
       "product_type": "physical",
-      "visible_online": true,
-      "is_draft": false,
+      "visible_online": false,
+      "is_draft": true,
       "visible_pos": true,
       "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794305449351-kvb0ls.png",
       "images": [
@@ -4826,8 +4826,8 @@
     "price": 49.9,
     "cost_price": 12,
     "costPrice": 12,
-    "visible_online": true,
-    "is_draft": false,
+    "visible_online": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "SUPLEX",
     "material": "Suplex",
@@ -4844,8 +4844,8 @@
         "size": "P",
         "sku": "SET-SAG-P",
         "barcode": "789517354532",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 12,
         "costPrice": 12,
@@ -4860,7 +4860,7 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794305274132-kbo4ha.mov"
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": true
   },
   {
@@ -6382,12 +6382,12 @@
       "price": 49.9,
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "SET-SAG-M-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP",
       "product_type": "physical",
-      "visible_online": true,
-      "is_draft": false,
+      "visible_online": false,
+      "is_draft": true,
       "visible_pos": true,
       "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794260323109-tcqtuf.jpeg",
       "images": [
@@ -6480,8 +6480,8 @@
     "price": 49.9,
     "cost_price": 12,
     "costPrice": 12,
-    "visible_online": true,
-    "is_draft": false,
+    "visible_online": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "SUPLEX",
     "material": "Suplex",
@@ -6498,8 +6498,8 @@
         "size": "M",
         "sku": "SET-BUR-M",
         "barcode": "789761173912",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 12,
         "costPrice": 12,
@@ -6513,7 +6513,7 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794260324637-swd1p5.mov"
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": false
   },
   {
@@ -6889,12 +6889,12 @@
       "price": 49.9,
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "SET-SAG-M-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP",
       "product_type": "physical",
-      "visible_online": true,
-      "is_draft": false,
+      "visible_online": false,
+      "is_draft": true,
       "visible_pos": true,
       "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794259740374-jkrgn.jpeg",
       "images": [
@@ -6987,8 +6987,8 @@
     "price": 49.9,
     "cost_price": 12,
     "costPrice": 12,
-    "visible_online": true,
-    "is_draft": false,
+    "visible_online": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "SUPLEX",
     "material": "Suplex",
@@ -7005,8 +7005,8 @@
         "size": "M",
         "sku": "SET-CHO-M-LJCZ",
         "barcode": "789188597342",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 12,
         "costPrice": 12,
@@ -7020,7 +7020,7 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794259742205-xmdcl8.mov"
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": false
   },
   {
@@ -7058,12 +7058,12 @@
       "price": 49.9,
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "SET-SAG-M-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP",
       "product_type": "physical",
-      "visible_online": true,
-      "is_draft": false,
+      "visible_online": false,
+      "is_draft": true,
       "visible_pos": true,
       "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794259535207-7inlwr.jpeg",
       "images": [
@@ -7155,8 +7155,8 @@
     "price": 49.9,
     "cost_price": 12,
     "costPrice": 12,
-    "visible_online": true,
-    "is_draft": false,
+    "visible_online": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "SUPLEX",
     "material": "Suplex",
@@ -7173,8 +7173,8 @@
         "size": "M",
         "sku": "SET-TAU-M",
         "barcode": "789391989212",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 12,
         "costPrice": 12,
@@ -7188,7 +7188,7 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794259537244-13jpfo.mov"
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": false
   },
   {
@@ -7226,12 +7226,12 @@
       "price": 49.9,
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "SET-SAG-M-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP-CP",
       "product_type": "physical",
-      "visible_online": true,
-      "is_draft": false,
+      "visible_online": false,
+      "is_draft": true,
       "visible_pos": true,
       "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794259382288-rsn92.jpeg",
       "images": [
@@ -7323,8 +7323,8 @@
     "price": 49.9,
     "cost_price": 12,
     "costPrice": 12,
-    "visible_online": true,
-    "is_draft": false,
+    "visible_online": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "SUPLEX",
     "material": "Suplex",
@@ -7341,8 +7341,8 @@
         "size": "G",
         "sku": "SET-TEA-G",
         "barcode": "789371402417",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 12,
         "costPrice": 12,
@@ -7356,7 +7356,7 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794259383984-0pqyt.mov"
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": false
   },
   {
@@ -7776,7 +7776,7 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794258660656-gnyfzw.mov"
       }
     ],
-    "total_stock": 2,
+    "total_stock": 1,
     "is_combo": false
   },
   {
@@ -9039,7 +9039,7 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794254730850-5snff.mov"
       }
     ],
-    "total_stock": 2,
+    "total_stock": 1,
     "is_combo": true
   },
   {
@@ -9689,7 +9689,7 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794252668685-hx8yi5.mov"
       }
     ],
-    "total_stock": 3,
+    "total_stock": 2,
     "is_combo": false
   },
   {
@@ -11813,12 +11813,12 @@
       "price": 49.9,
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "PROD-PIN-M-CP",
       "product_type": "physical",
-      "visible_online": true,
-      "is_draft": false,
+      "visible_online": false,
+      "is_draft": true,
       "visible_pos": true,
       "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794173672344-xgww1.png",
       "images": [
@@ -11945,8 +11945,8 @@
     "price": 49.9,
     "cost_price": 12,
     "costPrice": 12,
-    "visible_online": true,
-    "is_draft": false,
+    "visible_online": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "SUFLEX",
     "material": "Suplex",
@@ -11963,8 +11963,8 @@
         "size": "M",
         "sku": "PROD-ROY-M",
         "barcode": "789612903853",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 12,
         "costPrice": 12,
@@ -11980,7 +11980,7 @@
         "video_url": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794309950483-y7jo4o.mov"
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": true
   },
   {
@@ -13324,7 +13324,8 @@
       "cost_price": 12,
       "size_guide": "",
       "slug": "navy-blue-and-light-yellow",
-      "id": "e0000000-0000-4000-8000-004500000000"
+      "id": "e0000000-0000-4000-8000-004500000000",
+      "is_draft": false
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794097198078-k6n7ql.jpg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794097198078-k6n7ql.jpg",
@@ -13437,11 +13438,11 @@
       "price": 49.9,
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "SET-DEE-M",
       "product_type": "physical",
-      "visible_online": true,
+      "visible_online": false,
       "visible_pos": true,
       "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794096559335-9mwarn.jpg",
       "images": [
@@ -13508,7 +13509,8 @@
       "cost_price": 12,
       "size_guide": "",
       "slug": "set-deep-teal-blue-and-pink",
-      "id": "e0000000-0000-4000-8000-004600000000"
+      "id": "e0000000-0000-4000-8000-004600000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794096559335-9mwarn.jpg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794096559335-9mwarn.jpg",
@@ -13555,8 +13557,8 @@
     "price": 49.9,
     "cost_price": 12,
     "costPrice": 12,
-    "visible_online": true,
-    "is_draft": false,
+    "visible_online": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -13571,8 +13573,8 @@
         "size": "M",
         "sku": "SET-DEE-M",
         "barcode": "789475739840",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 12,
         "costPrice": 12,
@@ -13587,7 +13589,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": true
   },
   {
@@ -13927,7 +13929,8 @@
       "cost_price": 12,
       "size_guide": "",
       "slug": "set-burnt-orange-and-charcoal-gray",
-      "id": "e0000000-0000-4000-8000-004800000000"
+      "id": "e0000000-0000-4000-8000-004800000000",
+      "is_draft": false
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794095062830-flag7.jpg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794095062830-flag7.jpg",
@@ -14504,7 +14507,8 @@
       "cost_price": 12,
       "size_guide": "",
       "slug": "set-chocolate-and-beige-activewear",
-      "id": "e0000000-0000-4000-8000-004b00000000"
+      "id": "e0000000-0000-4000-8000-004b00000000",
+      "is_draft": false
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794090753296-y9q96.jpeg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794090753296-y9q96.jpeg",
@@ -15137,7 +15141,7 @@
       "price": 39.9,
       "promotional_price": null,
       "compare_price": null,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "CONJ-PRE-P",
       "product_type": "physical",
@@ -15209,7 +15213,8 @@
       "cost_price": 12,
       "size_guide": "",
       "slug": "conjunto-promocao",
-      "id": "27424f85-c51e-4f20-b2f0-163e1a1b7423"
+      "id": "27424f85-c51e-4f20-b2f0-163e1a1b7423",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -15232,7 +15237,7 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -15331,7 +15336,7 @@
       "price": 39.9,
       "promotional_price": null,
       "compare_price": null,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "MACA-PRE-P",
       "product_type": "physical",
@@ -15403,7 +15408,8 @@
       "cost_price": 16,
       "size_guide": "",
       "slug": "macacao-promocao",
-      "id": "e0000000-0000-4000-8000-004f00000000"
+      "id": "e0000000-0000-4000-8000-004f00000000",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -15426,7 +15432,7 @@
     "cost_price": 16,
     "costPrice": 16,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -15525,7 +15531,7 @@
       "price": 110,
       "promotional_price": 110,
       "compare_price": 150,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "CONJ-PRE-P",
       "product_type": "physical",
@@ -15597,7 +15603,8 @@
       "cost_price": 45,
       "size_guide": "",
       "slug": "conjunto-promocao-3-por-110",
-      "id": "3d5b00b7-e80d-4d19-97f1-09515446a89e"
+      "id": "3d5b00b7-e80d-4d19-97f1-09515446a89e",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -15620,7 +15627,7 @@
     "cost_price": 45,
     "costPrice": 45,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -15972,7 +15979,7 @@
       "price": 9.9,
       "promotional_price": null,
       "compare_price": null,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "FRET-PRE-P",
       "product_type": "physical",
@@ -16044,7 +16051,8 @@
       "cost_price": 0,
       "size_guide": "",
       "slug": "frete",
-      "id": "e0000000-0000-4000-8000-005200000000"
+      "id": "e0000000-0000-4000-8000-005200000000",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -16067,7 +16075,7 @@
     "cost_price": 16,
     "costPrice": 16,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -16689,7 +16697,8 @@
       ],
       "size_guide": "",
       "slug": "set-ana-yellow-and-red",
-      "id": "e0000000-0000-4000-8000-005500000000"
+      "id": "e0000000-0000-4000-8000-005500000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/set-ana-frente.jpg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/set-ana-frente.jpg",
@@ -16729,7 +16738,7 @@
     "cost_price": 15,
     "costPrice": 15,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "84% Poliamida, 16% Elastano 4-way stretch",
     "material": "",
@@ -17061,7 +17070,8 @@
       "cost_price": 16,
       "size_guide": "",
       "slug": "set-bicolor-suplex-power",
-      "id": "ca49be01-183d-430d-a8f1-60742d110415"
+      "id": "ca49be01-183d-430d-a8f1-60742d110415",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1793407576100-0qu0k.jpeg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1793407576100-0qu0k.jpeg",
@@ -17165,7 +17175,7 @@
     "cost_price": 16,
     "costPrice": 16,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -17512,7 +17522,8 @@
       "cost_price": 16,
       "size_guide": "",
       "slug": "nula-sleeve-suplex-power-pants-set",
-      "id": "cb326896-6b24-47d7-ba43-684dc5acb563"
+      "id": "cb326896-6b24-47d7-ba43-684dc5acb563",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1793406387004-gikg0q.jpeg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1793406387004-gikg0q.jpeg",
@@ -17568,7 +17579,7 @@
     "cost_price": 16,
     "costPrice": 16,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -19009,7 +19020,8 @@
       ],
       "size_guide": "",
       "slug": "set-ana",
-      "id": "b1155343-d633-40a1-a77e-efc999d73a4b"
+      "id": "b1155343-d633-40a1-a77e-efc999d73a4b",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1792965855995-edeoi7.jpg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1792965855995-edeoi7.jpg",
@@ -19074,7 +19086,7 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "84% Poliamida, 16% Elastano 4-way stretch",
     "material": "",
@@ -19465,7 +19477,8 @@
       "cost_price": 12.86,
       "size_guide": "",
       "slug": "conjunto-ana",
-      "id": "818c9819-a082-4b70-b6b6-e41151c522f4"
+      "id": "818c9819-a082-4b70-b6b6-e41151c522f4",
+      "is_draft": true
     },
     "primary_image": "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80",
     "primaryImage": "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80",
@@ -19500,7 +19513,7 @@
     "cost_price": 12.86,
     "costPrice": 12.86,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -19592,7 +19605,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 46,
+    "total_stock": 40,
     "is_combo": true
   },
   {
@@ -19719,7 +19732,8 @@
       "cost_price": 10.13,
       "size_guide": "",
       "slug": "conjunto-vitoria",
-      "id": "f4411957-02a2-44f4-9c43-c9797a88f90c"
+      "id": "f4411957-02a2-44f4-9c43-c9797a88f90c",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1792966826819-6z4i6b.jpg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1792966826819-6z4i6b.jpg",
@@ -19749,7 +19763,7 @@
     "cost_price": 10.13,
     "costPrice": 10.13,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -19934,7 +19948,8 @@
       "cost_price": 13.77,
       "size_guide": "",
       "slug": "macacao",
-      "id": "e0000000-0000-4000-8000-005d00000000"
+      "id": "e0000000-0000-4000-8000-005d00000000",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -19956,7 +19971,7 @@
     "cost_price": 13.77,
     "costPrice": 13.77,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -20146,7 +20161,8 @@
       "cost_price": 11.95,
       "size_guide": "",
       "slug": "conjunto-bicolor",
-      "id": "e0000000-0000-4000-8000-005e00000000"
+      "id": "e0000000-0000-4000-8000-005e00000000",
+      "is_draft": true
     },
     "primary_image": "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80",
     "primaryImage": "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80",
@@ -20181,7 +20197,7 @@
     "cost_price": 11.95,
     "costPrice": 11.95,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -20273,7 +20289,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 85,
+    "total_stock": 39,
     "is_combo": true
   },
   {
@@ -20553,7 +20569,8 @@
       "cost_price": 6.31,
       "size_guide": "",
       "slug": "fishnet-top",
-      "id": "e0000000-0000-4000-8000-005f00000000"
+      "id": "e0000000-0000-4000-8000-005f00000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1792779782702-6tb0f.png",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1792779782702-6tb0f.png",
@@ -20625,7 +20642,7 @@
     "cost_price": 6.31,
     "costPrice": 6.31,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -20948,7 +20965,8 @@
       "cost_price": 5.3,
       "size_guide": "",
       "slug": "deise-dry-mesh-top",
-      "id": "e0000000-0000-4000-8000-006000000000"
+      "id": "e0000000-0000-4000-8000-006000000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1793144192539-e5jm3.png",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1793144192539-e5jm3.png",
@@ -20992,7 +21010,7 @@
     "cost_price": 5.3,
     "costPrice": 5.3,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -21164,7 +21182,8 @@
       "cost_price": 19,
       "size_guide": "",
       "slug": "top-telinha-dry",
-      "id": "e0000000-0000-4000-8000-006100000000"
+      "id": "e0000000-0000-4000-8000-006100000000",
+      "is_draft": true
     },
     "primary_image": "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80",
     "primaryImage": "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80",
@@ -21198,7 +21217,7 @@
     "cost_price": 19,
     "costPrice": 19,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -21269,7 +21288,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 15,
+    "total_stock": 5,
     "is_combo": false
   },
   {
@@ -21411,7 +21430,8 @@
       "cost_price": 12.86,
       "size_guide": "",
       "slug": "conjunto-manga-nula",
-      "id": "5f74c4bd-035f-41b4-9bdc-187b24355679"
+      "id": "5f74c4bd-035f-41b4-9bdc-187b24355679",
+      "is_draft": true
     },
     "primary_image": "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80",
     "primaryImage": "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80",
@@ -21446,7 +21466,7 @@
     "cost_price": 12.86,
     "costPrice": 12.86,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -21538,7 +21558,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 19,
+    "total_stock": 18,
     "is_combo": true
   },
   {
@@ -23696,7 +23716,8 @@
       ],
       "cost_price": 16,
       "slug": "tank-top",
-      "id": "e0000000-0000-4000-8000-006600000000"
+      "id": "e0000000-0000-4000-8000-006600000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/sample.jpg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/sample.jpg",
@@ -23723,7 +23744,7 @@
     "cost_price": 16,
     "costPrice": 16,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -23778,7 +23799,7 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "ROMPER-CAROL",
       "product_type": "physical",
@@ -23883,7 +23904,8 @@
       "cost_price": 17.29,
       "size_guide": "",
       "slug": "romper-carol",
-      "id": "e0000000-0000-4000-8000-006700000000"
+      "id": "e0000000-0000-4000-8000-006700000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791833753870-q3sbl.png",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791833753870-q3sbl.png",
@@ -23943,7 +23965,7 @@
     "cost_price": 17.29,
     "costPrice": 17.29,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -24032,7 +24054,8 @@
       ],
       "size_guide": "",
       "slug": "set-pants-capri-josi",
-      "id": "ca64952a-ddc5-49fd-9f3f-4939ca314283"
+      "id": "ca64952a-ddc5-49fd-9f3f-4939ca314283",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -24053,14 +24076,14 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 1,
     "is_combo": true
   },
   {
@@ -24093,7 +24116,8 @@
       ],
       "size_guide": "",
       "slug": "set-pants-lucia",
-      "id": "720c613e-1dbb-4f1b-8941-673b0a18060c"
+      "id": "720c613e-1dbb-4f1b-8941-673b0a18060c",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -24114,14 +24138,14 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 3,
     "is_combo": true
   },
   {
@@ -24215,7 +24239,8 @@
       ],
       "size_guide": "",
       "slug": "set-de-pants-tallyta",
-      "id": "0a592636-29ee-4d6a-aeec-927701ff8def"
+      "id": "0a592636-29ee-4d6a-aeec-927701ff8def",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -24236,14 +24261,14 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 2,
     "is_combo": true
   },
   {
@@ -24276,7 +24301,8 @@
       ],
       "size_guide": "",
       "slug": "jumpsuit-alice",
-      "id": "e0000000-0000-4000-8000-006c00000000"
+      "id": "e0000000-0000-4000-8000-006c00000000",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -24297,14 +24323,14 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 1,
     "is_combo": false
   },
   {
@@ -24337,7 +24363,8 @@
       ],
       "size_guide": "",
       "slug": "romper-start",
-      "id": "e0000000-0000-4000-8000-006d00000000"
+      "id": "e0000000-0000-4000-8000-006d00000000",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -24358,14 +24385,14 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 2,
     "is_combo": false
   },
   {
@@ -24398,7 +24425,8 @@
       ],
       "size_guide": "",
       "slug": "set-duplo-sabrina",
-      "id": "1e6629c4-9393-4642-86e5-92dc11276036"
+      "id": "1e6629c4-9393-4642-86e5-92dc11276036",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -24419,14 +24447,14 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 2,
     "is_combo": true
   },
   {
@@ -24459,7 +24487,8 @@
       ],
       "size_guide": "",
       "slug": "set-shorts-ellen",
-      "id": "324c6a83-f552-4b4e-a662-22263bcf294e"
+      "id": "324c6a83-f552-4b4e-a662-22263bcf294e",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -24480,14 +24509,14 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 6,
     "is_combo": true
   },
   {
@@ -24578,7 +24607,8 @@
       ],
       "size_guide": "",
       "slug": "jumpsuit-michelly",
-      "id": "e0000000-0000-4000-8000-007100000000"
+      "id": "e0000000-0000-4000-8000-007100000000",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -24599,14 +24629,14 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 6,
     "is_combo": false
   },
   {
@@ -24771,7 +24801,8 @@
       "cost_price": 8.29,
       "size_guide": "",
       "slug": "set-shorts-canelado-aline",
-      "id": "4a211389-364a-4b1f-96b5-18a8b705d009"
+      "id": "4a211389-364a-4b1f-96b5-18a8b705d009",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1793993878594-vzeb79.jpeg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1793993878594-vzeb79.jpeg",
@@ -24835,7 +24866,7 @@
     "cost_price": 8.29,
     "costPrice": 8.29,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -24948,7 +24979,8 @@
       ],
       "size_guide": "",
       "slug": "set-shorts-hanna",
-      "id": "8fa06c07-4d47-4d83-bb0c-447c488b97a1"
+      "id": "8fa06c07-4d47-4d83-bb0c-447c488b97a1",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -24969,14 +25001,14 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 2,
     "is_combo": true
   },
   {
@@ -25587,7 +25619,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "romper-deluxe",
-      "id": "e0000000-0000-4000-8000-007400000000"
+      "id": "e0000000-0000-4000-8000-007400000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791832731108-97hap.jpeg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791832731108-97hap.jpeg",
@@ -25748,7 +25781,7 @@
     "cost_price": 17.09,
     "costPrice": 17.09,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -26857,7 +26890,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "set-shorts-mika",
-      "id": "1161ce0c-4c8c-4ee4-b433-57c316c476ac"
+      "id": "1161ce0c-4c8c-4ee4-b433-57c316c476ac",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791825048845-7uat2m.jpeg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791825048845-7uat2m.jpeg",
@@ -27018,7 +27052,7 @@
     "cost_price": 17.09,
     "costPrice": 17.09,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -27542,7 +27576,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "set-pants-bruna",
-      "id": "0b524d1e-5316-4953-9ea0-3adbde7d36e7"
+      "id": "0b524d1e-5316-4953-9ea0-3adbde7d36e7",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791822707082-kcuafj.jpeg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791822707082-kcuafj.jpeg",
@@ -27567,14 +27602,14 @@
     "cost_price": 19.49,
     "costPrice": 19.49,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 6,
     "is_combo": true
   },
   {
@@ -27611,7 +27646,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "set-pants-kely",
-      "id": "0f8457a7-2adf-4e84-bbef-e9d5635ac830"
+      "id": "0f8457a7-2adf-4e84-bbef-e9d5635ac830",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791821602682-hcfdhg.jpeg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791821602682-hcfdhg.jpeg",
@@ -27636,14 +27672,14 @@
     "cost_price": 19.09,
     "costPrice": 19.09,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 1,
     "is_combo": true
   },
   {
@@ -27683,7 +27719,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "romper-hyper",
-      "id": "e0000000-0000-4000-8000-007800000000"
+      "id": "e0000000-0000-4000-8000-007800000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791819256522-yk7l8d.jpeg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791819256522-yk7l8d.jpeg",
@@ -27708,14 +27745,14 @@
     "cost_price": 16,
     "costPrice": 16,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 2,
     "is_combo": false
   },
   {
@@ -27746,11 +27783,11 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "COMF-BLA-One Size",
       "product_type": "physical",
-      "visible_online": true,
+      "visible_online": false,
       "visible_pos": true,
       "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1792080248861-wcpplp.jpeg",
       "images": [
@@ -27850,7 +27887,7 @@
       ],
       "cost_price": 22.59,
       "size_guide": "",
-      "is_draft": false,
+      "is_draft": true,
       "slug": "comfy-polyamide-skirt-shorts-w-pocket-jolie-top",
       "id": "e0000000-0000-4000-8000-007900000000"
     },
@@ -27911,8 +27948,8 @@
     "price": 49.9,
     "cost_price": 22.59,
     "costPrice": 22.59,
-    "visible_online": true,
-    "is_draft": false,
+    "visible_online": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -27927,8 +27964,8 @@
         "size": "One Size",
         "sku": "COMF-VAN-One Size",
         "barcode": "789938377645",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 22.59,
         "costPrice": 22.59,
@@ -27951,8 +27988,8 @@
         "size": "One Size",
         "sku": "COMF-BLA-One Size",
         "barcode": "789609746336",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 22.59,
         "costPrice": 22.59,
@@ -27968,7 +28005,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 2,
+    "total_stock": 0,
     "is_combo": false
   },
   {
@@ -28412,7 +28449,7 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "BREA-GRA-One Size",
       "product_type": "physical",
@@ -28474,7 +28511,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "break-polyamide-fit-gabrielly",
-      "id": "e0000000-0000-4000-8000-007c00000000"
+      "id": "e0000000-0000-4000-8000-007c00000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1792074879462-w8sjv6.png",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1792074879462-w8sjv6.png",
@@ -28514,7 +28552,7 @@
     "cost_price": 21.62,
     "costPrice": 21.62,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -28529,8 +28567,8 @@
         "size": "One Size",
         "sku": "BREA-GRA-One Size",
         "barcode": "789261422396",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 21.62,
         "costPrice": 21.62,
@@ -28544,7 +28582,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": false
   },
   {
@@ -28576,7 +28614,8 @@
       "price": 49.9,
       "compare_price": 59.9,
       "slug": "romper-manga-longa-poliamida-fit-janaina",
-      "id": "e0000000-0000-4000-8000-007d00000000"
+      "id": "e0000000-0000-4000-8000-007d00000000",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -28597,14 +28636,14 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 1,
     "is_combo": false
   },
   {
@@ -28785,7 +28824,7 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "JUMPSUIT-FIORELA",
       "product_type": "physical",
@@ -28856,7 +28895,8 @@
       "cost_price": 23.37,
       "price": 49.9,
       "slug": "jumpsuit-poliamida-fit-bicolor-fiorela",
-      "id": "e0000000-0000-4000-8000-007f00000000"
+      "id": "e0000000-0000-4000-8000-007f00000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791840731338-morpy.jpg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791840731338-morpy.jpg",
@@ -28904,7 +28944,7 @@
     "cost_price": 23.37,
     "costPrice": 23.37,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "86% Polyamide and 14% Elastane",
     "material": "",
@@ -28919,8 +28959,8 @@
         "size": "One Size",
         "sku": "MAC-MACACAO-POLI-UNI-GOIABA-O",
         "barcode": "789606786069",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 23.37,
         "costPrice": 23.37,
@@ -28935,7 +28975,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": false
   },
   {
@@ -29058,7 +29098,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "jumpsuit-poliamida-comfy-aline",
-      "id": "e0000000-0000-4000-8000-008000000000"
+      "id": "e0000000-0000-4000-8000-008000000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791837270673-ym94in.jpg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791837270673-ym94in.jpg",
@@ -29111,7 +29152,7 @@
     "cost_price": 22.59,
     "costPrice": 22.59,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "92% Polyamide, 8% Elastane",
     "material": "",
@@ -29165,7 +29206,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 2,
+    "total_stock": 1,
     "is_combo": false
   },
   {
@@ -29352,7 +29393,7 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "JUMP-BLA-One Size",
       "product_type": "physical",
@@ -29456,7 +29497,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "jumpsuit-flare-poliamida-fit-monique",
-      "id": "e0000000-0000-4000-8000-008200000000"
+      "id": "e0000000-0000-4000-8000-008200000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791913000093-bydmce.png",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791913000093-bydmce.png",
@@ -29516,7 +29558,7 @@
     "cost_price": 23.37,
     "costPrice": 23.37,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -29555,8 +29597,8 @@
         "size": "One Size",
         "sku": "JUMP-GRA-One Size",
         "barcode": "789255864134",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 23.37,
         "costPrice": 23.37,
@@ -29572,7 +29614,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": false
   },
   {
@@ -30426,7 +30468,7 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "LEGG-COF-One Size",
       "product_type": "physical",
@@ -30488,7 +30530,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "leggings-with-compression-pocket-clear-top",
-      "id": "e0000000-0000-4000-8000-008700000000"
+      "id": "e0000000-0000-4000-8000-008700000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1792002196828-cqvc9q.png",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1792002196828-cqvc9q.png",
@@ -30528,7 +30571,7 @@
     "cost_price": 22.59,
     "costPrice": 22.59,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -30926,7 +30969,7 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "LEG-LEGGING-BASI-UNI-CARAMBOL",
       "product_type": "physical",
@@ -31030,7 +31073,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "basic-jacquard-3d-leggings-renata-tank-top",
-      "id": "e0000000-0000-4000-8000-008900000000"
+      "id": "e0000000-0000-4000-8000-008900000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791998880543-hksnsw.png",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791998880543-hksnsw.png",
@@ -31090,7 +31134,7 @@
     "cost_price": 19.68,
     "costPrice": 19.68,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -31172,7 +31216,7 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "BASI-LIL-One Size",
       "product_type": "physical",
@@ -31225,7 +31269,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "basic-leggings-compression-sofia-top",
-      "id": "e0000000-0000-4000-8000-008a00000000"
+      "id": "e0000000-0000-4000-8000-008a00000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791997729272-3pez4y.png",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791997729272-3pez4y.png",
@@ -31257,7 +31302,7 @@
     "cost_price": 18.71,
     "costPrice": 18.71,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -31317,7 +31362,7 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "BASI-BLU-One Size",
       "product_type": "physical",
@@ -31423,7 +31468,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "basic-leggings-compression-mirela-top",
-      "id": "e0000000-0000-4000-8000-008b00000000"
+      "id": "e0000000-0000-4000-8000-008b00000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791997111557-bxtcni.png",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791997111557-bxtcni.png",
@@ -31483,7 +31529,7 @@
     "cost_price": 18.71,
     "costPrice": 18.71,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -31498,8 +31544,8 @@
         "size": "One Size",
         "sku": "BASI-RED-One Size-FMRX-2",
         "barcode": "789694933107",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 18.71,
         "costPrice": 18.71,
@@ -31539,7 +31585,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": false
   },
   {
@@ -31565,7 +31611,7 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "LEG-LEGGING-BASI-UNI-ROSE-GOL",
       "product_type": "physical",
@@ -31629,7 +31675,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "leggings-top-laura",
-      "id": "e0000000-0000-4000-8000-008c00000000"
+      "id": "e0000000-0000-4000-8000-008c00000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791850482559-xjf3ad.PNG",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791850482559-xjf3ad.PNG",
@@ -31670,7 +31717,7 @@
     "cost_price": 22.59,
     "costPrice": 22.59,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -31685,8 +31732,8 @@
         "size": "One Size",
         "sku": "LEG-LEGGING-BASI-UNI-ROSE-GOL",
         "barcode": "789599711045",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 22.59,
         "costPrice": 22.59,
@@ -31700,7 +31747,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": false
   },
   {
@@ -31726,7 +31773,7 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "BASI-BLU-One Size",
       "product_type": "physical",
@@ -31788,7 +31835,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "basic-compression-leggings-bicolor-gabi-top",
-      "id": "e0000000-0000-4000-8000-008d00000000"
+      "id": "e0000000-0000-4000-8000-008d00000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791913858907-ndm336.jpeg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791913858907-ndm336.jpeg",
@@ -31828,7 +31876,7 @@
     "cost_price": 22.59,
     "costPrice": 22.59,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -31843,8 +31891,8 @@
         "size": "One Size",
         "sku": "BASI-BLU-One Size",
         "barcode": "789746571282",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 22.59,
         "costPrice": 22.59,
@@ -31858,7 +31906,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 1,
+    "total_stock": 0,
     "is_combo": false
   },
   {
@@ -31884,7 +31932,7 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "BASI-BAT-One Size",
       "product_type": "physical",
@@ -31946,7 +31994,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "basic-leggings-top-marcia-feline",
-      "id": "e0000000-0000-4000-8000-008e00000000"
+      "id": "e0000000-0000-4000-8000-008e00000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791996361463-ypzbh5.png",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791996361463-ypzbh5.png",
@@ -31986,7 +32035,7 @@
     "cost_price": 13.86,
     "costPrice": 13.86,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -32357,7 +32406,8 @@
       "cost_price": 16,
       "size_guide": "",
       "slug": "comfy-polyamide-vest",
-      "id": "e0000000-0000-4000-8000-009000000000"
+      "id": "e0000000-0000-4000-8000-009000000000",
+      "is_draft": false
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791906871897-n3d58y.png",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791906871897-n3d58y.png",
@@ -32656,7 +32706,8 @@
       "cost_price": 21.62,
       "size_guide": "",
       "slug": "jacket-poliamida-comfy-melissa",
-      "id": "e0000000-0000-4000-8000-009100000000"
+      "id": "e0000000-0000-4000-8000-009100000000",
+      "is_draft": false
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791839567523-jyif9h.jpg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791839567523-jyif9h.jpg",
@@ -32827,7 +32878,7 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "MARC-CHO-One Size",
       "product_type": "physical",
@@ -32931,7 +32982,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "marcela-jacquard-piquet-jacket",
-      "id": "e0000000-0000-4000-8000-009200000000"
+      "id": "e0000000-0000-4000-8000-009200000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791904917589-jepvfk.jpeg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791904917589-jepvfk.jpeg",
@@ -32991,7 +33043,7 @@
     "cost_price": 23.37,
     "costPrice": 23.37,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -33006,8 +33058,8 @@
         "size": "One Size",
         "sku": "MARC-CHO-One Size",
         "barcode": "789808746183",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 23.37,
         "costPrice": 23.37,
@@ -33030,8 +33082,8 @@
         "size": "One Size",
         "sku": "MARC-BLA-One Size",
         "barcode": "789470303120",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 23.37,
         "costPrice": 23.37,
@@ -33047,7 +33099,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 2,
+    "total_stock": 0,
     "is_combo": false
   },
   {
@@ -33073,7 +33125,7 @@
       "subcategory": "Alta CompressÃ£o",
       "promotional_price": 49.9,
       "compare_price": 59.9,
-      "ribbon": "LANÃAMENTO",
+      "ribbon": "ESGOTADO",
       "brand": "ANA Fitness Wear",
       "general_sku": "PANT-GRE-One Size",
       "product_type": "physical",
@@ -33177,7 +33229,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "pants-flare-poliamida-fit-top-monique",
-      "id": "e0000000-0000-4000-8000-009300000000"
+      "id": "e0000000-0000-4000-8000-009300000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791904227939-w8ov6g.jpeg",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791904227939-w8ov6g.jpeg",
@@ -33237,7 +33290,7 @@
     "cost_price": 23.37,
     "costPrice": 23.37,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano 4-way stretch",
     "material": "",
@@ -33252,8 +33305,8 @@
         "size": "One Size",
         "sku": "PANT-GRE-One Size",
         "barcode": "789127099660",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 23.37,
         "costPrice": 23.37,
@@ -33276,8 +33329,8 @@
         "size": "One Size",
         "sku": "PANT-GRE-One Size",
         "barcode": "789226849655",
-        "stock_quantity": 1,
-        "stock": 1,
+        "stock_quantity": 0,
+        "stock": 0,
         "price": 49.9,
         "cost_price": 23.37,
         "costPrice": 23.37,
@@ -33293,7 +33346,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 2,
+    "total_stock": 0,
     "is_combo": false
   },
   {
@@ -33740,7 +33793,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "top-poliamida-manga-longa-bailarina",
-      "id": "e0000000-0000-4000-8000-009500000000"
+      "id": "e0000000-0000-4000-8000-009500000000",
+      "is_draft": true
     },
     "primary_image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791761617080-idzitm.png",
     "primaryImage": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791761617080-idzitm.png",
@@ -33828,7 +33882,7 @@
     "cost_price": 16,
     "costPrice": 16,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
@@ -33917,7 +33971,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 3,
+    "total_stock": 1,
     "is_combo": false
   },
   {
@@ -33952,7 +34006,8 @@
       "size_guide": "",
       "price": 49.9,
       "slug": "top-de-tela",
-      "id": "e0000000-0000-4000-8000-009600000000"
+      "id": "e0000000-0000-4000-8000-009600000000",
+      "is_draft": true
     },
     "primary_image": "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=900&q=80",
     "primaryImage": "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=900&q=80",
@@ -33977,14 +34032,14 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "88% Poliamida, 12% Elastano",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 10,
     "is_combo": false
   },
   {
@@ -35453,7 +35508,7 @@
         "video_url": null
       }
     ],
-    "total_stock": 40,
+    "total_stock": 1,
     "is_combo": false
   },
   {
@@ -35479,7 +35534,8 @@
       "promotional_price": 49.9,
       "compare_price": 59.9,
       "slug": "legging-sculpt-efeito-levanta-bumbum",
-      "id": "e0000000-0000-4000-8000-009800000000"
+      "id": "e0000000-0000-4000-8000-009800000000",
+      "is_draft": true
     },
     "primary_image": "",
     "primaryImage": "",
@@ -35500,14 +35556,14 @@
     "cost_price": 12,
     "costPrice": 12,
     "visible_online": false,
-    "is_draft": false,
+    "is_draft": true,
     "visible_pos": true,
     "composition": "",
     "material": "",
     "materials": [],
     "sizeGuide": "",
     "variants": [],
-    "total_stock": 0,
+    "total_stock": 12,
     "is_combo": false
   },
   {
