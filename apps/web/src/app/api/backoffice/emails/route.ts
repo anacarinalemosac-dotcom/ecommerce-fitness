@@ -4,6 +4,7 @@ import {
   saveEmailRecord,
   sendOrderConfirmationEmail,
   sendShippingNotificationEmail,
+  sendOrderSeparationEmail,
   sendTestEmail,
   generateOrderConfirmationHtml,
   generateShippingConfirmationHtml,
@@ -235,6 +236,8 @@ export async function POST(req: NextRequest) {
     let result;
     if (type === 'SHIPPING_NOTIFICATION') {
       result = await sendShippingNotificationEmail(order, tracking_code || order.tracking_code || '9400100000000000000000');
+    } else if (type === 'ORDER_SEPARATION') {
+      result = await sendOrderSeparationEmail(order);
     } else {
       result = await sendOrderConfirmationEmail(order);
     }

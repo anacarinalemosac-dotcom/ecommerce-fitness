@@ -77,7 +77,10 @@ import {
   Phone,
   Power,
   ShoppingCart,
+  Scissors,
 } from 'lucide-react';
+import { OrderSeparationModal } from '../../components/backoffice/OrderSeparationModal';
+import { PaymentMethodBadge } from '@/lib/paymentFormatters';
 import { computeSaleFinancials } from '@/lib/salesFinancials';
 import { soundManager, requestNotificationPermission, sendBrowserNotification } from '@/lib/notificationSounds';
 import { ProductVariantMatrixForm } from '../../components/ProductVariantMatrixForm';
@@ -343,6 +346,7 @@ export default function BackofficeDashboard() {
   const [editingSale, setEditingSale] = useState<any | null>(null);
   const [cancellingSale, setCancellingSale] = useState<any | null>(null);
   const [shippingLabelOrder, setShippingLabelOrder] = useState<any | null>(null);
+  const [separationModalOrder, setSeparationModalOrder] = useState<any | null>(null);
 
   // Modal de Baixa de Pagamento / Abatimento Parcial
   const [crediarioPayModal, setCrediarioPayModal] = useState<{
@@ -2640,6 +2644,7 @@ export default function BackofficeDashboard() {
               <PendingOrdersSpotlight
                 sales={salesData?.sales || []}
                 onUpdateFulfillmentStatus={handleUpdateFulfillmentStatus}
+                onSeparateOrder={(ord) => setSeparationModalOrder(ord)}
                 onSelectOrder={(ord) => setSelectedSaleDetail(ord)}
                 onEditOrder={(ord) => setEditingSale(ord)}
                 onViewAllSales={() => {
@@ -3877,7 +3882,7 @@ export default function BackofficeDashboard() {
                           {new Date(sale.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex flex-col items-end gap-1">
                         <span className={`inline-block px-2 py-0.5 text-[9px] font-black border uppercase ${
                           isWriteOff
                             ? 'bg-purple-900 text-gold border-gold'
@@ -3887,9 +3892,7 @@ export default function BackofficeDashboard() {
                         }`}>
                           {isWriteOff ? 'USO PRÓPRIO' : isOnline ? 'ONLINE' : 'BALCÃO'}
                         </span>
-                        <span className="text-[10px] font-mono text-gold bg-deep-black px-1.5 py-0.5 block mt-1 font-black">
-                          {sale.payment_method}
-                        </span>
+                        <PaymentMethodBadge orderOrMethod={sale} variant="full" />
                       </div>
                     </div>
 
@@ -4027,6 +4030,15 @@ export default function BackofficeDashboard() {
                         })()}
                         <button
                           type="button"
+                          onClick={() => setSeparationModalOrder(sale)}
+                          className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-deep-black text-[10px] font-black uppercase tracking-wider flex items-center gap-1 border border-deep-black transition shadow-xs cursor-pointer"
+                          title="Separar pedido e notificar cliente"
+                        >
+                          <Scissors className="w-3 h-3" />
+                          <span>{sale.fulfillment_status === 'IN_PRODUCTION' ? 'EM SEPARAÇÃO' : 'SEPARAR'}</span>
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setEditingSale(sale)}
                           className="px-2.5 py-1 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-[10px] font-black uppercase tracking-wider flex items-center gap-1 border border-deep-black transition shadow-xs cursor-pointer"
                           title="Editar venda"
@@ -4132,7 +4144,7 @@ export default function BackofficeDashboard() {
                               </span>
                             </div>
 
-                            <div className="text-[9px] text-deep-black/60 flex items-center justify-between">
+                            <div className="text-[9px] text-deep-black/60 flex items-center justify-between gap-1 flex-wrap">
                               <span>
                                 {new Date(sale.created_at).toLocaleDateString('pt-BR', {
                                   day: '2-digit',
@@ -4141,6 +4153,7 @@ export default function BackofficeDashboard() {
                                   minute: '2-digit',
                                 })}
                               </span>
+                              <PaymentMethodBadge orderOrMethod={sale} variant="compact" />
                               {sale.seller_name && (
                                 <span className="font-bold truncate max-w-[100px]" title={sale.seller_name}>
                                   👤 {sale.seller_name}
@@ -4243,25 +4256,7 @@ export default function BackofficeDashboard() {
                       {/* Forma de Pagamento */}
                       <td className="p-3">
                         <div className="space-y-1">
-                          <span className={`px-2 py-0.5 text-[8px] font-black font-mono border inline-block ${
-                            sale.payment_method === 'AFFIRM'
-                              ? 'bg-[#004BFF]/10 text-[#004BFF] border-[#004BFF]/30 font-bold'
-                              : sale.payment_method === 'AFTERPAY'
-                              ? 'bg-[#b2fce4] text-deep-black border-[#10b981] font-bold'
-                              : sale.payment_method === 'ZELLE'
-                              ? 'bg-green-100 text-green-800 border-green-300'
-                              : sale.payment_method === 'VENMO'
-                              ? 'bg-blue-100 text-blue-800 border-blue-300'
-                              : sale.payment_method === 'CASHAPP'
-                              ? 'bg-[#00D632]/15 text-emerald-950 border-[#00D632]/50 font-bold'
-                              : sale.payment_method === 'CARD'
-                              ? 'bg-amber-100 text-amber-900 border-amber-300'
-                              : sale.payment_method === 'CREDIARIO'
-                              ? 'bg-amber-500 text-deep-black border-amber-600 font-black shadow-xs'
-                              : 'bg-gray-100 text-gray-800 border-gray-300'
-                          }`}>
-                            {sale.payment_method}
-                          </span>
+                          <PaymentMethodBadge orderOrMethod={sale} variant="full" />
                           {sale.crediario?.installments && (
                             <span className="block text-[8px] font-mono font-bold text-amber-950 bg-amber-100 px-1 py-0.5 border border-amber-300">
                               {sale.crediario.installments.filter((i: any) => i.status === 'PAID').length}/{sale.crediario.installments.length} PG
@@ -4437,6 +4432,15 @@ export default function BackofficeDashboard() {
                       {/* Botões Ação: Editar Venda, Cancelar & Raio-X (FIXO À DIREITA) */}
                       <td className="p-3 text-center sticky right-0 z-20 bg-white border-l-2 border-gold shadow-[-6px_0_12px_-2px_rgba(0,0,0,0.15)] min-w-[220px]">
                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => setSeparationModalOrder(sale)}
+                            className="px-2 py-1 bg-amber-500 hover:bg-amber-400 text-deep-black text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border border-deep-black shadow-2xs cursor-pointer"
+                            title="Separar peças do pedido e notificar cliente via WhatsApp ou E-mail"
+                          >
+                            <Scissors className="w-3 h-3" />
+                            <span>{sale.fulfillment_status === 'IN_PRODUCTION' ? 'EM SEPARAÇÃO' : 'SEPARAR'}</span>
+                          </button>
                           <button
                             type="button"
                             onClick={() => setEditingSale(sale)}
@@ -4750,6 +4754,18 @@ export default function BackofficeDashboard() {
                     <button
                       type="button"
                       onClick={() => {
+                        setSeparationModalOrder(selectedSaleDetail);
+                        setSelectedSaleDetail(null);
+                      }}
+                      className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-deep-black text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition shadow cursor-pointer"
+                      title="Separar pedido, conferir peças e avisar cliente por WhatsApp ou E-mail"
+                    >
+                      <Scissors className="w-3.5 h-3.5" />
+                      <span>SEPARAR</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
                         setEditingSale(selectedSaleDetail);
                         setSelectedSaleDetail(null);
                       }}
@@ -4785,9 +4801,12 @@ export default function BackofficeDashboard() {
                     {selectedSaleDetail.customer_email && (
                       <span className="text-[10px] text-deep-black/70 lowercase font-mono block">✉️ {selectedSaleDetail.customer_email}</span>
                     )}
-                    <span className="text-[9px] text-deep-black/50 block font-mono mt-1">
-                      {selectedSaleDetail.channel} • {selectedSaleDetail.payment_method}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[9px] px-1.5 py-0.5 bg-neutral-200 text-neutral-800 font-mono font-bold uppercase">
+                        Canal: {selectedSaleDetail.channel || 'ONLINE'}
+                      </span>
+                      <PaymentMethodBadge orderOrMethod={selectedSaleDetail} variant="full" />
+                    </div>
                   </div>
 
                   <div className="space-y-1.5 border-t sm:border-t-0 sm:border-l border-deep-black/10 pt-2 sm:pt-0 sm:pl-3">
@@ -4853,9 +4872,7 @@ export default function BackofficeDashboard() {
                               }`}>
                                 {remaining <= 0 ? '🟢 100% QUITADO' : paid > 0 ? '🟡 PARCIALMENTE PAGO' : '⏳ EM ABERTO'}
                               </span>
-                              <span className="text-[9.5px] font-mono font-bold text-deep-black/60">
-                                Meio: {selectedSaleDetail.payment_method}
-                              </span>
+                              <PaymentMethodBadge orderOrMethod={selectedSaleDetail} variant="full" />
                             </div>
                           </div>
                         </div>
@@ -5307,6 +5324,18 @@ export default function BackofficeDashboard() {
 
                 {/* Rodapé Fixo Sempre Acessível na Parte Inferior */}
                 <div className="shrink-0 bg-neutral-50 border-t-2 border-deep-black/20 px-4 py-3 sm:px-6 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSeparationModalOrder(selectedSaleDetail);
+                      setSelectedSaleDetail(null);
+                    }}
+                    className="py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-deep-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                    title="Separar pedido, conferir peças e avisar cliente por WhatsApp ou E-mail"
+                  >
+                    <Scissors className="w-3.5 h-3.5" />
+                    <span>SEPARAR PEDIDO</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -7781,6 +7810,20 @@ export default function BackofficeDashboard() {
           setShippingLabelOrder((prev: any) => prev ? { ...prev, tracking_code: trackingCode, fulfillment_status: 'SHIPPED' } : prev);
           if (selectedSaleDetail && (selectedSaleDetail.order_id === orderId || selectedSaleDetail.id === orderId)) {
             setSelectedSaleDetail((prev: any) => prev ? { ...prev, tracking_code: trackingCode, fulfillment_status: 'SHIPPED' } : prev);
+          }
+        }}
+      />
+
+      {/* Modal de Separação de Pedido com WhatsApp e E-mail */}
+      <OrderSeparationModal
+        isOpen={Boolean(separationModalOrder)}
+        onClose={() => setSeparationModalOrder(null)}
+        order={separationModalOrder}
+        onStatusUpdated={async (orderId, newFulfillment) => {
+          await handleUpdateFulfillmentStatus(orderId, newFulfillment);
+          setSeparationModalOrder((prev: any) => prev ? { ...prev, fulfillment_status: newFulfillment } : prev);
+          if (selectedSaleDetail && (selectedSaleDetail.order_id === orderId || selectedSaleDetail.id === orderId)) {
+            setSelectedSaleDetail((prev: any) => prev ? { ...prev, fulfillment_status: newFulfillment } : prev);
           }
         }}
       />

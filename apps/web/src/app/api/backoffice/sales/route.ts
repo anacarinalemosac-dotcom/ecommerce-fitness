@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { recordOrderEvent } from '@/lib/liveStore';
-import { sendOrderConfirmationEmail, sendShippingNotificationEmail, sendPostDeliveryReviewEmail, sendOwnerSaleNotificationEmail } from '@/lib/emailService';
+import { sendOrderConfirmationEmail, sendShippingNotificationEmail, sendOrderSeparationEmail, sendPostDeliveryReviewEmail, sendOwnerSaleNotificationEmail } from '@/lib/emailService';
 import {
   decrementProductStockAfterSale,
   enrichOrderItemsWithCatalog,
@@ -1313,6 +1313,7 @@ export async function PATCH(req: NextRequest) {
     const sales = readSavedSales();
     let shippedSaleToEmail: any = null;
     let deliveredSaleToEmail: any = null;
+    let separatedSaleToEmail: any = null;
     const updated = sales.map((s: any) => {
       if (s.order_id === order_id || s.id === order_id) {
         let cred = s.crediario;
@@ -1482,6 +1483,10 @@ export async function PATCH(req: NextRequest) {
           deliveredSaleToEmail = updatedOrder;
         }
 
+        if (body.send_separation_email || action === 'separate_order' || (nextFulfillment === 'IN_PRODUCTION' && body.send_separation_email === true)) {
+          separatedSaleToEmail = updatedOrder;
+        }
+
         return updatedOrder;
       }
       return s;
@@ -1494,6 +1499,15 @@ export async function PATCH(req: NextRequest) {
         await sendShippingNotificationEmail(shippedSaleToEmail, codeToSend);
       } catch (emailErr) {
         console.warn('Erro ao disparar e-mail com código de rastreamento:', emailErr);
+      }
+    }
+
+    // 3.1 Dispara e-mail de separação em andamento para a cliente
+    if (separatedSaleToEmail && (separatedSaleToEmail.customer_email || separatedSaleToEmail.shipping_address?.customer_email)) {
+      try {
+        await sendOrderSeparationEmail(separatedSaleToEmail);
+      } catch (sepErr) {
+        console.warn('Erro ao disparar e-mail de separação de pedido:', sepErr);
       }
     }
 

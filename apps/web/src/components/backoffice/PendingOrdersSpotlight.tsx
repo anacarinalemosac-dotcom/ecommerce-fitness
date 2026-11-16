@@ -15,7 +15,9 @@ import {
   Phone,
   Store,
   Truck,
+  Scissors,
 } from 'lucide-react';
+import { PaymentMethodBadge } from '@/lib/paymentFormatters';
 import {
   formatOrderAddressText,
   getOrderItemsList,
@@ -28,6 +30,7 @@ import { computeSaleFinancials } from '@/lib/salesFinancials';
 interface PendingOrdersSpotlightProps {
   sales: any[];
   onUpdateFulfillmentStatus?: (orderId: string, newStatus: string, trackingCode?: string) => void;
+  onSeparateOrder?: (sale: any) => void;
   onSelectOrder?: (sale: any) => void;
   onEditOrder?: (sale: any) => void;
   onViewAllSales?: () => void;
@@ -37,6 +40,7 @@ interface PendingOrdersSpotlightProps {
 export function PendingOrdersSpotlight({
   sales,
   onUpdateFulfillmentStatus,
+  onSeparateOrder,
   onSelectOrder,
   onEditOrder,
   onViewAllSales,
@@ -184,9 +188,7 @@ export function PendingOrdersSpotlight({
                       {order.customer_name || 'Cliente'}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                      <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-100 border border-amber-300 px-1.5 py-0.5">
-                        {order.payment_method || 'CARD'}
-                      </span>
+                      <PaymentMethodBadge orderOrMethod={order} variant="full" />
                       {waPhone && (
                         <a
                           href={`https://wa.me/${waPhone}?text=${encodeURIComponent(`Olá ${order.customer_name || 'linda'}! 🥰 Aqui é da Ana Fitness Wear sobre seu pedido #${orderId}.`)}`}
@@ -271,6 +273,17 @@ export function PendingOrdersSpotlight({
 
               {/* Ações Diretas de Despacho */}
               <div className="flex flex-wrap items-center gap-2 pt-1">
+                {onSeparateOrder && (
+                  <button
+                    type="button"
+                    onClick={() => onSeparateOrder(order)}
+                    className="py-2 px-3 bg-amber-500 hover:bg-amber-400 text-deep-black text-[10px] font-black uppercase tracking-wider border-2 border-deep-black transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    title="Separar peças e notificar cliente via WhatsApp ou E-mail"
+                  >
+                    <Scissors className="w-3.5 h-3.5" />
+                    <span>{order.fulfillment_status === 'IN_PRODUCTION' ? '✂️ EM SEPARAÇÃO' : '✂️ SEPARAR PEDIDO'}</span>
+                  </button>
+                )}
                 {onUpdateFulfillmentStatus && (
                   <>
                     <button

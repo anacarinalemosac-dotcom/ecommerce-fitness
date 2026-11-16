@@ -8,7 +8,7 @@ export interface EmailRecord {
   order_id: string;
   to: string;
   subject: string;
-  type: 'ORDER_CONFIRMATION' | 'SHIPPING_NOTIFICATION' | 'OWNER_SALE_NOTIFICATION' | 'GENERAL';
+  type: 'ORDER_CONFIRMATION' | 'SHIPPING_NOTIFICATION' | 'ORDER_SEPARATION' | 'OWNER_SALE_NOTIFICATION' | 'GENERAL';
   status: 'SENT' | 'SIMULATED_SENT' | 'FAILED';
   error?: string;
   provider_id?: string;
@@ -442,6 +442,195 @@ export function generateShippingConfirmationHtml(order: any, trackingCode: strin
 }
 
 // ============================================================================
+// TEMPLATE: NOTIFICAÇÃO DE PEDIDO EM SEPARAÇÃO (ORDER SEPARATION)
+// ============================================================================
+export function generateOrderSeparationHtml(order: any): string {
+  const orderId = order.order_id || order.id || 'ANA-ORDER';
+  const customerName = order.customer_name || 'Cliente Especial';
+
+  const addr = order.shipping_address;
+  const addressStreet = addr?.address || 'Leominster Area';
+  const addressApt = addr?.apt ? `Apt ${addr.apt}` : '';
+  const addressCity = addr?.city || 'Boston';
+  const addressState = addr?.state || 'MA';
+  const addressZip = addr?.zip || '02215';
+
+  const rawItems = Array.isArray(order.items) && order.items.length > 0
+    ? order.items
+    : (Array.isArray(addr?.items) ? addr.items : []);
+
+  const itemsHtml = rawItems.map((item: any) => {
+    const title = item.title || 'Peça Fitness Exclusiva';
+    const size = item.size || 'M';
+    const color = item.color || 'Preto Ônix';
+    const qty = Number(item.quantity || 1);
+    const itemImg = item.image || item.image_url || item.thumbnail || '';
+
+    return `
+      <tr>
+        ${itemImg ? `
+        <td width="64" valign="top" style="padding: 10px 8px 10px 0; border-bottom: 1px solid #f0f0f0;">
+          <img src="${itemImg}" alt="${title}" width="54" height="68" style="width: 54px; height: 68px; object-fit: cover; border-radius: 4px; border: 1px solid #e5e5e5; display: block;" />
+        </td>
+        ` : ''}
+        <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;" valign="middle">
+          <div style="font-weight: 700; color: #111111; font-size: 13px; text-transform: uppercase;">
+            ${title}
+          </div>
+          <div style="font-size: 11px; color: #777777; margin-top: 2px;">
+            Tam: <strong style="color: #111;">${size}</strong> &bull; Cor: <strong style="color: #111;">${color}</strong>
+          </div>
+        </td>
+        <td style="padding: 10px; border-bottom: 1px solid #f0f0f0; text-align: right; font-weight: 700; color: #111111; font-size: 13px; font-family: monospace;" valign="middle">
+          ${qty}x unidade
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seu Pedido #${orderId} Já Está Sendo Separado! - ANA Fitness Wear</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f6f6f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111111;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f6f6f8; padding: 30px 10px;">
+    <tr>
+      <td align="center">
+        <!-- Container Principal -->
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 4px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          
+          <!-- Cabeçalho Dourado / Preto Luxo -->
+          <tr>
+            <td style="background-color: #0b0b0b; padding: 36px 30px; text-align: center; border-bottom: 3px solid #d4af37;">
+              <div style="color: #d4af37; font-size: 11px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 6px;">
+                LEOMINSTER, MASSACHUSETTS &bull; OFFICIAL STORE
+              </div>
+              <h1 style="color: #ffffff; font-size: 24px; font-weight: 900; letter-spacing: 2px; margin: 0; text-transform: uppercase;">
+                ANA FITNESS WEAR
+              </h1>
+              <p style="color: #a0a0a0; font-size: 12px; margin: 6px 0 0; text-transform: uppercase; letter-spacing: 1px;">
+                Alta Compressão &bull; Zero Transparência &bull; Squat-Proof
+              </p>
+            </td>
+          </tr>
+
+          <!-- Faixa de Destaque: Separando Pedido -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 18px 30px; border-bottom: 1px solid #f59e0b; text-align: center;">
+              <span style="display: inline-block; background-color: #b45309; color: #ffffff; font-size: 10px; font-weight: 800; padding: 4px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px;">
+                ✂️ PREPARAÇÃO &bull; ETAPA 2 DE 4
+              </span>
+              <div style="color: #78350f; font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;">
+                SEU LOOK JÁ ESTÁ SENDO SEPARADO! ✨
+              </div>
+              <div style="color: #92400e; font-size: 12px; font-weight: 600; margin-top: 4px;">
+                Pedido <strong>#${orderId}</strong> &bull; Embalagem com todo o carinho em andamento
+              </div>
+            </td>
+          </tr>
+
+          <!-- Corpo do E-mail -->
+          <tr>
+            <td style="padding: 32px 30px;">
+              <p style="font-size: 15px; line-height: 1.6; margin: 0 0 16px; color: #222222;">
+                Olá, <strong style="color: #0b0b0b;">${customerName}</strong>! 🥰
+              </p>
+              <p style="font-size: 14px; line-height: 1.6; margin: 0 0 24px; color: #444444;">
+                Temos uma ótima notícia! O seu pedido <strong>#${orderId}</strong> foi confirmado e a nossa equipe já está <strong>separando, conferindo e embalando suas peças</strong> com todo o carinho e cuidado que você merece.
+              </p>
+
+              <!-- Barra de Progresso Visual da Entrega -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 28px; background-color: #fafafa; border: 1px solid #e5e5e5; border-radius: 4px; padding: 16px;">
+                <tr>
+                  <td width="25%" align="center" style="font-size: 10px; font-weight: 700; color: #15803d;">
+                    <div style="width: 24px; height: 24px; border-radius: 50%; background-color: #15803d; color: #fff; line-height: 24px; text-align: center; margin: 0 auto 6px; font-size: 11px;">✓</div>
+                    PEDIDO PAGO
+                  </td>
+                  <td width="25%" align="center" style="font-size: 10px; font-weight: 800; color: #b45309;">
+                    <div style="width: 24px; height: 24px; border-radius: 50%; background-color: #d97706; color: #fff; line-height: 24px; text-align: center; margin: 0 auto 6px; font-size: 11px;">✂️</div>
+                    EM SEPARAÇÃO
+                  </td>
+                  <td width="25%" align="center" style="font-size: 10px; font-weight: 600; color: #9ca3af;">
+                    <div style="width: 24px; height: 24px; border-radius: 50%; background-color: #e5e7eb; color: #6b7280; line-height: 24px; text-align: center; margin: 0 auto 6px; font-size: 11px;">📦</div>
+                    ENVIO USPS
+                  </td>
+                  <td width="25%" align="center" style="font-size: 10px; font-weight: 600; color: #9ca3af;">
+                    <div style="width: 24px; height: 24px; border-radius: 50%; background-color: #e5e7eb; color: #6b7280; line-height: 24px; text-align: center; margin: 0 auto 6px; font-size: 11px;">🛍️</div>
+                    ENTREGA
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Peças do Pedido -->
+              <div style="font-size: 11px; font-weight: 800; color: #0b0b0b; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; border-bottom: 2px solid #0b0b0b; padding-bottom: 6px;">
+                PEÇAS SENDO EMBALADAS NESTE PACOTE:
+              </div>
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+                ${itemsHtml}
+              </table>
+
+              <!-- Endereço de Destino -->
+              <div style="background-color: #f9f9fb; border-left: 3px solid #d4af37; padding: 14px 18px; margin-bottom: 24px;">
+                <div style="font-size: 10px; font-weight: 800; color: #d4af37; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px;">
+                  📍 ENDEREÇO DE ENTREGA
+                </div>
+                <div style="font-size: 13px; color: #111111; font-weight: 600;">
+                  ${addressStreet} ${addressApt}
+                </div>
+                <div style="font-size: 12px; color: #555555;">
+                  ${addressCity}, ${addressState} ${addressZip} &bull; United States
+                </div>
+              </div>
+
+              <!-- Próximo Passo -->
+              <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; padding: 16px; margin-bottom: 28px;">
+                <div style="font-size: 12px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">
+                  🔔 PRÓXIMO PASSO: CÓDIGO DE RASTREAMENTO
+                </div>
+                <p style="font-size: 12px; line-height: 1.5; color: #1e3a8a; margin: 0;">
+                  Assim que a etiqueta de postagem for emitida e a caixinha entregue aos Correios (USPS), você receberá um novo e-mail e uma mensagem no WhatsApp com o seu <strong>código de rastreio oficial</strong>.
+                </p>
+              </div>
+
+              <p style="font-size: 13px; line-height: 1.5; color: #555555; margin: 0 0 8px;">
+                Muito obrigada por escolher a <strong>ANA Fitness Wear</strong>! Se tiver qualquer dúvida, estamos à sua disposição pelo WhatsApp.
+              </p>
+              <p style="font-size: 13px; font-weight: 700; color: #0b0b0b; margin: 0;">
+                Com carinho,<br />
+                <span style="color: #b45309;">Ana Carina & Equipe ANA Fitness Wear</span>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Rodapé do E-mail -->
+          <tr>
+            <td style="background-color: #0b0b0b; padding: 24px 30px; text-align: center; color: #888888; font-size: 11px;">
+              <p style="margin: 0 0 8px; color: #ffffff; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                ANA FITNESS WEAR &bull; SHOWROOM & E-COMMERCE
+              </p>
+              <p style="margin: 0 0 12px; font-size: 10px;">
+                Leominster, MA &bull; WhatsApp: +1 (978) 503-9177 &bull; Instagram: @anafitnesswear
+              </p>
+              <p style="margin: 0; font-size: 9px; color: #555555;">
+                Este e-mail é gerado automaticamente pelo sistema de atendimento da loja.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+// ============================================================================
 // ENVIO EFETIVO MULTI-PROVEDOR (GMAIL SMTP, RESEND API OU SMTP PERSONALIZADO)
 // ============================================================================
 
@@ -450,7 +639,7 @@ export interface SendEmailOptions {
   subject: string;
   html: string;
   order_id: string;
-  type: 'ORDER_CONFIRMATION' | 'SHIPPING_NOTIFICATION' | 'OWNER_SALE_NOTIFICATION' | 'GENERAL';
+  type: 'ORDER_CONFIRMATION' | 'SHIPPING_NOTIFICATION' | 'ORDER_SEPARATION' | 'OWNER_SALE_NOTIFICATION' | 'GENERAL';
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<{
@@ -768,6 +957,31 @@ export async function sendShippingNotificationEmail(order: any, trackingCode: st
     html,
     order_id: orderId,
     type: 'SHIPPING_NOTIFICATION',
+  });
+}
+
+// Disparo facilitado de Notificação de Separação de Pedido (Em Preparação)
+export async function sendOrderSeparationEmail(order: any) {
+  const recipientEmail =
+    order.customer_email ||
+    order.shipping_address?.customer_email ||
+    order.shipping_address?.email;
+  const orderId = order.order_id || order.id || 'ANA-ORDER';
+
+  if (!recipientEmail) {
+    console.warn(`[EMAIL] Pedido #${orderId} sem customer_email. Notificação de separação não enviada.`);
+    return { success: false, error: 'E-mail da cliente não cadastrado neste pedido.' };
+  }
+
+  const subject = `✨ Seu Pedido #${orderId} Já Está Sendo Separado! - ANA Fitness Wear`;
+  const html = generateOrderSeparationHtml(order);
+
+  return sendEmail({
+    to: recipientEmail,
+    subject,
+    html,
+    order_id: orderId,
+    type: 'ORDER_SEPARATION' as any,
   });
 }
 
