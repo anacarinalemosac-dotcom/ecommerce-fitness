@@ -246,7 +246,11 @@ export default function HomePage() {
     const prodSlug = String(p.slug || '').toLowerCase();
 
     if (promoIds.length > 0 || promoSlugs.length > 0) {
-      return Boolean((prodId && promoIds.includes(prodId)) || (prodSlug && promoSlugs.includes(prodSlug)));
+      return Boolean(
+        (prodId && promoIds.includes(prodId)) ||
+        (prodSlug && promoSlugs.includes(prodSlug)) ||
+        p.is_combo_item === true
+      );
     }
     const tUpper = (p.title || '').toUpperCase();
     return tUpper.includes('SET') || tUpper.includes('CONJUNTO') || tUpper.includes('KIT');

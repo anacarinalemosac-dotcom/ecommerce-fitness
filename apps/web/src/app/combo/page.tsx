@@ -107,11 +107,12 @@ export default function ComboBuilderPage() {
     if (totalStock <= 0) return false;
     const isId = p.id && promoProductIds.has(String(p.id).toLowerCase());
     const isSlug = p.slug && promoProductSlugs.has(String(p.slug).toLowerCase());
+    const isExplicitCombo = p.is_combo_item === true;
     const isFallback =
       promoProductIds.size === 0 &&
       promoProductSlugs.size === 0 &&
       (p.title?.toUpperCase().includes('SET') || p.title?.toUpperCase().includes('CONJUNTO'));
-    return isId || isSlug || isFallback;
+    return isId || isSlug || isExplicitCombo || isFallback;
   });
 
   // Aplica filtro de busca e tamanho

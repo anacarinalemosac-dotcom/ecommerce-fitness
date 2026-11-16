@@ -72,6 +72,45 @@ function writeLocalCombo(data: ComboPromoConfig): void {
   }
 }
 
+interface ProductRef {
+  id: string;
+  slug: string;
+}
+
+async function getCatalogMap(): Promise<{
+  idToProduct: Map<string, ProductRef>;
+  slugToProduct: Map<string, ProductRef>;
+}> {
+  const idToProduct = new Map<string, ProductRef>();
+  const slugToProduct = new Map<string, ProductRef>();
+
+  try {
+    const { data: prods } = await supabaseServer
+      .from('products')
+      .select('id, slug')
+      .neq('id', COMBO_SETTINGS_ROW_ID)
+      .neq('id', '00000000-0000-0000-0000-000000000098');
+
+    if (prods && Array.isArray(prods)) {
+      for (const p of prods) {
+        if (!p.id) continue;
+        const ref: ProductRef = {
+          id: String(p.id),
+          slug: String(p.slug || ''),
+        };
+        idToProduct.set(ref.id.toLowerCase(), ref);
+        if (ref.slug) {
+          slugToProduct.set(ref.slug.toLowerCase(), ref);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Erro ao carregar mapa de produtos em combo-promo:', err);
+  }
+
+  return { idToProduct, slugToProduct };
+}
+
 export async function GET() {
   try {
     // 1. Tentar ler do Supabase Server
@@ -84,7 +123,7 @@ export async function GET() {
     if (!error && row?.description) {
       try {
         const parsed = JSON.parse(row.description);
-        const config = { ...DEFAULT_CONFIG, ...parsed };
+        const config: ComboPromoConfig = { ...DEFAULT_CONFIG, ...parsed };
         writeLocalCombo(config);
         return NextResponse.json(
           { success: true, comboPromo: config },
@@ -117,25 +156,73 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const current = readLocalCombo();
+    const { idToProduct, slugToProduct } = await getCatalogMap();
 
     let updated: ComboPromoConfig;
 
     if (body.action === 'ADD_PRODUCTS') {
       const idsToAdd: string[] = Array.isArray(body.product_ids) ? body.product_ids : [];
       const slugsToAdd: string[] = Array.isArray(body.product_slugs) ? body.product_slugs : [];
-      const newIds = Array.from(new Set([...current.product_ids, ...idsToAdd]));
-      const newSlugs = Array.from(new Set([...(current.product_slugs || []), ...slugsToAdd]));
+
+      const targetIds = new Set(current.product_ids);
+      const targetSlugs = new Set(current.product_slugs || []);
+
+      for (const id of idsToAdd) {
+        targetIds.add(id);
+        const prod = idToProduct.get(String(id).toLowerCase());
+        if (prod?.slug) targetSlugs.add(prod.slug);
+      }
+      for (const slug of slugsToAdd) {
+        targetSlugs.add(slug);
+        const prod = slugToProduct.get(String(slug).toLowerCase());
+        if (prod?.id) targetIds.add(prod.id);
+      }
+
       updated = {
         ...current,
-        product_ids: newIds,
-        product_slugs: newSlugs,
+        product_ids: Array.from(targetIds),
+        product_slugs: Array.from(targetSlugs),
         updated_at: new Date().toISOString(),
       };
     } else if (body.action === 'REMOVE_PRODUCTS') {
-      const idsToRemove = new Set(Array.isArray(body.product_ids) ? body.product_ids : []);
-      const slugsToRemove = new Set(Array.isArray(body.product_slugs) ? body.product_slugs : []);
-      const newIds = current.product_ids.filter((id) => !idsToRemove.has(id));
-      const newSlugs = (current.product_slugs || []).filter((s) => !slugsToRemove.has(s));
+      const rawIds: string[] = Array.isArray(body.product_ids) ? body.product_ids : [];
+      const rawSlugs: string[] = Array.isArray(body.product_slugs) ? body.product_slugs : [];
+
+      const idsToRemove = new Set(rawIds.map((x) => String(x).toLowerCase()));
+      const slugsToRemove = new Set(rawSlugs.map((x) => String(x).toLowerCase()));
+
+      // Expandir: qualquer ID sendo removido também marca seu slug para remoção
+      for (const id of rawIds) {
+        const prod = idToProduct.get(String(id).toLowerCase());
+        if (prod?.slug) {
+          slugsToRemove.add(prod.slug.toLowerCase());
+        }
+      }
+
+      // Expandir: qualquer slug sendo removido também marca seu ID para remoção
+      for (const slug of rawSlugs) {
+        const prod = slugToProduct.get(String(slug).toLowerCase());
+        if (prod?.id) {
+          idsToRemove.add(prod.id.toLowerCase());
+        }
+      }
+
+      const newIds = current.product_ids.filter((id) => {
+        const idLower = String(id).toLowerCase();
+        if (idsToRemove.has(idLower)) return false;
+        const prod = idToProduct.get(idLower);
+        if (prod?.slug && slugsToRemove.has(prod.slug.toLowerCase())) return false;
+        return true;
+      });
+
+      const newSlugs = (current.product_slugs || []).filter((slug) => {
+        const slugLower = String(slug).toLowerCase();
+        if (slugsToRemove.has(slugLower)) return false;
+        const prod = slugToProduct.get(slugLower);
+        if (prod?.id && idsToRemove.has(prod.id.toLowerCase())) return false;
+        return true;
+      });
+
       updated = {
         ...current,
         product_ids: newIds,
@@ -143,17 +230,53 @@ export async function POST(req: NextRequest) {
         updated_at: new Date().toISOString(),
       };
     } else if (body.action === 'TOGGLE_PRODUCT') {
-      const id = body.product_id;
-      const slug = body.product_slug;
-      const hasId = current.product_ids.includes(id);
-      const newIds = hasId
-        ? current.product_ids.filter((x) => x !== id)
-        : [...current.product_ids, id];
-      const newSlugs = slug
-        ? hasId
-          ? (current.product_slugs || []).filter((x) => x !== slug)
-          : [...(current.product_slugs || []), slug]
-        : current.product_slugs || [];
+      const rawId = body.product_id ? String(body.product_id) : '';
+      const rawSlug = body.product_slug ? String(body.product_slug) : '';
+
+      const ref =
+        (rawId ? idToProduct.get(rawId.toLowerCase()) : null) ||
+        (rawSlug ? slugToProduct.get(rawSlug.toLowerCase()) : null);
+
+      const targetId = ref?.id || rawId;
+      const targetSlug = ref?.slug || rawSlug;
+      const targetIdLower = targetId.toLowerCase();
+      const targetSlugLower = targetSlug.toLowerCase();
+
+      // Checa se o produto está atualmente participando do combo por ID ou por slug
+      const isCurrentlyIn =
+        (targetIdLower && current.product_ids.some((x) => String(x).toLowerCase() === targetIdLower)) ||
+        (targetSlugLower && (current.product_slugs || []).some((x) => String(x).toLowerCase() === targetSlugLower));
+
+      let newIds: string[];
+      let newSlugs: string[];
+
+      if (isCurrentlyIn) {
+        // REMOVER: limpa tanto por ID quanto por slug
+        newIds = current.product_ids.filter((x) => {
+          const xLower = String(x).toLowerCase();
+          if (targetIdLower && xLower === targetIdLower) return false;
+          const prod = idToProduct.get(xLower);
+          if (targetSlugLower && prod?.slug?.toLowerCase() === targetSlugLower) return false;
+          return true;
+        });
+
+        newSlugs = (current.product_slugs || []).filter((s) => {
+          const sLower = String(s).toLowerCase();
+          if (targetSlugLower && sLower === targetSlugLower) return false;
+          const prod = slugToProduct.get(sLower);
+          if (targetIdLower && prod?.id?.toLowerCase() === targetIdLower) return false;
+          return true;
+        });
+      } else {
+        // ADICIONAR: inclui tanto o ID quanto o slug
+        newIds = targetId
+          ? Array.from(new Set([...current.product_ids, targetId]))
+          : current.product_ids;
+        newSlugs = targetSlug
+          ? Array.from(new Set([...(current.product_slugs || []), targetSlug]))
+          : current.product_slugs || [];
+      }
+
       updated = {
         ...current,
         product_ids: newIds,
@@ -161,15 +284,44 @@ export async function POST(req: NextRequest) {
         updated_at: new Date().toISOString(),
       };
     } else {
-      // Atualização completa da configuração
+      // Atualização completa da configuração (ex: pelo Modal)
       const incoming = body.comboPromo || body;
+
+      const incomingIds: string[] = Array.isArray(incoming.product_ids)
+        ? incoming.product_ids
+        : current.product_ids;
+
+      let derivedSlugs: string[] = [];
+      if (Array.isArray(incoming.product_ids)) {
+        const idSet = new Set(incomingIds.map((x) => String(x).toLowerCase()));
+        const slugsFromIncomingProds: string[] = [];
+        for (const id of incomingIds) {
+          const prod = idToProduct.get(String(id).toLowerCase());
+          if (prod?.slug) slugsFromIncomingProds.push(prod.slug);
+        }
+        const incomingSlugs = Array.isArray(incoming.product_slugs) ? incoming.product_slugs : [];
+        derivedSlugs = Array.from(
+          new Set([
+            ...slugsFromIncomingProds,
+            ...incomingSlugs.filter((s) => {
+              const p = slugToProduct.get(String(s).toLowerCase());
+              return p?.id ? idSet.has(p.id.toLowerCase()) : false;
+            }),
+          ])
+        );
+      } else {
+        derivedSlugs = Array.isArray(incoming.product_slugs)
+          ? incoming.product_slugs
+          : current.product_slugs || [];
+      }
+
       updated = {
         ...current,
         ...incoming,
         required_quantity: Number(incoming.required_quantity) || 3,
-        bundle_price: Number(incoming.bundle_price) || 99.0,
-        product_ids: Array.isArray(incoming.product_ids) ? incoming.product_ids : current.product_ids,
-        product_slugs: Array.isArray(incoming.product_slugs) ? incoming.product_slugs : (current.product_slugs || []),
+        bundle_price: Number(incoming.bundle_price) || 120.0,
+        product_ids: incomingIds,
+        product_slugs: derivedSlugs,
         updated_at: new Date().toISOString(),
       };
     }

@@ -588,9 +588,13 @@ export function WixProductTable({
 
                   const isSelected = selectedCatalogIds.includes(item.id);
                   const isActionMenuOpen = openActionRowId === item.id;
+                  const promoProductIds = (comboPromo?.product_ids || []).map((x: string) => String(x).toLowerCase());
+                  const promoProductSlugs = (comboPromo?.product_slugs || []).map((x: string) => String(x).toLowerCase());
+                  const itemIdLower = String(item.id || '').toLowerCase();
+                  const itemSlugLower = String(item.slug || '').toLowerCase();
                   const isInCombo = Boolean(
-                    (comboPromo?.product_ids || []).includes(item.id) ||
-                    (comboPromo?.product_slugs || []).includes(item.slug) ||
+                    (itemIdLower && promoProductIds.includes(itemIdLower)) ||
+                    (itemSlugLower && promoProductSlugs.includes(itemSlugLower)) ||
                     item.is_combo_item === true
                   );
 

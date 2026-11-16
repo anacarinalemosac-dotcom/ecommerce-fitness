@@ -964,12 +964,16 @@ export default function BackofficeDashboard() {
     if (selectedCatalogIds.length === 0) return;
     setIsBulkSubmitting(true);
     try {
+      const selectedProds = (supabaseProducts.length > 0 ? supabaseProducts : products).filter((p: any) =>
+        selectedCatalogIds.includes(p.id)
+      );
       const res = await fetch('/api/backoffice/combo-promo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'REMOVE_PRODUCTS',
           product_ids: selectedCatalogIds,
+          product_slugs: selectedProds.map((p: any) => p.slug).filter(Boolean),
         }),
       });
       const data = await res.json();

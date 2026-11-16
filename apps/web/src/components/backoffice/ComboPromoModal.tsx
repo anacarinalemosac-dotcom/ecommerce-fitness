@@ -39,9 +39,14 @@ export function ComboPromoModal({
   const [description, setDescription] = useState(
     comboPromo?.description || 'Selecione quaisquer 3 conjuntos participantes e feche o combo pelo valor promocional configurado!'
   );
-  const [selectedProductIds, setSelectedProductIds] = useState<string[]>(
-    Array.isArray(comboPromo?.product_ids) ? comboPromo.product_ids : []
-  );
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>(() => {
+    const idsFromPromo = Array.isArray(comboPromo?.product_ids) ? comboPromo.product_ids : [];
+    const slugsSet = new Set((comboPromo?.product_slugs || []).map((s: string) => String(s).toLowerCase()));
+    const matchedIds = (products || [])
+      .filter((p) => p.slug && slugsSet.has(String(p.slug).toLowerCase()))
+      .map((p) => p.id);
+    return Array.from(new Set([...idsFromPromo, ...matchedIds]));
+  });
 
   React.useEffect(() => {
     if (isOpen && comboPromo) {
@@ -54,9 +59,14 @@ export function ComboPromoModal({
         comboPromo.description ||
           'Selecione quaisquer 3 conjuntos participantes e feche o combo pelo valor promocional configurado!'
       );
-      setSelectedProductIds(Array.isArray(comboPromo.product_ids) ? comboPromo.product_ids : []);
+      const idsFromPromo = Array.isArray(comboPromo.product_ids) ? comboPromo.product_ids : [];
+      const slugsSet = new Set((comboPromo.product_slugs || []).map((s: string) => String(s).toLowerCase()));
+      const matchedIds = (products || [])
+        .filter((p) => p.slug && slugsSet.has(String(p.slug).toLowerCase()))
+        .map((p) => p.id);
+      setSelectedProductIds(Array.from(new Set([...idsFromPromo, ...matchedIds])));
     }
-  }, [isOpen, comboPromo]);
+  }, [isOpen, comboPromo, products]);
 
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState<'ALL' | 'ONLY_PARTICIPATING' | 'SETS'>('ALL');
@@ -114,7 +124,7 @@ export function ComboPromoModal({
         active,
         title: title.trim() || 'Promoção Especial de Combo',
         required_quantity: Number(requiredQty) || 3,
-        bundle_price: Number(bundlePrice) || 99.0,
+        bundle_price: Number(bundlePrice) || 120.0,
         badge_text: badgeText.trim() || 'COMBO 3 PEÇAS',
         description: description.trim(),
         product_ids: selectedProductIds,

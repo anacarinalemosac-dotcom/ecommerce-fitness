@@ -79,7 +79,11 @@ export default function PublicClientCatalogPage() {
     const slugNorm = String(tile.productSlug || '').toLowerCase();
 
     if (promoIds.length > 0 || promoSlugs.length > 0) {
-      return Boolean((idNorm && promoIds.includes(idNorm)) || (slugNorm && promoSlugs.includes(slugNorm)));
+      return Boolean(
+        (idNorm && promoIds.includes(idNorm)) ||
+        (slugNorm && promoSlugs.includes(slugNorm)) ||
+        (tile as any).is_combo_item === true
+      );
     }
     const tUpper = (tile.title || '').toUpperCase();
     return tUpper.includes('SET') || tUpper.includes('CONJUNTO') || tUpper.includes('KIT');
