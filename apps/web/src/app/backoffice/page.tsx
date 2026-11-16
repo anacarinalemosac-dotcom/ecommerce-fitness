@@ -6410,6 +6410,51 @@ export default function BackofficeDashboard() {
         const pendingSellers = sellers.filter((s) => s.approval_status === 'PENDING');
         const activeSellersCount = sellers.filter((s) => s.active).length;
 
+        // Cálculo dinâmico consolidado sobre o valor líquido efetivamente pago pelo cliente (preço com desconto)
+        const totalRevenueAllSellers = sellers.reduce((acc, seller) => {
+          const sSales = (salesData?.sales || []).filter((s: any) =>
+            s.status !== 'CANCELLED' && (
+              (s.coupon_code && s.coupon_code.toUpperCase() === seller.coupon_code.toUpperCase()) ||
+              (s.seller_name && s.seller_name.toLowerCase().includes(seller.name.toLowerCase().split(' ')[0]))
+            )
+          );
+          const rev = sSales.length > 0
+            ? sSales.reduce((sum: number, s: any) => sum + Math.max(0, Number(s.subtotal_products || 0) - Number(s.discount_amount || 0)), 0)
+            : (Number(seller.total_revenue_generated) || 0);
+          return acc + rev;
+        }, 0);
+
+        const totalCommissionAllSellers = sellers.reduce((acc, seller) => {
+          const sSales = (salesData?.sales || []).filter((s: any) =>
+            s.status !== 'CANCELLED' && (
+              (s.coupon_code && s.coupon_code.toUpperCase() === seller.coupon_code.toUpperCase()) ||
+              (s.seller_name && s.seller_name.toLowerCase().includes(seller.name.toLowerCase().split(' ')[0]))
+            )
+          );
+          const earned = sSales.length > 0
+            ? sSales.reduce((sum: number, s: any) => {
+                const itemPaid = Math.max(0, Number(s.subtotal_products || 0) - Number(s.discount_amount || 0));
+                const comm = s.commission_amount !== undefined && s.commission_amount !== null
+                  ? Number(s.commission_amount)
+                  : Number((itemPaid * (Number(seller.commission_pct || 15) / 100)).toFixed(2));
+                return sum + comm;
+              }, 0)
+            : (Number(seller.total_commission_earned) || 0);
+          return acc + earned;
+        }, 0);
+
+        const totalPaidAllSellers = sellers.reduce((acc, s) => acc + (Number(s.total_commission_paid) || 0), 0);
+        const totalPendingAllSellers = Math.max(0, totalCommissionAllSellers - totalPaidAllSellers);
+        const totalSalesCountAllSellers = sellers.reduce((acc, seller) => {
+          const sSales = (salesData?.sales || []).filter((s: any) =>
+            s.status !== 'CANCELLED' && (
+              (s.coupon_code && s.coupon_code.toUpperCase() === seller.coupon_code.toUpperCase()) ||
+              (s.seller_name && s.seller_name.toLowerCase().includes(seller.name.toLowerCase().split(' ')[0]))
+            )
+          );
+          return acc + Math.max(Number(seller.total_sales_count) || 0, sSales.length);
+        }, 0);
+
         return (
         <div className="space-y-8 animate-fadeIn">
           {/* Métricas Consolidadas das Vendedoras */}
@@ -6419,10 +6464,10 @@ export default function BackofficeDashboard() {
                 FATURAMENTO TOTAL AFILIADAS
               </span>
               <p className="text-2xl sm:text-3xl font-black text-deep-black font-mono">
-                ${sellers.reduce((acc, s) => acc + (Number(s.total_revenue_generated) || 0), 0).toFixed(2)}
+                ${totalRevenueAllSellers.toFixed(2)}
               </p>
               <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
-                {sellers.reduce((acc, s) => acc + (Number(s.total_sales_count) || 0), 0)} pedidos intermediados
+                {totalSalesCountAllSellers} pedidos intermediados
               </span>
             </div>
 
@@ -6431,10 +6476,10 @@ export default function BackofficeDashboard() {
                 COMISSÃO TOTAL GERADA
               </span>
               <p className="text-2xl sm:text-3xl font-black text-gold font-mono">
-                ${sellers.reduce((acc, s) => acc + (Number(s.total_commission_earned) || 0), 0).toFixed(2)}
+                ${totalCommissionAllSellers.toFixed(2)}
               </p>
               <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
-                Valor bruto devido às vendedoras
+                15% sobre o valor líquido pago pelo cliente
               </span>
             </div>
 
@@ -6443,7 +6488,7 @@ export default function BackofficeDashboard() {
                 SALDO PENDENTE A PAGAR
               </span>
               <p className="text-2xl sm:text-3xl font-black text-gold font-mono">
-                ${Math.max(0, sellers.reduce((acc, s) => acc + ((Number(s.total_commission_earned) || 0) - (Number(s.total_commission_paid) || 0)), 0)).toFixed(2)}
+                ${totalPendingAllSellers.toFixed(2)}
               </p>
               <span className="text-[9px] text-white/70 uppercase font-bold block">
                 Aguardando repasse via Zelle / Venmo
@@ -6633,7 +6678,29 @@ export default function BackofficeDashboard() {
                   </tr>
                 ) : (
                   sellers.map((seller) => {
-                    const pending = Math.max(0, (Number(seller.total_commission_earned) || 0) - (Number(seller.total_commission_paid) || 0));
+                    const sSales = (salesData?.sales || []).filter((s: any) =>
+                      s.status !== 'CANCELLED' && (
+                        (s.coupon_code && s.coupon_code.toUpperCase() === seller.coupon_code.toUpperCase()) ||
+                        (s.seller_name && s.seller_name.toLowerCase().includes(seller.name.toLowerCase().split(' ')[0]))
+                      )
+                    );
+                    const effectiveSalesCount = Math.max(Number(seller.total_sales_count) || 0, sSales.length);
+                    const effectiveRevenue = sSales.length > 0
+                      ? sSales.reduce((acc: number, s: any) => acc + Math.max(0, Number(s.subtotal_products || 0) - Number(s.discount_amount || 0)), 0)
+                      : (Number(seller.total_revenue_generated) || 0);
+
+                    const effectiveEarned = sSales.length > 0
+                      ? sSales.reduce((acc: number, s: any) => {
+                          const itemPaid = Math.max(0, Number(s.subtotal_products || 0) - Number(s.discount_amount || 0));
+                          const comm = s.commission_amount !== undefined && s.commission_amount !== null
+                            ? Number(s.commission_amount)
+                            : Number((itemPaid * (Number(seller.commission_pct || 15) / 100)).toFixed(2));
+                          return acc + comm;
+                        }, 0)
+                      : (Number(seller.total_commission_earned) || 0);
+
+                    const effectivePaid = Number(seller.total_commission_paid) || 0;
+                    const pending = Math.max(0, effectiveEarned - effectivePaid);
                     return (
                       <tr key={seller.id} className="hover:bg-deep-black/5">
                         <td className="p-4">
@@ -6702,19 +6769,19 @@ export default function BackofficeDashboard() {
 
                         <td className="p-4">
                           <span className="font-mono font-bold text-deep-black block">
-                            ${(Number(seller.total_revenue_generated) || 0).toFixed(2)}
+                            ${effectiveRevenue.toFixed(2)}
                           </span>
                           <span className="text-[10px] text-deep-black/50 block font-mono">
-                            {seller.total_sales_count || 0} vendas
+                            {effectiveSalesCount} vendas
                           </span>
                         </td>
 
                         <td className="p-4 font-mono font-bold text-deep-black">
-                          ${(Number(seller.total_commission_earned) || 0).toFixed(2)}
+                          ${effectiveEarned.toFixed(2)}
                         </td>
 
                         <td className="p-4 font-mono text-deep-black/70">
-                          ${(Number(seller.total_commission_paid) || 0).toFixed(2)}
+                          ${effectivePaid.toFixed(2)}
                         </td>
 
                         <td className="p-4 font-mono font-black text-gold">

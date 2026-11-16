@@ -168,8 +168,24 @@ async function executeProcessCompletedStripeSession(
       : Number((totalAmountPaid * 0.029 + 0.30).toFixed(2));
   const discountAmount = Number(meta.discount_amount) || 0;
   const subtotalProducts = Number(Math.max(0, totalAmountPaid - effectiveShippingFee + discountAmount).toFixed(2));
+  // A comissão da vendedora é 15% (ou a taxa específica cadastrada dela) calculada sobre o valor líquido pago pelo cliente (preço com desconto)
+  let sellerCommissionPct = 15;
+  try {
+    const sellersFile = path.join(process.cwd(), 'sellers_db.json');
+    if (fs.existsSync(sellersFile)) {
+      const sellersList = JSON.parse(fs.readFileSync(sellersFile, 'utf8'));
+      const sMatch = sellersList.find(
+        (s: any) => s.coupon_code && meta.coupon_code && s.coupon_code.toUpperCase() === String(meta.coupon_code).trim().toUpperCase()
+      );
+      if (sMatch && sMatch.commission_pct !== undefined) {
+        sellerCommissionPct = Number(sMatch.commission_pct);
+      }
+    }
+  } catch (_) {}
+
+  const netAmountPaidByCustomer = Math.max(0, subtotalProducts - discountAmount);
   const commissionAmount = meta.coupon_code
-    ? Number((Math.max(0, subtotalProducts - discountAmount) * 0.10).toFixed(2))
+    ? Number((netAmountPaidByCustomer * (sellerCommissionPct / 100)).toFixed(2))
     : 0;
   const netProfit = Number((totalAmountPaid - totalCostOfGoods - paymentFee - effectiveShippingCost - commissionAmount).toFixed(2));
   const marginPct = totalAmountPaid > 0 ? Number(((netProfit / totalAmountPaid) * 100).toFixed(1)) : 0;

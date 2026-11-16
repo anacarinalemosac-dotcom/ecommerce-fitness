@@ -827,46 +827,68 @@ export default function SellerPortalPage() {
           </div>
 
           {/* 3 KPIs Financeiros da Vendedora */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Total Faturado */}
-            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
-              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 block">
-                FATURAMENTO GERADO (USD)
-              </span>
-              <p className="text-2xl sm:text-3xl font-black text-deep-black font-mono">
-                ${(loggedSeller.total_revenue_generated || 0).toFixed(2)}
-              </p>
-              <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
-                {loggedSeller.total_sales_count || 0} vendas realizadas
-              </span>
-            </div>
+          {(() => {
+            const dynamicRevenue = sellerSales.length > 0
+              ? sellerSales.reduce((acc: number, s: any) => acc + Math.max(0, Number(s.subtotal_products || 0) - Number(s.discount_amount || 0)), 0)
+              : (Number(loggedSeller.total_revenue_generated) || 0);
 
-            {/* Comissão Total Acumulada */}
-            <div className="bg-deep-black text-white border-2 border-gold p-6 space-y-1 shadow-luxury">
-              <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
-                SUA COMISSÃO ACUMULADA ({loggedSeller.commission_pct}%)
-              </span>
-              <p className="text-2xl sm:text-3xl font-black text-gold font-mono">
-                ${(loggedSeller.total_commission_earned || 0).toFixed(2)}
-              </p>
-              <span className="text-[9px] text-white/60 uppercase font-bold block">
-                Já pago pela loja: ${(loggedSeller.total_commission_paid || 0).toFixed(2)}
-              </span>
-            </div>
+            const dynamicCommission = sellerSales.length > 0
+              ? sellerSales.reduce((acc: number, s: any) => {
+                  const itemPaid = Math.max(0, Number(s.subtotal_products || 0) - Number(s.discount_amount || 0));
+                  const comm = s.commission_amount !== undefined && s.commission_amount !== null
+                    ? Number(s.commission_amount)
+                    : Number((itemPaid * (Number(loggedSeller.commission_pct || 15) / 100)).toFixed(2));
+                  return acc + comm;
+                }, 0)
+              : (Number(loggedSeller.total_commission_earned) || 0);
 
-            {/* Saldo Líquido a Receber */}
-            <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
-              <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 block">
-                SALDO PENDENTE A RECEBER
-              </span>
-              <p className="text-2xl sm:text-3xl font-black text-deep-black font-mono">
-                ${Math.max(0, (loggedSeller.total_commission_earned || 0) - (loggedSeller.total_commission_paid || 0)).toFixed(2)}
-              </p>
-              <span className="text-[9px] text-green-700 font-black uppercase block">
-                ✓ Disponível para repasse
-              </span>
-            </div>
-          </div>
+            const totalSalesCount = Math.max(Number(loggedSeller.total_sales_count) || 0, sellerSales.length);
+            const totalPaid = Number(loggedSeller.total_commission_paid) || 0;
+            const pendingBalance = Math.max(0, dynamicCommission - totalPaid);
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Total Faturado */}
+                <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 block">
+                    FATURAMENTO GERADO (USD)
+                  </span>
+                  <p className="text-2xl sm:text-3xl font-black text-deep-black font-mono">
+                    ${dynamicRevenue.toFixed(2)}
+                  </p>
+                  <span className="text-[9px] text-deep-black/50 uppercase font-bold block">
+                    {totalSalesCount} vendas realizadas
+                  </span>
+                </div>
+
+                {/* Comissão Total Acumulada */}
+                <div className="bg-deep-black text-white border-2 border-gold p-6 space-y-1 shadow-luxury">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gold block">
+                    SUA COMISSÃO ACUMULADA ({loggedSeller.commission_pct}%)
+                  </span>
+                  <p className="text-2xl sm:text-3xl font-black text-gold font-mono">
+                    ${dynamicCommission.toFixed(2)}
+                  </p>
+                  <span className="text-[9px] text-white/60 uppercase font-bold block">
+                    Já pago pela loja: ${totalPaid.toFixed(2)}
+                  </span>
+                </div>
+
+                {/* Saldo Líquido a Receber */}
+                <div className="bg-white border-2 border-deep-black p-6 space-y-1 shadow-sm">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-deep-black/60 block">
+                    SALDO PENDENTE A RECEBER
+                  </span>
+                  <p className="text-2xl sm:text-3xl font-black text-deep-black font-mono">
+                    ${pendingBalance.toFixed(2)}
+                  </p>
+                  <span className="text-[9px] text-green-700 font-black uppercase block">
+                    ✓ Disponível para repasse
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Cartão de Dados de Recebimento de Comissões */}
           <div className="bg-white border-2 border-deep-black p-6 sm:p-8 space-y-4 shadow-sm">
@@ -1039,7 +1061,10 @@ export default function SellerPortalPage() {
                   </tr>
                 ) : (
                   sellerSales.map((sale: any, idx: number) => {
-                    const myCommission = (Number(sale.subtotal_products) * (loggedSeller.commission_pct / 100));
+                    const itemPaid = Math.max(0, Number(sale.subtotal_products || 0) - Number(sale.discount_amount || 0));
+                    const myCommission = sale.commission_amount !== undefined && sale.commission_amount !== null
+                      ? Number(sale.commission_amount)
+                      : Number((itemPaid * (Number(loggedSeller.commission_pct || 15) / 100)).toFixed(2));
                     return (
                       <tr key={idx} className="hover:bg-deep-black/5">
                         <td className="p-3 font-mono text-deep-black/60">
@@ -1059,7 +1084,12 @@ export default function SellerPortalPage() {
                           ))}
                         </td>
                         <td className="p-3 text-right font-mono font-black text-deep-black">
-                          ${Number(sale.subtotal_products).toFixed(2)}
+                          ${itemPaid.toFixed(2)}
+                          {Number(sale.discount_amount || 0) > 0 && (
+                            <span className="block text-[9px] text-deep-black/40 font-normal line-through">
+                              ${Number(sale.subtotal_products).toFixed(2)}
+                            </span>
+                          )}
                         </td>
                         <td className="p-3 text-right font-mono font-black text-gold bg-deep-black/5">
                           +${myCommission.toFixed(2)}
