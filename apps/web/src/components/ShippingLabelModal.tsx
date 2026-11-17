@@ -490,7 +490,7 @@ export function ShippingLabelModal({
             </p>
 
             <textarea
-              rows={8}
+              rows={6}
               value={waMessage}
               onChange={(e) => setWaMessage(e.target.value)}
               className="w-full p-2.5 bg-white border border-emerald-400 text-xs font-mono text-deep-black focus:outline-none focus:border-emerald-700 rounded leading-relaxed shadow-inner"
