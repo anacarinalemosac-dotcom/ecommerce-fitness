@@ -751,7 +751,7 @@ export default function CouponsManagerView() {
                   required
                   value={formCode}
                   onChange={(e) => setFormCode(e.target.value.toUpperCase().replace(/\s+/g, ''))}
-                  placeholder="EX: VERAO15, ANA10, BLACKFRIDAY"
+                  placeholder="EX: VERAO15, ANA10, VIP20"
                   className="w-full p-2.5 border-2 border-deep-black font-mono font-black text-sm uppercase tracking-wider focus:outline-none focus:border-gold"
                 />
                 <span className="text-[10px] text-deep-black/60 font-bold block mt-0.5">
