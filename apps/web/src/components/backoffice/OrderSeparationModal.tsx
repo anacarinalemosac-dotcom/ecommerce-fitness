@@ -18,6 +18,7 @@ import {
   Clock,
   AlertCircle,
   RefreshCw,
+  Truck,
 } from 'lucide-react';
 import { PaymentMethodBadge, getPaymentMethodDisplay } from '@/lib/paymentFormatters';
 
@@ -27,6 +28,7 @@ export interface OrderSeparationModalProps {
   order: any;
   onStatusUpdated?: (orderId: string, newFulfillment: string) => Promise<void> | void;
   onSwapItem?: (order: any, itemIndex: number, item: any) => void;
+  onOpenShippingLabel?: (order: any) => void;
 }
 
 export function OrderSeparationModal({
@@ -35,6 +37,7 @@ export function OrderSeparationModal({
   order,
   onStatusUpdated,
   onSwapItem,
+  onOpenShippingLabel,
 }: OrderSeparationModalProps) {
   if (!isOpen || !order) return null;
 
@@ -338,9 +341,22 @@ Muito obrigada pela preferência e por escolher a ANA Fitness Wear! Se precisar 
             </div>
 
             {allItemsChecked && (
-              <div className="p-2 bg-emerald-100 border border-emerald-400 text-emerald-950 text-xs font-bold flex items-center gap-1.5 mt-1">
-                <Check className="w-4 h-4 text-emerald-700 shrink-0" />
-                <span>Todas as peças conferidas na arara! Agora notifique a cliente abaixo:</span>
+              <div className="p-2.5 bg-emerald-100 border border-emerald-400 text-emerald-950 text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-1">
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>Todas as peças conferidas na arara! Pronto para envio!</span>
+                </div>
+                {onOpenShippingLabel && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenShippingLabel(order)}
+                    className="px-2.5 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-white text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition shadow-xs cursor-pointer shrink-0"
+                    title="Emitir etiqueta de envio USPS e avisar a cliente no WhatsApp"
+                  >
+                    <Truck className="w-3.5 h-3.5 text-gold" />
+                    <span>EMITIR ETIQUETA / AVISAR ENVIO</span>
+                  </button>
+                )}
               </div>
             )}
           </div>

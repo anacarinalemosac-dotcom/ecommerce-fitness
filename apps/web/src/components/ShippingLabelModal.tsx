@@ -17,7 +17,10 @@ import {
   Sparkles,
   Barcode,
   Navigation,
+  MessageCircle,
+  Send,
 } from 'lucide-react';
+import { generateOrderShippedWhatsAppMessage } from '@/lib/whatsappMessages';
 
 export interface ShippingLabelModalProps {
   isOpen: boolean;
@@ -49,6 +52,21 @@ export function ShippingLabelModal({
     order.shipping_address?.phone ||
     order.customer_phone ||
     '';
+
+  const rawPhone = customerPhone;
+  const digitsPhone = String(rawPhone).replace(/\D/g, '');
+  const waPhone = digitsPhone.length === 10 ? `1${digitsPhone}` : digitsPhone;
+
+  const [waMessage, setWaMessage] = useState(() =>
+    generateOrderShippedWhatsAppMessage(order, order.tracking_code || '')
+  );
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailSentSuccess, setEmailSentSuccess] = useState(false);
+
+  const handleTrackingInputChange = (val: string) => {
+    setTrackingInput(val);
+    setWaMessage(generateOrderShippedWhatsAppMessage(order, val.trim()));
+  };
 
   const customerEmail =
     order.shipping_address?.email ||
@@ -106,12 +124,44 @@ export function ShippingLabelModal({
         });
       }
       setSaveSuccess(true);
+      setWaMessage(generateOrderShippedWhatsAppMessage(order, trackingInput.trim()));
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       console.error('Erro ao salvar tracking:', err);
       alert('Erro ao salvar código de rastreamento.');
     } finally {
       setIsSavingTracking(false);
+    }
+  };
+
+  const handleSendShippingEmail = async () => {
+    if (!customerEmail) {
+      alert('Este pedido não possui e-mail cadastrado.');
+      return;
+    }
+    setIsSendingEmail(true);
+    try {
+      const res = await fetch('/api/backoffice/sales', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: order.order_id || order.id,
+          action: 'send_shipping_email',
+          tracking_code: trackingInput.trim() || order.tracking_code,
+          customer_email: customerEmail,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setEmailSentSuccess(true);
+        setTimeout(() => setEmailSentSuccess(false), 3500);
+      } else {
+        alert(`Aviso: ${data.error || 'Falha ao disparar e-mail de envio.'}`);
+      }
+    } catch (e: any) {
+      alert(`Erro ao enviar e-mail: ${e.message}`);
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -387,7 +437,7 @@ export function ShippingLabelModal({
                 type="text"
                 placeholder="Ex: 9400 1118 9956 1234 5678 90"
                 value={trackingInput}
-                onChange={(e) => setTrackingInput(e.target.value)}
+                onChange={(e) => handleTrackingInputChange(e.target.value)}
                 className="flex-1 px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider bg-white border border-deep-black/30 focus:outline-none focus:border-deep-black"
               />
 
@@ -411,6 +461,72 @@ export function ShippingLabelModal({
                   </>
                 )}
               </button>
+            </div>
+          </div>
+
+          {/* 4. AVISAR CLIENTE NO WHATSAPP & E-MAIL (MENSAGEM DE PEDIDO ENVIADO) */}
+          <div className="bg-emerald-50/70 border-2 border-emerald-600 p-4 space-y-3 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-300 pb-2">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-emerald-700 shrink-0" />
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-emerald-950">
+                    MENSAGEM DE PEDIDO ENVIADO • WHATSAPP
+                  </h4>
+                  <span className="text-[10px] text-emerald-800 font-medium">
+                    {waPhone ? `Destinatária: ${customerName} (${customerPhone})` : 'Telefone não informado (o link abrirá para selecionar contato)'}
+                  </span>
+                </div>
+              </div>
+              <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-emerald-700 text-white font-mono self-start sm:self-auto">
+                ★ PRONTA PARA ENVIAR
+              </span>
+            </div>
+
+            <p className="text-[11px] text-emerald-950/80 leading-relaxed">
+              Você pode enviar agora mesmo a mensagem avisando a cliente com o código e link direto do USPS no WhatsApp:
+            </p>
+
+            <textarea
+              rows={8}
+              value={waMessage}
+              onChange={(e) => setWaMessage(e.target.value)}
+              className="w-full p-2.5 bg-white border border-emerald-400 text-xs font-mono text-deep-black focus:outline-none focus:border-emerald-700 rounded leading-relaxed shadow-inner"
+              placeholder="Mensagem de envio..."
+            />
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+              <a
+                href={waPhone ? `https://wa.me/${waPhone}?text=${encodeURIComponent(waMessage)}` : `https://wa.me/?text=${encodeURIComponent(waMessage)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2.5 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4 text-white" />
+                <span>ABRIR NO WHATSAPP COM 1 CLIQUE</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => handleCopy(waMessage, 'shipping-wa')}
+                className="py-2.5 px-4 bg-white hover:bg-neutral-100 text-deep-black border border-deep-black/30 font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                {copiedKey === 'shipping-wa' ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedKey === 'shipping-wa' ? 'MENSAGEM COPIADA!' : 'COPIAR MENSAGEM'}</span>
+              </button>
+
+              {customerEmail && (
+                <button
+                  type="button"
+                  onClick={handleSendShippingEmail}
+                  disabled={isSendingEmail}
+                  className="py-2.5 px-3 bg-blue-800 hover:bg-blue-900 text-white font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title={`Disparar e-mail com link oficial de rastreamento para ${customerEmail}`}
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>{isSendingEmail ? 'ENVIANDO E-MAIL...' : emailSentSuccess ? '✓ E-MAIL ENVIADO!' : 'ENVIAR POR E-MAIL'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

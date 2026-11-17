@@ -803,6 +803,69 @@ export async function PATCH(req: NextRequest) {
       });
     }
 
+    // AÇÃO 0.1: DISPARO MANUAL/AVULSO DE E-MAIL DE ENVIO COM CÓDIGO DE RASTREIO USPS
+    if (action === 'send_shipping_email') {
+      const sales = readSavedSales();
+      const targetSale = sales.find((s: any) => s.order_id === order_id || s.id === order_id);
+      if (!targetSale) {
+        return NextResponse.json({ error: 'Pedido não encontrado' }, { status: 404 });
+      }
+      if (body.customer_email && (!targetSale.customer_email || targetSale.customer_email !== body.customer_email)) {
+        targetSale.customer_email = body.customer_email.trim();
+      }
+      if (body.tracking_code) {
+        targetSale.tracking_code = body.tracking_code.trim();
+        targetSale.fulfillment_status = 'SHIPPED';
+        targetSale.shipped_at = targetSale.shipped_at || new Date().toISOString();
+        targetSale.shipping_email_sent = true;
+      }
+      writeSavedSales(sales);
+
+      // Atualiza no Supabase se existir
+      try {
+        if (supabaseServer) {
+          const { data: dbOrders } = await supabaseServer
+            .from('orders')
+            .select('id, metadata')
+            .or(`id.eq.${targetSale.id || targetSale.order_id},id.eq.${targetSale.order_id || targetSale.id}`);
+
+          if (dbOrders && dbOrders.length > 0) {
+            const row = dbOrders[0];
+            const currentMeta = typeof row.metadata === 'object' && row.metadata ? row.metadata : {};
+            await supabaseServer
+              .from('orders')
+              .update({
+                tracking_code: targetSale.tracking_code,
+                fulfillment_status: 'SHIPPED',
+                metadata: {
+                  ...currentMeta,
+                  tracking_code: targetSale.tracking_code,
+                  fulfillment_status: 'SHIPPED',
+                  shipped_at: targetSale.shipped_at,
+                  shipping_email_sent: true,
+                },
+              })
+              .eq('id', row.id);
+          }
+        }
+      } catch (dbErr) {
+        console.warn('Erro ao atualizar rastreio no Supabase:', dbErr);
+      }
+
+      const codeToSend = targetSale.tracking_code || body.tracking_code || ('9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000));
+      const mailRes = await sendShippingNotificationEmail(targetSale, codeToSend);
+      if (!mailRes.success) {
+        return NextResponse.json({
+          error: mailRes.error || 'Falha ao disparar e-mail de envio.',
+        }, { status: 400 });
+      }
+      return NextResponse.json({
+        success: true,
+        message: 'E-mail de confirmação de envio com link de rastreamento disparado com sucesso!',
+        result: mailRes,
+      });
+    }
+
     // =========================================================================
     // AÇÃO 1: EDITAR VENDA COMPLETA DO PDV E ONLINE (DATA, CLIENTE, ENDEREÇO, ITENS, PGTO, TOTAL)
     // =========================================================================

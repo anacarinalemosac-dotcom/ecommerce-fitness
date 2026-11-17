@@ -117,6 +117,7 @@ import { sortOrdersPendingFirst } from '@/lib/orderPriority';
 import {
   generateReceiptWhatsAppMessage,
   generateCrediarioWhatsAppMessage,
+  generateOrderShippedWhatsAppMessage,
   printSaleReceipt,
   printCrediarioCarnet,
 } from '@/lib/whatsappMessages';
@@ -4450,6 +4451,15 @@ export default function BackofficeDashboard() {
                           </button>
                           <button
                             type="button"
+                            onClick={() => setShippingLabelOrder(sale)}
+                            className="px-2 py-1 bg-blue-700 hover:bg-blue-800 text-white text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border border-blue-900 shadow-2xs cursor-pointer"
+                            title="Avisar cliente que o pedido foi enviado (com código de rastreamento no WhatsApp ou E-mail)"
+                          >
+                            <Truck className="w-3 h-3 text-white" />
+                            <span>{sale.fulfillment_status === 'SHIPPED' ? 'ENVIADO / RASTREIO' : 'AVISAR ENVIO'}</span>
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => setEditingSale(sale)}
                             className="px-2 py-1 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-[9px] font-black uppercase transition tracking-wider flex items-center gap-1 border border-deep-black shadow-2xs"
                             title="Editar esta venda (data, cliente, itens, pagamento)"
@@ -7842,6 +7852,10 @@ export default function BackofficeDashboard() {
         isOpen={Boolean(separationModalOrder)}
         onClose={() => setSeparationModalOrder(null)}
         order={separationModalOrder}
+        onOpenShippingLabel={(ord) => {
+          setSeparationModalOrder(null);
+          setShippingLabelOrder(ord);
+        }}
         onSwapItem={(ord, idx, it) => {
           setSwapItemState({
             isOpen: true,

@@ -106,6 +106,60 @@ export function generateCrediarioWhatsAppMessage(sale: any): string {
   return msg;
 }
 
+// 2.1 Mensagem de Pedido Enviado / Despachado (USPS) com Código de Rastreamento no WhatsApp
+export function generateOrderShippedWhatsAppMessage(sale: any, trackingCode?: string): string {
+  const customer = sale.customer_name || 'Cliente';
+  const orderId = sale.order_id || sale.id?.slice(0, 8);
+  const finalTracking = (trackingCode || sale.tracking_code || '').trim();
+  const uspsTrackingUrl = finalTracking
+    ? `https://tools.usps.com/go/TrackConfirmAction?tLabels=${finalTracking}`
+    : '';
+
+  const rawItems = Array.isArray(sale.items) && sale.items.length > 0
+    ? sale.items
+    : (Array.isArray(sale.shipping_address?.items) ? sale.shipping_address.items : []);
+
+  const itemsList = rawItems
+    .map((it: any) => {
+      const title = it.title || it.name || 'Conjunto Fitness';
+      const detail = [it.color, it.size ? `Tam ${it.size}` : ''].filter(Boolean).join(' • ');
+      const qty = it.quantity || 1;
+      return `• *${title}* ${detail ? `(${detail})` : ''} ×${qty}`;
+    })
+    .join('\n');
+
+  const addr = sale.shipping_address || {};
+  const addressText = addr.address
+    ? `${addr.address}${addr.apt ? ` (${addr.apt})` : ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zip || ''}`
+    : (sale.customer_address || sale.crediario?.customer_address || '');
+
+  let msg = `✨ *ANA FITNESS WEAR • SEU PEDIDO FOI ENVIADO!* 📦🚚✨\n\n`;
+  msg += `Olá *${customer}*! Tudo bem? 🥰\n\n`;
+  msg += `Passando para te dar uma notícia maravilhosa: seu pedido *#${orderId}* já foi cuidadosamente separado, embalado com muito carinho e *acaba de ser postado nos Correios (USPS)*! 💖📦\n\n`;
+
+  if (finalTracking) {
+    msg += `📍 *CÓDIGO DE RASTREAMENTO (USPS):*\n`;
+    msg += `👉 *${finalTracking}*\n\n`;
+    msg += `🔗 *Link oficial para acompanhar a entrega:*\n`;
+    msg += `${uspsTrackingUrl}\n\n`;
+  }
+
+  if (itemsList) {
+    msg += `🛍️ *Peças a caminho da sua casa:*\n`;
+    msg += `${itemsList}\n\n`;
+  }
+
+  if (addressText) {
+    msg += `🏡 *Endereço de Entrega:*\n`;
+    msg += `${addressText}\n\n`;
+  }
+
+  msg += `✨ *Dica:* Assim que sua caixinha chegar, experimente e apaixone-se pelo caimento das peças! Se precisar de qualquer ajuda, é só responder por aqui.\n\n`;
+  msg += `Muito obrigada por escolher a *ANA Fitness Wear*! Tenha um dia maravilhoso! ✨💕`;
+
+  return msg;
+}
+
 // 3. Impressão de Recibo Oficial da Venda (Dinheiro, Zelle, Cartão, etc.)
 export function printSaleReceipt(sale: any) {
   if (typeof window === 'undefined') return;
