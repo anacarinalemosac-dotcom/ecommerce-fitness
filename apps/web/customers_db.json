@@ -58,5 +58,20 @@
       "zip": "01453"
     },
     "created_at": "2026-11-07T01:02:05.624Z"
+  },
+  {
+    "id": "cust-seller-seller-1791990589322",
+    "name": "Larissa alipio",
+    "email": "slarissa845@gmail.com",
+    "phone": "5082250609",
+    "password": "Lari1310$",
+    "shipping_address": {
+      "address": "",
+      "apt": "",
+      "city": "Leominster",
+      "state": "MA",
+      "zip": ""
+    },
+    "created_at": "2026-11-17T16:41:05.758Z"
   }
 ]

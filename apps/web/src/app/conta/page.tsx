@@ -534,9 +534,25 @@ export default function CustomerAccountPage() {
                   <span>{authLoading ? (lang === 'pt' ? 'ENTRANDO...' : 'SIGNING IN...') : (lang === 'pt' ? 'ACESSAR MINHA CONTA' : 'SIGN IN TO ACCOUNT')}</span>
                 </button>
 
-                {/* Dica para demonstração imediata da dona ou cliente */}
-                <div className="pt-2 text-[10px] text-deep-black/50 text-center font-bold uppercase tracking-wider bg-gold/5 p-2.5 border border-gold/30">
-                  <p>{lang === 'pt' ? '💡 DICA PARA TESTE: E-mail Mariana Salles: mariana.salles@gmail.com | Senha: 123' : '💡 DEMO: Email: mariana.salles@gmail.com | Pass: 123'}</p>
+                {/* Banner de Direcionamento para Vendedoras / Afiliadas */}
+                <div className="p-3 bg-amber-50 border-2 border-amber-300 text-deep-black space-y-1.5 mt-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-[10px] font-black uppercase text-amber-950 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{lang === 'pt' ? 'É UMA VENDEDORA / AFILIADA DA LOJA?' : 'ARE YOU A STORE SELLER / AFFILIATE?'}</span>
+                    </span>
+                    <Link
+                      href="/vendedora"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-deep-black hover:bg-gold hover:text-deep-black text-gold text-[9px] font-black uppercase tracking-wider transition cursor-pointer"
+                    >
+                      <span>{lang === 'pt' ? 'PORTAL DA VENDEDORA →' : 'SELLER PORTAL →'}</span>
+                    </Link>
+                  </div>
+                  <p className="text-[10px] text-deep-black/70 leading-relaxed">
+                    {lang === 'pt'
+                      ? 'Para consultar suas vendas, comissões de 15% e links de indicação, acesse pelo Portal da Vendedora.'
+                      : 'To view your sales, 15% commissions, and affiliate links, access through the Seller Portal.'}
+                  </p>
                 </div>
               </form>
             )}
@@ -767,6 +783,29 @@ export default function CustomerAccountPage() {
           </button>
         </div>
       </div>
+
+      {/* Banner se for Vendedora Oficial */}
+      {customer.is_seller && (
+        <div className="p-4 bg-gradient-to-r from-amber-500/20 via-gold/30 to-amber-500/20 border-2 border-gold flex flex-col sm:flex-row items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="w-5 h-5 text-gold shrink-0" />
+            <div>
+              <strong className="text-xs font-black uppercase tracking-wider text-deep-black block">
+                VOCÊ É UMA VENDEDORA OFICIAL DA EQUIPE (CUPOM: {customer.seller_coupon || 'ATIVO'})!
+              </strong>
+              <span className="text-[11px] text-deep-black/70">
+                Acesse seu painel comissionado para ver suas vendas, saldo e link exclusivo.
+              </span>
+            </div>
+          </div>
+          <Link
+            href="/vendedora"
+            className="px-4 py-2 bg-deep-black text-gold hover:bg-gold hover:text-deep-black text-xs font-black uppercase tracking-wider transition shrink-0 shadow-sm"
+          >
+            IR PARA PORTAL DA VENDEDORA →
+          </Link>
+        </div>
+      )}
 
       {/* Navegação entre Abas do Painel */}
       <div className="flex border-b-2 border-deep-black text-xs font-black uppercase tracking-widest gap-2">

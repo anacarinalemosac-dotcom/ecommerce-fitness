@@ -16,6 +16,7 @@ import {
   X,
   ChevronRight,
   User,
+  Users,
   ArrowLeft,
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -366,6 +367,16 @@ export function SiteHeader() {
               <span>{lang === 'pt' ? 'RASTREAR' : 'TRACK'}</span>
             </Link>
 
+            {/* Portal da Vendedora */}
+            <Link
+              href="/vendedora"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider bg-deep-black text-gold border border-gold hover:bg-gold hover:text-deep-black transition hidden lg:flex"
+              title="Portal da Vendedora / Afiliadas"
+            >
+              <Users className="w-3.5 h-3.5 text-gold" />
+              <span>{lang === 'pt' ? 'VENDEDORAS' : 'SELLERS'}</span>
+            </Link>
+
             {/* Sacola de Compras (Abre gaveta lateral sem sair da tela) */}
             <button
               type="button"
@@ -499,6 +510,17 @@ export function SiteHeader() {
                 <span className="flex items-center gap-2">
                   <Package className="w-3.5 h-3.5 text-gold" />
                   <span>{lang === 'pt' ? 'RASTREAR MEU PEDIDO (USPS)' : 'TRACK MY ORDER (USPS)'}</span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-gold" />
+              </Link>
+              <Link
+                href="/vendedora"
+                onClick={closeMobileMenu}
+                className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black font-bold"
+              >
+                <span className="flex items-center gap-2">
+                  <Users className="w-3.5 h-3.5 text-gold" />
+                  <span>{lang === 'pt' ? 'PORTAL DA VENDEDORA' : 'SELLER / AFFILIATE PORTAL'}</span>
                 </span>
                 <ChevronRight className="w-4 h-4 text-gold" />
               </Link>

@@ -188,6 +188,80 @@ export async function POST(req: NextRequest) {
       }
 
       if (!found) {
+        // Verifica se é uma Vendedora Oficial tentando logar pelo portal de cliente
+        try {
+          const sellersPathCandidates = [
+            path.join(process.cwd(), 'sellers_db.json'),
+            path.join(process.cwd(), 'apps', 'web', 'sellers_db.json'),
+          ];
+          let sellersList: any[] = [];
+          for (const sp of sellersPathCandidates) {
+            if (fs.existsSync(sp)) {
+              try {
+                const rawS = fs.readFileSync(sp, 'utf8');
+                const parsedS = JSON.parse(rawS);
+                if (Array.isArray(parsedS)) {
+                  sellersList = parsedS;
+                  break;
+                }
+              } catch (_) {}
+            }
+          }
+
+          const matchedSeller = sellersList.find(
+            (s: any) =>
+              s.email?.toLowerCase() === email ||
+              s.coupon_code?.toLowerCase() === email
+          );
+
+          if (matchedSeller) {
+            const isSellerPass =
+              matchedSeller.password === password ||
+              matchedSeller.password?.toLowerCase() === password.toLowerCase() ||
+              matchedSeller.password?.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === password.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+            if (isSellerPass) {
+              const newCust: CustomerRecord = {
+                id: `cust-seller-${matchedSeller.id || Date.now().toString().slice(-6)}`,
+                name: matchedSeller.name || 'Vendedora Oficial',
+                email: matchedSeller.email,
+                phone: matchedSeller.phone || '',
+                password: matchedSeller.password,
+                shipping_address: {
+                  address: '',
+                  apt: '',
+                  city: 'Leominster',
+                  state: 'MA',
+                  zip: '',
+                },
+                created_at: new Date().toISOString(),
+              };
+              customers.push(newCust);
+              saveCustomers(customers);
+              found = newCust;
+
+              return NextResponse.json({
+                success: true,
+                message: 'Login realizado com sucesso! Você também possui acesso ao Portal da Vendedora.',
+                customer: sanitizeCustomer(found),
+                is_seller: true,
+                seller_coupon: matchedSeller.coupon_code,
+                seller_portal_url: '/vendedora',
+              });
+            } else {
+              return NextResponse.json({
+                error: `Identificamos seu cadastro como Vendedora Oficial (${matchedSeller.name} • Cupom ${matchedSeller.coupon_code}). A senha digitada está incorreta ou acesse diretamente o Portal da Vendedora (/vendedora).`,
+                is_seller: true,
+                seller_portal_url: '/vendedora',
+              }, { status: 401 });
+            }
+          }
+        } catch (e) {
+          console.warn('Erro ao checar se e-mail é de vendedora no auth de cliente:', e);
+        }
+      }
+
+      if (!found) {
         return NextResponse.json({ error: 'Conta não encontrada com este e-mail' }, { status: 404 });
       }
 

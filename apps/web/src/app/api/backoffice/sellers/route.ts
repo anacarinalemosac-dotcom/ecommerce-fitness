@@ -480,12 +480,18 @@ export async function POST(req: NextRequest) {
         const sDigits = s.phone.replace(/\D/g, '');
         return sDigits.endsWith(cleanDigits) || cleanDigits.endsWith(sDigits);
       };
+      const isNameMatch = (s: SellerRecord) => {
+        if (!s.name) return false;
+        const sName = s.name.trim().toLowerCase();
+        return sName === cleanIdent || sName.split(' ')[0] === cleanIdent || cleanIdent.includes(sName.split(' ')[0]);
+      };
 
       const matched = sellers.find(
         (s) =>
           s.email.toLowerCase() === cleanIdent ||
           s.coupon_code.toLowerCase() === cleanIdent ||
-          isPhoneMatch(s)
+          isPhoneMatch(s) ||
+          isNameMatch(s)
       );
 
       if (!matched) {
@@ -525,29 +531,35 @@ export async function POST(req: NextRequest) {
         const sDigits = s.phone.replace(/\D/g, '');
         return sDigits.endsWith(cleanDigits) || cleanDigits.endsWith(sDigits);
       };
+      const isNameMatch = (s: SellerRecord) => {
+        if (!s.name) return false;
+        const sName = s.name.trim().toLowerCase();
+        return sName === cleanIdent || sName.split(' ')[0] === cleanIdent || cleanIdent.includes(sName.split(' ')[0]);
+      };
+      const isPasswordMatch = (storedPass: string, inputPass: string) => {
+        if (!storedPass || !inputPass) return false;
+        const p1 = storedPass.trim();
+        const p2 = inputPass.trim();
+        if (p1 === p2) return true;
+        if (p1.toLowerCase() === p2.toLowerCase()) return true;
+        // Tolerância para caso a vendedora esqueça o caractere especial no celular (ex: Lari1310 vs Lari1310$)
+        const cleanP1 = p1.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        const cleanP2 = p2.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        return cleanP1.length >= 4 && cleanP1 === cleanP2;
+      };
 
-      let matched = sellers.find(
+      const matched = sellers.find(
         (s) =>
           (s.email.toLowerCase() === cleanIdent ||
             s.coupon_code.toLowerCase() === cleanIdent ||
-            isPhoneMatch(s)) &&
-          s.password === cleanPass
+            isPhoneMatch(s) ||
+            isNameMatch(s)) &&
+          isPasswordMatch(s.password, cleanPass)
       );
-
-      // Fallback: se não bateu exata, tenta case-insensitive para evitar erro de maiúscula automática do celular
-      if (!matched) {
-        matched = sellers.find(
-          (s) =>
-            (s.email.toLowerCase() === cleanIdent ||
-              s.coupon_code.toLowerCase() === cleanIdent ||
-              isPhoneMatch(s)) &&
-            s.password.trim().toLowerCase() === cleanPass.toLowerCase()
-        );
-      }
 
       if (!matched) {
         return NextResponse.json(
-          { error: 'Credenciais inválidas. Verifique seu e-mail ou cupom e sua senha.' },
+          { error: 'Credenciais inválidas. Verifique seu e-mail, cupom ou nome e sua senha.' },
           { status: 401 }
         );
       }
