@@ -59,6 +59,7 @@ export interface SaleItemPayload {
   quantity: number;
   unit_price: number;
   cost_price: number;
+  manual_cost_edited?: boolean;
 }
 
 export interface SaleRecord {
@@ -985,6 +986,186 @@ export async function PATCH(req: NextRequest) {
       } catch (_) {}
 
       return NextResponse.json({ success: true, message: 'Venda atualizada com sucesso!', sales: updated });
+    }
+
+    // =========================================================================
+    // AÇÃO 1.1: TROCAR / SUBSTITUIR PEÇA DO PEDIDO (SWAP ITEM POR FALTA DE ESTOQUE)
+    // =========================================================================
+    if (action === 'swap_item') {
+      const {
+        order_id,
+        item_index = 0,
+        new_item,
+        adjust_stock = true,
+        reason = 'Falta de estoque / Troca combinada com cliente',
+        custom_notes = '',
+        keep_original_price = true,
+      } = body;
+
+      if (!order_id || !new_item || !new_item.title) {
+        return NextResponse.json(
+          { error: 'ID do pedido e dados da nova peça são obrigatórios.' },
+          { status: 400 }
+        );
+      }
+
+      const sales = readSavedSales();
+      const existingSale = sales.find(
+        (s: any) => s.order_id === order_id || s.id === order_id || (body.id && s.id === body.id)
+      );
+
+      let targetDbOrder: any = null;
+      try {
+        const { data: dbOrders } = await supabaseServer.from('orders').select('*');
+        if (dbOrders) {
+          targetDbOrder = dbOrders.find((o: any) => {
+            const meta = typeof o.shipping_address === 'object' && o.shipping_address ? o.shipping_address : {};
+            return meta.order_number === order_id || o.id === order_id || (body.id && o.id === body.id);
+          });
+        }
+      } catch (e) {
+        console.warn('Erro ao consultar pedido no Supabase para troca de item:', e);
+      }
+
+      const baseSale = targetDbOrder || existingSale;
+      if (!baseSale) {
+        return NextResponse.json({ error: 'Pedido não encontrado.' }, { status: 404 });
+      }
+
+      const currentItems: any[] = Array.isArray(baseSale.items) && baseSale.items.length > 0
+        ? [...baseSale.items]
+        : (Array.isArray(baseSale.shipping_address?.items) ? [...baseSale.shipping_address.items] : []);
+
+      const idx = Number(item_index);
+      if (idx < 0 || idx >= currentItems.length) {
+        return NextResponse.json({ error: 'Índice da peça inválido no pedido.' }, { status: 400 });
+      }
+
+      const oldItem = currentItems[idx];
+      const targetQty = Number(new_item.quantity) || Number(oldItem.quantity) || 1;
+      const targetUnitPrice = keep_original_price
+        ? (Number(oldItem.unit_price) || Number(new_item.unit_price) || 40)
+        : (Number(new_item.unit_price) || Number(oldItem.unit_price) || 40);
+      const targetCostPrice = Number(new_item.cost_price) !== undefined && !isNaN(Number(new_item.cost_price))
+        ? Number(new_item.cost_price)
+        : (Number(oldItem.cost_price) || 12);
+
+      const replacementItem: SaleItemPayload = {
+        title: String(new_item.title).trim(),
+        sku: (new_item.sku || `ITEM-${Date.now().toString().slice(-4)}`).trim().toUpperCase(),
+        size: (new_item.size || oldItem.size || 'M').trim(),
+        color: (new_item.color || oldItem.color || 'Padrão').trim(),
+        image: new_item.image || oldItem.image || '',
+        quantity: targetQty,
+        unit_price: targetUnitPrice,
+        cost_price: targetCostPrice,
+        manual_cost_edited: true,
+      };
+
+      currentItems[idx] = replacementItem;
+
+      const subtotalProducts = currentItems.reduce(
+        (acc, it) => acc + (Number(it.quantity) || 1) * (Number(it.unit_price) || 0),
+        0
+      );
+      const totalCostOfGoods = Number(
+        currentItems.reduce((acc, it) => acc + (Number(it.cost_price) || 0) * (Number(it.quantity) || 1), 0).toFixed(2)
+      );
+
+      const currentMeta = typeof baseSale.shipping_address === 'object' && baseSale.shipping_address ? baseSale.shipping_address : {};
+      const shipFee = baseSale.shipping_fee !== undefined ? Number(baseSale.shipping_fee) : Number(currentMeta.shipping_fee || 0);
+      const disc = Number(baseSale.discount_amount || 0);
+      const grossTotal = keep_original_price
+        ? Number(baseSale.total_amount || (subtotalProducts + shipFee - disc))
+        : Number((subtotalProducts + shipFee - disc).toFixed(2));
+
+      const pFee = calculatePaymentFee(baseSale.payment_method || 'CARD', grossTotal);
+      const shipCost = Number(baseSale.shipping_cost || currentMeta.shipping_cost || 0);
+      const commissionAmount = Number(baseSale.commission_amount || 0);
+      const netProfit = Number((grossTotal - totalCostOfGoods - pFee - shipCost - commissionAmount).toFixed(2));
+      const marginPct = grossTotal > 0 ? Number(((netProfit / grossTotal) * 100).toFixed(1)) : 0;
+
+      const nowStr = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/New_York' });
+      const swapLog = `[Troca de Peça ${nowStr}]: Saiu "${oldItem.title} (${oldItem.size || 'Tamanho Único'} • ${oldItem.color || 'Padrão'})" ➔ Entrou "${replacementItem.title} (${replacementItem.size} • ${replacementItem.color})". Motivo: ${reason}${custom_notes ? ` • Obs: ${custom_notes}` : ''}.`;
+      const updatedNotes = baseSale.notes ? `${baseSale.notes}\n${swapLog}` : swapLog;
+
+      // Baixa estoque da nova peça se solicitado
+      if (adjust_stock && replacementItem.sku) {
+        try {
+          const { data: variants } = await supabaseServer
+            .from('product_variants')
+            .select('id, stock_quantity')
+            .eq('sku', replacementItem.sku);
+
+          if (variants && variants.length > 0) {
+            const v = variants[0];
+            const currentStock = Number(v.stock_quantity) || 0;
+            const newStock = Math.max(0, currentStock - targetQty);
+            await supabaseServer
+              .from('product_variants')
+              .update({ stock_quantity: newStock })
+              .eq('id', v.id);
+          }
+        } catch (stkErr) {
+          console.warn('Erro ao ajustar estoque da nova peça:', stkErr);
+        }
+      }
+
+      // Atualiza Supabase orders
+      let updatedOrderResult: any = null;
+      if (targetDbOrder) {
+        try {
+          const updatedMeta = {
+            ...currentMeta,
+            items: currentItems,
+            cost_of_goods: totalCostOfGoods,
+            net_profit: netProfit,
+            profit_margin_pct: marginPct,
+            notes: updatedNotes,
+          };
+
+          await supabaseServer
+            .from('orders')
+            .update({
+              subtotal_amount: subtotalProducts,
+              total_amount: grossTotal,
+              shipping_address: updatedMeta,
+            })
+            .eq('id', targetDbOrder.id);
+        } catch (dbErr) {
+          console.warn('Erro ao atualizar troca de peça no Supabase:', dbErr);
+        }
+      }
+
+      // Atualiza backup local
+      const updatedSales = sales.map((s: any) => {
+        if (s.order_id === order_id || s.id === order_id || (body.id && s.id === body.id)) {
+          const updatedSaleObj = {
+            ...s,
+            items: currentItems,
+            subtotal_products: subtotalProducts,
+            total_amount: grossTotal,
+            cost_of_goods: totalCostOfGoods,
+            net_profit: netProfit,
+            profit_margin_pct: marginPct,
+            notes: updatedNotes,
+          };
+          updatedOrderResult = updatedSaleObj;
+          return updatedSaleObj;
+        }
+        return s;
+      });
+
+      writeSavedSales(updatedSales);
+
+      return NextResponse.json({
+        success: true,
+        message: `✓ Peça trocada com sucesso! "${oldItem.title}" foi substituída por "${replacementItem.title}".`,
+        order: updatedOrderResult || { ...baseSale, items: currentItems, notes: updatedNotes },
+        old_item: oldItem,
+        new_item: replacementItem,
+        swap_log: swapLog,
+      });
     }
 
     // =========================================================================

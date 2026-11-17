@@ -17,6 +17,7 @@ import {
   Copy,
   Clock,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { PaymentMethodBadge, getPaymentMethodDisplay } from '@/lib/paymentFormatters';
 
@@ -25,6 +26,7 @@ export interface OrderSeparationModalProps {
   onClose: () => void;
   order: any;
   onStatusUpdated?: (orderId: string, newFulfillment: string) => Promise<void> | void;
+  onSwapItem?: (order: any, itemIndex: number, item: any) => void;
 }
 
 export function OrderSeparationModal({
@@ -32,6 +34,7 @@ export function OrderSeparationModal({
   onClose,
   order,
   onStatusUpdated,
+  onSwapItem,
 }: OrderSeparationModalProps) {
   if (!isOpen || !order) return null;
 
@@ -310,9 +313,25 @@ Muito obrigada pela preferência e por escolher a ANA Fitness Wear! Se precisar 
                         )}
                       </div>
                     </div>
-                    <span className="font-mono font-black text-xs text-deep-black shrink-0 px-2 py-1 bg-neutral-100 border border-deep-black/20">
-                      ×{it.quantity || 1}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {onSwapItem && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSwapItem(order, idx, it);
+                          }}
+                          className="px-2 py-1 bg-amber-500 hover:bg-amber-400 text-deep-black text-[9px] font-black uppercase tracking-wider flex items-center gap-1 transition shadow-xs cursor-pointer border border-deep-black/30"
+                          title="Sem estoque? Clique para trocar esta peça por outro modelo, cor ou tamanho"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          <span>TROCAR</span>
+                        </button>
+                      )}
+                      <span className="font-mono font-black text-xs text-deep-black px-2 py-1 bg-neutral-100 border border-deep-black/20">
+                        ×{it.quantity || 1}
+                      </span>
+                    </div>
                   </div>
                 );
               })}

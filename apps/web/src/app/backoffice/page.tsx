@@ -122,6 +122,7 @@ import {
 } from '@/lib/whatsappMessages';
 import { downloadOrderPdf } from '@/lib/orderPdf';
 import { ShippingLabelModal } from '@/components/ShippingLabelModal';
+import { SwapOrderItemModal } from '../../components/backoffice/SwapOrderItemModal';
 import { WixSidebar } from '../../components/backoffice/WixSidebar';
 import { WixHeader } from '../../components/backoffice/WixHeader';
 import { WixProductTable } from '../../components/backoffice/WixProductTable';
@@ -347,6 +348,12 @@ export default function BackofficeDashboard() {
   const [cancellingSale, setCancellingSale] = useState<any | null>(null);
   const [shippingLabelOrder, setShippingLabelOrder] = useState<any | null>(null);
   const [separationModalOrder, setSeparationModalOrder] = useState<any | null>(null);
+  const [swapItemState, setSwapItemState] = useState<{
+    isOpen: boolean;
+    order: any;
+    itemIndex: number;
+    item: any;
+  } | null>(null);
 
   // Modal de Baixa de Pagamento / Abatimento Parcial
   const [crediarioPayModal, setCrediarioPayModal] = useState<{
@@ -5216,7 +5223,7 @@ export default function BackofficeDashboard() {
                               )}
                             </div>
                           </div>
-                          <div className="text-right font-mono space-y-0.5">
+                          <div className="text-right font-mono space-y-0.5 shrink-0">
                             <div className="text-deep-black font-bold">
                               Venda: ${price.toFixed(2)} (${itemSubtotal.toFixed(2)})
                             </div>
@@ -5226,6 +5233,22 @@ export default function BackofficeDashboard() {
                             <div className="text-[9px] text-green-700 font-black block">
                               Lucro: +${itemProfit.toFixed(2)}
                             </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSwapItemState({
+                                  isOpen: true,
+                                  order: selectedSaleDetail,
+                                  itemIndex: idx,
+                                  item: it,
+                                });
+                              }}
+                              className="mt-1 px-2 py-1 bg-amber-500 hover:bg-amber-400 text-deep-black text-[9px] font-black uppercase tracking-wider flex items-center justify-end gap-1 transition shadow-xs cursor-pointer ml-auto border border-deep-black/30"
+                              title="Trocar este item por outro modelo ou tamanho do estoque"
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                              <span>TROCAR PEÇA</span>
+                            </button>
                           </div>
                         </div>
                       );
@@ -7819,6 +7842,14 @@ export default function BackofficeDashboard() {
         isOpen={Boolean(separationModalOrder)}
         onClose={() => setSeparationModalOrder(null)}
         order={separationModalOrder}
+        onSwapItem={(ord, idx, it) => {
+          setSwapItemState({
+            isOpen: true,
+            order: ord,
+            itemIndex: idx,
+            item: it,
+          });
+        }}
         onStatusUpdated={async (orderId, newFulfillment) => {
           await handleUpdateFulfillmentStatus(orderId, newFulfillment);
           setSeparationModalOrder((prev: any) => prev ? { ...prev, fulfillment_status: newFulfillment } : prev);
@@ -7827,6 +7858,28 @@ export default function BackofficeDashboard() {
           }
         }}
       />
+
+      {/* Modal de Troca e Substituição de Peça Sem Estoque */}
+      {swapItemState?.isOpen && (
+        <SwapOrderItemModal
+          isOpen={swapItemState.isOpen}
+          onClose={() => setSwapItemState(null)}
+          order={swapItemState.order}
+          itemIndex={swapItemState.itemIndex}
+          itemToSwap={swapItemState.item}
+          catalogProducts={baseCatalogList}
+          onSwapSuccess={(updatedOrder) => {
+            if (selectedSaleDetail && (selectedSaleDetail.order_id === updatedOrder.order_id || selectedSaleDetail.id === updatedOrder.id)) {
+              setSelectedSaleDetail(updatedOrder);
+            }
+            if (separationModalOrder && (separationModalOrder.order_id === updatedOrder.order_id || separationModalOrder.id === updatedOrder.id)) {
+              setSeparationModalOrder(updatedOrder);
+            }
+            fetchSalesData();
+            fetchSupabaseProducts();
+          }}
+        />
+      )}
           </main>
         </div>
       </div>
