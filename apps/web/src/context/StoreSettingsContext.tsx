@@ -388,7 +388,7 @@ const DEFAULT_SITE_INFO: SiteInfo = {
   instagram: '@anafitnessweareua',
   instagramUrl: 'https://www.instagram.com/anafitnessweareua',
   venmo: '@Accleaningproservices',
-  cashApp: '$AnaFitnessWear',
+  cashApp: '$ACCleaningpro',
   address: 'Leominster, MA 01453 • United States',
   flatShippingRate: 9.90,
   freeShippingThreshold: 100,

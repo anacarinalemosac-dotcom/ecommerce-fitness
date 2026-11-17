@@ -585,7 +585,7 @@ export function TechnicalSettingsView() {
               </div>
               <div className="flex justify-between border-b border-deep-black/10 pb-1.5">
                 <span className="text-deep-black/60 font-bold uppercase">CASH APP ($CASHTAG):</span>
-                <span className="font-mono font-bold text-[#009e24]">{siteInfo.cashApp || '$AnaFitnessWear'}</span>
+                <span className="font-mono font-bold text-[#009e24]">{siteInfo.cashApp || '$ACCleaningpro'}</span>
               </div>
               <div className="flex justify-between pt-1">
                 <span className="text-deep-black/60 font-bold uppercase">LIQUIDAÇÃO:</span>

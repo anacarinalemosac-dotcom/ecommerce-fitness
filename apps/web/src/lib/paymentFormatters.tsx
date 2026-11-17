@@ -80,13 +80,13 @@ export function getPaymentMethodDisplay(orderOrMethod: any): PaymentMethodInfo {
   if (raw === 'CASHAPP' || raw === 'CASH_APP') {
     return {
       code: 'CASHAPP',
-      label: 'Cash App ($AnaFitnessWear)',
+      label: 'Cash App ($ACCleaningpro)',
       shortLabel: 'Cash App',
       icon: '🟢',
       bgClass: 'bg-[#00D632]/20',
       textClass: 'text-emerald-950 font-black',
       borderClass: 'border-[#00D632]/60',
-      description: 'Cashtag: $AnaFitnessWear',
+      description: 'Cashtag: $ACCleaningpro',
       isStripe: false,
     };
   }

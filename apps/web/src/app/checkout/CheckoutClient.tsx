@@ -526,7 +526,7 @@ export default function CheckoutPage() {
   const effectiveItems = cartItems.length > 0 ? cartItems : (cartItem ? [cartItem] : []);
   const subtotal = effectiveItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
 
-  const cashAppTag = (siteInfo?.cashApp || '$AnaFitnessWear').trim();
+  const cashAppTag = (siteInfo?.cashApp || '$ACCleaningpro').trim();
   const cashAppHandleNormalized = cashAppTag.startsWith('$') ? cashAppTag : `$${cashAppTag}`;
   const cashAppUrl = `https://cash.app/${cashAppHandleNormalized}`;
 
