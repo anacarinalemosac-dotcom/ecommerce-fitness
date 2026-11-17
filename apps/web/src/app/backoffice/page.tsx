@@ -485,7 +485,8 @@ export default function BackofficeDashboard() {
       if (entered === null) {
         return; // Cancelado pela usuária
       }
-      finalTracking = entered.trim() || ('9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000));
+      const cleaned = (entered || '').replace(/\s+/g, '').trim();
+      finalTracking = cleaned || ('9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000));
     }
 
     try {
@@ -648,7 +649,8 @@ export default function BackofficeDashboard() {
         existingCode || ''
       );
       if (entered === null) return;
-      finalTracking = entered.trim() || ('9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000));
+      const cleaned = (entered || '').replace(/\s+/g, '').trim();
+      finalTracking = cleaned || ('9400' + Math.floor(100000000000000000 + Math.random() * 900000000000000000));
     }
 
     try {

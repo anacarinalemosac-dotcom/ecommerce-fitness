@@ -64,8 +64,9 @@ export function ShippingLabelModal({
   const [emailSentSuccess, setEmailSentSuccess] = useState(false);
 
   const handleTrackingInputChange = (val: string) => {
-    setTrackingInput(val);
-    setWaMessage(generateOrderShippedWhatsAppMessage(order, val.trim()));
+    const cleaned = val.replace(/\s+/g, '');
+    setTrackingInput(cleaned);
+    setWaMessage(generateOrderShippedWhatsAppMessage(order, cleaned));
   };
 
   const customerEmail =
@@ -107,11 +108,12 @@ export function ShippingLabelModal({
   };
 
   const handleSaveTrackingCode = async () => {
-    if (!trackingInput.trim()) return;
+    const cleaned = trackingInput.replace(/\s+/g, '').trim();
+    if (!cleaned) return;
     setIsSavingTracking(true);
     try {
       if (onSaveTracking) {
-        await onSaveTracking(order.order_id || order.id, trackingInput.trim());
+        await onSaveTracking(order.order_id || order.id, cleaned);
       } else {
         await fetch('/api/backoffice/sales', {
           method: 'PATCH',
@@ -119,12 +121,12 @@ export function ShippingLabelModal({
           body: JSON.stringify({
             order_id: order.order_id || order.id,
             fulfillment_status: 'SHIPPED',
-            tracking_code: trackingInput.trim(),
+            tracking_code: cleaned,
           }),
         });
       }
       setSaveSuccess(true);
-      setWaMessage(generateOrderShippedWhatsAppMessage(order, trackingInput.trim()));
+      setWaMessage(generateOrderShippedWhatsAppMessage(order, cleaned));
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       console.error('Erro ao salvar tracking:', err);
@@ -435,7 +437,7 @@ export function ShippingLabelModal({
             <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
-                placeholder="Ex: 9400 1118 9956 1234 5678 90"
+                placeholder="Ex: 9400111899561234567890 (sem espaços)"
                 value={trackingInput}
                 onChange={(e) => handleTrackingInputChange(e.target.value)}
                 className="flex-1 px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider bg-white border border-deep-black/30 focus:outline-none focus:border-deep-black"

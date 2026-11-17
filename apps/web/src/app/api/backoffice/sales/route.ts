@@ -814,7 +814,7 @@ export async function PATCH(req: NextRequest) {
         targetSale.customer_email = body.customer_email.trim();
       }
       if (body.tracking_code) {
-        targetSale.tracking_code = body.tracking_code.trim();
+        targetSale.tracking_code = String(body.tracking_code).replace(/\s+/g, '').trim();
         targetSale.fulfillment_status = 'SHIPPED';
         targetSale.shipped_at = targetSale.shipped_at || new Date().toISOString();
         targetSale.shipping_email_sent = true;
@@ -1700,7 +1700,9 @@ export async function PATCH(req: NextRequest) {
 
         const isShipped = nextFulfillment === 'SHIPPED';
         const isDelivered = nextFulfillment === 'DELIVERED';
-        const finalTracking = tracking_code !== undefined ? tracking_code : s.tracking_code;
+        const finalTracking = tracking_code !== undefined
+          ? (tracking_code ? String(tracking_code).replace(/\s+/g, '').trim() : '')
+          : s.tracking_code;
 
         const updatedOrder = {
           ...s,

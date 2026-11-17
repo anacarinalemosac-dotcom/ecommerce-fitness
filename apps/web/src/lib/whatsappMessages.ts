@@ -110,9 +110,14 @@ export function generateCrediarioWhatsAppMessage(sale: any): string {
 export function generateOrderShippedWhatsAppMessage(sale: any, trackingCode?: string): string {
   const customer = sale.customer_name || 'Cliente';
   const orderId = sale.order_id || sale.id?.slice(0, 8);
-  const finalTracking = (trackingCode || sale.tracking_code || '').trim();
-  const uspsTrackingUrl = finalTracking
-    ? `https://tools.usps.com/go/TrackConfirmAction?tLabels=${finalTracking}`
+  const rawTracking = String(trackingCode || sale.tracking_code || '').trim();
+  // Remove todos os espaços e traços para que o WhatsApp não quebre o link nos 4 primeiros dígitos
+  const cleanTracking = rawTracking.replace(/[^a-zA-Z0-9]/g, '');
+  const uspsTrackingUrl = cleanTracking
+    ? `https://tools.usps.com/go/TrackConfirmAction?tLabels=${cleanTracking}`
+    : '';
+  const storeTrackingUrl = orderId
+    ? `https://anafitwear.com/pedidos?order_id=${encodeURIComponent(orderId)}`
     : '';
 
   const rawItems = Array.isArray(sale.items) && sale.items.length > 0
@@ -137,11 +142,13 @@ export function generateOrderShippedWhatsAppMessage(sale: any, trackingCode?: st
   msg += `Olá *${customer}*! Tudo bem? 🥰\n\n`;
   msg += `Passando para te dar uma notícia maravilhosa: seu pedido *#${orderId}* já foi cuidadosamente separado, embalado com muito carinho e *acaba de ser postado nos Correios (USPS)*! 💖📦\n\n`;
 
-  if (finalTracking) {
+  if (cleanTracking) {
     msg += `📍 *CÓDIGO DE RASTREAMENTO (USPS):*\n`;
-    msg += `👉 *${finalTracking}*\n\n`;
-    msg += `🔗 *Link oficial para acompanhar a entrega:*\n`;
+    msg += `👉 *${cleanTracking}*\n\n`;
+    msg += `🔗 *Link oficial para acompanhar a entrega nos Correios:*\n`;
     msg += `${uspsTrackingUrl}\n\n`;
+    msg += `🌐 *Ou acompanhe também no site da loja:*\n`;
+    msg += `${storeTrackingUrl}\n\n`;
   }
 
   if (itemsList) {
