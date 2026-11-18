@@ -47,18 +47,18 @@ export function PromotionsHubView({
 
   const [popupActive, setPopupActive] = useState<boolean>(initialPopup.active ?? true);
   const [popupBadge, setPopupBadge] = useState<string>(initialPopup.badge || '⚡ OFERTA RELÂMPAGO • FRETE GRÁTIS');
-  const [popupTitle, setPopupTitle] = useState<string>(initialPopup.title || 'FRETE GRÁTIS EM COMPRAS ACIMA DE $100!');
+  const [popupTitle, setPopupTitle] = useState<string>(initialPopup.title || 'FRETE GRÁTIS EM COMPRAS A PARTIR DE $250!');
   const [popupDescription, setPopupDescription] = useState<string>(
     initialPopup.description ||
-      'Válido para todos os 50 estados dos EUA via USPS Priority. Oferta especial por tempo limitado: encerra neste domingo à meia-noite (horário dos EUA)! Aproveite para garantir seus conjuntos favoritos.'
+      'Válido para todos os 50 estados dos EUA via USPS Priority. Frete grátis liberado automaticamente no checkout para pedidos a partir de $250! Aproveite para garantir seus conjuntos favoritos.'
   );
   const [popupCtaText, setPopupCtaText] = useState<string>(initialPopup.ctaText || 'GARANTIR MEU FRETE GRÁTIS');
   const [popupCtaLink, setPopupCtaLink] = useState<string>(initialPopup.ctaLink || '#vitrine');
   const [popupExpiresAt, setPopupExpiresAt] = useState<string>(
-    initialPopup.expiresAt || '2026-11-15T23:59:59-05:00'
+    initialPopup.expiresAt || '2026-11-22T23:59:59-05:00'
   );
   const [popupMinOrder, setPopupMinOrder] = useState<number>(
-    initialPopup.freeShippingThreshold || siteInfo.freeShippingThreshold || 100
+    initialPopup.freeShippingThreshold || siteInfo.freeShippingThreshold || 250
   );
   const [popupShowCountdown, setPopupShowCountdown] = useState<boolean>(initialPopup.showCountdown ?? true);
 
@@ -68,15 +68,15 @@ export function PromotionsHubView({
       const p = siteInfo.promoOfferPopup;
       setPopupActive(p.active ?? true);
       setPopupBadge(p.badge || '⚡ OFERTA RELÂMPAGO • FRETE GRÁTIS');
-      setPopupTitle(p.title || 'FRETE GRÁTIS EM COMPRAS ACIMA DE $100!');
+      setPopupTitle(p.title || 'FRETE GRÁTIS EM COMPRAS A PARTIR DE $250!');
       setPopupDescription(
         p.description ||
-          'Válido para todos os 50 estados dos EUA via USPS Priority. Oferta especial por tempo limitado: encerra neste domingo à meia-noite (horário dos EUA)! Aproveite para garantir seus conjuntos favoritos.'
+          'Válido para todos os 50 estados dos EUA via USPS Priority. Frete grátis liberado automaticamente no checkout para pedidos a partir de $250! Aproveite para garantir seus conjuntos favoritos.'
       );
       setPopupCtaText(p.ctaText || 'GARANTIR MEU FRETE GRÁTIS');
       setPopupCtaLink(p.ctaLink || '#vitrine');
-      setPopupExpiresAt(p.expiresAt || '2026-11-15T23:59:59-05:00');
-      setPopupMinOrder(p.freeShippingThreshold || siteInfo.freeShippingThreshold || 100);
+      setPopupExpiresAt(p.expiresAt || '2026-11-22T23:59:59-05:00');
+      setPopupMinOrder(p.freeShippingThreshold || siteInfo.freeShippingThreshold || 250);
       setPopupShowCountdown(p.showCountdown ?? true);
     }
   }, [siteInfo.promoOfferPopup, siteInfo.freeShippingThreshold]);
@@ -117,7 +117,7 @@ export function PromotionsHubView({
       ctaText: popupCtaText.trim(),
       ctaLink: popupCtaLink.trim() || '#vitrine',
       expiresAt: popupExpiresAt,
-      freeShippingThreshold: Number(popupMinOrder) || 100,
+      freeShippingThreshold: Number(popupMinOrder) || 250,
       showCountdown: popupShowCountdown,
     };
 
@@ -128,7 +128,7 @@ export function PromotionsHubView({
         body: JSON.stringify({
           siteInfo: {
             ...siteInfo,
-            freeShippingThreshold: Number(popupMinOrder) || 100,
+            freeShippingThreshold: Number(popupMinOrder) || 250,
             promoOfferPopup: updatedConfig,
           },
         }),
@@ -137,7 +137,7 @@ export function PromotionsHubView({
       if (!res.ok) throw new Error('Falha ao salvar no servidor.');
 
       updateSiteInfo({
-        freeShippingThreshold: Number(popupMinOrder) || 100,
+        freeShippingThreshold: Number(popupMinOrder) || 250,
         promoOfferPopup: updatedConfig,
       });
 
@@ -354,7 +354,7 @@ export function PromotionsHubView({
                     min="1"
                     step="1"
                     value={popupMinOrder}
-                    onChange={(e) => setPopupMinOrder(Number(e.target.value) || 100)}
+                    onChange={(e) => setPopupMinOrder(Number(e.target.value) || 250)}
                     className="w-full pl-7 pr-3 py-2 text-sm font-black font-mono border-2 border-deep-black focus:outline-none focus:border-gold"
                   />
                 </div>
@@ -414,7 +414,7 @@ export function PromotionsHubView({
                   value={popupTitle}
                   onChange={(e) => setPopupTitle(e.target.value)}
                   className="w-full px-3 py-2 text-xs font-black uppercase border border-deep-black/30 focus:outline-none focus:border-deep-black"
-                  placeholder="FRETE GRÁTIS EM COMPRAS ACIMA DE $100!"
+                  placeholder="FRETE GRÁTIS EM COMPRAS A PARTIR DE $250!"
                 />
               </div>
 

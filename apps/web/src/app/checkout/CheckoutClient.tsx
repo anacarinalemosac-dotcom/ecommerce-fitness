@@ -556,13 +556,14 @@ export default function CheckoutPage() {
   // - Entrega / Envio (DELIVERY): frete fixo USPS é SEMPRE $9.90 -> total = $129.90 ($120 combo + $9.90 frete)
   //   Isso vale para TODAS as formas de pagamento (Zelle, Venmo, Cash App, Cartão, Afterpay, Affirm),
   //   garantindo que o cliente sempre transfira o frete ($129.90) e a Ana não tenha que pagar o frete do próprio bolso.
-  // - A isenção de Frete Grátis acima de $100 se aplica apenas para compras NORMAIS (sem combo promocional).
+  // - A isenção de Frete Grátis a partir de $250 se aplica apenas para compras NORMAIS (sem combo promocional).
   const isComboOrder = comboResult.hasCombo;
-  const isOver100FreeShipping = netSubtotal >= 100 && !isComboOrder;
-  const effectiveFreeShipping = (isFreeShipping && !isComboOrder) || isOver100FreeShipping;
+  const freeThreshold = siteInfo?.freeShippingThreshold || 250;
+  const isOverFreeThresholdShipping = netSubtotal >= freeThreshold && !isComboOrder;
+  const effectiveFreeShipping = (isFreeShipping && !isComboOrder) || isOverFreeThresholdShipping;
   const shippingRate = deliveryMethod === 'PICKUP' ? 0 : (effectiveFreeShipping ? 0 : 9.90);
   const total = subtotal > 0 ? netSubtotal + shippingRate : 0;
-  const freeShippingRemaining = Math.max(0, 100 - netSubtotal);
+  const freeShippingRemaining = Math.max(0, freeThreshold - netSubtotal);
 
   const handleRemoveCartItem = (targetIdx?: number) => {
     if (typeof targetIdx === 'number' && cartItems.length > 0) {
@@ -1196,8 +1197,8 @@ export default function CheckoutPage() {
           </h1>
           <p className="text-xs uppercase tracking-wider text-deep-black/60 font-medium leading-relaxed">
             {lang === 'pt'
-              ? 'Você ainda não selecionou nenhuma peça. Escolha seu modelo favorito na vitrine para finalizar sua compra com frete grátis acima de $100 (ou taxa fixa de $9.90 para todos os EUA) ou retirada grátis no showroom.'
-              : 'You haven\'t added any items to your bag yet. Explore our zero-transparency sets and rompers with free shipping over $100 (or flat $9.90 shipping across the US) or free showroom pickup.'}
+              ? 'Você ainda não selecionou nenhuma peça. Escolha seu modelo favorito na vitrine para finalizar sua compra com frete grátis a partir de $250 (ou taxa fixa de $9.90 para todos os EUA) ou retirada grátis no showroom.'
+              : 'You haven\'t added any items to your bag yet. Explore our zero-transparency sets and rompers with free shipping from $250 (or flat $9.90 shipping across the US) or free showroom pickup.'}
           </p>
         </div>
 
@@ -1590,7 +1591,7 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* BARRA DE FRETE GRÁTIS (COMPRAS ACIMA DE $100) */}
+            {/* BARRA DE FRETE GRÁTIS (COMPRAS A PARTIR DE $250) */}
             {subtotal > 0 && (
               <div className="p-3 sm:p-4 bg-stone-50 border-2 border-deep-black/15 space-y-2">
                 <div className="flex items-center justify-between text-xs font-black uppercase tracking-wide">
@@ -1607,7 +1608,7 @@ export default function CheckoutPage() {
                     </span>
                   </span>
                   <span className="font-mono text-[11px] font-black px-2 py-0.5 bg-deep-black text-gold">
-                    {effectiveFreeShipping ? '100%' : `${Math.min(99, Math.round((netSubtotal / 100) * 100))}%`}
+                    {effectiveFreeShipping ? '100%' : `${Math.min(99, Math.round((netSubtotal / freeThreshold) * 100))}%`}
                   </span>
                 </div>
                 <div className="w-full h-2 bg-stone-200 overflow-hidden">
@@ -1616,7 +1617,7 @@ export default function CheckoutPage() {
                       effectiveFreeShipping ? 'bg-emerald-600' : 'bg-gold'
                     }`}
                     style={{
-                      width: `${Math.min(100, effectiveFreeShipping ? 100 : Math.max(6, (netSubtotal / 100) * 100))}%`,
+                      width: `${Math.min(100, effectiveFreeShipping ? 100 : Math.max(6, (netSubtotal / freeThreshold) * 100))}%`,
                     }}
                   />
                 </div>
@@ -1626,8 +1627,8 @@ export default function CheckoutPage() {
                         ? '✓ Pedido qualificado para frete expresso gratuito via USPS Priority para todos os EUA.'
                         : '✓ Your order qualified for free USPS Priority express shipping to all 50 US states.')
                     : (lang === 'pt'
-                        ? 'Adicione mais peças para atingir $100 em produtos e zerar automaticamente o frete de $9.90.'
-                        : 'Add more items to reach $100 and waive the standard $9.90 shipping fee.')}
+                        ? `Adicione mais peças para atingir $${freeThreshold} em produtos e zerar automaticamente o frete de $9.90.`
+                        : `Add more items to reach $${freeThreshold} and waive the standard $9.90 shipping fee.`)}
                 </p>
               </div>
             )}
@@ -2909,8 +2910,8 @@ export default function CheckoutPage() {
                   ? (lang === 'pt' ? 'RETIRADA NO SHOWROOM ($0.00)' : 'SHOWROOM PICKUP ($0.00)')
                   : isComboOrder
                   ? `$9.90 ${lang === 'pt' ? '(FRETE USPS)' : '(USPS SHIPPING)'}`
-                  : isOver100FreeShipping
-                  ? (lang === 'pt' ? 'GRÁTIS (COMPRAS $100+)' : 'FREE (ORDERS $100+)')
+                  : isOverFreeThresholdShipping
+                  ? (lang === 'pt' ? `GRÁTIS (COMPRAS $${freeThreshold}+)` : `FREE (ORDERS $${freeThreshold}+)`)
                   : isFreeShipping
                   ? (lang === 'pt' ? 'GRÁTIS (CUPOM)' : 'FREE (PROMO)')
                   : `$${shippingRate.toFixed(2)}`}

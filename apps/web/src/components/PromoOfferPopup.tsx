@@ -172,14 +172,14 @@ export function PromoOfferPopup() {
           <div className="space-y-2">
             <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-white font-mono leading-tight">
               {lang === 'pt'
-                ? (popupConfig.title || 'FRETE GRÁTIS EM COMPRAS ACIMA DE $100!')
-                : 'FREE SHIPPING ON ORDERS OVER $100!'}
+                ? (popupConfig.title || 'FRETE GRÁTIS EM COMPRAS A PARTIR DE $250!')
+                : 'FREE SHIPPING ON ORDERS OVER $250!'}
             </h2>
             <p className="text-xs sm:text-sm text-white/80 leading-relaxed font-medium max-w-md mx-auto">
               {lang === 'pt'
                 ? (popupConfig.description ||
-                  'Válido para todos os 50 estados dos EUA via USPS Priority. Oferta especial por tempo limitado: encerra neste domingo à meia-noite (horário dos EUA)! Aproveite para garantir seus conjuntos favoritos.')
-                : 'USPS Priority delivery across all 50 US states. Limited time offer ending this Sunday at midnight (US Eastern Time)! Unlock free shipping on any order over $100.'}
+                  'Válido para todos os 50 estados dos EUA via USPS Priority. Oferta especial: frete grátis liberado automaticamente no checkout para compras a partir de $250!')
+                : 'USPS Priority delivery across all 50 US states. Free shipping unlocked automatically at checkout on all orders of $250 or more!'}
             </p>
           </div>
 

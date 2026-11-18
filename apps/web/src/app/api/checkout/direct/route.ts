@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
 
     const orderId = `ANA-${Math.floor(100000 + Math.random() * 900000)}`;
     const totalProductAmount = productPrice * qty;
-    const isFreeShipping = totalProductAmount >= 100;
+    const isFreeShipping = totalProductAmount >= 250;
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
                 currency: 'usd',
                 product_data: {
                   name: 'Frete Grátis Cortesia (USPS Priority)',
-                  description: 'Promoção oficial: Frete grátis para compras a partir de $100 • $0.00',
+                  description: 'Promoção oficial: Frete grátis para compras a partir de $250 • $0.00',
                 },
                 unit_amount: 0,
               },

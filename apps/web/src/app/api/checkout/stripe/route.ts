@@ -109,19 +109,19 @@ export async function POST(req: NextRequest) {
 
     const isPickup = delivery_method === 'PICKUP' || shipping_address?.delivery_method === 'PICKUP';
     const isComboOrder = requestedComboDiscount > 0;
-    // Subtotal líquido dos itens para qualificação de frete grátis (>= $100)
+    // Subtotal líquido dos itens para qualificação de frete grátis (>= $250)
     const grossItemsAmount = enrichedItems.reduce((acc, it) => acc + (Number(it.unit_price) * Number(it.quantity)), 0);
     const netItemsAmount = Math.max(0, grossItemsAmount - effectiveDiscountAmount);
     // Regra oficial Ana Fitness Wear:
-    // Para compras normais sem combo acima de $100, o frete é grátis ($0.00).
+    // Para compras normais sem combo a partir de $250, o frete é grátis ($0.00).
     // Para combo parcelado em gateways (Afterpay, Affirm, Cartão), SEMPRE cobra $120.00 + $9.90 de frete (Total $129.90).
     // O frete só é $0.00 no combo se for Retirada no Showroom (PICKUP).
-    const isOver100FreeShipping = !isComboOrder && netItemsAmount >= 100;
+    const isOverFreeShippingThreshold = !isComboOrder && netItemsAmount >= 250;
     const finalShippingFee = isPickup
       ? 0
       : (isComboOrder
           ? 9.90
-          : (isOver100FreeShipping || shipping_fee === 0
+          : (isOverFreeShippingThreshold || shipping_fee === 0
               ? 0
               : (shipping_fee !== undefined ? Number(shipping_fee) : 9.90)));
 
@@ -156,8 +156,8 @@ export async function POST(req: NextRequest) {
           currency: 'usd',
           product_data: {
             name: 'Frete Grátis Cortesia (USPS Priority)',
-            description: isOver100FreeShipping
-              ? 'Promoção oficial: Frete grátis para compras a partir de $100 • $0.00'
+            description: isOverFreeShippingThreshold
+              ? 'Promoção oficial: Frete grátis para compras a partir de $250 • $0.00'
               : 'Promoção / Cupom de frete grátis • $0.00',
           },
           unit_amount: 0,

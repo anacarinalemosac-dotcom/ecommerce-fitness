@@ -71,10 +71,10 @@ export const DEFAULT_SEED_COUPONS: CouponRecord[] = [
   {
     id: 'coup-fretegratis',
     code: 'FRETEGRATIS',
-    description: 'Frete Grátis Oficial para compras acima de $75',
+    description: 'Frete Grátis Oficial para compras a partir de $250',
     discount_type: 'FREE_SHIPPING',
     discount_value: 0,
-    min_order_amount: 75,
+    min_order_amount: 250,
     times_used: 14,
     active: true,
     applies_to: 'ONLINE',

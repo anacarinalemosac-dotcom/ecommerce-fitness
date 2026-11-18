@@ -94,7 +94,7 @@ export const DEFAULT_RULES: InstagramDirectRule[] = [
     name: 'Envio & Frete nos Estados Unidos',
     triggerType: 'keywords',
     keywords: ['frete', 'envio', 'usps', 'entrega', 'prazo', 'shipping', 'envia'],
-    replyText: 'Enviamos para qualquer estado dos EUA via USPS Priority Mail com taxa fixa de apenas $9.99 (ou FRETE GRÁTIS em pedidos acima de $150)! O prazo médio é de 2 a 4 dias úteis 📦✨',
+    replyText: 'Enviamos para qualquer estado dos EUA via USPS Priority Mail com taxa fixa de apenas $9.99 (ou FRETE GRÁTIS em pedidos acima de $250)! O prazo médio é de 2 a 4 dias úteis 📦✨',
     enabled: true,
   },
   {

@@ -509,12 +509,12 @@ export default function HomePage() {
         const posterSrc = slide?.imageUrl || siteImages.heroPoster || "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1800&q=80";
         const mobilePosterSrc = slide?.mobileImageUrl || posterSrc;
 
-        const badgeText = translateDynamicContent(slide?.badge || `${t('hero.badge')} • ${lang === 'pt' ? 'FRETE GRÁTIS ACIMA DE $100 • FIXO $9.90' : 'FREE SHIPPING OVER $100 • FLAT $9.90'}`, lang);
+        const badgeText = translateDynamicContent(slide?.badge || `${t('hero.badge')} • ${lang === 'pt' ? 'FRETE GRÁTIS A PARTIR DE $250 • FIXO $9.90' : 'FREE SHIPPING OVER $250 • FLAT $9.90'}`, lang);
         const title1Text = translateDynamicContent(slide?.title1 || siteInfo.heroTitle1 || 'WEAR YOUR', lang);
         const title2Text = translateDynamicContent(slide?.title2 || siteInfo.heroTitle2 || 'STRENGTH.', lang);
         const subtitleText = translateDynamicContent(slide?.subtitle || (lang === 'pt'
-          ? 'Moda fitness de alta performance sediada em Massachusetts. Zero transparência testada em agachamentos, compressão anatômica 4-way, frete grátis acima de $100 e taxa fixa de $9.90 para todos os EUA.'
-          : (siteInfo.heroSubtitle || 'High-performance athletic luxury based in Massachusetts. Lab-verified zero see-through, 4-way anatomical sculpt compression, free shipping over $100 and flat $9.90 shipping across all 50 US States.')), lang);
+          ? 'Moda fitness de alta performance sediada em Massachusetts. Zero transparência testada em agachamentos, compressão anatômica 4-way, frete grátis a partir de $250 e taxa fixa de $9.90 para todos os EUA.'
+          : (siteInfo.heroSubtitle || 'High-performance athletic luxury based in Massachusetts. Lab-verified zero see-through, 4-way anatomical sculpt compression, free shipping from $250 and flat $9.90 shipping across all 50 US States.')), lang);
 
         const primaryBtnText = translateDynamicContent(slide?.primaryCtaText || t('hero.cta'), lang);
         const primaryBtnLink = slide?.primaryCtaLink || '#vitrine';
@@ -669,7 +669,7 @@ export default function HomePage() {
                 </span>
                 <span className="hidden sm:inline text-white/20">•</span>
                 <span className="flex items-center gap-2 shrink-0 text-white">
-                  <Truck className="w-4 h-4 text-gold" /> {lang === 'pt' ? 'FRETE GRÁTIS ACIMA DE $100 (OU FIXO $9.90)' : 'FREE SHIPPING OVER $100 (OR FLAT $9.90)'}
+                  <Truck className="w-4 h-4 text-gold" /> {lang === 'pt' ? 'FRETE GRÁTIS A PARTIR DE $250 (OU FIXO $9.90)' : 'FREE SHIPPING FROM $250 (OR FLAT $9.90)'}
                 </span>
                 <span className="hidden sm:inline text-white/20">•</span>
                 <span className="flex items-center gap-2 shrink-0 text-gold">
@@ -760,7 +760,7 @@ export default function HomePage() {
             
             <div className="text-[11px] font-black uppercase tracking-wider text-gold bg-deep-black px-4 py-2 border border-gold inline-flex items-center gap-2 self-start md:self-auto shadow-sm">
               <Truck className="w-3.5 h-3.5 text-gold" />
-              <span>{lang === 'pt' ? 'FRETE: GRÁTIS ACIMA DE $100 • FIXO $9.90' : 'SHIPPING: FREE OVER $100 • FLAT $9.90'}</span>
+              <span>{lang === 'pt' ? 'FRETE: GRÁTIS A PARTIR DE $250 • FIXO $9.90' : 'SHIPPING: FREE OVER $250 • FLAT $9.90'}</span>
             </div>
           </div>
 
@@ -1629,7 +1629,7 @@ export default function HomePage() {
                               )}
                             </div>
                             <span className="text-[7.5px] sm:text-[9px] block text-deep-black/60 font-bold uppercase tracking-wider">
-                              {lang === 'pt' ? 'FRETE GRÁTIS $100+ • FIXO $9.90' : 'FREE US SHIPPING $100+ • FLAT $9.90'}
+                              {lang === 'pt' ? 'FRETE GRÁTIS $250+ • FIXO $9.90' : 'FREE US SHIPPING $250+ • FLAT $9.90'}
                             </span>
                           </div>
 

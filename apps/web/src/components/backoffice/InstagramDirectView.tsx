@@ -824,7 +824,7 @@ export function InstagramDirectView() {
                   type="button"
                   onClick={() =>
                     handleSendQuickReply(
-                      'Enviamos para qualquer estado dos EUA via USPS Priority Mail com taxa fixa de $9.99 (ou FRETE GRÁTIS acima de $150)! O prazo é de 2 a 4 dias úteis 📦'
+                      'Enviamos para qualquer estado dos EUA via USPS Priority Mail com taxa fixa de $9.99 (ou FRETE GRÁTIS acima de $250)! O prazo é de 2 a 4 dias úteis 📦'
                     )
                   }
                   className="px-2.5 py-1 bg-zinc-900 hover:bg-gold hover:text-black border border-zinc-800 hover:border-gold text-gray-300 whitespace-nowrap transition font-semibold"

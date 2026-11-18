@@ -63,13 +63,13 @@ export default function PoliticaDeEnvioPage() {
         </div>
         <p className="text-xs sm:text-sm text-white/80 uppercase tracking-wider leading-relaxed font-medium">
           {lang === 'pt'
-            ? `Frete grátis automático em todas as compras a partir de $100.00! Para pedidos abaixo de $100, taxa única de envio de $${flatRate.toFixed(2)} para qualquer endereço nos Estados Unidos via USPS Priority Mail com código de rastreamento.`
-            : `Automatic free shipping on all orders of $100.00 or more! For orders under $100, a flat shipping fee of $${flatRate.toFixed(2)} applies to any delivery address across the United States via USPS Priority Mail.`}
+            ? `Frete grátis automático em todas as compras a partir de $250.00! Para pedidos abaixo de $250, taxa única de envio de $${flatRate.toFixed(2)} para qualquer endereço nos Estados Unidos via USPS Priority Mail com código de rastreamento.`
+            : `Automatic free shipping on all orders of $250.00 or more! For orders under $250, a flat shipping fee of $${flatRate.toFixed(2)} applies to any delivery address across the United States via USPS Priority Mail.`}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-[11px] font-bold uppercase tracking-wider text-white/90">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-gold shrink-0" />
-            <span>{lang === 'pt' ? 'Grátis Acima de $100' : 'Free Over $100'}</span>
+            <span>{lang === 'pt' ? 'Grátis a partir de $250' : 'Free Over $250'}</span>
           </div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-gold shrink-0" />

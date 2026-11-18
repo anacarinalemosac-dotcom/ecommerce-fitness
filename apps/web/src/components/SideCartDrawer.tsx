@@ -81,7 +81,7 @@ function formatSizeForLang(size: string, lang: 'en' | 'pt'): string {
 export function SideCartDrawer() {
   const pathname = usePathname();
   const { lang } = useLanguage();
-  const { products: liveCatalogProducts } = useStoreSettings();
+  const { products: liveCatalogProducts, siteInfo } = useStoreSettings();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [items, setItems] = useState<CartItem[]>([]);
@@ -215,9 +215,10 @@ export function SideCartDrawer() {
   const subtotal = items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
   const comboResult = calculateComboDiscount(items, comboPromo);
   const netSubtotal = Math.max(0, Number((subtotal - (comboResult.hasCombo ? comboResult.discount : 0)).toFixed(2)));
-  const isFreeShipping = netSubtotal >= 100 && !comboResult.hasCombo;
-  const freeShippingRemaining = Math.max(0, Number((100 - netSubtotal).toFixed(2)));
-  const freeShippingProgress = Math.min(100, Math.max(0, (netSubtotal / 100) * 100));
+  const freeThreshold = siteInfo?.freeShippingThreshold || 250;
+  const isFreeShipping = netSubtotal >= freeThreshold && !comboResult.hasCombo;
+  const freeShippingRemaining = Math.max(0, Number((freeThreshold - netSubtotal).toFixed(2)));
+  const freeShippingProgress = Math.min(100, Math.max(0, (netSubtotal / freeThreshold) * 100));
 
   return (
     <>
@@ -336,7 +337,7 @@ export function SideCartDrawer() {
               );
             })()}
 
-            {/* Barra de Progresso de Frete Grátis ($100+) */}
+            {/* Barra de Progresso de Frete Grátis ($250+) */}
             {items.length > 0 && (
               <div className="px-5 py-2.5 bg-neutral-100 border-b border-deep-black/10 space-y-1.5 shrink-0">
                 <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wide">
@@ -562,7 +563,7 @@ export function SideCartDrawer() {
                     </span>
                     <span className={`font-mono ${isFreeShipping ? 'text-emerald-700 font-black' : 'text-deep-black/60'}`}>
                       {isFreeShipping
-                        ? (lang === 'pt' ? 'GRÁTIS ($100+)' : 'FREE ($100+)')
+                        ? (lang === 'pt' ? `GRÁTIS ($${freeThreshold}+)` : `FREE ($${freeThreshold}+)`)
                         : `$9.90 ${lang === 'pt' ? 'no checkout' : 'at checkout'}`}
                     </span>
                   </div>

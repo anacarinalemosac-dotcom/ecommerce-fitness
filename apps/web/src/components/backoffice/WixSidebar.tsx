@@ -456,7 +456,7 @@ export function WixSidebar({
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   }`}
                 >
-                  <span>Promoções & Frete Grátis ($100)</span>
+                  <span>Promoções & Frete Grátis ($250)</span>
                   <span className="text-[9px] px-1.5 py-0.2 rounded-xs bg-amber-100 text-amber-800 font-bold">
                     POP-UP
                   </span>
