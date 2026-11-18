@@ -427,6 +427,32 @@ export async function syncMarketingContactsFromAllSources(): Promise<MarketingCo
     }
   } catch (_) {}
 
+  // 2.7 Include leads captured from Instagram Direct conversations
+  try {
+    const { getInstagramDirectState } = await import('./instagramDirectStore');
+    const igState = await getInstagramDirectState();
+    if (Array.isArray(igState.conversations)) {
+      for (const conv of igState.conversations) {
+        for (const msg of conv.messages || []) {
+          if (msg.sender === 'customer' && msg.text) {
+            const phoneMatch = msg.text.match(/(?:\+?1[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\b\d{10,11}\b/);
+            if (phoneMatch) {
+              const displayName = conv.fullName && !conv.fullName.includes('Cliente Instagram') ? conv.fullName : `@${conv.username}`;
+              rebuilt = mergeContactIntoList(rebuilt, {
+                name: displayName,
+                phone: phoneMatch[0],
+                source: 'INSTAGRAM_DIRECT',
+                notes: `Lead Instagram Direct @${conv.username}`,
+                created_at: msg.timestamp || conv.lastTimestamp,
+              });
+              break;
+            }
+          }
+        }
+      }
+    }
+  } catch (_) {}
+
   // 3. Reapply preserved opt_out / manual notes
   rebuilt = rebuilt.map((c) => {
     const k = c.phone_digits || c.email || c.name.toUpperCase();

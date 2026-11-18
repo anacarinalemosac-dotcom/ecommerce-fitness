@@ -6,6 +6,7 @@ import {
   InstagramDirectMessage,
   InstagramDirectConversation,
 } from '@/lib/instagramDirectStore';
+import { upsertMarketingContactAndPersist } from '@/lib/marketingContactsStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,6 +101,21 @@ export async function POST(req: NextRequest) {
         conv.lastMessage = messageText;
         conv.lastTimestamp = userMsg.timestamp;
         hasChanges = true;
+
+        // Auto-captura de Lead: se a cliente enviou telefone/WhatsApp no Direct, adiciona à Central de Leads
+        const phoneMatch = messageText.match(/(?:\+?1[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\b\d{10,11}\b/);
+        if (phoneMatch) {
+          try {
+            await upsertMarketingContactAndPersist({
+              name: conv.fullName && !conv.fullName.includes('Cliente Instagram') ? conv.fullName : `@${conv.username}`,
+              phone: phoneMatch[0],
+              source: 'INSTAGRAM_DIRECT',
+              notes: `Lead automático do Direct Instagram @${conv.username}`,
+            });
+          } catch (leadErr) {
+            console.warn('Erro ao salvar lead automático do Instagram:', leadErr);
+          }
+        }
 
         // Verifica regras de resposta automática do Bot se estiver ativo
         if (state.config.autoResponderActive) {

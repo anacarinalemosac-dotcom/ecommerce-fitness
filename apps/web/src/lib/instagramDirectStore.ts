@@ -105,6 +105,14 @@ export const DEFAULT_RULES: InstagramDirectRule[] = [
     replyText: 'Aceitamos Zelle (+1 978 798-7934 ou anafitweareua@gmail.com), Venmo (@Accleaningproservices), Cartão de Crédito/Apple Pay no site e Crediário facilitado no Showroom! 💳✨',
     enabled: true,
   },
+  {
+    id: 'rule-whatsapp-lead',
+    name: 'Atendimento WhatsApp & Captura de Leads',
+    triggerType: 'keywords',
+    keywords: ['whatsapp', 'zap', 'whats', 'contato', 'numero', 'número', 'falar com vendedora', 'atendente', 'humano', 'telefone'],
+    replyText: 'Você pode falar diretamente com a Ana no nosso WhatsApp oficial: +1 (978) 798-7934! 📲 Ou me manda seu número de WhatsApp com DDD aqui no direct que te chamamos com as novidades e modelos no seu tamanho! 💕',
+    enabled: true,
+  },
 ];
 
 export const DEFAULT_CONVERSATIONS: InstagramDirectConversation[] = [];

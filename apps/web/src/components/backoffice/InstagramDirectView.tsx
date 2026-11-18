@@ -26,6 +26,7 @@ import {
   User,
   FileText,
   Smartphone,
+  Target,
 } from 'lucide-react';
 import {
   InstagramDirectRule,
@@ -216,6 +217,53 @@ export function InstagramDirectView() {
       }
     } catch (err) {
       console.error('Erro ao simular cliente:', err);
+    }
+  };
+
+  // Salvar cliente do Direct como Lead na Central de Recuperação
+  const handleSaveLeadFromChat = async (conv: InstagramDirectConversation) => {
+    let detectedPhone = '';
+    for (const msg of conv.messages || []) {
+      if (msg.sender === 'customer' && msg.text) {
+        const match = msg.text.match(/(?:\+?1[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\b\d{10,11}\b/);
+        if (match) {
+          detectedPhone = match[0];
+          break;
+        }
+      }
+    }
+
+    let finalPhone = detectedPhone;
+    if (!finalPhone) {
+      const input = prompt(
+        `Digite o WhatsApp da cliente @${conv.username} para salvar na Central de Leads:`,
+        ''
+      );
+      if (!input || !input.trim()) return;
+      finalPhone = input.trim();
+    }
+
+    try {
+      const res = await fetch('/api/backoffice/marketing-contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'add_contact',
+          name: conv.fullName && !conv.fullName.includes('Cliente Instagram') ? conv.fullName : `@${conv.username}`,
+          phone: finalPhone,
+          source: 'INSTAGRAM_DIRECT',
+          notes: `Lead salvo do Direct @${conv.username}. Última msg: "${conv.lastMessage?.slice(0, 80)}"`,
+        }),
+      });
+
+      if (res.ok) {
+        setNotificationBanner(`🎯 @${conv.username} salva como Lead na Central com sucesso!`);
+        setTimeout(() => setNotificationBanner(null), 3500);
+      } else {
+        alert('Erro ao salvar lead.');
+      }
+    } catch (_) {
+      alert('Erro de conexão ao salvar lead.');
     }
   };
 
@@ -657,6 +705,15 @@ export function InstagramDirectView() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSaveLeadFromChat(activeConv)}
+                    className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider transition flex items-center gap-1 shadow-xs cursor-pointer"
+                    title="Salvar esta cliente como Lead na Central de Recuperação do WhatsApp"
+                  >
+                    <Target className="w-3.5 h-3.5 text-slate-950" />
+                    <span>Salvar Lead 🎯</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setShowWhatsAppCatalogModal(true)}
