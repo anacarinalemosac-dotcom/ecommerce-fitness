@@ -220,15 +220,15 @@ export async function GET(req: NextRequest) {
             ? meta.payments
             : (Array.isArray(meta.crediario?.payments) ? meta.crediario.payments : []);
 
-            let alreadyPaid = 0;
+            const down = Number(meta.crediario?.down_payment || meta.down_payment || 0);
+            let alreadyPaid = down;
             if (rawPayments.length > 0) {
-              alreadyPaid = rawPayments.reduce((acc: number, p: any) => acc + (Number(p.amount) || 0), 0);
+              alreadyPaid += rawPayments.reduce((acc: number, p: any) => acc + (Number(p.amount) || 0), 0);
             } else {
-              const down = Number(meta.crediario?.down_payment || 0);
               const paidInsts = (meta.crediario?.installments || [])
                 .filter((i: any) => i.status === 'PAID')
                 .reduce((acc: number, i: any) => acc + (Number(i.amount) || 0), 0);
-              alreadyPaid = down + paidInsts;
+              alreadyPaid += paidInsts;
             }
 
             const rawPayStatus = meta.payment_status || (
@@ -323,15 +323,15 @@ export async function GET(req: NextRequest) {
           ? (s as any).payments
           : (Array.isArray(s.crediario?.payments) ? (s.crediario as any).payments : []);
 
-        let alreadyPaid = 0;
+        const down = Number(s.crediario?.down_payment || (s as any).down_payment || 0);
+        let alreadyPaid = down;
         if (rawPayments.length > 0) {
-          alreadyPaid = rawPayments.reduce((acc: number, p: any) => acc + (Number(p.amount) || 0), 0);
+          alreadyPaid += rawPayments.reduce((acc: number, p: any) => acc + (Number(p.amount) || 0), 0);
         } else {
-          const down = Number(s.crediario?.down_payment || 0);
           const paidInsts = (s.crediario?.installments || [])
             .filter((i: any) => i.status === 'PAID')
             .reduce((acc: number, i: any) => acc + (Number(i.amount) || 0), 0);
-          alreadyPaid = down + paidInsts;
+          alreadyPaid += paidInsts;
         }
 
         const fStatus = s.fulfillment_status || (
@@ -1360,7 +1360,7 @@ export async function PATCH(req: NextRequest) {
 
     // 1. Atualiza no Supabase 'orders'
     try {
-      const { data: dbOrders } = await supabaseServer.from('orders').select('id, shipping_address, status, customer_name, customer_email, customer_phone');
+      const { data: dbOrders } = await supabaseServer.from('orders').select('*');
       if (dbOrders) {
         const target = dbOrders.find((o: any) => {
           const meta = typeof o.shipping_address === 'object' && o.shipping_address ? o.shipping_address : {};
@@ -1401,20 +1401,23 @@ export async function PATCH(req: NextRequest) {
 
           if (isPayAction) {
             const orderGross = Math.max(0,
-              Number((target as any).subtotal_amount ?? (target as any).subtotal_products ?? currentMeta.subtotal_products ?? 0) -
-              Number((target as any).discount_amount ?? currentMeta.discount_amount ?? 0) +
-              Number((target as any).shipping_amount ?? (target as any).shipping_fee ?? currentMeta.shipping_fee ?? 0)
+              Number((target as any).total_amount || 0) ||
+              (
+                Number((target as any).subtotal_amount ?? (target as any).subtotal_products ?? currentMeta.subtotal_products ?? 0) -
+                Number((target as any).discount_amount ?? currentMeta.discount_amount ?? 0) +
+                Number((target as any).shipping_amount ?? (target as any).shipping_fee ?? currentMeta.shipping_fee ?? 0)
+              )
             );
 
-            let alreadyPaid = 0;
+            const down = Number(currentMeta.crediario?.down_payment || currentMeta.down_payment || 0);
+            let alreadyPaid = down;
             if (updatedPaymentsList.length > 0) {
-              alreadyPaid = updatedPaymentsList.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+              alreadyPaid += updatedPaymentsList.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
             } else {
-              const down = Number(currentMeta.crediario?.down_payment || 0);
               const paidInsts = (currentMeta.crediario?.installments || [])
                 .filter((i: any) => i.status === 'PAID')
                 .reduce((acc: number, i: any) => acc + (Number(i.amount) || 0), 0);
-              alreadyPaid = down + paidInsts;
+              alreadyPaid += paidInsts;
             }
 
             const currentRemaining = Math.max(0, Number((orderGross - alreadyPaid).toFixed(2)));
@@ -1590,20 +1593,23 @@ export async function PATCH(req: NextRequest) {
 
         if (isPayAction) {
           const orderGross = Math.max(0,
-            Number(s.subtotal_products || 0) -
-            Number(s.discount_amount || 0) +
-            Number(s.shipping_fee || 0)
+            Number((s as any).total_amount || 0) ||
+            (
+              Number(s.subtotal_products || 0) -
+              Number(s.discount_amount || 0) +
+              Number(s.shipping_fee || 0)
+            )
           );
 
-          let alreadyPaid = 0;
+          const down = Number(s.crediario?.down_payment || s.down_payment || 0);
+          let alreadyPaid = down;
           if (localPayments.length > 0) {
-            alreadyPaid = localPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+            alreadyPaid += localPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
           } else {
-            const down = Number(s.crediario?.down_payment || 0);
             const paidInsts = (s.crediario?.installments || [])
               .filter((i: any) => i.status === 'PAID')
               .reduce((acc: number, i: any) => acc + (Number(i.amount) || 0), 0);
-            alreadyPaid = down + paidInsts;
+            alreadyPaid += paidInsts;
           }
 
           const currentRemaining = Math.max(0, Number((orderGross - alreadyPaid).toFixed(2)));

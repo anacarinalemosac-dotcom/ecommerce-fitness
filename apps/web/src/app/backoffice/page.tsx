@@ -380,10 +380,11 @@ export default function BackofficeDashboard() {
     const paymentsList = Array.isArray(sale.payments)
       ? sale.payments
       : (Array.isArray(sale.crediario?.payments) ? sale.crediario.payments : []);
+    const downPay = Number(sale.crediario?.down_payment || 0);
     const alreadyPaid = paymentsList.length > 0
-      ? paymentsList.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
+      ? downPay + paymentsList.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
       : (
-          Number(sale.crediario?.down_payment || 0) +
+          downPay +
           (sale.crediario?.installments || []).filter((i: any) => i.status === 'PAID').reduce((sum: number, i: any) => sum + (Number(i.amount) || 0), 0)
         );
     const remaining = sale.remaining_balance !== undefined
@@ -1946,7 +1947,7 @@ export default function BackofficeDashboard() {
       const installments = Array.isArray(s.crediario?.installments) ? s.crediario.installments : [];
       let paidAmount = 0;
       if (paymentsList.length > 0) {
-        paidAmount = paymentsList.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+        paidAmount = downPay + paymentsList.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
       } else {
         const paidInsts = installments.filter((i: any) => i.status === 'PAID').reduce((sum: number, i: any) => sum + (Number(i.amount) || 0), 0);
         paidAmount = downPay + paidInsts;
@@ -1967,7 +1968,7 @@ export default function BackofficeDashboard() {
       const installments = Array.isArray(s.crediario?.installments) ? s.crediario.installments : [];
       let paidAmount = 0;
       if (paymentsList.length > 0) {
-        paidAmount = paymentsList.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+        paidAmount = downPay + paymentsList.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
       } else {
         const paidInsts = installments.filter((i: any) => i.status === 'PAID').reduce((sum: number, i: any) => sum + (Number(i.amount) || 0), 0);
         paidAmount = downPay + paidInsts;

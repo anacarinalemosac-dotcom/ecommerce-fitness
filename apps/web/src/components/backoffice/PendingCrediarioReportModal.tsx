@@ -77,7 +77,7 @@ export function PendingCrediarioReportModal({
 
       let paidAmount = 0;
       if (paymentsList.length > 0) {
-        paidAmount = paymentsList.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+        paidAmount = (isCrediario ? downPay : 0) + paymentsList.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
       } else if (isCrediario) {
         const paidInsts = installments.filter((i: any) => i.status === 'PAID').reduce((sum: number, i: any) => sum + (Number(i.amount) || 0), 0);
         paidAmount = downPay + paidInsts;
