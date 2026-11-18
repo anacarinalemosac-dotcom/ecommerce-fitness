@@ -30,6 +30,7 @@ import {
   CalendarDays,
   ShoppingCart,
   MessageCircle,
+  Target,
 } from 'lucide-react';
 import { computeSaleFinancials } from '@/lib/salesFinancials';
 import { isOrderPendingShipping, sortOrdersPendingFirst } from '@/lib/orderPriority';
@@ -1156,6 +1157,14 @@ export function DashboardMetricsView({
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={() => onNavigateTab('leads-recovery')}
+            className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-500/20 transition flex items-center gap-2 transform hover:-translate-y-0.5"
+          >
+            <Target className="w-4 h-4 text-slate-950 animate-pulse" />
+            <span>Recuperação WhatsApp 🎯</span>
+          </button>
           <button
             type="button"
             onClick={() => onNavigateTab('finances')}

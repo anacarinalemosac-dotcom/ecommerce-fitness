@@ -94,6 +94,7 @@ import { useStoreSettings } from '../../context/StoreSettingsContext';
 import { DashboardMetricsView } from '../../components/backoffice/DashboardMetricsView';
 import { AppearanceCmsView, CmsSubTab } from '../../components/backoffice/AppearanceCmsView';
 import { CustomersReviewsView } from '../../components/backoffice/CustomersReviewsView';
+import { LeadsRecoveryView } from '../../components/backoffice/LeadsRecoveryView';
 import { TechnicalSettingsView } from '../../components/backoffice/TechnicalSettingsView';
 import { EmailSettingsView } from '../../components/backoffice/EmailSettingsView';
 import { InstagramDirectView } from '../../components/backoffice/InstagramDirectView';
@@ -124,7 +125,7 @@ import {
 import { downloadOrderPdf } from '@/lib/orderPdf';
 import { ShippingLabelModal } from '@/components/ShippingLabelModal';
 import { SwapOrderItemModal } from '../../components/backoffice/SwapOrderItemModal';
-import { WixSidebar } from '../../components/backoffice/WixSidebar';
+import { WixSidebar, WixBackofficeTab } from '../../components/backoffice/WixSidebar';
 import { WixHeader } from '../../components/backoffice/WixHeader';
 import { WixProductTable } from '../../components/backoffice/WixProductTable';
 
@@ -262,9 +263,7 @@ export default function BackofficeDashboard() {
   const [authEmail, setAuthEmail] = useState('anafitweareua@gmail.com');
   const [authPass, setAuthPass] = useState('');
   const [authError, setAuthError] = useState('');
-  const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'catalog' | 'out-of-stock' | 'sales' | 'conditionals' | 'commissions' | 'finances' | 'invoices' | 'coupons' | 'reports' | 'cms' | 'customers' | 'settings' | 'emails' | 'margins' | 'live' | 'backorders' | 'theme' | 'whatsapp-catalog' | 'instagram-direct' | 'suppliers'
-  >('dashboard');
+  const [activeTab, setActiveTab] = useState<WixBackofficeTab>('dashboard');
   const [cmsSubTab, setCmsSubTab] = useState<CmsSubTab>('categories');
   const [reportsSubTab, setReportsSubTab] = useState<'inventory' | 'accesses'>('inventory');
   const [onlineCount, setOnlineCount] = useState(0);
@@ -7587,6 +7586,11 @@ export default function BackofficeDashboard() {
           TAB 6: CLIENTES E PROVA SOCIAL (REVIEWS)
          ========================================================================= */}
       {activeTab === 'customers' && <CustomersReviewsView salesData={salesData} />}
+
+      {/* =========================================================================
+          TAB: CENTRAL DE RECUPERAÇÃO DE LEADS & CLIENTES WHATSAPP (1-CLIQUE)
+         ========================================================================= */}
+      {activeTab === 'leads-recovery' && <LeadsRecoveryView salesData={salesData} />}
 
       {/* =========================================================================
           TAB 7: CONFIGURAÇÕES TÉCNICAS E ACESSOS

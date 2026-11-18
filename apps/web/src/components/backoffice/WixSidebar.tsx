@@ -38,6 +38,7 @@ import {
   Search,
   CheckCircle2,
   AlertCircle,
+  Target,
 } from 'lucide-react';
 
 export type WixBackofficeTab =
@@ -53,6 +54,7 @@ export type WixBackofficeTab =
   | 'reports'
   | 'cms'
   | 'customers'
+  | 'leads-recovery'
   | 'settings'
   | 'emails'
   | 'margins'
@@ -556,10 +558,29 @@ export function WixSidebar({
               GRUPO: CLIENTES & VENDEDORAS
              ======================================================== */}
           <div className="pt-2">
+            {/* 1. Recuperação de Leads & Clientes no WhatsApp (NOVO) */}
+            <button
+              type="button"
+              onClick={() => handleSelectTab('leads-recovery')}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition ${
+                activeTab === 'leads-recovery'
+                  ? 'bg-emerald-50 text-emerald-800 font-bold shadow-2xs border border-emerald-300'
+                  : 'text-emerald-700 bg-emerald-50/40 hover:bg-emerald-100/70 hover:text-emerald-900'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Target className={`w-4 h-4 ${activeTab === 'leads-recovery' ? 'text-emerald-700' : 'text-emerald-600'}`} />
+                <span className="font-semibold text-xs">Recuperação WhatsApp</span>
+              </div>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold tracking-wide shadow-xs animate-pulse">
+                LEADS 🎯
+              </span>
+            </button>
+
             <button
               type="button"
               onClick={() => handleSelectTab('customers')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition mt-1 ${
                 activeTab === 'customers'
                   ? 'bg-blue-50 text-blue-700 font-semibold shadow-2xs'
                   : 'text-gray-700 hover:bg-gray-100/80 hover:text-gray-900'
@@ -567,7 +588,7 @@ export function WixSidebar({
             >
               <div className="flex items-center gap-2.5">
                 <Users className={`w-4 h-4 ${activeTab === 'customers' ? 'text-blue-600' : 'text-gray-500'}`} />
-                <span>Clientes & Leads</span>
+                <span>Base Geral de Clientes</span>
               </div>
             </button>
 

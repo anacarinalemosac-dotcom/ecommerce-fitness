@@ -382,6 +382,51 @@ export async function syncMarketingContactsFromAllSources(): Promise<MarketingCo
     }
   } catch (_) {}
 
+  // 2.5 Include contacts and leads from active/abandoned Cart Sessions
+  try {
+    const cartFiles = [
+      path.join(process.cwd(), 'apps', 'web', 'cart_sessions_db.json'),
+      path.join(process.cwd(), 'cart_sessions_db.json'),
+    ];
+    for (const cp of cartFiles) {
+      if (fs.existsSync(cp)) {
+        const raw = fs.readFileSync(cp, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          for (const session of Object.values(parsed) as any[]) {
+            if (!session) continue;
+            if (session.completedAt) continue;
+            const hasPhone = Boolean(session.customerPhone);
+            const hasEmail = Boolean(session.customerEmail);
+            const hasName = Boolean(session.customerName && !isPlaceholderName(session.customerName));
+            if (!hasPhone && !hasEmail && !hasName) continue;
+
+            const sizes = Array.isArray(session.items)
+              ? session.items.map((it: any) => it.size).filter(Boolean)
+              : [];
+            const lastProduct = session.items?.[0]?.title || '';
+            const sessionDate = session.lastUpdatedAt || session.firstAddedAt;
+
+            rebuilt = mergeContactIntoList(rebuilt, {
+              name: session.customerName,
+              phone: session.customerPhone,
+              email: session.customerEmail,
+              city: session.city,
+              state: session.region,
+              sizes,
+              last_product: lastProduct,
+              order_value: 0,
+              count_order: false,
+              source: 'CARRINHO_ABANDONADO',
+              created_at: sessionDate ? new Date(sessionDate).toISOString() : undefined,
+            });
+          }
+        }
+        break;
+      }
+    }
+  } catch (_) {}
+
   // 3. Reapply preserved opt_out / manual notes
   rebuilt = rebuilt.map((c) => {
     const k = c.phone_digits || c.email || c.name.toUpperCase();

@@ -1,29 +1,76 @@
 [
   {
-    "id": "mkt-1794698382399-659",
-    "name": "Rayanne c s viana",
-    "phone": "",
-    "phone_digits": "",
+    "id": "mkt-1794699438654-3166",
+    "name": "RAYANNE C S VIANA",
+    "phone": "+1 (774) 498-0258",
+    "phone_digits": "17744980258",
     "email": "rayanneviana2001@gmail.com",
-    "city": "Framingham",
+    "city": "FRAMINGHAM",
     "state": "MA",
     "sizes_bought": [
-      "ÚNICO"
+      "M"
     ],
     "orders_count": 1,
     "total_spent": 129.9,
-    "last_product": "COMBO PROMOCAO 3 CONJUNTOS",
-    "last_order_date": "2026-11-14T23:19:41.467Z",
+    "last_product": "SET RED & BEIGE",
+    "last_order_date": "2026-11-17T22:03:41.780Z",
+    "sources": [
+      "EDICAO",
+      "SITE"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-14T23:37:18.654Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
+  },
+  {
+    "id": "mkt-1794962465529-5059",
+    "name": "NATALIA TOLEDO",
+    "phone": "+1 (781) 526-5575",
+    "phone_digits": "17815265575",
+    "email": "natalia.pst02@gmail.com",
+    "city": "Medford",
+    "state": "MA",
+    "sizes_bought": [
+      "P"
+    ],
+    "orders_count": 1,
+    "total_spent": 100.2,
+    "last_product": "SET ANA BORDO AND BEIGE",
+    "last_order_date": "2026-11-16T02:10:00+00:00",
     "sources": [
       "SITE"
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T23:19:42.399Z",
-    "updated_at": "2026-11-14T23:19:42.399Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711371-374",
+    "id": "mkt-1794962465533-2184",
+    "name": "Mariana Silva",
+    "phone": "+1 (978) 798-7934",
+    "phone_digits": "19787987934",
+    "email": "",
+    "city": "",
+    "state": "",
+    "sizes_bought": [
+      "M"
+    ],
+    "orders_count": 0,
+    "total_spent": 0,
+    "last_product": "Conjunto Jacquard Piquet Marinho",
+    "last_order_date": "2026-11-14T22:26:59.490Z",
+    "sources": [
+      "CARRINHO_ABANDONADO"
+    ],
+    "notes": "",
+    "opted_out": false,
+    "created_at": "2026-11-18T00:41:05.533Z",
+    "updated_at": "2026-11-18T00:41:05.533Z"
+  },
+  {
+    "id": "mkt-1794962465529-8932",
     "name": "TATIANE TALINE SILVA ALVES",
     "phone": "+1 (848) 234-2746",
     "phone_digits": "18482342746",
@@ -42,14 +89,14 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.371Z",
-    "updated_at": "2026-11-14T01:11:51.371Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711371-4703",
+    "id": "mkt-1794962465529-3245",
     "name": "ana carina",
-    "phone": "+1 (978) 798-7934",
-    "phone_digits": "19787987934",
+    "phone": "+1 (978) 313-9452",
+    "phone_digits": "19783139452",
     "email": "alexfragamiranda@gmail.com",
     "city": "Leominster",
     "state": "MA",
@@ -66,11 +113,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.371Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794438714922-9308",
+    "id": "mkt-1794962465529-8399",
     "name": "REGINA MSHANGA",
     "phone": "+1 (978) 340-3152",
     "phone_digits": "19783403152",
@@ -83,18 +130,17 @@
     "orders_count": 1,
     "total_spent": 400.7,
     "last_product": "SET VITORIA CARAMEL BROWN",
-    "last_order_date": "2026-11-11T23:11:54.922Z",
+    "last_order_date": "2026-11-11T22:43:00+00:00",
     "sources": [
-      "EDICAO",
       "SITE"
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-11T23:11:54.922Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711372-849",
+    "id": "mkt-1794962465529-6934",
     "name": "DANIELE FERNANDES",
     "phone": "+1 (757) 310-9448",
     "phone_digits": "17573109448",
@@ -113,8 +159,8 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
     "id": "mkt-1794436759134-6733",
@@ -137,7 +183,7 @@
     "notes": "",
     "opted_out": false,
     "created_at": "2026-11-11T22:39:19.134Z",
-    "updated_at": "2026-11-14T01:11:51.373Z"
+    "updated_at": "2026-11-18T00:41:05.532Z"
   },
   {
     "id": "mkt-1794436759134-4545",
@@ -160,10 +206,10 @@
     "notes": "",
     "opted_out": false,
     "created_at": "2026-11-11T22:39:19.134Z",
-    "updated_at": "2026-11-14T01:11:51.373Z"
+    "updated_at": "2026-11-18T00:41:05.532Z"
   },
   {
-    "id": "mkt-1794618711372-4647",
+    "id": "mkt-1794962465529-2664",
     "name": "PATRICIA MIRANDA",
     "phone": "+1 (978) 401-7125",
     "phone_digits": "19784017125",
@@ -182,11 +228,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711372-5965",
+    "id": "mkt-1794962465529-3942",
     "name": "LEIDIANE PEREIRA",
     "phone": "+1 (857) 326-4529",
     "phone_digits": "18573264529",
@@ -205,11 +251,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711372-3492",
+    "id": "mkt-1794962465529-5404",
     "name": "Valeria",
     "phone": "+1 (978) 419-3948",
     "phone_digits": "19784193948",
@@ -228,11 +274,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711372-6101",
+    "id": "mkt-1794962465530-4896",
     "name": "CRISTINA",
     "phone": "+1 (339) 242-7185",
     "phone_digits": "13392427185",
@@ -252,11 +298,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.373Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711372-6861",
+    "id": "mkt-1794962465530-4742",
     "name": "Estefany Alves florida",
     "phone": "+1 (561) 674-4454",
     "phone_digits": "15616744454",
@@ -276,11 +322,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711371-1083",
+    "id": "mkt-1794962465529-2865",
     "name": "dana padilha",
     "phone": "",
     "phone_digits": "",
@@ -299,11 +345,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.371Z",
-    "updated_at": "2026-11-14T01:11:51.371Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711372-4249",
+    "id": "mkt-1794962465529-6534",
     "name": "Nayara",
     "phone": "",
     "phone_digits": "",
@@ -322,11 +368,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711372-4151",
+    "id": "mkt-1794962465529-497",
     "name": "ROBERTA RAMOS",
     "phone": "",
     "phone_digits": "",
@@ -346,11 +392,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711372-8682",
+    "id": "mkt-1794962465529-5429",
     "name": "MICHELE FELIX",
     "phone": "",
     "phone_digits": "",
@@ -371,11 +417,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711372-803",
+    "id": "mkt-1794962465529-2725",
     "name": "daniele fernades",
     "phone": "",
     "phone_digits": "",
@@ -396,11 +442,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711372-6137",
+    "id": "mkt-1794962465529-3132",
     "name": "hayra almeida",
     "phone": "",
     "phone_digits": "",
@@ -421,11 +467,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711372-1715",
+    "id": "mkt-1794962465529-4183",
     "name": "Meire rodrigues",
     "phone": "",
     "phone_digits": "",
@@ -444,11 +490,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711372-5615",
+    "id": "mkt-1794962465529-6224",
     "name": "LUCIENE GARDNER",
     "phone": "",
     "phone_digits": "",
@@ -467,11 +513,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711372-2743",
+    "id": "mkt-1794962465529-9206",
     "name": "larissa lashes",
     "phone": "",
     "phone_digits": "",
@@ -490,11 +536,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.529Z",
+    "updated_at": "2026-11-18T00:41:05.529Z"
   },
   {
-    "id": "mkt-1794618711372-4415",
+    "id": "mkt-1794962465530-495",
     "name": "tanise",
     "phone": "",
     "phone_digits": "",
@@ -514,11 +560,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711372-9540",
+    "id": "mkt-1794962465530-5896",
     "name": "marisa",
     "phone": "",
     "phone_digits": "",
@@ -537,11 +583,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711372-3830",
+    "id": "mkt-1794962465530-7643",
     "name": "vitoria",
     "phone": "",
     "phone_digits": "",
@@ -560,11 +606,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711372-9384",
+    "id": "mkt-1794962465530-3102",
     "name": "tamara",
     "phone": "",
     "phone_digits": "",
@@ -583,11 +629,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711372-5633",
+    "id": "mkt-1794962465530-2104",
     "name": "natalia morgana",
     "phone": "",
     "phone_digits": "",
@@ -606,11 +652,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711372-3734",
+    "id": "mkt-1794962465530-332",
     "name": "FRANCIANE",
     "phone": "",
     "phone_digits": "",
@@ -630,11 +676,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.373Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711372-7819",
+    "id": "mkt-1794962465530-2069",
     "name": "Perla",
     "phone": "",
     "phone_digits": "",
@@ -654,11 +700,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711372-2602",
+    "id": "mkt-1794962465530-2276",
     "name": "CAMILA",
     "phone": "",
     "phone_digits": "",
@@ -677,11 +723,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711372-6973",
+    "id": "mkt-1794962465530-6857",
     "name": "MARIA",
     "phone": "",
     "phone_digits": "",
@@ -700,11 +746,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711372-9985",
+    "id": "mkt-1794962465530-3436",
     "name": "carla",
     "phone": "",
     "phone_digits": "",
@@ -725,11 +771,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711372-1467",
+    "id": "mkt-1794962465530-5580",
     "name": "MORGANA",
     "phone": "",
     "phone_digits": "",
@@ -748,11 +794,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711372-6916",
+    "id": "mkt-1794962465530-3762",
     "name": "julia suelen",
     "phone": "",
     "phone_digits": "",
@@ -771,11 +817,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.372Z",
-    "updated_at": "2026-11-14T01:11:51.372Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711373-9916",
+    "id": "mkt-1794962465530-103",
     "name": "luciane",
     "phone": "",
     "phone_digits": "",
@@ -794,11 +840,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.373Z",
-    "updated_at": "2026-11-14T01:11:51.373Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711373-1760",
+    "id": "mkt-1794962465530-8764",
     "name": "aline",
     "phone": "",
     "phone_digits": "",
@@ -817,11 +863,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.373Z",
-    "updated_at": "2026-11-14T01:11:51.373Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711373-3402",
+    "id": "mkt-1794962465530-9663",
     "name": "LETICIA",
     "phone": "",
     "phone_digits": "",
@@ -840,11 +886,11 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.373Z",
-    "updated_at": "2026-11-14T01:11:51.373Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   },
   {
-    "id": "mkt-1794618711373-9227",
+    "id": "mkt-1794962465530-8281",
     "name": "JULIANA",
     "phone": "",
     "phone_digits": "",
@@ -863,7 +909,7 @@
     ],
     "notes": "",
     "opted_out": false,
-    "created_at": "2026-11-14T01:11:51.373Z",
-    "updated_at": "2026-11-14T01:11:51.373Z"
+    "created_at": "2026-11-18T00:41:05.530Z",
+    "updated_at": "2026-11-18T00:41:05.530Z"
   }
 ]
