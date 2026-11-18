@@ -76,7 +76,7 @@ export function CustomerChatWidget() {
   }
 
   // Número do WhatsApp oficial da loja
-  const rawPhone = siteInfo.phone ? siteInfo.phone.replace(/\D/g, '') : '19783139452';
+  const rawPhone = siteInfo.phone ? siteInfo.phone.replace(/\D/g, '') : '19787987934';
   const whatsappNumber = rawPhone.length === 10 ? `1${rawPhone}` : rawPhone;
 
   const handleOpenChat = () => {

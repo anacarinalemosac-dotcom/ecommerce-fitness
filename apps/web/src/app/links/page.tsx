@@ -74,7 +74,7 @@ function LinksContent() {
   const matchedSeller = OFFICIAL_SELLERS.find((s) => s.coupon.toUpperCase() === refCode);
 
   // Links dinâmicos da loja
-  const rawWhatsApp = (siteInfo.whatsapp || '+19783139452').replace(/[^0-9]/g, '');
+  const rawWhatsApp = (siteInfo.whatsapp || '+19787987934').replace(/[^0-9]/g, '');
   const telegramTrainingUrl = (siteInfo as any).telegramUrl || 'https://t.me/+anafitness_treinamento';
   const instagramUrl = siteInfo.instagramUrl || 'https://www.instagram.com/anafitnessweareua';
   const emailContact = 'anafitweareua@gmail.com';

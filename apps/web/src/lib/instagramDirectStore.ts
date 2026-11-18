@@ -78,7 +78,7 @@ export const DEFAULT_RULES: InstagramDirectRule[] = [
     name: 'Endereço & Showroom Físico (Leominster)',
     triggerType: 'keywords',
     keywords: ['endereco', 'endereço', 'onde fica', 'showroom', 'loja fisica', 'loja física', 'leominster', 'provar', 'retirar', 'visitar'],
-    replyText: 'Nosso Showroom fica localizado em Leominster, Massachusetts! 📍 Você é super bem-vinda para provar as peças pessoalmente. Para agendar sua visita, nos avise aqui ou chame no WhatsApp +1 (978) 313-9452!',
+    replyText: 'Nosso Showroom fica localizado em Leominster, Massachusetts! 📍 Você é super bem-vinda para provar as peças pessoalmente. Para agendar sua visita, nos avise aqui ou chame no WhatsApp +1 (978) 798-7934!',
     enabled: true,
   },
   {
@@ -102,7 +102,7 @@ export const DEFAULT_RULES: InstagramDirectRule[] = [
     name: 'Formas de Pagamento & Zelle',
     triggerType: 'keywords',
     keywords: ['pagamento', 'pagar', 'zelle', 'venmo', 'cartao', 'cartão', 'parcela', 'crediario', 'crediário'],
-    replyText: 'Aceitamos Zelle (+1 978 313-9452 ou anafitweareua@gmail.com), Venmo (@Accleaningproservices), Cartão de Crédito/Apple Pay no site e Crediário facilitado no Showroom! 💳✨',
+    replyText: 'Aceitamos Zelle (+1 978 798-7934 ou anafitweareua@gmail.com), Venmo (@Accleaningproservices), Cartão de Crédito/Apple Pay no site e Crediário facilitado no Showroom! 💳✨',
     enabled: true,
   },
 ];

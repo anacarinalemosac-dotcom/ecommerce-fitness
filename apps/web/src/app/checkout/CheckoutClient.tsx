@@ -92,8 +92,8 @@ export default function CheckoutPage() {
   const [isDirectCheckout, setIsDirectCheckout] = useState(false);
 
   // Link contextualizado para o cliente tirar dúvidas com a Ana Carina no WhatsApp
-  const storePhoneFormatted = siteInfo?.phone || '+1 (978) 313-9452';
-  const rawWhatsApp = (siteInfo?.whatsapp || '19783139452').replace(/\D/g, '');
+  const storePhoneFormatted = siteInfo?.phone || '+1 (978) 798-7934';
+  const rawWhatsApp = (siteInfo?.whatsapp || '19787987934').replace(/\D/g, '');
   const itemDetailStr = cartItem
     ? `${cartItem.title} (${lang === 'pt' ? 'Tamanho' : 'Size'}: ${cartItem.size}, ${lang === 'pt' ? 'Cor' : 'Color'}: ${cartItem.color})`
     : (lang === 'pt' ? 'minha compra' : 'my purchase');
@@ -102,7 +102,7 @@ export default function CheckoutPage() {
     ? `Olá, Ana Carina! Estou na página de checkout da Ana Fitness Wear com o item "${itemDetailStr}" e tenho uma dúvida com relação ao meu pedido.`
     : `Hello Ana Carina! I am on the checkout page of Ana Fitness Wear with "${itemDetailStr}" and would like to ask a question regarding my order.`;
 
-  const whatsappCheckoutUrl = `https://wa.me/${rawWhatsApp || '19783139452'}?text=${encodeURIComponent(whatsappDoubtMsg)}`;
+  const whatsappCheckoutUrl = `https://wa.me/${rawWhatsApp || '19787987934'}?text=${encodeURIComponent(whatsappDoubtMsg)}`;
 
   // Endereço de Envio nos EUA
   const [shippingForm, setShippingForm] = useState({
@@ -804,7 +804,7 @@ export default function CheckoutPage() {
             payment_method: paymentMethod.toLowerCase(),
             customer_name: `${shippingForm.firstName || 'Cliente'} ${shippingForm.lastName || 'Online'}`,
             customer_email: shippingForm.email || 'cliente@exemplo.com',
-            customer_phone: shippingForm.phone || '+1 978 313-9452',
+            customer_phone: shippingForm.phone || '+1 978 798-7934',
             delivery_method: deliveryMethod,
             shipping_fee: shippingRate,
             shipping_address: effectiveShippingAddress,
@@ -907,7 +907,7 @@ export default function CheckoutPage() {
           channel: 'ONLINE',
           customer_name: `${shippingForm.firstName || 'Cliente'} ${shippingForm.lastName || 'Online'}`,
           customer_email: shippingForm.email || 'cliente@exemplo.com',
-          customer_phone: shippingForm.phone || '+1 978 313-9452',
+          customer_phone: shippingForm.phone || '+1 978 798-7934',
           delivery_method: deliveryMethod,
           shipping_address: effectiveShippingAddress,
           seller_name: couponSellerInfo ? couponSellerInfo.name : 'Loja Oficial Online',
@@ -968,7 +968,7 @@ export default function CheckoutPage() {
       channel: 'ONLINE',
       customer_name: `${shippingForm.firstName || 'Cliente'} ${shippingForm.lastName || 'Online'}`.trim(),
       customer_email: shippingForm.email || 'cliente@exemplo.com',
-      customer_phone: shippingForm.phone || '+1 978 313-9452',
+      customer_phone: shippingForm.phone || '+1 978 798-7934',
       delivery_method: deliveryMethod,
       shipping_address: effectiveShippingAddress,
       payment_method: paymentMethod,
@@ -1059,8 +1059,8 @@ export default function CheckoutPage() {
                 <p><strong>{lang === 'pt' ? 'Frete' : 'Shipping'}:</strong> <span className="text-emerald-700 font-bold">{lang === 'pt' ? 'GRÁTIS ($0.00)' : 'FREE ($0.00)'}</span></p>
                 <p className="text-[11px] text-amber-800 font-bold">
                   {lang === 'pt'
-                    ? '✓ Seu pedido está sendo separado no atelier. Avisaremos via WhatsApp no (978) 313-9452 quando estiver pronto para retirada!'
-                    : '✓ Your order is being prepared at the atelier. We will notify you via WhatsApp at (978) 313-9452 when ready!'}
+                    ? '✓ Seu pedido está sendo separado no atelier. Avisaremos via WhatsApp no (978) 798-7934 quando estiver pronto para retirada!'
+                    : '✓ Your order is being prepared at the atelier. We will notify you via WhatsApp at (978) 798-7934 when ready!'}
                 </p>
               </>
             ) : (
@@ -1149,7 +1149,7 @@ export default function CheckoutPage() {
             <span>{lang === 'pt' ? 'VER NA MINHA CONTA / HISTÓRICO' : 'VIEW IN MY ACCOUNT / ORDERS'}</span>
           </Link>
           <a
-            href={`https://wa.me/${rawWhatsApp || '19783139452'}?text=${encodeURIComponent(
+            href={`https://wa.me/${rawWhatsApp || '19787987934'}?text=${encodeURIComponent(
               lang === 'pt'
                 ? `Olá, Ana Carina! Acabei de realizar o pedido #${orderComplete} na loja online da Ana Fitness Wear e gostaria de falar com você sobre o pedido.`
                 : `Hello Ana Carina! I just placed order #${orderComplete} on the Ana Fitness Wear website and would like to chat regarding my order.`
@@ -1795,8 +1795,8 @@ export default function CheckoutPage() {
                   </p>
                   <p className="text-[11px] leading-relaxed text-white/80">
                     {lang === 'pt'
-                      ? 'Não há custo de frete. Seu pedido será preparado no showroom assim que o pagamento for confirmado. Entraremos em contato via WhatsApp no (978) 313-9452 para combinar o melhor horário para você buscar suas peças com tranquilidade!'
-                      : 'No shipping fee. Your order is prepared at the showroom as soon as payment is confirmed. We will contact you via WhatsApp at (978) 313-9452 to arrange the most convenient time for your pickup!'}
+                      ? 'Não há custo de frete. Seu pedido será preparado no showroom assim que o pagamento for confirmado. Entraremos em contato via WhatsApp no (978) 798-7934 para combinar o melhor horário para você buscar suas peças com tranquilidade!'
+                      : 'No shipping fee. Your order is prepared at the showroom as soon as payment is confirmed. We will contact you via WhatsApp at (978) 798-7934 to arrange the most convenient time for your pickup!'}
                   </p>
                 </div>
               </div>
@@ -2447,7 +2447,7 @@ export default function CheckoutPage() {
                   {lang === 'pt'
                     ? 'Envie o valor exato para o Zelle oficial da loja: '
                     : 'Send the exact amount to our official store Zelle: '}
-                  <strong className="text-deep-black font-mono font-bold">+1 (978) 313-9452</strong> ou <strong className="text-deep-black font-mono">anafitweareua@gmail.com</strong>.
+                  <strong className="text-deep-black font-mono font-bold">+1 (978) 798-7934</strong> ou <strong className="text-deep-black font-mono">anafitweareua@gmail.com</strong>.
                 </p>
                 <p className="text-[10px] text-deep-black/60 uppercase">
                   {lang === 'pt'
@@ -2456,7 +2456,7 @@ export default function CheckoutPage() {
                 </p>
                 <div className="pt-1">
                   <a
-                    href={`https://wa.me/${rawWhatsApp || '19783139452'}?text=${encodeURIComponent(
+                    href={`https://wa.me/${rawWhatsApp || '19787987934'}?text=${encodeURIComponent(
                       lang === 'pt'
                         ? `Olá, Ana Carina! Estou finalizando meu pedido via Zelle no valor de $${total.toFixed(2)} e gostaria de tirar uma dúvida ou enviar o comprovante.`
                         : `Hello Ana Carina! I am paying via Zelle for $${total.toFixed(2)} and would like to confirm details or send my receipt.`
@@ -2533,7 +2533,7 @@ export default function CheckoutPage() {
                     <span>{lang === 'pt' ? 'COPIAR @' : 'COPY @'}</span>
                   </button>
                   <a
-                    href={`https://wa.me/${rawWhatsApp || '19783139452'}?text=${encodeURIComponent(
+                    href={`https://wa.me/${rawWhatsApp || '19787987934'}?text=${encodeURIComponent(
                       lang === 'pt'
                         ? `Olá, Ana Carina! Estou finalizando meu pedido via Venmo (@Accleaningproservices) no valor de $${total.toFixed(2)} e gostaria de tirar uma dúvida ou enviar o comprovante.`
                         : `Hello Ana Carina! I am paying via Venmo (@Accleaningproservices) for $${total.toFixed(2)} and would like to confirm details or send my receipt.`
@@ -2619,7 +2619,7 @@ export default function CheckoutPage() {
                     <span>{lang === 'pt' ? 'COPIAR $CASHTAG' : 'COPY $CASHTAG'}</span>
                   </button>
                   <a
-                    href={`https://wa.me/${rawWhatsApp || '19783139452'}?text=${encodeURIComponent(
+                    href={`https://wa.me/${rawWhatsApp || '19787987934'}?text=${encodeURIComponent(
                       lang === 'pt'
                         ? `Olá, Ana Carina! Estou finalizando meu pedido via Cash App (${cashAppHandleNormalized}) no valor de $${total.toFixed(2)} e gostaria de tirar uma dúvida ou enviar o comprovante.`
                         : `Hello Ana Carina! I am paying via Cash App (${cashAppHandleNormalized}) for $${total.toFixed(2)} and would like to confirm details or send my receipt.`

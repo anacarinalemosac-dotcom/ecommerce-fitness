@@ -458,7 +458,7 @@ export function EditSaleModal({
                 <label className="text-[9.5px] font-black text-deep-black">Telefone / WhatsApp</label>
                 <input
                   type="text"
-                  placeholder="(978) 313-9452"
+                  placeholder="(978) 798-7934"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   className="w-full p-2.5 border-2 border-deep-black font-mono font-bold text-xs focus:outline-none focus:border-gold"

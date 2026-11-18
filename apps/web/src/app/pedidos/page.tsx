@@ -273,7 +273,7 @@ export default function OrderLookupPage() {
                 <span>{lang === 'pt' ? 'IMPRIMIR RECIBO' : 'PRINT INVOICE'}</span>
               </button>
               <a
-                href={`https://wa.me/19783139452?text=Hello%2C%20I%20have%20a%20question%20about%20my%20order%20%23${orderData.order_id}`}
+                href={`https://wa.me/19787987934?text=Hello%2C%20I%20have%20a%20question%20about%20my%20order%20%23${orderData.order_id}`}
                 target="_blank"
                 rel="noreferrer"
                 className="px-4 py-2 bg-gold hover:bg-deep-black hover:text-gold text-deep-black text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 shadow"

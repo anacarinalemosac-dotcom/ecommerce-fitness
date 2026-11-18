@@ -185,8 +185,8 @@ function StripeSuccessContent() {
             <span>✉</span>
             <span>
               {lang === 'pt'
-                ? 'E-mail de confirmação enviado para você! Se escolheu retirada no showroom, avisaremos no WhatsApp (+1 978 313-9452) assim que suas peças estiverem prontas. Se escolheu entrega, você receberá o código de rastreamento USPS.'
-                : 'Confirmation email sent! If you selected showroom pickup, we will notify you on WhatsApp (+1 978 313-9452) when ready. If delivery was selected, your USPS tracking code will follow.'}
+                ? 'E-mail de confirmação enviado para você! Se escolheu retirada no showroom, avisaremos no WhatsApp (+1 978 798-7934) assim que suas peças estiverem prontas. Se escolheu entrega, você receberá o código de rastreamento USPS.'
+                : 'Confirmation email sent! If you selected showroom pickup, we will notify you on WhatsApp (+1 978 798-7934) when ready. If delivery was selected, your USPS tracking code will follow.'}
             </span>
           </div>
         </div>
@@ -221,7 +221,7 @@ function StripeSuccessContent() {
           {lang === 'pt' ? 'VOLTAR À LOJA' : 'RETURN TO SHOP'}
         </Link>
         <a
-          href={`https://wa.me/19783139452?text=Hello%2C%20I%20just%20placed%20order%20%23${orderId}%20via%20Stripe.`}
+          href={`https://wa.me/19787987934?text=Hello%2C%20I%20just%20placed%20order%20%23${orderId}%20via%20Stripe.`}
           target="_blank"
           rel="noopener noreferrer"
           className="px-6 py-4 border-2 border-deep-black text-deep-black hover:bg-deep-black hover:text-white text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2"

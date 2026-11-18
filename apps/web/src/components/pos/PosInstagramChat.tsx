@@ -483,7 +483,7 @@ export function PosInstagramChat({ className = '' }: PosInstagramChatProps) {
               <button
                 type="button"
                 onClick={() =>
-                  setInputText('💵 Aceitamos Zelle (+1 978 313-9452), Venmo, Cartão ou Crediário da Loja!')
+                  setInputText('💵 Aceitamos Zelle (+1 978 798-7934), Venmo, Cartão ou Crediário da Loja!')
                 }
                 className="px-2 py-0.5 bg-zinc-900 hover:bg-gold hover:text-black border border-zinc-800 text-gray-300 whitespace-nowrap transition text-[9px] font-bold"
               >

@@ -62,8 +62,8 @@ export function HighDemandPopup() {
 
   const isPt = lang === 'pt';
   const whatsappUrl = isPt
-    ? 'https://wa.me/19783139452?text=Ol%C3%A1%21%20Vi%20o%20aviso%20de%20alta%20demanda%20no%20site.%20Gostaria%20de%20saber%20quais%20produtos%20e%20tamanhos%20est%C3%A3o%20dispon%C3%ADveis%20%C3%A0%20pronta%20entrega.'
-    : 'https://wa.me/19783139452?text=Hello%21%20I%20saw%20the%20high-demand%20notice%20on%20the%20website.%20I%20would%20like%20to%20know%20which%20pieces%20and%20sizes%20are%20currently%20available.';
+    ? 'https://wa.me/19787987934?text=Ol%C3%A1%21%20Vi%20o%20aviso%20de%20alta%20demanda%20no%20site.%20Gostaria%20de%20saber%20quais%20produtos%20e%20tamanhos%20est%C3%A3o%20dispon%C3%ADveis%20%C3%A0%20pronta%20entrega.'
+    : 'https://wa.me/19787987934?text=Hello%21%20I%20saw%20the%20high-demand%20notice%20on%20the%20website.%20I%20would%20like%20to%20know%20which%20pieces%20and%20sizes%20are%20currently%20available.';
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-3 sm:p-6 transition-all duration-300">
@@ -116,8 +116,8 @@ export function HighDemandPopup() {
           <div className="p-4 bg-white/[0.04] border-l-4 border-gold rounded-r-xl shadow-inner">
             <p className="text-sm sm:text-base text-gray-100 leading-relaxed font-semibold">
               &ldquo;{isPt
-                ? 'Não estamos conseguindo atualizar nossos produtos no site devido à alta demanda de venda. Entre em contato com nosso WhatsApp para saber mais sobre quais produtos temos disponível: (978) 313-9452'
-                : 'Due to high order volume, we are unable to update all products on the site in real-time. Please contact our WhatsApp to check available inventory: (978) 313-9452'
+                ? 'Não estamos conseguindo atualizar nossos produtos no site devido à alta demanda de venda. Entre em contato com nosso WhatsApp para saber mais sobre quais produtos temos disponível: (978) 798-7934'
+                : 'Due to high order volume, we are unable to update all products on the site in real-time. Please contact our WhatsApp to check available inventory: (978) 798-7934'
               }&rdquo;
             </p>
           </div>
@@ -148,7 +148,7 @@ export function HighDemandPopup() {
               className="flex-1 inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-xs sm:text-sm uppercase tracking-wider py-3.5 px-5 rounded-xl shadow-[0_4px_20px_rgba(16,185,129,0.35)] transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-center"
             >
               <MessageCircle className="w-5 h-5 shrink-0" />
-              <span>{isPt ? 'Falar no WhatsApp • (978) 313-9452' : 'Chat on WhatsApp • (978) 313-9452'}</span>
+              <span>{isPt ? 'Falar no WhatsApp • (978) 798-7934' : 'Chat on WhatsApp • (978) 798-7934'}</span>
             </a>
 
             <button

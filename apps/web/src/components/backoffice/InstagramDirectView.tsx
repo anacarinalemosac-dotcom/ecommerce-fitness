@@ -756,7 +756,7 @@ export function InstagramDirectView() {
                   type="button"
                   onClick={() =>
                     handleSendQuickReply(
-                      'Nosso Showroom fica localizado em Leominster, Massachusetts! 📍 Você é super bem-vinda para provar as peças pessoalmente. Para agendar seu horário de hoje, nos chame no WhatsApp +1 (978) 313-9452!'
+                      'Nosso Showroom fica localizado em Leominster, Massachusetts! 📍 Você é super bem-vinda para provar as peças pessoalmente. Para agendar seu horário de hoje, nos chame no WhatsApp +1 (978) 798-7934!'
                     )
                   }
                   className="px-2.5 py-1 bg-zinc-900 hover:bg-gold hover:text-black border border-zinc-800 hover:border-gold text-gray-300 whitespace-nowrap transition font-semibold"
@@ -778,7 +778,7 @@ export function InstagramDirectView() {
                   type="button"
                   onClick={() =>
                     handleSendQuickReply(
-                      'Aceitamos Zelle oficial no número +1 (978) 313-9452 ou e-mail anafitweareua@gmail.com, além de Venmo, Cartão de Crédito e Crediário no Showroom! 💳'
+                      'Aceitamos Zelle oficial no número +1 (978) 798-7934 ou e-mail anafitweareua@gmail.com, além de Venmo, Cartão de Crédito e Crediário no Showroom! 💳'
                     )
                   }
                   className="px-2.5 py-1 bg-zinc-900 hover:bg-gold hover:text-black border border-zinc-800 hover:border-gold text-gray-300 whitespace-nowrap transition font-semibold"

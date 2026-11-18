@@ -98,7 +98,7 @@ export function ShippingLabelModal({
   const formattedFullAddress = fullAddressLines.join('\n');
 
   // Remetente oficial (Ana Fitness Wear LLC)
-  const senderAddress = `ANA FITNESS WEAR LLC\n126 FIRST ST, APT 01\nLEOMINSTER, MA 01453\nUNITED STATES\nTEL: (978) 313-9452`;
+  const senderAddress = `ANA FITNESS WEAR LLC\n126 FIRST ST, APT 01\nLEOMINSTER, MA 01453\nUNITED STATES\nTEL: (978) 798-7934`;
 
   const handleCopy = (text: string, key: string) => {
     if (!text) return;

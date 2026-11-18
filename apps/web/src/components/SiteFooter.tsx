@@ -128,7 +128,7 @@ export function SiteFooter() {
               </div>
               <div className="flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-gold shrink-0" />
-                <span>{siteInfo.phone || '+1 (978) 313-9452'}</span>
+                <span>{siteInfo.phone || '+1 (978) 798-7934'}</span>
               </div>
               <a
                 href={siteInfo.instagramUrl || 'https://www.instagram.com/anafitnessweareua'}

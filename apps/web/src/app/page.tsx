@@ -2105,7 +2105,7 @@ export default function HomePage() {
                 {siteInfo.address ? siteInfo.address.split('•')[0].trim().toUpperCase() : 'LEOMINSTER, MA ATELIER'}
               </h4>
               <p className="text-[10px] text-white/70 uppercase leading-relaxed">
-                Headquarters and showroom based in {siteInfo.address || 'Leominster, MA 01453'}. WhatsApp: {siteInfo.phone || '+1 (978) 313-9452'}.
+                Headquarters and showroom based in {siteInfo.address || 'Leominster, MA 01453'}. WhatsApp: {siteInfo.phone || '+1 (978) 798-7934'}.
               </p>
             </div>
           </div>

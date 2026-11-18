@@ -153,7 +153,7 @@ export function AppearanceCmsView({ initialSubTab }: AppearanceCmsViewProps = {}
     aboutUsText: siteInfo.aboutUsText || 'A ANA FITNESS WEAR LLC nasceu em Leominster, Massachusetts, criada para atender a mulher que busca performance atlética sem abrir mão da sofisticação e elegância. Peças com zero transparência, compressão anatômica 4-way e tecidos tecnológicos de padrão internacional.',
     returnPolicyText: siteInfo.returnPolicyText || 'Você tem até 30 dias corridos após o recebimento para solicitar troca ou devolução. As peças devem estar em perfeito estado, sem uso, com as etiquetas originais afixadas e na embalagem original.',
     shippingPolicyText: siteInfo.shippingPolicyText || 'Enviamos para todos os 50 estados dos Estados Unidos via USPS Priority Mail com taxa fixa de $9.99. O prazo de postagem para pronta-entrega é de até 24h úteis. Peças confeccionadas sob medida possuem prazo de produção informado na compra.',
-    contactText: siteInfo.contactText || 'Nosso atendimento oficial está disponível de Segunda a Sexta, das 9h às 18h (EST). WhatsApp: +1 (978) 313-9452 • E-mail: anafitweareua@gmail.com • Leominster, MA.',
+    contactText: siteInfo.contactText || 'Nosso atendimento oficial está disponível de Segunda a Sexta, das 9h às 18h (EST). WhatsApp: +1 (978) 798-7934 • E-mail: anafitweareua@gmail.com • Leominster, MA.',
   });
 
   // Atualiza estados locais quando siteInfo/siteImages forem atualizados pelo servidor
@@ -959,7 +959,7 @@ export function AppearanceCmsView({ initialSubTab }: AppearanceCmsViewProps = {}
                     type="text"
                     value={promoBanner.ctaLink}
                     onChange={(e) => setPromoBanner({ ...promoBanner, ctaLink: e.target.value })}
-                    placeholder="Ex: https://wa.me/19783139452 ou /checkout"
+                    placeholder="Ex: https://wa.me/19787987934 ou /checkout"
                     className="w-full px-3 py-2 border border-deep-black/30 text-xs font-mono focus:outline-none focus:border-deep-black"
                   />
                 </div>

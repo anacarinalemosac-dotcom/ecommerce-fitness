@@ -432,13 +432,13 @@ export default function PublicClientCatalogPage() {
   const handleShareWhatsApp = () => {
     if (typeof window === 'undefined') return;
     const url = window.location.href;
-    const phone = siteInfo.whatsapp ? siteInfo.whatsapp.replace(/\D/g, '') : '19783139452';
+    const phone = siteInfo.whatsapp ? siteInfo.whatsapp.replace(/\D/g, '') : '19787987934';
     const text = `Olá! Confira nosso Catálogo Completo de Pronta Entrega com todas as peças, fotos e tamanhos disponíveis:\n\n${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const createWhatsAppOrderLink = (item: CatalogVariationTile) => {
-    const phone = siteInfo.whatsapp ? siteInfo.whatsapp.replace(/\D/g, '') : '19783139452';
+    const phone = siteInfo.whatsapp ? siteInfo.whatsapp.replace(/\D/g, '') : '19787987934';
     const availableSizesText = item.sortedSizes
       .filter((s) => (item.stockMap[s] || 0) > 0)
       .join(', ');
@@ -645,12 +645,12 @@ export default function PublicClientCatalogPage() {
 
           <div className="text-left md:text-right space-y-1.5">
             <a
-              href={`https://wa.me/${siteInfo?.whatsapp ? siteInfo.whatsapp.replace(/\D/g, '') : '19783139452'}`}
+              href={`https://wa.me/${siteInfo?.whatsapp ? siteInfo.whatsapp.replace(/\D/g, '') : '19787987934'}`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#25d366] text-black font-black text-xs hover:bg-emerald-500 transition shadow-sm"
             >
-              <span>📲 PEDIDOS WHATSAPP: {siteInfo?.whatsapp || siteInfo?.phone || '+1 (978) 313-9452'}</span>
+              <span>📲 PEDIDOS WHATSAPP: {siteInfo?.whatsapp || siteInfo?.phone || '+1 (978) 798-7934'}</span>
             </a>
             <div className="text-[10px] text-gold font-bold uppercase tracking-wider">
               {siteInfo?.address || 'Showroom Leominster, MA'} • FRETE FIXO $9.90 P/ TODOS OS EUA
@@ -868,7 +868,7 @@ export default function PublicClientCatalogPage() {
             {siteInfo?.storeName || 'ANA FITNESS WEAR'} • LEOMINSTER, MASSACHUSETTS, EUA
           </p>
           <p>
-            Envie a foto ou o nome da peça desejada para nosso WhatsApp {siteInfo?.whatsapp || '+1 (978) 313-9452'} para reservar seu pedido com envio expresso via USPS para todos os EUA!
+            Envie a foto ou o nome da peça desejada para nosso WhatsApp {siteInfo?.whatsapp || '+1 (978) 798-7934'} para reservar seu pedido com envio expresso via USPS para todos os EUA!
           </p>
         </footer>
       </main>

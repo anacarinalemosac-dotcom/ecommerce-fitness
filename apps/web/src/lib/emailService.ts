@@ -228,7 +228,7 @@ export function generateOrderConfirmationHtml(order: any): string {
                 </p>
                 <p style="font-size: 12px; color: #d4af37; margin: 0; font-weight: 600;">
                   ${isPickup
-                    ? 'Dúvidas ou agendamento de horário? Chame no WhatsApp: +1 (978) 313-9452'
+                    ? 'Dúvidas ou agendamento de horário? Chame no WhatsApp: +1 (978) 798-7934'
                     : 'Assim que o pacote for coletado, você receberá um novo e-mail com o código de rastreio para acompanhar a entrega!'}
                 </p>
               </div>
@@ -251,7 +251,7 @@ export function generateOrderConfirmationHtml(order: any): string {
               </div>
               <div>Leominster, MA &bull; United States</div>
               <div style="margin-top: 6px;">
-                Suporte WhatsApp: <a href="https://wa.me/19783139452" style="color: #111; font-weight: 700; text-decoration: none;">+1 (978) 313-9452</a>
+                Suporte WhatsApp: <a href="https://wa.me/19787987934" style="color: #111; font-weight: 700; text-decoration: none;">+1 (978) 798-7934</a>
               </div>
               <div style="margin-top: 10px; font-size: 11px; color: #999;">
                 Obrigado por vestir a nossa essência fitness premium!
@@ -427,7 +427,7 @@ export function generateShippingConfirmationHtml(order: any, trackingCode: strin
               </div>
               <div>Leominster, MA &bull; United States</div>
               <div style="margin-top: 6px;">
-                Dúvidas sobre o envio? WhatsApp: <a href="https://wa.me/19783139452" style="color: #111; font-weight: 700; text-decoration: none;">+1 (978) 313-9452</a>
+                Dúvidas sobre o envio? WhatsApp: <a href="https://wa.me/19787987934" style="color: #111; font-weight: 700; text-decoration: none;">+1 (978) 798-7934</a>
               </div>
             </td>
           </tr>
@@ -1283,7 +1283,7 @@ export function generateReviewRewardCouponHtml(customerName: string, couponCode:
               </div>
               <div>Showroom & Concierge: Leominster, MA &bull; United States</div>
               <div style="margin-top: 6px;">
-                Atendimento VIP via WhatsApp: <a href="https://wa.me/19783139452" style="color: #111; font-weight: 700; text-decoration: none;">+1 (978) 313-9452</a>
+                Atendimento VIP via WhatsApp: <a href="https://wa.me/19787987934" style="color: #111; font-weight: 700; text-decoration: none;">+1 (978) 798-7934</a>
               </div>
             </td>
           </tr>
@@ -1431,7 +1431,7 @@ export function generatePostDeliveryReviewEmailHtml(order: any): string {
               </div>
               <div>Leominster, MA &bull; United States</div>
               <div style="margin-top: 6px;">
-                Atendimento VIP WhatsApp: <a href="https://wa.me/19783139452" style="color: #111; font-weight: 700; text-decoration: none;">+1 (978) 313-9452</a>
+                Atendimento VIP WhatsApp: <a href="https://wa.me/19787987934" style="color: #111; font-weight: 700; text-decoration: none;">+1 (978) 798-7934</a>
               </div>
             </td>
           </tr>
@@ -1521,7 +1521,7 @@ export async function sendMarketingLaunchEmail(opts: {
           <tr>
             <td style="background:#f2f2f2; padding:18px; text-align:center; font-size:11px; color:#666; border-top:1px solid #e5e5e5;">
               ANA FITNESS WEAR LLC &bull; Leominster, MA<br/>
-              WhatsApp VIP: <a href="https://wa.me/19783139452" style="color:#111; font-weight:700;">+1 (978) 313-9452</a>
+              WhatsApp VIP: <a href="https://wa.me/19787987934" style="color:#111; font-weight:700;">+1 (978) 798-7934</a>
             </td>
           </tr>
         </table>

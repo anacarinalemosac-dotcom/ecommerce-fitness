@@ -1077,7 +1077,7 @@ export function DashboardMetricsView({
                     {cartStats.abandonedCarts.map((c: any, cIdx: number) => {
                       const summaryText = c.items?.map((it: any) => `${it.title} (${it.size})`).join(', ') || 'peças da sua sacola';
                       const waText = `Olá${c.customerName ? ` ${c.customerName}` : ''}! Vi que você escolheu ${summaryText} na Ana Fitness Wear mas não concluiu o pedido. Posso te ajudar a finalizar com envio rápido dos Correios ou tirar alguma dúvida sobre o tamanho?`;
-                      const waPhone = (c.customerPhone || '19783139452').replace(/\D/g, '');
+                      const waPhone = (c.customerPhone || '19787987934').replace(/\D/g, '');
                       const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(waText)}`;
 
                       return (

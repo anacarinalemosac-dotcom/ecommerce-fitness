@@ -57,7 +57,7 @@ const INITIAL_CUSTOMERS: CustomerRecord[] = [
     id: 'cust-003',
     name: 'Ana Carina',
     email: 'anafitweareua@gmail.com',
-    phone: '+1 (978) 313-9452',
+    phone: '+1 (978) 798-7934',
     password: '123',
     shipping_address: {
       address: '100 Main St',
@@ -72,7 +72,7 @@ const INITIAL_CUSTOMERS: CustomerRecord[] = [
     id: 'cust-004',
     name: 'Ana Lemos',
     email: 'alexfragamiranda@gmail.com',
-    phone: '+1 (978) 313-9452',
+    phone: '+1 (978) 798-7934',
     password: '123',
     shipping_address: {
       address: '126 First St',

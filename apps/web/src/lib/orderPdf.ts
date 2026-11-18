@@ -292,7 +292,7 @@ export async function createOrderPdfDocument(order: any, options: OrderPdfOption
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(215, 215, 215);
-      doc.text('Showroom: Leominster, MA 01453  |  WhatsApp: +1 (978) 313-9452  |  www.anafitwear.com', margin, 28);
+      doc.text('Showroom: Leominster, MA 01453  |  WhatsApp: +1 (978) 798-7934  |  www.anafitwear.com', margin, 28);
 
       // Bloco direito no cabeçalho
       doc.setFont('helvetica', 'bold');
@@ -575,8 +575,8 @@ export async function createOrderPdfDocument(order: any, options: OrderPdfOption
   const guaranteeLines = doc.splitTextToSize(
     toPdfText(
       lang === 'pt'
-        ? 'Você tem 30 dias para trocas simples. Qualquer dúvida sobre seu pedido ou rastreamento USPS, chame a Ana Carina no WhatsApp +1 (978) 313-9452.'
-        : '30-day hassle-free exchanges. For questions regarding your pieces or USPS tracking, contact us on WhatsApp at +1 (978) 313-9452.'
+        ? 'Você tem 30 dias para trocas simples. Qualquer dúvida sobre seu pedido ou rastreamento USPS, chame a Ana Carina no WhatsApp +1 (978) 798-7934.'
+        : '30-day hassle-free exchanges. For questions regarding your pieces or USPS tracking, contact us on WhatsApp at +1 (978) 798-7934.'
     ),
     contentWidth - boxWidth - 8
   );

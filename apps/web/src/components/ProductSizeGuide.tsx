@@ -215,7 +215,7 @@ export function ProductSizeGuide({
     }
   };
 
-  const cleanWhatsapp = (siteInfo.whatsapp || siteInfo.phone || '19783139452').replace(/\D/g, '');
+  const cleanWhatsapp = (siteInfo.whatsapp || siteInfo.phone || '19787987934').replace(/\D/g, '');
   const whatsappUrl = `https://wa.me/${cleanWhatsapp}?text=${encodeURIComponent(
     lang === 'pt'
       ? 'Olá! Gostaria de ajuda para escolher o tamanho ideal na Ana Fitness Wear.'

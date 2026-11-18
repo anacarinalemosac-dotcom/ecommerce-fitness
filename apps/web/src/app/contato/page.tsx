@@ -19,8 +19,8 @@ export default function ContatoPage() {
     message: '',
   });
 
-  const storePhone = siteInfo.phone || '+1 (978) 313-9452';
-  const cleanPhone = (siteInfo.whatsapp || siteInfo.phone || '19783139452').replace(/\D/g, '');
+  const storePhone = siteInfo.phone || '+1 (978) 798-7934';
+  const cleanPhone = (siteInfo.whatsapp || siteInfo.phone || '19787987934').replace(/\D/g, '');
   const storeAddress = siteInfo.address || 'Leominster, MA 01453 • United States';
   const storeInstagram = siteInfo.instagram || '@anafitnessweareua';
   const storeInstagramUrl = siteInfo.instagramUrl || 'https://www.instagram.com/anafitnessweareua';

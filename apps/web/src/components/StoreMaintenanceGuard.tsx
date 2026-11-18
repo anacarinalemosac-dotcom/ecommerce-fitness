@@ -92,7 +92,7 @@ export function StoreMaintenanceGuard({ children }: { children: React.ReactNode 
   }
 
   // TELA DE MANUTENÇÃO LUXURY PARA CLIENTES E VISITANTES COMUNS
-  const cleanWhatsapp = (siteInfo.whatsapp || '19783139452').replace(/\D/g, '');
+  const cleanWhatsapp = (siteInfo.whatsapp || '19787987934').replace(/\D/g, '');
   const whatsappUrl = `https://wa.me/${cleanWhatsapp}?text=${encodeURIComponent(
     'Olá! Vi que o site da Ana Fitness Wear está em manutenção e gostaria de tirar uma dúvida sobre os produtos.'
   )}`;

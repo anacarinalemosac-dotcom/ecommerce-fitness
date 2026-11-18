@@ -12,8 +12,8 @@ export default function TrocasEDevolucoesPage() {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
 
   const returnDays = siteInfo.returnDays || 30;
-  const storePhone = siteInfo.phone || '+1 (978) 313-9452';
-  const cleanPhone = (siteInfo.whatsapp || siteInfo.phone || '19783139452').replace(/\D/g, '');
+  const storePhone = siteInfo.phone || '+1 (978) 798-7934';
+  const cleanPhone = (siteInfo.whatsapp || siteInfo.phone || '19787987934').replace(/\D/g, '');
   const storeAddress = siteInfo.address || 'Leominster, MA 01453 • United States';
   const customPolicyText = siteInfo.returnPolicyText;
 

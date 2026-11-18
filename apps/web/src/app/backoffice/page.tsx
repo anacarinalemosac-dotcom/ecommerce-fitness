@@ -6302,7 +6302,7 @@ export default function BackofficeDashboard() {
                           {cartStats.abandonedCarts.map((c: any, idx: number) => {
                             const summaryText = c.items?.map((it: any) => `${it.title} (${it.size})`).join(', ') || 'peças da sua sacola';
                             const waText = `Olá${c.customerName ? ` ${c.customerName}` : ''}! Vi que você escolheu ${summaryText} na Ana Fitness Wear mas não concluiu o pedido. Posso te ajudar a finalizar com envio rápido dos Correios ou tirar alguma dúvida sobre o tamanho?`;
-                            const waPhone = (c.customerPhone || '19783139452').replace(/\D/g, '');
+                            const waPhone = (c.customerPhone || '19787987934').replace(/\D/g, '');
                             const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(waText)}`;
 
                             return (
@@ -6414,7 +6414,7 @@ export default function BackofficeDashboard() {
                         </span>
                         {isOrder && (
                           <a
-                            href={`https://wa.me/19783139452?text=${encodeURIComponent(`🎉 Notificação de Pedido #${evt.orderId}: ${evt.description} (Cidade: ${evt.city})`)}`}
+                            href={`https://wa.me/19787987934?text=${encodeURIComponent(`🎉 Notificação de Pedido #${evt.orderId}: ${evt.description} (Cidade: ${evt.city})`)}`}
                             target="_blank"
                             rel="noreferrer"
                             className="px-2.5 py-1 bg-gold text-deep-black font-black text-[9px] uppercase hover:bg-white transition"
@@ -7663,7 +7663,7 @@ export default function BackofficeDashboard() {
             </div>
             <div className="text-left md:text-right space-y-1">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#25d366] text-black font-black text-xs">
-                <span>📲 PEDIDOS WHATSAPP: {siteInfo?.whatsapp || siteInfo?.phone || '+1 (978) 313-9452'}</span>
+                <span>📲 PEDIDOS WHATSAPP: {siteInfo?.whatsapp || siteInfo?.phone || '+1 (978) 798-7934'}</span>
               </div>
               <div className="text-[10px] text-gray-400 font-bold uppercase">
                 {siteInfo?.address || 'Showroom Leominster, MA'} • ATUALIZADO EM {new Date().toLocaleDateString('pt-BR')}
