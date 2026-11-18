@@ -128,6 +128,7 @@ export function ProductVariantMatrixForm({
   // Visibilidade / Canais de Venda (Online & PDV)
   const [visibleOnline, setVisibleOnline] = useState(false);
   const [visiblePos, setVisiblePos] = useState(true);
+  const [featuredOnHome, setFeaturedOnHome] = useState(false);
 
   // Atributos Oficiais Wix Stores
   const [ribbon, setRibbon] = useState(''); // Fita / Selo Promocional (ex: Lançamento, Mais Vendido, Oferta)
@@ -333,6 +334,7 @@ export function ProductVariantMatrixForm({
             }
             if (isDup) {
               setVisibleOnline(false); // Inicia como rascunho por segurança
+    setFeaturedOnHome(false);
               setVisiblePos(true);
             } else {
               setVisibleOnline(parsedMeta.visible_online === true || initialProduct.visible_online === true);
@@ -373,6 +375,15 @@ export function ProductVariantMatrixForm({
             (comboPromo?.product_slugs || []).includes(initialProduct.slug))
       );
       setInComboPromo(isProdInCombo);
+
+      // Destaque na Capa do Site (⭐)
+      const isStarred = Boolean(
+        (initialProduct as any)?.featured_on_home ??
+        (initialProduct as any)?.featuredOnHome ??
+        (initialProduct as any)?.meta?.featured_on_home ??
+        (initialProduct as any)?.meta?.featuredOnHome
+      );
+      setFeaturedOnHome(isStarred);
 
       // 1. Extração do Bojo
       const loadedCupsType =
@@ -712,6 +723,7 @@ export function ProductVariantMatrixForm({
         setVariants([]);
         setVisibleOnline(false); // Novos produtos iniciam como rascunho por segurança
         setVisiblePos(true);
+        setFeaturedOnHome(false);
         setRibbon('');
         setBrand('ANA Fitness Wear');
         setGeneralSku('');
@@ -1403,6 +1415,7 @@ export function ProductVariantMatrixForm({
     setSlug(newSlug);
     if (generalSku) setGeneralSku(`${generalSku}-CP`);
     setVisibleOnline(false); // Inicia como rascunho por segurança
+    setFeaturedOnHome(false);
     setVariants((prev) =>
       prev.map((v) => ({
         ...v,
@@ -1630,6 +1643,8 @@ export function ProductVariantMatrixForm({
         })),
         visible_online: isOnline,
         visible_pos: visiblePos,
+        featured_on_home: featuredOnHome,
+        featuredOnHome: featuredOnHome,
         is_draft: forceDraft || !isOnline,
         ribbon: ribbon.trim(),
         brand: brand.trim() || 'ANA Fitness Wear',
@@ -3628,6 +3643,52 @@ export function ProductVariantMatrixForm({
                 <span className="text-deep-black/60">Status no PDV:</span>
                 <span className={visiblePos ? 'text-green-700' : 'text-amber-700'}>
                   {visiblePos ? '✓ ATIVO NO CAIXA' : '✕ INATIVO NO PDV'}
+                </span>
+              </div>
+            </div>
+
+            {/* Toggle Destaque na Capa do Site (⭐ Estrelinha) */}
+            <div
+              className={`p-4 border-2 transition-all ${
+                featuredOnHome
+                  ? 'border-amber-500 bg-amber-50/70 shadow-xs'
+                  : 'border-deep-black/20 bg-gray-50'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <Star className={`w-4 h-4 ${featuredOnHome ? 'fill-amber-400 text-amber-500' : 'text-gray-400'}`} />
+                    <span className="text-xs font-black uppercase tracking-wider text-deep-black block">
+                      Destaque na Capa do Site (⭐)
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-deep-black/70 leading-relaxed">
+                    Exibe esta peça selecionada na vitrine principal da primeira página do site.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setFeaturedOnHome(!featuredOnHome)}
+                  className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    featuredOnHome ? 'bg-amber-500' : 'bg-gray-300'
+                  }`}
+                  role="switch"
+                  aria-checked={featuredOnHome}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      featuredOnHome ? 'translate-x-6 bg-white' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="mt-2.5 pt-2.5 border-t border-amber-200/50 text-[9px] font-black uppercase flex items-center justify-between">
+                <span className="text-deep-black/60">Vitrine da Capa:</span>
+                <span className={featuredOnHome ? 'text-amber-800' : 'text-gray-500'}>
+                  {featuredOnHome ? '⭐ ATIVO NA CAPA' : '☆ FORA DA CAPA'}
                 </span>
               </div>
             </div>

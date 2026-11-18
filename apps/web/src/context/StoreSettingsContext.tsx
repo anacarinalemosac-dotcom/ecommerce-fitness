@@ -237,6 +237,8 @@ export interface ProductItem {
   tags?: string[];
   visibleOnline?: boolean;
   visiblePos?: boolean;
+  featuredOnHome?: boolean;
+  featured_on_home?: boolean;
   ribbon?: string;
   brand?: string;
   comparePrice?: number;
@@ -858,6 +860,8 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             tags: meta.tags || [],
             visibleOnline: isOnline,
             visiblePos: isPos,
+            featuredOnHome: meta.featured_on_home === true || meta.featuredOnHome === true || p.featured_on_home === true || p.featuredOnHome === true,
+            featured_on_home: meta.featured_on_home === true || meta.featuredOnHome === true || p.featured_on_home === true || p.featuredOnHome === true,
             isDraft: meta.is_draft === true || p.is_draft === true || !isOnline,
             status: p.status || (isOnline ? 'ACTIVE' : 'DRAFT'),
             ribbon: meta.ribbon || '',

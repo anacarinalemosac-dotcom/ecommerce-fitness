@@ -214,6 +214,8 @@ export async function GET(req: NextRequest) {
         visible_online: meta.visible_online === true,
         is_draft: meta.is_draft === true || meta.visible_online === false,
         visible_pos: meta.visible_pos !== false,
+        featured_on_home: meta.featured_on_home === true || meta.featuredOnHome === true || (product as any).featured_on_home === true,
+        featuredOnHome: meta.featured_on_home === true || meta.featuredOnHome === true || (product as any).featured_on_home === true,
         composition: meta.composition || '',
         material: meta.material || '',
         materials: Array.isArray(meta.materials) ? meta.materials : (meta.material ? [meta.material] : []),
@@ -360,6 +362,8 @@ export async function GET(req: NextRequest) {
         visible_online: meta.visible_online === true,
         is_draft: meta.is_draft === true || meta.visible_online === false,
         visible_pos: meta.visible_pos !== false,
+        featured_on_home: meta.featured_on_home === true || meta.featuredOnHome === true || (p as any).featured_on_home === true,
+        featuredOnHome: meta.featured_on_home === true || meta.featuredOnHome === true || (p as any).featured_on_home === true,
         composition: meta.composition || '',
         material: meta.material || '',
         materials: Array.isArray(meta.materials) ? meta.materials : (meta.material ? [meta.material] : []),
@@ -634,6 +638,8 @@ export async function POST(req: NextRequest) {
       visible_online: visible_online === true,
       is_draft: is_draft !== undefined ? Boolean(is_draft) : (visible_online !== true),
       visible_pos: visible_pos !== false,
+      featured_on_home: body.featured_on_home === true || body.featuredOnHome === true,
+      featuredOnHome: body.featured_on_home === true || body.featuredOnHome === true,
       primary_image: primaryImg,
       images: finalGalleryImages,
       gallery: finalGalleryImages,
@@ -1114,6 +1120,11 @@ export async function PATCH(req: NextRequest) {
         if (body.is_draft !== undefined) {
           meta.is_draft = Boolean(body.is_draft);
         }
+        if (body.featured_on_home !== undefined || body.featuredOnHome !== undefined) {
+          const val = Boolean(body.featured_on_home ?? body.featuredOnHome);
+          meta.featured_on_home = val;
+          meta.featuredOnHome = val;
+        }
 
         const { error: updErr } = await supabaseServer
           .from('products')
@@ -1238,6 +1249,15 @@ export async function PATCH(req: NextRequest) {
           item.total_stock = newQty;
           if (item.variants?.[0]) item.variants[0].stock_quantity = newQty;
         }
+        if (body.featured_on_home !== undefined || body.featuredOnHome !== undefined) {
+          const val = Boolean(body.featured_on_home ?? body.featuredOnHome);
+          item.featured_on_home = val;
+          item.featuredOnHome = val;
+          if (item.meta) {
+            item.meta.featured_on_home = val;
+            item.meta.featuredOnHome = val;
+          }
+        }
         fallbackList[fIdx] = item;
         saveFallbackProducts(fallbackList);
         return NextResponse.json({ success: true, product: item, message: 'Produto atualizado com sucesso no catálogo local!' });
@@ -1265,6 +1285,11 @@ export async function PATCH(req: NextRequest) {
     }
     if (visible_pos !== undefined) {
       meta.visible_pos = Boolean(visible_pos);
+    }
+    if (body.featured_on_home !== undefined || body.featuredOnHome !== undefined) {
+      const val = Boolean(body.featured_on_home ?? body.featuredOnHome);
+      meta.featured_on_home = val;
+      meta.featuredOnHome = val;
     }
 
     // Atualização atômica de Preço de Custo

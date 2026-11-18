@@ -23,6 +23,7 @@ import {
   Ruler,
   Radio,
   Layers,
+  Star,
 } from 'lucide-react';
 
 interface WixProductTableProps {
@@ -34,14 +35,16 @@ interface WixProductTableProps {
   inStockCatalogCount: number;
   outOfStockCatalogCount: number;
   comboCatalogCount?: number;
+  featuredHomeCatalogCount?: number;
   comboPromo?: any;
   onToggleProductCombo?: (productId: string, productSlug?: string) => void;
+  onToggleProductFeaturedOnHome?: (productId: string, currentVal: boolean) => void;
   availableCategories: string[];
   productSearch: string;
   setProductSearch: (s: string) => void;
   productCategoryFilter: string;
   setProductCategoryFilter: (c: string) => void;
-  productStatusFilter: 'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'IN_COMBO';
+  productStatusFilter: 'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'IN_COMBO' | 'FEATURED_HOME';
   setProductStatusFilter: (st: any) => void;
   productSizeFilter: 'ALL' | 'P' | 'M' | 'G' | 'GG' | 'UN';
   setProductSizeFilter: (sz: any) => void;
@@ -64,6 +67,7 @@ interface WixProductTableProps {
   onBulkDesc: () => void;
   onBulkAddToCombo: () => void;
   onBulkRemoveFromCombo: () => void;
+  onBulkSetFeaturedOnHome?: (featured: boolean) => void;
   onClearSelection: () => void;
   comboBadgeText?: string;
 }
@@ -77,8 +81,10 @@ export function WixProductTable({
   inStockCatalogCount,
   outOfStockCatalogCount,
   comboCatalogCount = 0,
+  featuredHomeCatalogCount = 0,
   comboPromo,
   onToggleProductCombo,
+  onToggleProductFeaturedOnHome,
   availableCategories,
   productSearch,
   setProductSearch,
@@ -107,6 +113,7 @@ export function WixProductTable({
   onBulkDesc,
   onBulkAddToCombo,
   onBulkRemoveFromCombo,
+  onBulkSetFeaturedOnHome,
   onClearSelection,
   comboBadgeText = 'COMBO 3 PEÇAS',
 }: WixProductTableProps) {
@@ -308,6 +315,20 @@ export function WixProductTable({
               <span>🔥</span>
               <span>No Combo ({comboCatalogCount || (comboPromo?.product_ids?.length || 0)})</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setProductStatusFilter('FEATURED_HOME')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
+                productStatusFilter === 'FEATURED_HOME'
+                  ? 'bg-amber-400 text-gray-950 font-bold shadow-xs'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title="Filtrar apenas as peças selecionadas com a estrelinha para aparecer na capa do site"
+            >
+              <Star className={`w-3.5 h-3.5 ${productStatusFilter === 'FEATURED_HOME' ? 'fill-current text-gray-950' : 'text-amber-500 fill-amber-400'}`} />
+              <span>Na Capa ({featuredHomeCatalogCount})</span>
+            </button>
           </div>
 
           {/* Ferramentas: Filtrar e Buscar */}
@@ -487,6 +508,23 @@ export function WixProductTable({
             </button>
             <button
               type="button"
+              onClick={() => onBulkSetFeaturedOnHome?.(true)}
+              className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-gray-950 rounded text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+              title="Adicionar todas as peças selecionadas na capa do site"
+            >
+              <Star className="w-3 h-3 fill-current text-gray-950" />
+              <span>⭐ Colocar na Capa</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onBulkSetFeaturedOnHome?.(false)}
+              className="px-2.5 py-1 bg-white/10 hover:bg-gray-700 text-white rounded text-[11px] font-semibold transition cursor-pointer"
+              title="Tirar as peças selecionadas da capa do site"
+            >
+              <span>☆ Tirar da Capa</span>
+            </button>
+            <button
+              type="button"
               onClick={onClearSelection}
               className="text-[11px] text-gray-400 hover:text-white px-2 py-1"
             >
@@ -513,6 +551,9 @@ export function WixProductTable({
                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
                 </th>
+                <th className="p-3 w-14 text-center whitespace-nowrap" title="Marque com a estrelinha para colocar o produto na capa do site">
+                  Capa ⭐
+                </th>
                 <th className="p-3 min-w-[280px]">Nome</th>
                 <th className="p-3">Tipo</th>
                 <th className="p-3">SKU</th>
@@ -528,7 +569,7 @@ export function WixProductTable({
             <tbody className="divide-y divide-gray-150">
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center text-gray-500">
+                  <td colSpan={10} className="p-12 text-center text-gray-500">
                     <div className="max-w-sm mx-auto space-y-2">
                       <Search className="w-8 h-8 text-gray-300 mx-auto" />
                       <p className="font-semibold text-gray-700">Nenhum produto encontrado</p>
@@ -597,6 +638,7 @@ export function WixProductTable({
                     (itemSlugLower && promoProductSlugs.includes(itemSlugLower)) ||
                     item.is_combo_item === true
                   );
+                  const isFeaturedOnHome = Boolean(item.featured_on_home ?? item.featuredOnHome);
 
                   // Status de estoque no estilo Wix
                   let stockStatusText = 'Em estoque';
@@ -630,6 +672,32 @@ export function WixProductTable({
                         />
                       </td>
 
+                      {/* Destaque na Capa (Estrelinha) */}
+                      <td className="p-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => onToggleProductFeaturedOnHome?.(item.id, isFeaturedOnHome)}
+                          className={`p-1.5 rounded-md transition-all cursor-pointer inline-flex items-center justify-center ${
+                            isFeaturedOnHome
+                              ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 ring-1 ring-amber-400 shadow-2xs'
+                              : 'text-gray-300 hover:text-amber-500 hover:bg-gray-100'
+                          }`}
+                          title={
+                            isFeaturedOnHome
+                              ? '⭐ Na Capa do Site (Clique para remover da primeira página)'
+                              : '☆ Clique para exibir na Capa do Site (primeira página)'
+                          }
+                        >
+                          <Star
+                            className={`w-4 h-4 ${
+                              isFeaturedOnHome
+                                ? 'fill-amber-400 text-amber-500'
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        </button>
+                      </td>
+
                       {/* Nome + Miniatura + Número de Variantes (Exatamente como no Wix!) */}
                       <td className="p-3">
                         <div className="flex items-center gap-3">
@@ -648,6 +716,12 @@ export function WixProductTable({
                               >
                                 {item.title}
                               </button>
+                              {isFeaturedOnHome && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300 text-[9px] font-bold uppercase tracking-tight shadow-2xs" title="Exibido na vitrine da primeira página do site">
+                                  <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-600" />
+                                  <span>Na Capa</span>
+                                </span>
+                              )}
                               {isInCombo && (
                                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-bold uppercase tracking-tight shadow-2xs">
                                   <span>🔥</span>

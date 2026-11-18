@@ -68,6 +68,8 @@ interface ProductItem {
   visibleOnline?: boolean;
   isDraft?: boolean;
   status?: string;
+  featuredOnHome?: boolean;
+  featured_on_home?: boolean;
 }
 
 const FEATURED_PRODUCTS: ProductItem[] = REAL_DEFAULT_PRODUCTS;
@@ -381,6 +383,13 @@ export default function HomePage() {
   });
   const activeProducts = onlineAndInStockProducts;
 
+  // Controle de exibição da capa personalizada (⭐ Peças escolhidas a dedo)
+  const [showFullCatalogOnHome, setShowFullCatalogOnHome] = useState(false);
+  const featuredHomeProducts = onlineAndInStockProducts.filter(
+    (p) => p.featuredOnHome === true || (p as any).featured_on_home === true
+  );
+  const hasFeaturedHomeSelection = featuredHomeProducts.length > 0;
+
   // Função auxiliar: identifica se a peça é SPOILER (se zerou o estoque, categoria spoiler/preorder ou badge spoiler)
   const isProductSpoiler = (p: ProductItem) => {
     return (
@@ -426,6 +435,13 @@ export default function HomePage() {
     } else {
       // 2. QUALQUER OUTRA ABA: Peças spoiler NUNCA aparecem aqui no meio dos produtos com pronta entrega!
       if (isSpoiler) return false;
+
+      // 2a. Se a lojista selecionou peças com a estrelinha ⭐ para a capa e estamos na visão inicial:
+      if (hasFeaturedHomeSelection && !showFullCatalogOnHome && activeCategoryFilter === 'all') {
+        const isStarred = p.featuredOnHome === true || (p as any).featured_on_home === true;
+        if (!isStarred) return false;
+      }
+
       if (activeCategoryFilter !== 'all' && p.categoryKey !== activeCategoryFilter) {
         return false;
       }
@@ -751,10 +767,14 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <span className="text-[10px] font-black uppercase tracking-ultra text-gold block">
-                {t('prod.featured')}
+                {hasFeaturedHomeSelection && !showFullCatalogOnHome && activeCategoryFilter === 'all'
+                  ? (lang === 'pt' ? '⭐ DESTAQUES DA CAPA • SELEÇÃO EXCLUSIVA' : '⭐ FEATURED HIGHLIGHTS • CURATED')
+                  : t('prod.featured')}
               </span>
               <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-deep-black">
-                {lang === 'pt' ? 'COLEÇÃO PRINCIPAL' : 'CORE COLLECTION'}
+                {hasFeaturedHomeSelection && !showFullCatalogOnHome && activeCategoryFilter === 'all'
+                  ? (lang === 'pt' ? 'DESTAQUES NA CAPA' : 'FEATURED ON COVER')
+                  : (lang === 'pt' ? 'COLEÇÃO PRINCIPAL' : 'CORE COLLECTION')}
               </h2>
             </div>
             
@@ -766,6 +786,84 @@ export default function HomePage() {
 
           {/* Gymshark Category Filter Pills */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {hasFeaturedHomeSelection && (
+              <div className="flex items-center gap-1 p-0.5 bg-neutral-100 border border-deep-black/30 shrink-0 mr-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowFullCatalogOnHome(false);
+                    setActiveCategoryFilter('all');
+                  }}
+                  className={`px-3 py-1.5 text-[10px] sm:text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 transition cursor-pointer ${
+                    !showFullCatalogOnHome && activeCategoryFilter === 'all'
+                      ? 'bg-amber-400 text-deep-black shadow-xs'
+                      : 'text-deep-black/70 hover:text-deep-black'
+                  }`}
+                  title="Exibir apenas as peças selecionadas para a capa"
+                >
+                  <Star className="w-3 h-3 fill-current text-deep-black" />
+                  <span>{lang === 'pt' ? `Capa (${featuredHomeProducts.length})` : `Cover (${featuredHomeProducts.length})`}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFullCatalogOnHome(true)}
+                  className={`px-3 py-1.5 text-[10px] sm:text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 transition cursor-pointer ${
+                    showFullCatalogOnHome && activeCategoryFilter === 'all'
+                      ? 'bg-deep-black text-white shadow-xs'
+                      : 'text-deep-black/70 hover:text-deep-black'
+                  }`}
+                  title="Exibir todos os produtos do catálogo"
+                >
+                  <span>{lang === 'pt' ? `Catálogo Todo (${onlineAndInStockProducts.length})` : `All (${onlineAndInStockProducts.length})`}</span>
+                </button>
+              </div>
+            )}
+
+            {/* Chamada para Ver Todo o Catálogo quando estiver no modo Capa Selecionada */}
+            {hasFeaturedHomeSelection && !showFullCatalogOnHome && activeCategoryFilter === 'all' && (
+              <div className="pt-10 pb-4 text-center">
+                <div className="p-6 sm:p-8 bg-neutral-50 border-2 border-deep-black max-w-2xl mx-auto shadow-sm space-y-3">
+                  <span className="text-[10px] font-black uppercase tracking-ultra text-gold block">
+                    ⭐ {lang === 'pt' ? 'VOCÊ ESTÁ VENDO OS DESTAQUES DA CAPA' : 'YOU ARE VIEWING COVER HIGHLIGHTS'}
+                  </span>
+                  <p className="text-xs sm:text-sm text-deep-black/80 max-w-lg mx-auto font-medium">
+                    {lang === 'pt'
+                      ? `Exibindo as ${filteredProducts.length} peças selecionadas com exclusividade para a capa. Temos mais de ${onlineAndInStockProducts.length} modelos disponíveis em nosso catálogo completo!`
+                      : `Displaying ${filteredProducts.length} curated pieces for the front page. Explore all ${onlineAndInStockProducts.length} exclusive items in our catalog!`}
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowFullCatalogOnHome(true)}
+                      className="w-full sm:w-auto px-6 py-3.5 bg-deep-black hover:bg-gold text-white hover:text-deep-black font-black uppercase text-xs tracking-wider transition shadow-md flex items-center justify-center gap-2 cursor-pointer border border-deep-black"
+                    >
+                      <span>{lang === 'pt' ? `EXPANDIR TODAS AS ${onlineAndInStockProducts.length} PEÇAS AQUI` : `EXPAND ALL ${onlineAndInStockProducts.length} PIECES HERE`}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <Link
+                      href="/catalogo"
+                      className="w-full sm:w-auto px-6 py-3.5 bg-white hover:bg-neutral-100 text-deep-black font-black uppercase text-xs tracking-wider transition border-2 border-deep-black/30 flex items-center justify-center gap-2"
+                    >
+                      <span>{lang === 'pt' ? 'ABRIR CATÁLOGO COMPLETO' : 'OPEN FULL CATALOG'}</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Botão de retorno para a Capa quando estiver no modo catálogo completo */}
+            {hasFeaturedHomeSelection && showFullCatalogOnHome && activeCategoryFilter === 'all' && (
+              <div className="pt-8 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowFullCatalogOnHome(false)}
+                  className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-deep-black font-black uppercase text-xs tracking-wider transition shadow-sm inline-flex items-center gap-2 cursor-pointer border-2 border-amber-500"
+                >
+                  <Star className="w-4 h-4 fill-current text-deep-black" />
+                  <span>{lang === 'pt' ? `VOLTAR PARA SELEÇÃO DA CAPA (${featuredHomeProducts.length} PEÇAS)` : `BACK TO COVER PICKS (${featuredHomeProducts.length} PIECES)`}</span>
+                </button>
+              </div>
+            )}
             {[
               { id: 'all', labelPt: 'TODAS AS PEÇAS', labelEn: 'ALL PIECES' },
               { id: 'sets', labelPt: 'CONJUNTOS', labelEn: 'SETS' },
@@ -1191,6 +1289,52 @@ export default function HomePage() {
               </div>
             )}
 
+            {/* Chamada para Ver Todo o Catálogo quando estiver no modo Capa Selecionada */}
+            {hasFeaturedHomeSelection && !showFullCatalogOnHome && activeCategoryFilter === 'all' && (
+              <div className="pt-10 pb-4 text-center">
+                <div className="p-6 sm:p-8 bg-neutral-50 border-2 border-deep-black max-w-2xl mx-auto shadow-sm space-y-3">
+                  <span className="text-[10px] font-black uppercase tracking-ultra text-gold block">
+                    ⭐ {lang === 'pt' ? 'VOCÊ ESTÁ VENDO OS DESTAQUES DA CAPA' : 'YOU ARE VIEWING COVER HIGHLIGHTS'}
+                  </span>
+                  <p className="text-xs sm:text-sm text-deep-black/80 max-w-lg mx-auto font-medium">
+                    {lang === 'pt'
+                      ? `Exibindo as ${filteredProducts.length} peças selecionadas com exclusividade para a capa. Temos mais de ${onlineAndInStockProducts.length} modelos disponíveis em nosso catálogo completo!`
+                      : `Displaying ${filteredProducts.length} curated pieces for the front page. Explore all ${onlineAndInStockProducts.length} exclusive items in our catalog!`}
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowFullCatalogOnHome(true)}
+                      className="w-full sm:w-auto px-6 py-3.5 bg-deep-black hover:bg-gold text-white hover:text-deep-black font-black uppercase text-xs tracking-wider transition shadow-md flex items-center justify-center gap-2 cursor-pointer border border-deep-black"
+                    >
+                      <span>{lang === 'pt' ? `EXPANDIR TODAS AS ${onlineAndInStockProducts.length} PEÇAS AQUI` : `EXPAND ALL ${onlineAndInStockProducts.length} PIECES HERE`}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <Link
+                      href="/catalogo"
+                      className="w-full sm:w-auto px-6 py-3.5 bg-white hover:bg-neutral-100 text-deep-black font-black uppercase text-xs tracking-wider transition border-2 border-deep-black/30 flex items-center justify-center gap-2"
+                    >
+                      <span>{lang === 'pt' ? 'ABRIR CATÁLOGO COMPLETO' : 'OPEN FULL CATALOG'}</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Botão de retorno para a Capa quando estiver no modo catálogo completo */}
+            {hasFeaturedHomeSelection && showFullCatalogOnHome && activeCategoryFilter === 'all' && (
+              <div className="pt-8 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowFullCatalogOnHome(false)}
+                  className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-deep-black font-black uppercase text-xs tracking-wider transition shadow-sm inline-flex items-center gap-2 cursor-pointer border-2 border-amber-500"
+                >
+                  <Star className="w-4 h-4 fill-current text-deep-black" />
+                  <span>{lang === 'pt' ? `VOLTAR PARA SELEÇÃO DA CAPA (${featuredHomeProducts.length} PEÇAS)` : `BACK TO COVER PICKS (${featuredHomeProducts.length} PIECES)`}</span>
+                </button>
+              </div>
+            )}
+
             {/* Grid de Produtos Gymshark: Aspect 4:5, Hover Swap, Quick Add Drawer */}
             {filteredProducts.length === 0 ? (
               <div className="py-20 text-center border-2 border-dashed border-deep-black/20 p-12 bg-deep-black/5 space-y-4">
@@ -1322,6 +1466,14 @@ export default function HomePage() {
                               className={`text-[7.5px] sm:text-[9px] uppercase tracking-widest px-1.5 py-0.5 sm:px-2.5 sm:py-1 font-black shadow-sm ${product.badgeStyle}`}
                             >
                               {translateBadgeText(lang === 'pt' ? product.badgePt : product.badgeEn, lang)}
+                            </span>
+                          </div>
+                        )}
+                        {(product.featuredOnHome || (product as any).featured_on_home) && !isOutOfStock && (
+                          <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 z-10 pointer-events-none">
+                            <span className="text-[7.5px] sm:text-[8.5px] uppercase tracking-widest px-1.5 py-0.5 font-black shadow-xs bg-amber-400 text-deep-black border border-amber-500/70 flex items-center gap-1">
+                              <Star className="w-2.5 h-2.5 fill-current text-deep-black" />
+                              <span>{lang === 'pt' ? 'CAPA' : 'FEATURED'}</span>
                             </span>
                           </div>
                         )}
@@ -1708,6 +1860,52 @@ export default function HomePage() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Chamada para Ver Todo o Catálogo quando estiver no modo Capa Selecionada */}
+            {hasFeaturedHomeSelection && !showFullCatalogOnHome && activeCategoryFilter === 'all' && (
+              <div className="pt-10 pb-4 text-center">
+                <div className="p-6 sm:p-8 bg-neutral-50 border-2 border-deep-black max-w-2xl mx-auto shadow-sm space-y-3">
+                  <span className="text-[10px] font-black uppercase tracking-ultra text-gold block">
+                    ⭐ {lang === 'pt' ? 'VOCÊ ESTÁ VENDO OS DESTAQUES DA CAPA' : 'YOU ARE VIEWING COVER HIGHLIGHTS'}
+                  </span>
+                  <p className="text-xs sm:text-sm text-deep-black/80 max-w-lg mx-auto font-medium">
+                    {lang === 'pt'
+                      ? `Exibindo as ${filteredProducts.length} peças selecionadas com exclusividade para a capa. Temos mais de ${onlineAndInStockProducts.length} modelos disponíveis em nosso catálogo completo!`
+                      : `Displaying ${filteredProducts.length} curated pieces for the front page. Explore all ${onlineAndInStockProducts.length} exclusive items in our catalog!`}
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowFullCatalogOnHome(true)}
+                      className="w-full sm:w-auto px-6 py-3.5 bg-deep-black hover:bg-gold text-white hover:text-deep-black font-black uppercase text-xs tracking-wider transition shadow-md flex items-center justify-center gap-2 cursor-pointer border border-deep-black"
+                    >
+                      <span>{lang === 'pt' ? `EXPANDIR TODAS AS ${onlineAndInStockProducts.length} PEÇAS AQUI` : `EXPAND ALL ${onlineAndInStockProducts.length} PIECES HERE`}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <Link
+                      href="/catalogo"
+                      className="w-full sm:w-auto px-6 py-3.5 bg-white hover:bg-neutral-100 text-deep-black font-black uppercase text-xs tracking-wider transition border-2 border-deep-black/30 flex items-center justify-center gap-2"
+                    >
+                      <span>{lang === 'pt' ? 'ABRIR CATÁLOGO COMPLETO' : 'OPEN FULL CATALOG'}</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Botão de retorno para a Capa quando estiver no modo catálogo completo */}
+            {hasFeaturedHomeSelection && showFullCatalogOnHome && activeCategoryFilter === 'all' && (
+              <div className="pt-8 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowFullCatalogOnHome(false)}
+                  className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-deep-black font-black uppercase text-xs tracking-wider transition shadow-sm inline-flex items-center gap-2 cursor-pointer border-2 border-amber-500"
+                >
+                  <Star className="w-4 h-4 fill-current text-deep-black" />
+                  <span>{lang === 'pt' ? `VOLTAR PARA SELEÇÃO DA CAPA (${featuredHomeProducts.length} PEÇAS)` : `BACK TO COVER PICKS (${featuredHomeProducts.length} PIECES)`}</span>
+                </button>
               </div>
             )}
           </div>

@@ -299,7 +299,7 @@ export default function BackofficeDashboard() {
   // Filtros e Busca Rápida no Catálogo de Produtos
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('ALL');
-  const [productStatusFilter, setProductStatusFilter] = useState<'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'IN_COMBO'>('ALL');
+  const [productStatusFilter, setProductStatusFilter] = useState<'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'IN_COMBO' | 'FEATURED_HOME'>('ALL');
   const [productSizeFilter, setProductSizeFilter] = useState<'ALL' | 'P' | 'M' | 'G' | 'GG' | 'UN'>('ALL');
 
   // Seleção e Edição em Massa (Bulk Update) de Produtos
@@ -1032,6 +1032,59 @@ export default function BackofficeDashboard() {
       }
     } catch (e: any) {
       alert('Erro ao atualizar produto no combo: ' + e?.message);
+    }
+  };
+
+  const handleToggleSingleProductFeaturedOnHome = async (productId: string, currentVal: boolean) => {
+    const newVal = !currentVal;
+    setSupabaseProducts((prev) =>
+      prev.map((p) =>
+        p.id === productId ? { ...p, featured_on_home: newVal, featuredOnHome: newVal, meta: { ...p.meta, featured_on_home: newVal, featuredOnHome: newVal } } : p
+      )
+    );
+
+    try {
+      const res = await fetch('/api/backoffice/products', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: productId,
+          featured_on_home: newVal,
+        }),
+      });
+      if (!res.ok) throw new Error('Falha ao atualizar destaque da capa');
+      if (refreshProducts) refreshProducts();
+    } catch (e: any) {
+      setSupabaseProducts((prev) =>
+        prev.map((p) =>
+          p.id === productId ? { ...p, featured_on_home: currentVal, featuredOnHome: currentVal, meta: { ...p.meta, featured_on_home: currentVal, featuredOnHome: currentVal } } : p
+        )
+      );
+      alert('Erro ao atualizar produto na capa: ' + e?.message);
+    }
+  };
+
+  const handleBulkSetFeaturedOnHome = async (featured: boolean) => {
+    if (selectedCatalogIds.length === 0) return;
+    setIsBulkSubmitting(true);
+    try {
+      const res = await fetch('/api/backoffice/products', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedCatalogIds,
+          featured_on_home: featured,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Erro ao atualizar peças na capa');
+      setSelectedCatalogIds([]);
+      await fetchSupabaseProducts();
+      if (refreshProducts) refreshProducts();
+    } catch (e: any) {
+      alert('Erro: ' + e?.message);
+    } finally {
+      setIsBulkSubmitting(false);
     }
   };
 
@@ -2334,6 +2387,9 @@ export default function BackofficeDashboard() {
     (comboPromo?.product_slugs || []).includes(p.slug) ||
     p.is_combo_item === true
   ).length;
+  const featuredHomeCatalogCount = baseCatalogList.filter((p: any) =>
+    p.featured_on_home === true || p.featuredOnHome === true
+  ).length;
 
   const filteredCatalogProducts = baseCatalogList.filter((item: any) => {
     const itemVariants = item.variants || (item.sizes ? item.sizes.map((sz: string) => ({
@@ -2356,6 +2412,7 @@ export default function BackofficeDashboard() {
     if (productStatusFilter === 'IN_STOCK' && totalStock <= 0) return false;
     if (productStatusFilter === 'OUT_OF_STOCK' && totalStock > 0) return false;
     if (productStatusFilter === 'IN_COMBO' && !isInCombo) return false;
+    if (productStatusFilter === 'FEATURED_HOME' && !(item.featured_on_home === true || item.featuredOnHome === true)) return false;
 
     // Filtro por Tamanho P (S), M (M), G (L), GG (XL)
     if (productSizeFilter !== 'ALL') {
@@ -2898,8 +2955,11 @@ export default function BackofficeDashboard() {
             onClearSelection={() => setSelectedCatalogIds([])}
             comboBadgeText={comboPromo?.badge_text}
             comboCatalogCount={comboCatalogCount}
+            featuredHomeCatalogCount={featuredHomeCatalogCount}
             comboPromo={comboPromo}
             onToggleProductCombo={handleToggleSingleProductCombo}
+            onToggleProductFeaturedOnHome={handleToggleSingleProductFeaturedOnHome}
+            onBulkSetFeaturedOnHome={handleBulkSetFeaturedOnHome}
           />
         </div>
       )}
