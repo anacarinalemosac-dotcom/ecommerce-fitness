@@ -142,12 +142,12 @@ export function LiveVisitorTracker() {
       sendPing();
     }
 
-    // Heartbeat a cada 25 segundos enquanto o visitante estiver na página
+    // Heartbeat a cada 60 segundos enquanto o visitante estiver na página
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         sendPing();
       }
-    }, 25000);
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [pathname, adminUser?.isLoggedIn]);
