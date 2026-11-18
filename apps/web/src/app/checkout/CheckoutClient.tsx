@@ -2661,14 +2661,6 @@ export default function CheckoutPage() {
                   className="w-14 h-18 object-cover border border-deep-black/20 shrink-0"
                   onError={(e) => {
                     const t = e.currentTarget;
-                    const currentSrc = t.src || '';
-                    if (currentSrc.includes('supabase.co')) {
-                      const filename = currentSrc.split('/').pop()?.split('?')[0];
-                      if (filename && !currentSrc.includes('/products/')) {
-                        t.src = `/products/${filename}`;
-                        return;
-                      }
-                    }
                     if (!t.src.includes('symbol-ana-fitness.png')) {
                       t.src = '/symbol-ana-fitness.png';
                     }

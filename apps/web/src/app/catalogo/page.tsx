@@ -713,14 +713,6 @@ export default function PublicClientCatalogPage() {
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         onError={(e) => {
                           const t = e.currentTarget;
-                          const currentSrc = t.src || '';
-                          if (currentSrc.includes('supabase.co')) {
-                            const filename = currentSrc.split('/').pop()?.split('?')[0];
-                            if (filename && !currentSrc.includes('/products/')) {
-                              t.src = `/products/${filename}`;
-                              return;
-                            }
-                          }
                           if (!t.src.includes('symbol-ana-fitness.png')) {
                             t.src = '/symbol-ana-fitness.png';
                           }

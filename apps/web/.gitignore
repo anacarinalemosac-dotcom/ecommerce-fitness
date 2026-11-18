@@ -1,4 +1,6 @@
 .vercel
 *.tsbuildinfo
 .next
-
+public/products/
+public/uploads/*
+!public/uploads/.gitkeep

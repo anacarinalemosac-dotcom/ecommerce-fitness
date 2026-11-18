@@ -345,14 +345,6 @@ export default function ComboBuilderPage() {
                       className="w-16 h-20 object-cover border border-deep-black/20 shrink-0"
                       onError={(e) => {
                         const t = e.currentTarget;
-                        const currentSrc = t.src || '';
-                        if (currentSrc.includes('supabase.co')) {
-                          const filename = currentSrc.split('/').pop()?.split('?')[0];
-                          if (filename && !currentSrc.includes('/products/')) {
-                            t.src = `/products/${filename}`;
-                            return;
-                          }
-                        }
                         if (!t.src.includes('symbol-ana-fitness.png')) {
                           t.src = '/symbol-ana-fitness.png';
                         }
@@ -530,14 +522,6 @@ export default function ComboBuilderPage() {
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         onError={(e) => {
                           const t = e.currentTarget;
-                          const currentSrc = t.src || '';
-                          if (currentSrc.includes('supabase.co')) {
-                            const filename = currentSrc.split('/').pop()?.split('?')[0];
-                            if (filename && !currentSrc.includes('/products/')) {
-                              t.src = `/products/${filename}`;
-                              return;
-                            }
-                          }
                           if (!t.src.includes('symbol-ana-fitness.png')) {
                             t.src = '/symbol-ana-fitness.png';
                           }
@@ -619,14 +603,6 @@ export default function ComboBuilderPage() {
                 className="w-20 h-24 object-cover border border-deep-black/20"
                 onError={(e) => {
                   const t = e.currentTarget;
-                  const currentSrc = t.src || '';
-                  if (currentSrc.includes('supabase.co')) {
-                    const filename = currentSrc.split('/').pop()?.split('?')[0];
-                    if (filename && !currentSrc.includes('/products/')) {
-                      t.src = `/products/${filename}`;
-                      return;
-                    }
-                  }
                   if (!t.src.includes('symbol-ana-fitness.png')) {
                     t.src = '/symbol-ana-fitness.png';
                   }
