@@ -178,6 +178,8 @@ export function SiteFooter() {
             <ul className="space-y-2.5 uppercase tracking-wider text-white/70 font-medium text-[11px]">
               <li><Link href="/vendedora" className="hover:text-gold transition text-gold font-bold">{lang === 'pt' ? 'Portal da Vendedora (Login)' : 'Seller / Affiliate Login'}</Link></li>
               <li><Link href="/pos" className="hover:text-gold transition">{t('nav.pos')}</Link></li>
+              <li><Link href="/backoffice?tab=catalog&new=true" className="hover:text-gold transition font-bold text-white">{lang === 'pt' ? '➕ Cadastrar Produto (Grade)' : '➕ Add Product'}</Link></li>
+              <li><Link href="/backoffice?tab=catalog" className="hover:text-gold transition font-bold text-white">{lang === 'pt' ? '🏷️ Catálogo de Produtos' : '🏷️ Products Catalog'}</Link></li>
               <li><Link href="/backoffice?tab=sales" className="hover:text-gold transition font-bold text-gold">{lang === 'pt' ? '📦 Pedidos dos Clientes & ERP' : '📦 Customer Orders & ERP'}</Link></li>
               <li><span className="text-white/40">{lang === 'pt' ? 'Moeda: Dólar (USD $)' : 'Currency: USD ($) Only'}</span></li>
               <li><span className="text-white/40">{lang === 'pt' ? 'Rastreamento USPS: Ativo' : 'USPS Tracking: Active'}</span></li>
@@ -216,7 +218,9 @@ export function SiteFooter() {
           <div className="pt-8 mt-8 border-t border-neutral-800 text-xs text-neutral-400 flex flex-wrap gap-4 items-center justify-between">
             <p>© {new Date().getFullYear()} {siteInfo.storeName || 'Ana Fitness Wear'} LLC • {siteInfo.address ? siteInfo.address.split('•')[0].trim() : 'Leominster, MA'}. {lang === 'pt' ? 'Todos os direitos reservados.' : 'All rights reserved.'}</p>
             <div className="flex flex-wrap gap-4 text-[11px]">
-              <Link href="/backoffice?tab=sales" target="_blank" className="text-gold font-black hover:text-white transition-colors">{lang === 'pt' ? '📦 Pedidos dos Clientes (ERP)' : '📦 Customer Orders (ERP)'}</Link>
+              <Link href="/backoffice?tab=catalog&new=true" target="_blank" className="hover:text-gold text-white font-bold transition-colors">{lang === 'pt' ? '➕ Cadastrar Produto' : '➕ Add Product'}</Link>
+              <Link href="/backoffice?tab=catalog" target="_blank" className="hover:text-gold transition-colors">{lang === 'pt' ? '🏷️ Catálogo' : '🏷️ Catalog'}</Link>
+              <Link href="/backoffice?tab=sales" target="_blank" className="text-gold font-black hover:text-white transition-colors">{lang === 'pt' ? '📦 Pedidos (ERP)' : '📦 Orders (ERP)'}</Link>
               <Link href="/admin" target="_blank" className="hover:text-gold transition-colors">{lang === 'pt' ? 'Personalizar Loja' : 'Customize Store'}</Link>
               <Link href="/pos" target="_blank" className="hover:text-gold transition-colors">{lang === 'pt' ? 'PDV Balcão' : 'POS Register'}</Link>
               <Link href="/vendedora" target="_blank" className="hover:text-gold transition-colors">{lang === 'pt' ? 'Portal da Vendedora' : 'Seller Portal'}</Link>

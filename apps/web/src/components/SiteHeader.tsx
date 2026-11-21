@@ -12,6 +12,7 @@ import {
   Globe,
   Search,
   Package,
+  PlusCircle,
   Menu,
   X,
   ChevronRight,
@@ -521,6 +522,28 @@ export function SiteHeader() {
                 <span className="flex items-center gap-2">
                   <Users className="w-3.5 h-3.5 text-gold" />
                   <span>{lang === 'pt' ? 'PORTAL DA VENDEDORA' : 'SELLER / AFFILIATE PORTAL'}</span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-gold" />
+              </Link>
+              <Link
+                href="/backoffice?tab=catalog&new=true"
+                onClick={closeMobileMenu}
+                className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black font-bold"
+              >
+                <span className="flex items-center gap-2">
+                  <PlusCircle className="w-3.5 h-3.5 text-gold" />
+                  <span>{lang === 'pt' ? '➕ CADASTRAR PRODUTO NOVO' : '➕ ADD NEW PRODUCT'}</span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-gold" />
+              </Link>
+              <Link
+                href="/backoffice?tab=catalog"
+                onClick={closeMobileMenu}
+                className="flex items-center justify-between py-2 border-b border-deep-black/5 hover:text-gold transition text-deep-black font-bold"
+              >
+                <span className="flex items-center gap-2">
+                  <Package className="w-3.5 h-3.5 text-gold" />
+                  <span>{lang === 'pt' ? '📦 GESTÃO DE PRODUTOS' : '📦 MANAGE PRODUCTS'}</span>
                 </span>
                 <ChevronRight className="w-4 h-4 text-gold" />
               </Link>

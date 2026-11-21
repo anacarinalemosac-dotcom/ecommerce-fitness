@@ -78,6 +78,7 @@ import {
   Power,
   ShoppingCart,
   Scissors,
+  Menu,
 } from 'lucide-react';
 import { OrderSeparationModal } from '../../components/backoffice/OrderSeparationModal';
 import { PaymentMethodBadge } from '@/lib/paymentFormatters';
@@ -795,6 +796,31 @@ export default function BackofficeDashboard() {
         const data = await res.json();
         if (Array.isArray(data.products)) {
           setSupabaseProducts(data.products);
+          if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const editId = params.get('edit');
+            if (editId) {
+              const toEdit = data.products.find((p: any) => p.id === editId || p.slug === editId);
+              if (toEdit) {
+                const itemVariants = toEdit.variants || (toEdit.sizes ? toEdit.sizes.map((sz: string) => ({
+                  size: sz,
+                  color: toEdit.colorName || 'Preto Ônix',
+                  sku: `${toEdit.sku || 'PROD'}-${sz}`,
+                  stock_quantity: Math.round((toEdit.stock || 0) / toEdit.sizes.length),
+                })) : []);
+                const firstImage = toEdit.meta?.primary_image || toEdit.primary_image || toEdit.primaryImage || itemVariants[0]?.images?.[0] || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=80';
+                setEditingProduct({
+                  ...toEdit,
+                  variants: itemVariants,
+                  primaryImage: firstImage,
+                  primary_image: firstImage,
+                  images: toEdit.images || toEdit.galleryImages || toEdit.meta?.images || toEdit.meta?.gallery || (firstImage ? [firstImage] : []),
+                });
+                setActiveTab('catalog');
+                setShowAddForm(true);
+              }
+            }
+          }
         }
       }
     } catch (err) {
@@ -1591,6 +1617,27 @@ export default function BackofficeDashboard() {
       const tab = params.get('tab');
       if (tab === 'sales' || tab === 'orders' || tab === 'pedidos') {
         setActiveTab('sales');
+      } else if (tab === 'catalog' || tab === 'products' || tab === 'produtos') {
+        setActiveTab('catalog');
+        if (params.get('new') === 'true' || params.get('cadastrar') === 'true' || params.get('novo') === 'true') {
+          setEditingProduct(null);
+          setShowAddForm(true);
+        }
+      } else if (tab === 'cadastrar' || tab === 'novo') {
+        setActiveTab('catalog');
+        setEditingProduct(null);
+        setShowAddForm(true);
+      } else if (params.get('new') === 'true' || params.get('cadastrar') === 'true') {
+        setActiveTab('catalog');
+        setEditingProduct(null);
+        setShowAddForm(true);
+      } else if (tab && [
+        'dashboard', 'out-of-stock', 'conditionals', 'commissions', 'finances',
+        'invoices', 'coupons', 'reports', 'cms', 'customers', 'leads-recovery',
+        'settings', 'emails', 'margins', 'live', 'backorders', 'theme',
+        'whatsapp-catalog', 'instagram-direct', 'suppliers'
+      ].includes(tab)) {
+        setActiveTab(tab as any);
       }
     }
 
@@ -2645,6 +2692,11 @@ export default function BackofficeDashboard() {
           {/* Barra Superior Wix */}
           <WixHeader
             onToggleMobileSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            onOpenNewProduct={() => {
+              setActiveTab('catalog');
+              setEditingProduct(null);
+              setShowAddForm(true);
+            }}
             searchValue={productSearch}
             onSearchChange={(val) => {
               setProductSearch(val);
@@ -2667,7 +2719,7 @@ export default function BackofficeDashboard() {
           />
 
           {/* Conteúdo da Página */}
-          <main className="p-4 sm:p-6 lg:p-8 flex-1 space-y-6">
+          <main className="p-4 sm:p-6 lg:p-8 flex-1 space-y-6 pb-24 lg:pb-8">
             {/* Alerta Discreto de Loja em Manutenção */}
             {siteInfo.storeOffline && (
               <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs animate-fadeIn">
@@ -7962,6 +8014,80 @@ export default function BackofficeDashboard() {
         />
       )}
           </main>
+
+          {/* Barra de Navegação Rápida no Rodapé para Celular (Mobile Bottom Bar) */}
+          <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200 px-2 py-1.5 flex items-center justify-around shadow-2xl safe-area-bottom">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('catalog');
+                setEditingProduct(null);
+                setShowAddForm(true);
+                if (typeof window !== 'undefined') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
+              className="flex flex-col items-center justify-center gap-0.5 py-1 px-3 bg-gray-900 text-gold rounded-lg font-black text-[10px] tracking-tight shadow-sm active:scale-95 transition"
+            >
+              <PlusCircle className="w-5 h-5 text-gold" />
+              <span>+ Cadastrar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('catalog');
+                setShowAddForm(false);
+              }}
+              className={`flex flex-col items-center justify-center gap-0.5 py-1 px-2.5 rounded-md text-[10px] font-bold transition ${
+                activeTab === 'catalog' && !showAddForm ? 'text-blue-600 font-black' : 'text-gray-600'
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              <span>Produtos</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('sales');
+                fetchSalesData();
+              }}
+              className={`flex flex-col items-center justify-center gap-0.5 py-1 px-2.5 rounded-md text-[10px] font-bold transition relative ${
+                activeTab === 'sales' ? 'text-blue-600 font-black' : 'text-gray-600'
+              }`}
+            >
+              <Receipt className="w-4 h-4" />
+              <span>Pedidos</span>
+              {(salesData?.sales?.filter((s: any) => s.fulfillment_status === 'PENDING').length || 0) > 0 && (
+                <span className="absolute top-0.5 right-2 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('finances');
+                fetchSalesData();
+                fetchWriteOffs();
+              }}
+              className={`flex flex-col items-center justify-center gap-0.5 py-1 px-2.5 rounded-md text-[10px] font-bold transition ${
+                activeTab === 'finances' ? 'text-blue-600 font-black' : 'text-gray-600'
+              }`}
+            >
+              <Wallet className="w-4 h-4" />
+              <span>Financeiro</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(true)}
+              className="flex flex-col items-center justify-center gap-0.5 py-1 px-2.5 rounded-md text-[10px] font-bold text-gray-600 hover:text-gray-900 transition"
+            >
+              <Menu className="w-4 h-4" />
+              <span>Menu</span>
+            </button>
+          </nav>
         </div>
       </div>
     </div>

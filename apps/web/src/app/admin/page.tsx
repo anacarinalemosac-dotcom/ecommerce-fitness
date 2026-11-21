@@ -47,7 +47,7 @@ export default function AdminPortalPage() {
     resetToDefaults,
   } = useStoreSettings();
 
-  const [activeTab, setActiveTab] = useState<'products' | 'images' | 'info'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'images' | 'info' | 'orders'>('products');
   const [loginEmail, setLoginEmail] = useState('anafitweareua@gmail.com');
   const [loginPass, setLoginPass] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -224,13 +224,29 @@ export default function AdminPortalPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
           <Link
-            href="/backoffice?tab=sales"
+            href="/backoffice?tab=catalog&new=true"
             className="px-4 py-2.5 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shadow-sm border border-gold"
           >
+            <PlusCircle className="w-3.5 h-3.5 text-deep-black" />
+            <span>+ CADASTRAR PRODUTO</span>
+          </Link>
+
+          <Link
+            href="/backoffice?tab=catalog"
+            className="px-4 py-2.5 bg-white/10 hover:bg-white hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shadow-sm border border-white/20"
+          >
+            <Package className="w-3.5 h-3.5 text-gold" />
+            <span>🏷️ PRODUTOS ({products.length})</span>
+          </Link>
+
+          <Link
+            href="/backoffice?tab=sales"
+            className="px-4 py-2.5 bg-white/10 hover:bg-white hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shadow-sm border border-white/20"
+          >
             <Package className="w-3.5 h-3.5 text-deep-black" />
-            <span>📦 VER PEDIDOS DOS CLIENTES</span>
+            <span>📦 PEDIDOS ({adminSales.length})</span>
           </Link>
 
           <Link
@@ -238,7 +254,7 @@ export default function AdminPortalPage() {
             target="_blank"
             className="px-4 py-2.5 bg-white hover:bg-gold text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shadow-sm"
           >
-            <span>VER LOJA AO VIVO</span>
+            <span>VER LOJA</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
 
@@ -252,33 +268,32 @@ export default function AdminPortalPage() {
         </div>
       </div>
 
-      {/* PRIMEIRO LUGAR (CELULAR E COMPUTADOR): PEDIDOS PENDENTES DE ENVIO */}
-      <PendingOrdersSpotlight
-        sales={adminSales}
-        onUpdateFulfillmentStatus={handleAdminUpdateFulfillment}
-      />
-
-      {/* Banner de Destaque: Acesso aos Pedidos dos Clientes */}
-      <div className="p-5 bg-gold text-deep-black border-2 border-deep-black flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-luxury">
-        <div className="space-y-1">
+      {/* Aviso discreto se houver pedidos pendentes de envio */}
+      {adminSales.some((s) => s.fulfillment_status === 'PENDING') && (
+        <div className="p-3 bg-amber-400 text-deep-black border-2 border-deep-black flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-xs">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-deep-black animate-ping" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-deep-black">CENTRAL DE EXPEDIÇÃO & VENDAS</span>
+            <span className="text-xs font-black uppercase tracking-wider">
+              📦 ATENÇÃO: {adminSales.filter((s) => s.fulfillment_status === 'PENDING').length} PEDIDO(S) AGUARDANDO ENVIO
+            </span>
           </div>
-          <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-deep-black">
-            📦 ACOMPANHAR PEDIDOS DE CLIENTES & LUCRO REAL
-          </h2>
-          <p className="text-xs uppercase font-bold text-deep-black/80">
-            Veja nome, itens, endereço de entrega USPS, forma de pagamento e margem de lucro de cada compra simulada ou real.
-          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('orders')}
+              className="px-3 py-1 bg-deep-black text-white hover:bg-gold hover:text-deep-black text-[10px] font-black uppercase transition"
+            >
+              Ver Pedidos Aqui
+            </button>
+            <Link
+              href="/backoffice?tab=sales"
+              className="px-3 py-1 bg-white border border-deep-black text-deep-black hover:bg-deep-black hover:text-white text-[10px] font-black uppercase transition"
+            >
+              Abrir no ERP →
+            </Link>
+          </div>
         </div>
-        <Link
-          href="/backoffice?tab=sales"
-          className="px-6 py-3.5 bg-deep-black hover:bg-white hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border-2 border-deep-black"
-        >
-          <span>ACESSAR PEDIDOS NO BACKOFFICE →</span>
-        </Link>
-      </div>
+      )}
 
       {/* Mensagem de Feedback de Sucesso */}
       {savedSuccessMessage && (
@@ -294,7 +309,7 @@ export default function AdminPortalPage() {
         </div>
       )}
 
-      {/* Navegação entre as 3 Abas Principais Solicitadas */}
+      {/* Navegação entre as Abas Principais */}
       <div className="flex border-b-2 border-deep-black/10 gap-3 sm:gap-6 text-xs font-black uppercase tracking-widest overflow-x-auto pb-1 scrollbar-none">
         <button
           onClick={() => setActiveTab('products')}
@@ -327,6 +342,17 @@ export default function AdminPortalPage() {
           }`}
         >
           <Settings className="w-4 h-4 text-gold" /> 3. EDITAR INFORMAÇÕES DO SITE
+        </button>
+
+        <button
+          onClick={() => setActiveTab('orders')}
+          className={`pb-3 flex items-center gap-2 transition border-b-2 shrink-0 ${
+            activeTab === 'orders'
+              ? 'border-gold text-deep-black font-black'
+              : 'border-transparent text-deep-black/50 hover:text-deep-black'
+          }`}
+        >
+          <Truck className="w-4 h-4 text-gold" /> 4. 📦 PEDIDOS DOS CLIENTES ({adminSales.length})
         </button>
       </div>
 
@@ -372,13 +398,22 @@ export default function AdminPortalPage() {
               </p>
             </div>
 
-            <Link
-              href="/backoffice"
-              className="px-8 py-4 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-3 shrink-0 shadow-luxury"
-            >
-              <span>⚡ ABRIR GESTÃO DE PRODUTOS NO ERP BACKOFFICE</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+              <Link
+                href="/backoffice?tab=catalog&new=true"
+                className="px-6 py-4 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-luxury text-center"
+              >
+                <PlusCircle className="w-4 h-4 text-deep-black" />
+                <span>+ CADASTRAR NOVO PRODUTO</span>
+              </Link>
+              <Link
+                href="/backoffice?tab=catalog"
+                className="px-6 py-4 bg-white hover:bg-gold text-deep-black text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-luxury text-center"
+              >
+                <span>📦 VER CATÁLOGO COMPLETO ({products.length})</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
 
           {/* Tabela de Produtos Cadastrados com Edição e Exclusão */}
@@ -452,7 +487,7 @@ export default function AdminPortalPage() {
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link
-                          href="/backoffice"
+                          href={`/backoffice?tab=catalog&edit=${encodeURIComponent(item.id)}`}
                           className="px-2.5 py-1.5 border border-deep-black hover:bg-gold hover:text-deep-black transition inline-flex items-center gap-1.5 font-bold text-[10px]"
                           title="Editar e gerenciar grade no ERP Backoffice"
                         >
@@ -819,6 +854,39 @@ export default function AdminPortalPage() {
             </div>
           </div>
         </form>
+      )}
+
+      {/* =========================================================================
+          ABA 4: GESTÃO DE PEDIDOS
+         ========================================================================= */}
+      {activeTab === 'orders' && (
+        <div className="space-y-6">
+          <div className="p-5 bg-gold text-deep-black border-2 border-deep-black flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-luxury">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-deep-black animate-ping" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-deep-black">CENTRAL DE EXPEDIÇÃO & VENDAS</span>
+              </div>
+              <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-deep-black">
+                📦 PEDIDOS DE CLIENTES & EXPEDIÇÃO USPS
+              </h2>
+              <p className="text-xs uppercase font-bold text-deep-black/80">
+                Acompanhe o status de separação, impressão de etiquetas e rastreamento USPS de cada pedido.
+              </p>
+            </div>
+            <Link
+              href="/backoffice?tab=sales"
+              className="px-6 py-3.5 bg-deep-black hover:bg-white hover:text-deep-black text-white text-xs font-black uppercase tracking-widest transition flex items-center gap-2 shrink-0 shadow-md border-2 border-deep-black"
+            >
+              <span>ABRIR NO ERP BACKOFFICE COMPLETO →</span>
+            </Link>
+          </div>
+
+          <PendingOrdersSpotlight
+            sales={adminSales}
+            onUpdateFulfillmentStatus={handleAdminUpdateFulfillment}
+          />
+        </div>
       )}
     </div>
   );

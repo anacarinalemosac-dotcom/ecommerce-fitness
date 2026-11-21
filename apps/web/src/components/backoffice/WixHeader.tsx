@@ -16,10 +16,12 @@ import {
   Lock,
   ChevronDown,
   ShoppingCart,
+  PlusCircle,
 } from 'lucide-react';
 
 interface WixHeaderProps {
   onToggleMobileSidebar: () => void;
+  onOpenNewProduct?: () => void;
   searchValue: string;
   onSearchChange: (val: string) => void;
   storeOffline?: boolean;
@@ -38,6 +40,7 @@ interface WixHeaderProps {
 
 export function WixHeader({
   onToggleMobileSidebar,
+  onOpenNewProduct,
   searchValue,
   onSearchChange,
   storeOffline = false,
@@ -54,9 +57,9 @@ export function WixHeader({
   adminName = 'Ana',
 }: WixHeaderProps) {
   return (
-    <header className="h-14 lg:h-16 bg-white border-b border-gray-200/90 px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-30 shadow-2xs">
+    <header className="h-14 lg:h-16 bg-white border-b border-gray-200/90 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3 sticky top-0 z-30 shadow-2xs">
       {/* Lado Esquerdo: Botão Mobile + Nome da Loja */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <button
           type="button"
           onClick={onToggleMobileSidebar}
@@ -65,6 +68,18 @@ export function WixHeader({
         >
           <Menu className="w-5 h-5" />
         </button>
+
+        {onOpenNewProduct && (
+          <button
+            type="button"
+            onClick={onOpenNewProduct}
+            className="lg:hidden px-2.5 py-1.5 bg-gray-900 hover:bg-black text-gold rounded-md text-[11px] font-black uppercase tracking-tight flex items-center gap-1 shadow-xs border border-gold/40"
+            title="Cadastrar Novo Produto com Grade"
+          >
+            <PlusCircle className="w-3.5 h-3.5 text-gold" />
+            <span>+ Produto</span>
+          </button>
+        )}
 
         <div className="hidden sm:flex items-center gap-2">
           <span className="font-bold text-gray-900 text-sm tracking-tight">
