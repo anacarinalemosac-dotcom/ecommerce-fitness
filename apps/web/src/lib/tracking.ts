@@ -1,5 +1,22 @@
 'use client';
 
+function getMetaEventOptions(): Record<string, any> | undefined {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('test_event_code') || params.get('fb_test_code');
+    if (code) {
+      sessionStorage.setItem('meta_test_event_code', code);
+      return { test_event_code: code };
+    }
+    const saved = sessionStorage.getItem('meta_test_event_code');
+    if (saved) {
+      return { test_event_code: saved };
+    }
+  } catch (_) {}
+  return undefined;
+}
+
 // Helper universal de disparo de eventos de rastreamento para Meta, Google, TikTok e Pinterest
 export const trackEvent = {
   // Visualização de Página
@@ -7,7 +24,12 @@ export const trackEvent = {
     if (typeof window === 'undefined') return;
     try {
       if ((window as any).fbq) {
-        (window as any).fbq('track', 'PageView');
+        const metaOpts = getMetaEventOptions();
+        if (metaOpts) {
+          (window as any).fbq('track', 'PageView', {}, metaOpts);
+        } else {
+          (window as any).fbq('track', 'PageView');
+        }
       }
       if ((window as any).gtag) {
         (window as any).gtag('event', 'page_view', { page_path: url || window.location.pathname });
@@ -27,14 +49,20 @@ export const trackEvent = {
     try {
       // 1. Meta (Facebook & Instagram)
       if ((window as any).fbq) {
-        (window as any).fbq('track', 'ViewContent', {
-          content_ids: [product.id],
-          content_name: product.title,
-          content_type: 'product',
-          content_category: product.category || 'Activewear',
-          value: product.price,
-          currency: 'USD',
-        });
+        const metaOpts = getMetaEventOptions();
+        (window as any).fbq(
+          'track',
+          'ViewContent',
+          {
+            content_ids: [product.id],
+            content_name: product.title,
+            content_type: 'product',
+            content_category: product.category || 'Activewear',
+            value: product.price,
+            currency: 'USD',
+          },
+          metaOpts
+        );
       }
 
       // 2. Google Analytics 4
@@ -92,13 +120,14 @@ export const trackEvent = {
 
       // 1. Meta (Facebook & Instagram)
       if ((window as any).fbq) {
+        const metaOpts = getMetaEventOptions();
         (window as any).fbq('track', 'AddToCart', {
           content_ids: [item.id],
           content_name: item.title,
           content_type: 'product',
           value: val,
           currency: 'USD',
-        });
+        }, metaOpts);
       }
 
       // 2. Google Analytics 4
@@ -164,12 +193,13 @@ export const trackEvent = {
 
       // 1. Meta
       if ((window as any).fbq) {
+        const metaOpts = getMetaEventOptions();
         (window as any).fbq('track', 'InitiateCheckout', {
           content_ids: items.map((i) => i.id || i.product_id || i.sku),
           num_items: items.reduce((acc, i) => acc + (i.quantity || 1), 0),
           value: totalValue,
           currency: 'USD',
-        });
+        }, metaOpts);
       }
 
       // 2. Google Analytics 4
@@ -221,13 +251,14 @@ export const trackEvent = {
 
       // 1. Meta
       if ((window as any).fbq) {
+        const metaOpts = getMetaEventOptions();
         (window as any).fbq('track', 'Purchase', {
           content_ids: orderItems.map((i) => i.id || i.sku),
           content_type: 'product',
           value: orderAmount,
           currency: 'USD',
           order_id: orderId,
-        });
+        }, metaOpts);
       }
 
       // 2. Google Analytics 4

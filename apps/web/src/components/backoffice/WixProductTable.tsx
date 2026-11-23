@@ -35,16 +35,18 @@ interface WixProductTableProps {
   inStockCatalogCount: number;
   outOfStockCatalogCount: number;
   comboCatalogCount?: number;
+  promoCatalogCount?: number;
   featuredHomeCatalogCount?: number;
   comboPromo?: any;
   onToggleProductCombo?: (productId: string, productSlug?: string) => void;
   onToggleProductFeaturedOnHome?: (productId: string, currentVal: boolean) => void;
+  onToggleProductVisibility?: (productId: string, currentVal: boolean) => void;
   availableCategories: string[];
   productSearch: string;
   setProductSearch: (s: string) => void;
   productCategoryFilter: string;
   setProductCategoryFilter: (c: string) => void;
-  productStatusFilter: 'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'IN_COMBO' | 'FEATURED_HOME';
+  productStatusFilter: 'ACTIVE' | 'ALL' | 'DRAFT' | 'PROMO' | 'TODAY' | 'FEATURED_HOME' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'IN_COMBO' | 'HIDDEN';
   setProductStatusFilter: (st: any) => void;
   productSizeFilter: 'ALL' | 'P' | 'M' | 'G' | 'GG' | 'UN';
   setProductSizeFilter: (sz: any) => void;
@@ -68,6 +70,7 @@ interface WixProductTableProps {
   onBulkAddToCombo: () => void;
   onBulkRemoveFromCombo: () => void;
   onBulkSetFeaturedOnHome?: (featured: boolean) => void;
+  onBulkSetVisibility?: (visible: boolean) => void;
   onBulkDelete?: () => void;
   onBulkGroup?: () => void;
   onClearSelection: () => void;
@@ -83,10 +86,12 @@ export function WixProductTable({
   inStockCatalogCount,
   outOfStockCatalogCount,
   comboCatalogCount = 0,
+  promoCatalogCount = 0,
   featuredHomeCatalogCount = 0,
   comboPromo,
   onToggleProductCombo,
   onToggleProductFeaturedOnHome,
+  onToggleProductVisibility,
   availableCategories,
   productSearch,
   setProductSearch,
@@ -116,6 +121,7 @@ export function WixProductTable({
   onBulkAddToCombo,
   onBulkRemoveFromCombo,
   onBulkSetFeaturedOnHome,
+  onBulkSetVisibility,
   onBulkDelete,
   onBulkGroup,
   onClearSelection,
@@ -247,27 +253,83 @@ export function WixProductTable({
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
             <button
               type="button"
-              onClick={() => setProductStatusFilter('ALL')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                productStatusFilter === 'ALL'
-                  ? 'bg-gray-900 text-white font-semibold'
+              onClick={() => setProductStatusFilter('ACTIVE')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
+                productStatusFilter === 'ACTIVE'
+                  ? 'bg-emerald-600 text-white font-semibold shadow-xs'
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
+              title="Exibir todos os produtos ativos e visíveis para os clientes na loja"
             >
-              Todos os produtos ({totalCatalogCount})
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span>🌐 No ar na loja ({activeCatalogCount})</span>
             </button>
 
             <button
               type="button"
-              onClick={() => setProductStatusFilter('ACTIVE')}
+              onClick={() => setProductStatusFilter('ALL')}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
-                productStatusFilter === 'ACTIVE'
-                  ? 'bg-emerald-600 text-white font-semibold'
+                productStatusFilter === 'ALL'
+                  ? 'bg-gray-900 text-white font-semibold'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title="Exibir o catálogo completo (ativos, rascunhos e esgotados)"
+            >
+              <span>📦 Todos os produtos ({totalCatalogCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProductStatusFilter('DRAFT')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
+                productStatusFilter === 'DRAFT' || productStatusFilter === 'HIDDEN'
+                  ? 'bg-gray-800 text-white font-semibold shadow-xs'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title="Exibir todos os produtos em rascunho ou ocultados do site"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              <span>📝 Rascunhos / Ocultos ({draftCatalogCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProductStatusFilter('PROMO')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
+                productStatusFilter === 'PROMO' || productStatusFilter === 'IN_COMBO'
+                  ? 'bg-amber-500 text-gray-950 font-bold shadow-xs'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title="Exibir produtos participantes do combo promocional ou com preço promocional ativo"
+            >
+              <span>🏷️</span>
+              <span>Na Promoção ({promoCatalogCount || comboCatalogCount || 0})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProductStatusFilter('TODAY')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
+                productStatusFilter === 'TODAY'
+                  ? 'bg-amber-500 text-black font-semibold'
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>No ar na loja ({activeCatalogCount})</span>
+              ⚡ Criados hoje ({todayCatalogCount})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProductStatusFilter('FEATURED_HOME')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
+                productStatusFilter === 'FEATURED_HOME'
+                  ? 'bg-amber-400 text-gray-950 font-bold shadow-xs'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title="Filtrar apenas as peças selecionadas com a estrelinha para aparecer na capa do site"
+            >
+              <Star className={`w-3.5 h-3.5 ${productStatusFilter === 'FEATURED_HOME' ? 'fill-current text-gray-950' : 'text-amber-500 fill-amber-400'}`} />
+              <span>Na Capa ({featuredHomeCatalogCount})</span>
             </button>
 
             <button
@@ -292,46 +354,6 @@ export function WixProductTable({
               }`}
             >
               Esgotados ({outOfStockCatalogCount})
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setProductStatusFilter('TODAY')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                productStatusFilter === 'TODAY'
-                  ? 'bg-amber-500 text-black font-semibold'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              ⚡ Criados hoje ({todayCatalogCount})
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setProductStatusFilter('IN_COMBO')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
-                productStatusFilter === 'IN_COMBO'
-                  ? 'bg-amber-500 text-gray-950 font-bold shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-              title="Filtrar apenas os produtos participantes da promoção de combo"
-            >
-              <span>🔥</span>
-              <span>No Combo ({comboCatalogCount || (comboPromo?.product_ids?.length || 0)})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setProductStatusFilter('FEATURED_HOME')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
-                productStatusFilter === 'FEATURED_HOME'
-                  ? 'bg-amber-400 text-gray-950 font-bold shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-              title="Filtrar apenas as peças selecionadas com a estrelinha para aparecer na capa do site"
-            >
-              <Star className={`w-3.5 h-3.5 ${productStatusFilter === 'FEATURED_HOME' ? 'fill-current text-gray-950' : 'text-amber-500 fill-amber-400'}`} />
-              <span>Na Capa ({featuredHomeCatalogCount})</span>
             </button>
           </div>
 
@@ -527,6 +549,26 @@ export function WixProductTable({
             >
               <span>☆ Tirar da Capa</span>
             </button>
+            {onBulkSetVisibility && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onBulkSetVisibility(true)}
+                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer"
+                  title="Publicar todas as peças selecionadas na loja (colocar no ar)"
+                >
+                  <span>🟢 Publicar no Site</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onBulkSetVisibility(false)}
+                  className="px-2.5 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer"
+                  title="Ocultar do site todas as peças selecionadas (tornar rascunho)"
+                >
+                  <span>🚫 Ocultar do Site</span>
+                </button>
+              </>
+            )}
             {onBulkGroup && selectedCatalogIds.length >= 2 && (
               <button
                 type="button"
@@ -657,6 +699,7 @@ export function WixProductTable({
                   const promoProductSlugs = (comboPromo?.product_slugs || []).map((x: string) => String(x).toLowerCase());
                   const itemIdLower = String(item.id || '').toLowerCase();
                   const itemSlugLower = String(item.slug || '').toLowerCase();
+                  const isOnline = item.visible_online !== false && item.meta?.visible_online !== false && !item.is_draft && item.meta?.is_draft !== true && item.status !== 'ARCHIVED' && item.status !== 'draft';
                   const isInCombo = Boolean(
                     (itemIdLower && promoProductIds.includes(itemIdLower)) ||
                     (itemSlugLower && promoProductSlugs.includes(itemSlugLower)) ||
@@ -740,6 +783,11 @@ export function WixProductTable({
                               >
                                 {item.title}
                               </button>
+                              {!isOnline && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-gray-200 text-gray-700 border border-gray-300 text-[9px] font-bold uppercase tracking-tight shadow-2xs" title="Produto oculto do site / Rascunho">
+                                  <span>🚫 Rascunho</span>
+                                </span>
+                              )}
                               {isFeaturedOnHome && (
                                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300 text-[9px] font-bold uppercase tracking-tight shadow-2xs" title="Exibido na vitrine da primeira página do site">
                                   <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-600" />
@@ -868,6 +916,20 @@ export function WixProductTable({
                               <Copy className="w-3.5 h-3.5 text-gray-500" />
                               <span>Duplicar produto</span>
                             </button>
+
+                            {onToggleProductVisibility && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenActionRowId(null);
+                                  onToggleProductVisibility(item.id, isOnline);
+                                }}
+                                className="w-full px-3.5 py-2 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
+                              >
+                                <span>{isOnline ? '🚫' : '🟢'}</span>
+                                <span>{isOnline ? 'Ocultar do site (Rascunho)' : 'Publicar no site (No ar)'}</span>
+                              </button>
+                            )}
 
                             <Link
                               href={`/produto/${item.slug || 'samanta-romper'}`}

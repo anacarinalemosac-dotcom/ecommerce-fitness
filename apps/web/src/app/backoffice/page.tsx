@@ -301,7 +301,7 @@ export default function BackofficeDashboard() {
   // Filtros e Busca Rápida no Catálogo de Produtos
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('ALL');
-  const [productStatusFilter, setProductStatusFilter] = useState<'ALL' | 'TODAY' | 'ACTIVE' | 'DRAFT' | 'HIDDEN' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'IN_COMBO' | 'FEATURED_HOME'>('ALL');
+  const [productStatusFilter, setProductStatusFilter] = useState<'ACTIVE' | 'ALL' | 'DRAFT' | 'PROMO' | 'TODAY' | 'FEATURED_HOME' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'IN_COMBO' | 'HIDDEN'>('ACTIVE');
   const [productSizeFilter, setProductSizeFilter] = useState<'ALL' | 'P' | 'M' | 'G' | 'GG' | 'UN'>('ALL');
 
   // Seleção e Edição em Massa (Bulk Update) de Produtos
@@ -855,6 +855,36 @@ export default function BackofficeDashboard() {
       } catch (_) {}
     } catch (err: any) {
       alert(`Erro ao alterar visibilidade: ${err.message}`);
+    }
+  };
+
+  const handleBulkSetVisibility = async (newVisibility: boolean) => {
+    if (selectedCatalogIds.length === 0) return;
+    try {
+      const res = await fetch('/api/backoffice/products', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productIds: selectedCatalogIds,
+          visible_online: newVisibility,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Falha ao atualizar visibilidade em massa');
+      }
+
+      await fetchSupabaseProducts();
+      if (refreshProducts) {
+        await refreshProducts();
+      }
+      setSelectedCatalogIds([]);
+      try {
+        soundManager.playVisitorDing();
+      } catch (_) {}
+    } catch (err: any) {
+      alert(`Erro ao alterar visibilidade em massa: ${err.message}`);
     }
   };
 
@@ -2449,34 +2479,51 @@ export default function BackofficeDashboard() {
 
   const isDraftProduct = (item: any) => {
     if (!item) return false;
-    // Itens zerados vão exclusivamente para a aba PRODUTO ESGOTADO (nunca para Rascunho)
-    if (getProductTotalStock(item) <= 0) return false;
-    if (item.visible_online === false || item.meta?.visible_online === false) return true;
-    if (item.is_draft === true || item.meta?.is_draft === true || item.status === 'draft') return true;
-    if (item.created_at) {
-      const createdTime = new Date(item.created_at).getTime();
-      const fortyFiveDaysAgo = Date.now() - 45 * 24 * 60 * 60 * 1000;
-      if (!isNaN(createdTime) && createdTime < fortyFiveDaysAgo && !item.visible_online) {
-        return true;
-      }
-    }
-    return false;
+    const isHidden = item.visible_online === false || item.meta?.visible_online === false;
+    const isDraft = item.is_draft === true || item.meta?.is_draft === true || item.status === 'draft' || item.status === 'ARCHIVED';
+    return isHidden || isDraft;
+  };
+
+  const isActiveProduct = (item: any) => {
+    if (!item) return false;
+    const isHidden = item.visible_online === false || item.meta?.visible_online === false;
+    const isDraft = item.is_draft === true || item.meta?.is_draft === true || item.status === 'draft' || item.status === 'ARCHIVED';
+    return !isHidden && !isDraft;
+  };
+
+  const isPromoProduct = (item: any) => {
+    if (!item) return false;
+    const itemIdLower = String(item.id || '').toLowerCase();
+    const itemSlugLower = String(item.slug || '').toLowerCase();
+    const promoIds = (comboPromo?.product_ids || []).map((x: string) => String(x).toLowerCase());
+    const promoSlugs = (comboPromo?.product_slugs || []).map((x: string) => String(x).toLowerCase());
+    const isInCombo = Boolean(
+      promoIds.includes(itemIdLower) ||
+      promoSlugs.includes(itemSlugLower) ||
+      item.is_combo_item === true ||
+      (item.category && ['sets', 'conjuntos', 'matching sets'].includes(String(item.category).toLowerCase())) ||
+      item.title?.toUpperCase().includes('SET') ||
+      item.title?.toUpperCase().includes('CONJUNTO')
+    );
+    const meta = item.meta || {};
+    const hasPromoPrice = Boolean(
+      (meta.promotional_price && Number(meta.promotional_price) > 0 && Number(meta.promotional_price) < Number(meta.price || item.price)) ||
+      (item.promotional_price && Number(item.promotional_price) > 0 && Number(item.promotional_price) < Number(item.price)) ||
+      (item.compare_price && Number(item.compare_price) > Number(item.price)) ||
+      (meta.compare_price && Number(meta.compare_price) > Number(meta.price || item.price))
+    );
+    return isInCombo || hasPromoPrice;
   };
 
   const totalCatalogCount = baseCatalogList.length;
   const todayCatalogCount = baseCatalogList.filter(isCreatedToday).length;
   const draftCatalogCount = baseCatalogList.filter(isDraftProduct).length;
-  const activeCatalogCount = baseCatalogList.filter(
-    (p: any) => getProductTotalStock(p) > 0 && p.visible_online !== false && !isDraftProduct(p)
-  ).length;
+  const activeCatalogCount = baseCatalogList.filter(isActiveProduct).length;
+  const promoCatalogCount = baseCatalogList.filter(isPromoProduct).length;
   const hiddenCatalogCount = draftCatalogCount;
   const inStockCatalogCount = baseCatalogList.filter((p: any) => getProductTotalStock(p) > 0).length;
   const outOfStockCatalogCount = baseCatalogList.filter((p: any) => getProductTotalStock(p) <= 0).length;
-  const comboCatalogCount = baseCatalogList.filter((p: any) =>
-    (comboPromo?.product_ids || []).includes(p.id) ||
-    (comboPromo?.product_slugs || []).includes(p.slug) ||
-    p.is_combo_item === true
-  ).length;
+  const comboCatalogCount = promoCatalogCount;
   const featuredHomeCatalogCount = baseCatalogList.filter((p: any) =>
     p.featured_on_home === true || p.featuredOnHome === true
   ).length;
@@ -2489,20 +2536,16 @@ export default function BackofficeDashboard() {
       stock_quantity: Math.round((item.stock || 0) / item.sizes.length),
     })) : []);
     const totalStock = getProductTotalStock(item);
-    const isInCombo = Boolean(
-      (comboPromo?.product_ids || []).includes(item.id) ||
-      (comboPromo?.product_slugs || []).includes(item.slug) ||
-      item.is_combo_item === true
-    );
 
-    // Filtro por Status / Aba
-    if (productStatusFilter === 'TODAY' && !isCreatedToday(item)) return false;
-    if (productStatusFilter === 'ACTIVE' && (totalStock <= 0 || item.visible_online === false || isDraftProduct(item))) return false;
+    // Filtro por Status / Aba Principal
+    if (productStatusFilter === 'ACTIVE' && !isActiveProduct(item)) return false;
     if ((productStatusFilter === 'DRAFT' || productStatusFilter === 'HIDDEN') && !isDraftProduct(item)) return false;
+    if ((productStatusFilter === 'PROMO' || productStatusFilter === 'IN_COMBO') && !isPromoProduct(item)) return false;
+    if (productStatusFilter === 'TODAY' && !isCreatedToday(item)) return false;
+    if (productStatusFilter === 'FEATURED_HOME' && !(item.featured_on_home === true || item.featuredOnHome === true)) return false;
     if (productStatusFilter === 'IN_STOCK' && totalStock <= 0) return false;
     if (productStatusFilter === 'OUT_OF_STOCK' && totalStock > 0) return false;
-    if (productStatusFilter === 'IN_COMBO' && !isInCombo) return false;
-    if (productStatusFilter === 'FEATURED_HOME' && !(item.featured_on_home === true || item.featuredOnHome === true)) return false;
+    // 'ALL' exibe todos os produtos sem restrição de status
 
     // Filtro por Tamanho P (S), M (M), G (L), GG (XL)
     if (productSizeFilter !== 'ALL') {
@@ -3050,11 +3093,14 @@ export default function BackofficeDashboard() {
             onClearSelection={() => setSelectedCatalogIds([])}
             comboBadgeText={comboPromo?.badge_text}
             comboCatalogCount={comboCatalogCount}
+            promoCatalogCount={promoCatalogCount}
             featuredHomeCatalogCount={featuredHomeCatalogCount}
             comboPromo={comboPromo}
             onToggleProductCombo={handleToggleSingleProductCombo}
             onToggleProductFeaturedOnHome={handleToggleSingleProductFeaturedOnHome}
+            onToggleProductVisibility={(id, currentOnline) => handleToggleVisibility(id, !currentOnline)}
             onBulkSetFeaturedOnHome={handleBulkSetFeaturedOnHome}
+            onBulkSetVisibility={handleBulkSetVisibility}
             onBulkDelete={handleBulkDeleteProducts}
             onBulkGroup={handleBulkGroupProducts}
           />

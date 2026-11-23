@@ -37,8 +37,8 @@
       "id": "hero-2",
       "active": true,
       "mediaType": "image",
-      "imageUrl": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794313586030-kxs3id.png",
-      "mobileImageUrl": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794313586030-kxs3id.png",
+      "imageUrl": "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=1800&q=80",
+      "mobileImageUrl": "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&q=80",
       "badge": "NOVA COLEÇÃO ATELIER 2026",
       "title1": "HIGH PERFORMANCE",
       "title2": "FIT LUXURY.",
@@ -188,7 +188,7 @@
         "piece": "Samanta Romper"
       },
       {
-        "image": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794310782980-c8olzs.jpeg",
+        "image": "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=600&q=80",
         "user": "@beatriz_fitness",
         "piece": "Bailarina Top"
       },

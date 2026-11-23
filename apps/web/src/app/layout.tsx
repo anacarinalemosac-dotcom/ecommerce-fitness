@@ -69,7 +69,23 @@ export default function RootLayout({
               s.parentNode.insertBefore(t,s)}(window, document,'script',
               'https://connect.facebook.net/en_US/fbevents.js');
               fbq('init', '2201109947470495');
-              fbq('track', 'PageView');
+              try {
+                var usp = new URLSearchParams(window.location.search);
+                var tc = usp.get('test_event_code') || usp.get('fb_test_code');
+                if (tc) {
+                  sessionStorage.setItem('meta_test_event_code', tc);
+                  fbq('track', 'PageView', {}, { test_event_code: tc });
+                } else {
+                  var stc = sessionStorage.getItem('meta_test_event_code');
+                  if (stc) {
+                    fbq('track', 'PageView', {}, { test_event_code: stc });
+                  } else {
+                    fbq('track', 'PageView');
+                  }
+                }
+              } catch (_) {
+                fbq('track', 'PageView');
+              }
             `,
           }}
         />

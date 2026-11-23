@@ -213,18 +213,21 @@ export async function POST(req: NextRequest) {
     masterMeta.galleryImages = consolidatedGallery;
     masterMeta.images = consolidatedGallery;
     masterMeta.variants = finalVars;
+    masterMeta.stock = totalStock;
 
     try {
-      await supabaseServer
+      const { error: masterUpErr } = await supabaseServer
         .from('products')
         .update({
           title: finalTitle,
-          stock: totalStock,
           description: JSON.stringify(masterMeta),
         })
         .eq('id', masterProd.id);
+      if (masterUpErr) {
+        console.warn('Aviso ao atualizar master no Supabase:', masterUpErr);
+      }
     } catch (upErr) {
-      console.warn('Aviso ao atualizar master no Supabase:', upErr);
+      console.warn('Erro ao atualizar master no Supabase:', upErr);
     }
 
     // 7. Processa os produtos secundários (Ocultar ou Excluir)
@@ -233,28 +236,32 @@ export async function POST(req: NextRequest) {
         await supabaseServer.from('product_variants').delete().in('product_id', secondaryIds);
         await supabaseServer.from('products').delete().in('id', secondaryIds);
       } else {
-        // Desativa e arquiva
+        // Desativa e arquiva cada secundário
         for (const sid of secondaryIds) {
           const sp = secondaryProds.find((p: any) => p.id === sid);
           let spMeta: any = {};
           try {
             spMeta = typeof sp?.description === 'string' && sp.description.startsWith('{')
               ? JSON.parse(sp.description)
-              : {};
+              : (sp?.meta || {});
           } catch (_) {}
           spMeta.visible_online = false;
+          spMeta.visibleOnline = false;
           spMeta.is_draft = true;
+          spMeta.isDraft = true;
           spMeta.status = 'ARCHIVED';
           spMeta.grouped_into = masterProd.id;
 
-          await supabaseServer
+          const { error: secUpErr } = await supabaseServer
             .from('products')
             .update({
-              visible_online: false,
-              is_draft: true,
               description: JSON.stringify(spMeta),
             })
             .eq('id', sid);
+
+          if (secUpErr) {
+            console.error(`Erro ao ocultar secundário ${sid} no Supabase:`, secUpErr);
+          }
         }
       }
     } catch (secErr) {
