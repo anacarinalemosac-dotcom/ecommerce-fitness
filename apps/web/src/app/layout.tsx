@@ -21,6 +21,20 @@ export const metadata: Metadata = {
     siteName: 'ANA Fitness Wear',
     title: 'ANA FITNESS WEAR | Luxury Activewear US',
     description: 'Zero see-through, anatomical compression and sculpt fit. Shipping across all United States.',
+    images: [
+      {
+        url: 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794313586030-kxs3id.png',
+        width: 1200,
+        height: 630,
+        alt: 'ANA FITNESS WEAR - Luxury Activewear US',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ANA FITNESS WEAR | Luxury Activewear US',
+    description: 'Zero see-through, anatomical compression and sculpt fit. Shipping across all United States.',
+    images: ['https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794313586030-kxs3id.png'],
   },
   manifest: '/manifest.json',
   icons: {

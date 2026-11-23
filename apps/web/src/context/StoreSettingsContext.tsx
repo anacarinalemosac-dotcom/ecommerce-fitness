@@ -291,8 +291,8 @@ export const DEFAULT_HERO_BANNERS: HeroBannerSlide[] = [
     id: 'hero-2',
     active: true,
     mediaType: 'image',
-    imageUrl: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=1800&q=80',
-    mobileImageUrl: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&q=80',
+    imageUrl: 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794313586030-kxs3id.png',
+    mobileImageUrl: 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794313586030-kxs3id.png',
     badge: 'NOVA COLEÇÃO ATELIER 2026',
     title1: 'HIGH PERFORMANCE',
     title2: 'FIT LUXURY.',
@@ -441,7 +441,7 @@ const DEFAULT_SITE_IMAGES: SiteImages = {
   logoUrl: '/logo-ana-fitness.png',
   symbolUrl: '/symbol-ana-fitness.png',
   categoryImages: {
-    sets: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=700&q=80',
+    sets: 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794313586030-kxs3id.png',
     rompers: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=700&q=80',
     jumpsuits: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=700&q=80',
     tops: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=700&q=80',
@@ -449,7 +449,7 @@ const DEFAULT_SITE_IMAGES: SiteImages = {
   },
   communityImages: [
     { image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&q=80', user: '@marianasalles_fit', piece: 'Samanta Romper' },
-    { image: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=600&q=80', user: '@beatriz_fitness', piece: 'Bailarina Top' },
+    { image: 'https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794310782980-c8olzs.jpeg', user: '@beatriz_fitness', piece: 'Bailarina Top' },
     { image: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=600&q=80', user: '@carol_almeida_us', piece: 'Monique Set' },
     { image: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&q=80', user: '@juliana_bostonfit', piece: 'Kely Pants Set' },
     { image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&q=80', user: '@vanessa_conditioning', piece: 'Raissa Jumpsuit' },
