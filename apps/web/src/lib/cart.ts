@@ -464,18 +464,16 @@ export function calculateComboDiscount(
   const participatingUnitsList: { price: number; title: string; slug: string }[] = [];
 
   items.forEach((it) => {
+    // Verificação estrita: nunca inclui produto se o lojista desativou explicitamente
+    const isExplicitOptOut = it.is_combo_item === false || (it as any).meta?.is_combo_item === false;
+    if (isExplicitOptOut) return;
+
     const isIdMatch = it.id && promoProductIds.has(String(it.id).toLowerCase());
     const isSlugMatch = it.slug && promoProductSlugs.has(String(it.slug).toLowerCase());
-    const isExplicitCombo = it.is_combo_item === true;
-    const isCategoryMatch =
-      Boolean((it as any).category) &&
-      ['sets', 'conjuntos', 'matching sets'].includes(String((it as any).category).toLowerCase());
-    const isNameMatch =
-      Boolean(it.title && (it.title.toUpperCase().includes('SET') || it.title.toUpperCase().includes('CONJUNTO'))) ||
-      Boolean(it.slug && (it.slug.toLowerCase().includes('set') || it.slug.toLowerCase().includes('conjunto')));
-    const isFallbackMatch = isCategoryMatch || isNameMatch;
+    const isExplicitCombo = it.is_combo_item === true || (it as any).meta?.is_combo_item === true;
 
-    if (isIdMatch || isSlugMatch || isExplicitCombo || isFallbackMatch) {
+    // Apenas produtos explicitamente configurados na promoção pelo lojista participam
+    if (isIdMatch || isSlugMatch || isExplicitCombo) {
       const q = Math.max(1, Number(it.quantity) || 1);
       for (let i = 0; i < q; i++) {
         participatingUnitsList.push({

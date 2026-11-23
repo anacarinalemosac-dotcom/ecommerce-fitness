@@ -72,14 +72,10 @@ export default function PublicClientCatalogPage() {
   }, []);
 
   const isCatalogItemInCombo = (tile: CatalogVariationTile): boolean => {
-    if (!comboPromo?.active) return false;
-    if ((tile as any).is_combo_item === true) return true;
-    const cat = String(tile.category || '').toLowerCase();
-    if (cat === 'sets' || cat === 'conjuntos' || cat.includes('set') || cat.includes('conjunto')) return true;
-    const tUpper = (tile.title || '').toUpperCase();
-    if (tUpper.includes('SET') || tUpper.includes('CONJUNTO') || tUpper.includes('KIT')) return true;
-    const sLower = String(tile.productSlug || '').toLowerCase();
-    if (sLower.includes('set') || sLower.includes('conjunto')) return true;
+    if (!comboPromo?.active || !tile) return false;
+    // Respeita estritamente exclusão manual
+    if ((tile as any).is_combo_item === false || (tile as any).meta?.is_combo_item === false) return false;
+    if ((tile as any).is_combo_item === true || (tile as any).meta?.is_combo_item === true) return true;
     const promoIds = (comboPromo.product_ids || []).map((id: string) => String(id).toLowerCase());
     const promoSlugs = (comboPromo.product_slugs || []).map((s: string) => String(s).toLowerCase());
     const idNorm = String(tile.productId || '').toLowerCase();

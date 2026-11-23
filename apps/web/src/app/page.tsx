@@ -246,13 +246,9 @@ export default function HomePage({
 
   const isProductInCombo = (p: any): boolean => {
     if (!comboPromo?.active || !p) return false;
-    if (p.is_combo_item === true) return true;
-    const cat = String(p.categoryKey || p.categoryPt || p.categoryEn || p.category || '').toLowerCase();
-    if (cat === 'sets' || cat === 'conjuntos' || cat.includes('set') || cat.includes('conjunto')) return true;
-    const titleUpper = String(p.title || '').toUpperCase();
-    if (titleUpper.includes('SET') || titleUpper.includes('CONJUNTO') || titleUpper.includes('KIT')) return true;
-    const sLower = String(p.slug || '').toLowerCase();
-    if (sLower.includes('set') || sLower.includes('conjunto')) return true;
+    // Respeita estritamente exclusão manual
+    if (p.is_combo_item === false || p.meta?.is_combo_item === false) return false;
+    if (p.is_combo_item === true || p.meta?.is_combo_item === true) return true;
     const promoIds = (comboPromo.product_ids || []).map((id: string) => String(id).toLowerCase());
     const promoSlugs = (comboPromo.product_slugs || []).map((s: string) => String(s).toLowerCase());
     const prodId = String(p.id || '').toLowerCase();

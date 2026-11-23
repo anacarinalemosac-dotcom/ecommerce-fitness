@@ -1089,6 +1089,23 @@ export default function BackofficeDashboard() {
       const data = await res.json();
       if (data?.success && data?.comboPromo) {
         setComboPromo(data.comboPromo);
+        const newPromoIds = new Set((data.comboPromo.product_ids || []).map((x: string) => String(x).toLowerCase()));
+        const newPromoSlugs = new Set((data.comboPromo.product_slugs || []).map((x: string) => String(x).toLowerCase()));
+        setSupabaseProducts((prev) =>
+          prev.map((p) => {
+            const matches =
+              (p.id && newPromoIds.has(String(p.id).toLowerCase())) ||
+              (p.slug && newPromoSlugs.has(String(p.slug).toLowerCase()));
+            if (p.id === productId || (productSlug && p.slug === productSlug)) {
+              return {
+                ...p,
+                is_combo_item: matches,
+                meta: { ...p.meta, is_combo_item: matches },
+              };
+            }
+            return p;
+          })
+        );
       }
     } catch (e: any) {
       alert('Erro ao atualizar produto no combo: ' + e?.message);
@@ -2495,6 +2512,17 @@ export default function BackofficeDashboard() {
 
   const isPromoProduct = (item: any) => {
     if (!item) return false;
+    // Respeita exclusão explícita
+    if (item.is_combo_item === false || item.meta?.is_combo_item === false) {
+      const meta = item.meta || {};
+      const hasPromoPrice = Boolean(
+        (meta.promotional_price && Number(meta.promotional_price) > 0 && Number(meta.promotional_price) < Number(meta.price || item.price)) ||
+        (item.promotional_price && Number(item.promotional_price) > 0 && Number(item.promotional_price) < Number(item.price)) ||
+        (item.compare_price && Number(item.compare_price) > Number(item.price)) ||
+        (meta.compare_price && Number(meta.compare_price) > Number(meta.price || item.price))
+      );
+      return hasPromoPrice;
+    }
     const itemIdLower = String(item.id || '').toLowerCase();
     const itemSlugLower = String(item.slug || '').toLowerCase();
     const promoIds = (comboPromo?.product_ids || []).map((x: string) => String(x).toLowerCase());
@@ -2503,9 +2531,7 @@ export default function BackofficeDashboard() {
       promoIds.includes(itemIdLower) ||
       promoSlugs.includes(itemSlugLower) ||
       item.is_combo_item === true ||
-      (item.category && ['sets', 'conjuntos', 'matching sets'].includes(String(item.category).toLowerCase())) ||
-      item.title?.toUpperCase().includes('SET') ||
-      item.title?.toUpperCase().includes('CONJUNTO')
+      item.meta?.is_combo_item === true
     );
     const meta = item.meta || {};
     const hasPromoPrice = Boolean(
