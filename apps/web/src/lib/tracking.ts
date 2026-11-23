@@ -1,16 +1,5 @@
 'use client';
 
-function getMetaTestOptions() {
-  if (typeof window === 'undefined') return undefined;
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('test_event_code') || (window as any).__META_TEST_EVENT_CODE || 'TEST66304';
-    return code ? { test_event_code: code } : undefined;
-  } catch (_) {
-    return { test_event_code: 'TEST66304' };
-  }
-}
-
 // Helper universal de disparo de eventos de rastreamento para Meta, Google, TikTok e Pinterest
 export const trackEvent = {
   // Visualização de Página
@@ -18,7 +7,7 @@ export const trackEvent = {
     if (typeof window === 'undefined') return;
     try {
       if ((window as any).fbq) {
-        (window as any).fbq('track', 'PageView', {}, getMetaTestOptions());
+        (window as any).fbq('track', 'PageView');
       }
       if ((window as any).gtag) {
         (window as any).gtag('event', 'page_view', { page_path: url || window.location.pathname });
@@ -45,7 +34,7 @@ export const trackEvent = {
           content_category: product.category || 'Activewear',
           value: product.price,
           currency: 'USD',
-        }, getMetaTestOptions());
+        });
       }
 
       // 2. Google Analytics 4
@@ -109,7 +98,7 @@ export const trackEvent = {
           content_type: 'product',
           value: val,
           currency: 'USD',
-        }, getMetaTestOptions());
+        });
       }
 
       // 2. Google Analytics 4
@@ -180,7 +169,7 @@ export const trackEvent = {
           num_items: items.reduce((acc, i) => acc + (i.quantity || 1), 0),
           value: totalValue,
           currency: 'USD',
-        }, getMetaTestOptions());
+        });
       }
 
       // 2. Google Analytics 4
@@ -238,7 +227,7 @@ export const trackEvent = {
           value: orderAmount,
           currency: 'USD',
           order_id: orderId,
-        }, getMetaTestOptions());
+        });
       }
 
       // 2. Google Analytics 4

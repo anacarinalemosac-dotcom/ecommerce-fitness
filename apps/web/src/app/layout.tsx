@@ -55,17 +55,7 @@ export default function RootLayout({
               s.parentNode.insertBefore(t,s)}(window, document,'script',
               'https://connect.facebook.net/en_US/fbevents.js');
               fbq('init', '2201109947470495');
-              try {
-                var _params = new URLSearchParams(window.location.search);
-                var _tCode = _params.get('test_event_code') || 'TEST66304';
-                if (_tCode) {
-                  fbq('track', 'PageView', {}, { test_event_code: _tCode });
-                } else {
-                  fbq('track', 'PageView');
-                }
-              } catch (_) {
-                fbq('track', 'PageView');
-              }
+              fbq('track', 'PageView');
             `,
           }}
         />
