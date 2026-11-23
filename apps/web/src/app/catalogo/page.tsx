@@ -705,12 +705,12 @@ export default function PublicClientCatalogPage() {
                     key={item.tileId}
                     className="border border-gray-200 bg-white flex flex-col justify-between overflow-hidden shadow-xs hover:border-gold hover:shadow-md transition print:break-inside-avoid"
                   >
-                    {/* Foto da Variação em Proporção 4:5 */}
-                    <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden group">
+                    {/* Foto da Variação Completa sem corte e sem zoom */}
+                    <div className="relative aspect-[3/4] sm:aspect-[4/5] bg-[#fafafa] overflow-hidden flex items-center justify-center p-1">
                       <img
                         src={item.imageUrl}
                         alt={`${item.title} - ${item.colorName}`}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-contain"
                         onError={(e) => {
                           const t = e.currentTarget;
                           if (!t.src.includes('symbol-ana-fitness.png')) {

@@ -1262,7 +1262,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                     <img
                       src={item.url}
                       alt={item.label}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain p-0.5 bg-neutral-50"
                       onError={(e) => {
                         const t = e.currentTarget;
                         if (!t.src.includes('symbol-ana-fitness.png')) {
@@ -1275,7 +1275,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               ))}
             </div>
 
-            <div className="flex-1 relative aspect-[3/4] bg-deep-black/5 overflow-hidden border border-deep-black/10 group">
+            <div className="flex-1 relative aspect-[3/4] sm:aspect-[4/5] lg:aspect-[2/3] max-h-[750px] bg-[#fbfbfb] overflow-hidden border border-neutral-200 group flex items-center justify-center">
               {productData.media[selectedMediaIdx]?.type === 'video' ? (
                 <div className="relative w-full h-full bg-black flex items-center justify-center">
                   <video
@@ -1295,14 +1295,11 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   </div>
                 </div>
               ) : (
-                <div className="relative w-full h-full">
+                <div className="relative w-full h-full flex items-center justify-center p-2 sm:p-4">
                   <img
                     src={productData.media[selectedMediaIdx]?.url}
                     alt={productData.title}
-                    className={`w-full h-full object-cover transition-transform duration-500 cursor-zoom-in ${
-                      isZoomed ? 'scale-150' : 'group-hover:scale-105'
-                    }`}
-                    onClick={() => setIsZoomed(!isZoomed)}
+                    className="w-full h-full object-contain"
                     onError={(e) => {
                       const t = e.currentTarget;
                       if (!t.src.includes('symbol-ana-fitness.png')) {
@@ -1346,14 +1343,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   </div>
                 )
               )}
-
-              <button
-                onClick={() => setIsZoomed(!isZoomed)}
-                className="absolute bottom-4 right-4 p-2.5 bg-deep-black/80 hover:bg-gold hover:text-deep-black text-white backdrop-blur-md transition"
-                title="Zoom"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </button>
             </div>
           </div>
 

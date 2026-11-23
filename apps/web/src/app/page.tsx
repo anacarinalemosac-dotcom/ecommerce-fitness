@@ -1426,14 +1426,14 @@ export default function HomePage() {
                       }}
                       className="group flex flex-col bg-white border border-deep-black/15 transition-all hover:border-deep-black hover:shadow-luxury overflow-hidden"
                     >
-                      {/* 1. Imagem do Produto em Proporção Atlética 4:5 */}
-                      <div className="relative aspect-[4/5] bg-deep-black/5 overflow-hidden">
-                        <Link href={`/produto/${product.slug}`} className="block w-full h-full">
-                          {/* Imagem Frontal com Crossfade para Pose de Ação */}
+                      {/* 1. Imagem do Produto sem corte e sem zoom automático */}
+                      <div className="relative aspect-[3/4] sm:aspect-[4/5] bg-[#fafafa] overflow-hidden flex items-center justify-center">
+                        <Link href={`/produto/${product.slug}`} className="block w-full h-full flex items-center justify-center p-1">
+                          {/* Imagem Frontal Completa sem corte */}
                           <img
                             src={cardImageOverrides[product.id] || (isHovered ? product.secondaryImage : product.primaryImage)}
                             alt={product.title}
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            className="w-full h-full object-contain"
                             onError={(e) => {
                               const t = e.currentTarget;
                               if (!t.src.includes('symbol-ana-fitness.png')) {

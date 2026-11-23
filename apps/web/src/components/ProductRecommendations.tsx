@@ -204,13 +204,13 @@ export function ProductRecommendations({
                 {/* 1. Imagem Retrato Vertical 4:5 Gymshark */}
                 <Link
                   href={`/produto/${item.slug}`}
-                  className="relative aspect-[4/5] w-full overflow-hidden bg-gray-50 block rounded-xs"
+                  className="relative aspect-[3/4] sm:aspect-[4/5] w-full overflow-hidden bg-[#fafafa] flex items-center justify-center p-1 rounded-xs"
                 >
                   {itemImage ? (
                     <img
                       src={itemImage}
                       alt={item.title}
-                      className="w-full h-full object-cover object-top transition-transform duration-500 group-hover/card:scale-105"
+                      className="w-full h-full object-contain"
                       loading="lazy"
                     />
                   ) : (
