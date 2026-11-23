@@ -301,7 +301,7 @@ export default function BackofficeDashboard() {
   // Filtros e Busca Rápida no Catálogo de Produtos
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('ALL');
-  const [productStatusFilter, setProductStatusFilter] = useState<'ACTIVE' | 'ALL' | 'DRAFT' | 'PROMO' | 'TODAY' | 'FEATURED_HOME' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'IN_COMBO' | 'HIDDEN'>('ACTIVE');
+  const [productStatusFilter, setProductStatusFilter] = useState<'ALL' | 'ACTIVE' | 'DRAFT' | 'PROMO' | 'TODAY' | 'FEATURED_HOME' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'IN_COMBO' | 'HIDDEN'>('ALL');
   const [productSizeFilter, setProductSizeFilter] = useState<'ALL' | 'P' | 'M' | 'G' | 'GG' | 'UN'>('ALL');
 
   // Seleção e Edição em Massa (Bulk Update) de Produtos

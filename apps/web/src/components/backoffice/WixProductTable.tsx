@@ -253,6 +253,19 @@ export function WixProductTable({
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
             <button
               type="button"
+              onClick={() => setProductStatusFilter('ALL')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
+                productStatusFilter === 'ALL'
+                  ? 'bg-gray-900 text-white font-semibold'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title="Exibir o catálogo completo (ativos, rascunhos e esgotados)"
+            >
+              <span>📦 Todos os produtos ({totalCatalogCount})</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setProductStatusFilter('ACTIVE')}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
                 productStatusFilter === 'ACTIVE'
@@ -263,19 +276,6 @@ export function WixProductTable({
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               <span>🌐 No ar na loja ({activeCatalogCount})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setProductStatusFilter('ALL')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
-                productStatusFilter === 'ALL'
-                  ? 'bg-gray-900 text-white font-semibold'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-              title="Exibir o catálogo completo (ativos, rascunhos e esgotados)"
-            >
-              <span>📦 Todos os produtos ({totalCatalogCount})</span>
             </button>
 
             <button
