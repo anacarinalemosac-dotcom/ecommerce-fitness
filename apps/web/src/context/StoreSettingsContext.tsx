@@ -416,7 +416,7 @@ const DEFAULT_SITE_INFO: SiteInfo = {
   returnPolicyText: 'Você tem até 30 dias corridos após o recebimento para solicitar troca ou devolução. As peças devem estar em perfeito estado, sem uso, com as etiquetas originais afixadas e na embalagem original.',
   shippingPolicyText: 'Enviamos para todos os 50 estados dos Estados Unidos via USPS Priority Mail com taxa fixa de $9.99. O prazo de postagem para pronta-entrega é de até 24h úteis. Peças confeccionadas sob medida possuem prazo de produção informado na compra.',
   contactText: 'Nosso atendimento oficial está disponível de Segunda a Sexta, das 9h às 18h (EST). WhatsApp: +1 (978) 798-7934 • E-mail: anafitweareua@gmail.com • Leominster, MA.',
-  metaPixelId: '',
+  metaPixelId: '2201109947470495',
   googleAnalyticsId: '',
   googleTagManagerId: '',
   tiktokPixelId: '',
@@ -910,6 +910,9 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         const parsed = JSON.parse(savedInfo);
         if (parsed?.announcementBar?.textPt?.includes('FRETE FIXO DE $9.99')) {
           parsed.announcementBar = DEFAULT_ANNOUNCEMENT_BAR;
+        }
+        if (!parsed?.metaPixelId) {
+          parsed.metaPixelId = '2201109947470495';
         }
         setSiteInfoState((prev) => ({ ...prev, ...parsed }));
       }

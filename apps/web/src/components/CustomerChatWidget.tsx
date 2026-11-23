@@ -243,30 +243,14 @@ export function CustomerChatWidget() {
       {/* 2. BOTÃO FLUTUANTE (FECHADO OU MINIMIZADO) */}
       {!isOpen && (
         <div className="flex items-center gap-2 group">
-          {/* Balão de chamada convidativo */}
-          <button
-            type="button"
-            onClick={handleOpenChat}
-            className="flex items-center gap-1.5 sm:gap-2 bg-deep-black text-white px-3 py-2 border border-gold shadow-luxury hover:bg-gold hover:text-deep-black transition cursor-pointer text-[10.5px] sm:text-xs font-black uppercase tracking-wider animate-bounce rounded-xs max-w-[180px] sm:max-w-none"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-gold group-hover:text-deep-black" />
-            <span>{lang === 'pt' ? 'Qualquer dúvida chame no WhatsApp' : 'Any questions? Chat on WhatsApp'}</span>
-          </button>
-
           {/* Botão de Ícone Principal do Chat */}
           <button
             type="button"
             onClick={handleOpenChat}
-            className="relative w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-luxury transition-transform hover:scale-105 border-2 border-deep-black cursor-pointer"
-            aria-label="Abrir chat com a Ana Carina"
+            className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#25D366] hover:bg-emerald-600 text-white flex items-center justify-center shadow-luxury transition-transform hover:scale-105 border border-white/20 cursor-pointer"
+            aria-label="Abrir chat no WhatsApp"
           >
-            <MessageCircle className="w-7 h-7 text-deep-black" />
-            {hasUnread && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] font-black flex items-center justify-center border-2 border-white animate-pulse">
-                1
-              </span>
-            )}
-            <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-300 rounded-full border-2 border-deep-black" />
+            <MessageCircle className="w-6 h-6 sm:w-7 sm:h-7 text-white fill-white" />
           </button>
         </div>
       )}

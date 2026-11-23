@@ -68,6 +68,8 @@ interface WixProductTableProps {
   onBulkAddToCombo: () => void;
   onBulkRemoveFromCombo: () => void;
   onBulkSetFeaturedOnHome?: (featured: boolean) => void;
+  onBulkDelete?: () => void;
+  onBulkGroup?: () => void;
   onClearSelection: () => void;
   comboBadgeText?: string;
 }
@@ -114,6 +116,8 @@ export function WixProductTable({
   onBulkAddToCombo,
   onBulkRemoveFromCombo,
   onBulkSetFeaturedOnHome,
+  onBulkDelete,
+  onBulkGroup,
   onClearSelection,
   comboBadgeText = 'COMBO 3 PEÇAS',
 }: WixProductTableProps) {
@@ -523,6 +527,26 @@ export function WixProductTable({
             >
               <span>☆ Tirar da Capa</span>
             </button>
+            {onBulkGroup && selectedCatalogIds.length >= 2 && (
+              <button
+                type="button"
+                onClick={onBulkGroup}
+                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-bold transition flex items-center gap-1 shadow-sm cursor-pointer"
+                title="Unificar estes produtos em um único produto com variações de cores e fotos"
+              >
+                <span>🔗 Agrupar em 1 Produto</span>
+              </button>
+            )}
+            {onBulkDelete && (
+              <button
+                type="button"
+                onClick={onBulkDelete}
+                className="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-[11px] font-bold transition flex items-center gap-1 shadow-sm cursor-pointer"
+                title="Excluir permanentemente todos os produtos selecionados"
+              >
+                <span>🗑️ Excluir Selecionados</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onClearSelection}

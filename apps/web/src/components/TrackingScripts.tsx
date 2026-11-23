@@ -23,7 +23,7 @@ export function TrackingScripts() {
     return null;
   }
 
-  const metaPixelId = siteInfo.metaPixelId?.trim();
+  const metaPixelId = (siteInfo.metaPixelId && siteInfo.metaPixelId.trim()) || process.env.NEXT_PUBLIC_META_PIXEL_ID || '2201109947470495';
   const gaId = siteInfo.googleAnalyticsId?.trim();
   const gtmId = siteInfo.googleTagManagerId?.trim();
   const tiktokPixelId = siteInfo.tiktokPixelId?.trim();
@@ -47,7 +47,12 @@ export function TrackingScripts() {
               s.parentNode.insertBefore(t,s)}(window, document,'script',
               'https://connect.facebook.net/en_US/fbevents.js');
               fbq('init', '${metaPixelId}');
-              fbq('track', 'PageView');
+              var testCode = new URLSearchParams(window.location.search).get('test_event_code') || 'TEST66304';
+              if (testCode) {
+                fbq('track', 'PageView', {}, { test_event_code: testCode });
+              } else {
+                fbq('track', 'PageView');
+              }
             `}
           </Script>
           <noscript>

@@ -17,6 +17,7 @@ import {
 } from '@/lib/cart';
 import ProductShareModal from '../../../components/ProductShareModal';
 import { ProductSizeGuide } from '../../../components/ProductSizeGuide';
+import { ProductRecommendations } from '../../../components/ProductRecommendations';
 import { FormattedDescription } from '../../../components/FormattedDescription';
 import { UrgencyCountdownTimer } from '../../../components/UrgencyCountdownTimer';
 import {
@@ -1880,70 +1881,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       </section>
 
       {/* =========================================================================
-          ALO YOGA: PRODUTOS SIMILARES (SIMILAR ITEMS)
-         ========================================================================= */}
-      {similarItems && similarItems.length > 0 && (
-        <section className="border-t border-neutral-200 mt-16 pt-12">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-black">
-              {lang === 'pt' ? 'PRODUTOS SIMILARES' : 'SIMILAR ITEMS'}
-            </h3>
-            <Link
-              href="/catalogo"
-              className="text-[11px] font-medium text-neutral-500 hover:text-black underline uppercase tracking-wider"
-            >
-              {lang === 'pt' ? 'Ver Coleção Completa →' : 'View All Collection →'}
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-            {similarItems.map((item: any) => {
-              const itemImg = item.primaryImage || item.image || item.media?.[0]?.url || 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80';
-              const itemPrice = Number(item.price) || 44.9;
-              const itemInCombo = isItemInCombo(item.id, item.slug, item.title);
-              return (
-                <Link
-                  key={item.id || item.slug}
-                  href={`/produto/${item.slug}`}
-                  className="group block"
-                >
-                  <div className="aspect-[3/4] bg-neutral-100 overflow-hidden relative mb-2.5">
-                    <img
-                      src={itemImg}
-                      alt={item.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      loading="lazy"
-                    />
-                    {item.badgePt && (
-                      <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-black text-white px-2 py-0.5">
-                        {translateBadgeText(lang === 'pt' ? item.badgePt : (item.badgeEn || item.badgePt), lang)}
-                      </span>
-                    )}
-                    {itemInCombo && (
-                      <span className="absolute bottom-2 left-2 right-2 text-[9px] font-bold uppercase tracking-wider bg-emerald-600/95 text-white px-2 py-1 text-center shadow-xs">
-                        {lang === 'pt'
-                          ? `COMBO: ${Number(comboPromo?.required_quantity) || 3} POR $${Number(comboPromo?.bundle_price || 120).toFixed(2)}`
-                          : `COMBO: ${Number(comboPromo?.required_quantity) || 3} FOR $${Number(comboPromo?.bundle_price || 120).toFixed(2)}`}
-                      </span>
-                    )}
-                  </div>
-                  <div className="space-y-0.5">
-                    <h4 className="text-xs font-medium text-neutral-900 group-hover:underline truncate">
-                      {translateProductTitle(item.title, lang)}
-                    </h4>
-                    <p className="text-xs text-neutral-600 font-mono font-medium">
-                      ${itemPrice.toFixed(2)}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* =========================================================================
-          ALO YOGA: AVALIAÇÕES DE CLIENTES (CUSTOMER REVIEWS)
+          AVALIAÇÕES DE CLIENTES (CUSTOMER REVIEWS)
          ========================================================================= */}
       <section id="reviews-section" className="border-t border-neutral-200 mt-16 pt-12 scroll-mt-20">
         <div className="space-y-8 animate-fadeIn">
@@ -2277,6 +2215,20 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               )}
             </div>
       </section>
+
+      {/* 8. SEÇÃO DE RECOMENDAÇÕES INTELIGENTES (CROSS-SELL / COMBINE COM ESTA PEÇA) */}
+      <ProductRecommendations
+        currentProduct={{
+          id: productData.id || dynamicProduct?.id,
+          slug: slug,
+          title: productData.title,
+          categoryKey: productData.categoryKey || dynamicProduct?.categoryKey,
+          categoryPt: productData.categoryPt || dynamicProduct?.categoryPt,
+          categoryEn: productData.categoryEn || dynamicProduct?.categoryEn,
+          colors: productData.colors || dynamicProduct?.colors,
+        }}
+        productsPool={storeProducts}
+      />
 
       {/* Modal Universal de Compartilhamento */}
       <ProductShareModal

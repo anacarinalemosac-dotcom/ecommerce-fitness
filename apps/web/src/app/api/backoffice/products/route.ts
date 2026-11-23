@@ -983,21 +983,56 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    const queryId = searchParams.get('id');
+    const queryIds = searchParams.get('ids');
+    let ids: string[] = [];
 
-    if (!id) {
-      return NextResponse.json({ error: 'ID do produto é obrigatório.' }, { status: 400 });
+    if (queryIds) {
+      ids = queryIds.split(',').map((s) => s.trim()).filter(Boolean);
+    } else if (queryId) {
+      ids = [queryId.trim()];
+    } else {
+      try {
+        const body = await req.json();
+        if (Array.isArray(body?.ids)) {
+          ids = body.ids.map((s: any) => String(s).trim()).filter(Boolean);
+        } else if (body?.id) {
+          ids = [String(body.id).trim()];
+        }
+      } catch (_) {}
     }
 
-    // Exclui variações vinculadas e o produto
-    await supabaseServer.from('product_variants').delete().eq('product_id', id);
-    const { error } = await supabaseServer.from('products').delete().eq('id', id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (ids.length === 0) {
+      return NextResponse.json({ error: 'Nenhum ID de produto informado para exclusão.' }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, message: 'Produto excluído com sucesso.' });
+    // 1. Exclui variações vinculadas e os produtos no Supabase
+    try {
+      await supabaseServer.from('product_variants').delete().in('product_id', ids);
+      const { error } = await supabaseServer.from('products').delete().in('id', ids);
+      if (error && ids.length === 1) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+    } catch (dbErr) {
+      console.warn('Aviso ao excluir no Supabase:', dbErr);
+    }
+
+    // 2. Remove do catálogo local de fallback / cache
+    try {
+      const fallbackList = loadFallbackProducts();
+      if (fallbackList && fallbackList.length > 0) {
+        const filtered = fallbackList.filter((p: any) => !ids.includes(p.id) && !ids.includes(p.slug));
+        saveFallbackProducts(filtered);
+      }
+    } catch (fbErr) {
+      console.warn('Aviso ao atualizar catálogo de fallback:', fbErr);
+    }
+
+    return NextResponse.json({
+      success: true,
+      count: ids.length,
+      message: ids.length === 1 ? 'Produto excluído com sucesso.' : `${ids.length} produtos excluídos com sucesso.`,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

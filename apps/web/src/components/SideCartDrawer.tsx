@@ -222,8 +222,8 @@ export function SideCartDrawer() {
 
   return (
     <>
-      {/* ABA LATERAL FIXA NA BORDA DIREITA DO SITE (sempre visível para abrir/ver tudo na sacola) */}
-      {!isOpen && (
+      {/* ABA LATERAL FIXA NA BORDA DIREITA DO SITE (aparece apenas quando há itens na sacola) */}
+      {!isOpen && totalCount > 0 && (
         <button
           type="button"
           onClick={() => {

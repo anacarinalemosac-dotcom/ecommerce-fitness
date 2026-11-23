@@ -52,9 +52,7 @@ export default function RootLayout({
               {children}
             </main>
             <SiteFooter />
-            <FloatingLanguageSwitcher />
             <SideCartDrawer />
-            <PromoOfferPopup />
             <CustomerChatWidget />
           </StoreMaintenanceGuard>
         </Providers>

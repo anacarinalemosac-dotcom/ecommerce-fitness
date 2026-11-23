@@ -129,6 +129,7 @@ import { SwapOrderItemModal } from '../../components/backoffice/SwapOrderItemMod
 import { WixSidebar, WixBackofficeTab } from '../../components/backoffice/WixSidebar';
 import { WixHeader } from '../../components/backoffice/WixHeader';
 import { WixProductTable } from '../../components/backoffice/WixProductTable';
+import { GroupProductsModal } from '../../components/backoffice/GroupProductsModal';
 
 interface ProductProfit {
   id?: string;
@@ -318,6 +319,7 @@ export default function BackofficeDashboard() {
   });
   const [showComboPromoModal, setShowComboPromoModal] = useState(false);
   const [isComboSaving, setIsComboSaving] = useState(false);
+  const [showGroupProductsModal, setShowGroupProductsModal] = useState(false);
   const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
   const [showBulkSizeGuideModal, setShowBulkSizeGuideModal] = useState(false);
   const [showBulkDescModal, setShowBulkDescModal] = useState(false);
@@ -1673,6 +1675,47 @@ export default function BackofficeDashboard() {
     }
   };
 
+  const handleBulkDeleteProducts = async () => {
+    if (selectedCatalogIds.length === 0) return;
+    const count = selectedCatalogIds.length;
+    if (
+      !confirm(
+        `Deseja realmente EXCLUIR PERMANENTEMENTE os ${count} produto(s) selecionado(s) e todas as suas variações?\n\nEsta ação apagará as peças do catálogo e não poderá ser desfeita.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setLoadingSupabase(true);
+      const res = await fetch(`/api/backoffice/products?ids=${encodeURIComponent(selectedCatalogIds.join(','))}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSelectedCatalogIds([]);
+        setSaveSuccessMessage(true);
+        setTimeout(() => setSaveSuccessMessage(false), 4000);
+        await fetchSupabaseProducts();
+        alert(`${count} produto(s) excluído(s) com sucesso!`);
+      } else {
+        alert(`Erro ao excluir produtos: ${data.error || 'Erro no servidor'}`);
+      }
+    } catch (err: any) {
+      alert(`Falha na exclusão em massa: ${err.message}`);
+    } finally {
+      setLoadingSupabase(false);
+    }
+  };
+
+  const handleBulkGroupProducts = () => {
+    if (selectedCatalogIds.length < 2) {
+      alert('Selecione pelo menos 2 produtos para poder agrupar em um só.');
+      return;
+    }
+    setShowGroupProductsModal(true);
+  };
+
   const [productsMargin, setProductsMargin] = useState<ProductProfit[]>([
     {
       sku: 'SAM-BLK-P',
@@ -3012,6 +3055,8 @@ export default function BackofficeDashboard() {
             onToggleProductCombo={handleToggleSingleProductCombo}
             onToggleProductFeaturedOnHome={handleToggleSingleProductFeaturedOnHome}
             onBulkSetFeaturedOnHome={handleBulkSetFeaturedOnHome}
+            onBulkDelete={handleBulkDeleteProducts}
+            onBulkGroup={handleBulkGroupProducts}
           />
         </div>
       )}
@@ -7900,6 +7945,19 @@ export default function BackofficeDashboard() {
           setDirectPaymentProduct(null);
         }}
         product={directPaymentProduct}
+      />
+
+      {/* Modal de Agrupar Produtos em Massa */}
+      <GroupProductsModal
+        isOpen={showGroupProductsModal}
+        onClose={() => setShowGroupProductsModal(false)}
+        selectedProducts={filteredCatalogProducts.filter((p: any) => selectedCatalogIds.includes(p.id))}
+        onSuccess={async () => {
+          setSelectedCatalogIds([]);
+          setSaveSuccessMessage(true);
+          setTimeout(() => setSaveSuccessMessage(false), 4000);
+          await fetchSupabaseProducts();
+        }}
       />
 
       {/* Modal de Alteração de Preço em Massa */}

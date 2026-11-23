@@ -276,8 +276,12 @@ export default function HomePage() {
       if (e.detail) {
         const cat = e.detail === 'new' ? 'all' : (e.detail === 'preorder' ? 'spoiler' : e.detail);
         setActiveCategoryFilter(cat);
-        const el = document.getElementById('vitrine');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        if (cat === 'all') {
+          const el = document.getElementById('vitrine');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
       }
     };
     window.addEventListener('ana_filter_category', handleCategoryEvent);
@@ -288,10 +292,14 @@ export default function HomePage() {
       if (cat) {
         const mappedCat = cat === 'new' ? 'all' : (cat === 'preorder' ? 'spoiler' : (cat as any));
         setActiveCategoryFilter(mappedCat);
-        setTimeout(() => {
-          const el = document.getElementById('vitrine');
-          if (el) el.scrollIntoView({ behavior: 'smooth' });
-        }, 150);
+        if (mappedCat === 'all') {
+          setTimeout(() => {
+            const el = document.getElementById('vitrine');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }, 150);
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
       }
     } catch (_) {}
 
@@ -509,12 +517,122 @@ export default function HomePage() {
     ? siteImages.communityImages
     : COMMUNITY_POSTS;
 
+  const currentCategoryDetails = {
+    sets: {
+      namePt: 'CONJUNTOS FITNESS',
+      nameEn: 'WORKOUT SETS',
+      descPt: 'Conjuntos completos de top + legging ou short de alta compressão anatômica 4-way, alta sustentação e zero transparência testada.',
+      descEn: 'Matching sets with sculpted leggings and support tops. 4-way anatomical compression and lab-verified squat proof.',
+    },
+    rompers: {
+      namePt: 'MACAQUINHOS MODELADORES',
+      nameEn: 'PERFORMANCE ROMPERS',
+      descPt: 'Peça única com decote anatômico, modelagem suave que abraça o corpo e total liberdade de movimento para seus treinos.',
+      descEn: 'One-piece sculpt silhouettes with buttery-soft touch, breathable support, and complete freedom of motion.',
+    },
+    jumpsuits: {
+      namePt: 'MACACÕES FITNESS',
+      nameEn: 'ATHLETIC JUMPSUITS',
+      descPt: 'Silhueta completa de alta compressão. Ajuste impecável da cintura aos tornozelos com sustentação reforçada e zero transparência.',
+      descEn: 'Full-length compression silhouettes. Flawless sculpting from waist to ankle with reinforced core support.',
+    },
+    tops: {
+      namePt: 'TOPS & BLUSINHAS DE ALTA SUSTENTAÇÃO',
+      nameEn: 'TOPS & MAXIMUM SUPPORT BRAS',
+      descPt: 'Tops anatômicos com opção para bojo removível, costura flatlock e tecido respirável para treinos intensos.',
+      descEn: 'Anatomical support bras with removable cups, flatlock stitching, and high-impact breathability.',
+    },
+    jackets: {
+      namePt: 'CASACOS & JAQUETAS DE SOBREPOSIÇÃO',
+      nameEn: 'JACKETS & LAYERING VESTS',
+      descPt: 'Peças de sobreposição leves e quentinhas em poliamida nobre para dias frios, aquecimento e conforto pós-treino.',
+      descEn: 'Ultra-lightweight luxury layering pieces designed for warm-ups, cool days, and post-workout comfort.',
+    },
+    spoiler: {
+      namePt: 'PRÓXIMOS LANÇAMENTOS (SPOILER)',
+      nameEn: 'UPCOMING DROPS (SPOILER)',
+      descPt: 'Exibição exclusiva de novas peças que estão chegando ao atelier. Fique por dentro das novidades antes de todo mundo!',
+      descEn: 'Exclusive preview of new silhouettes arriving soon at our Massachusetts atelier.',
+    },
+    preorder: {
+      namePt: 'PRÉ-VENDA EXCLUSIVA ATELIER',
+      nameEn: 'ATELIER PRE-ORDER',
+      descPt: 'Garanta suas peças antes do lançamento oficial com prioridade na produção e envio.',
+      descEn: 'Reserve exclusive atelier silhouettes before public release with priority shipping.',
+    },
+  }[activeCategoryFilter as string] || {
+    namePt: 'COLEÇÃO EXCLUSIVA',
+    nameEn: 'CURATED COLLECTION',
+    descPt: 'Moda fitness de alta performance com zero transparência testada.',
+    descEn: 'High-performance activewear with lab-verified squat proof.',
+  };
+
+  const currentCategoryName = lang === 'pt' ? currentCategoryDetails.namePt : currentCategoryDetails.nameEn;
+  const currentCategoryDesc = lang === 'pt' ? currentCategoryDetails.descPt : currentCategoryDetails.descEn;
+
   return (
-    <div className="space-y-20 sm:space-y-28 bg-white selection:bg-deep-black selection:text-gold">
+    <div className={`bg-white selection:bg-deep-black selection:text-gold ${activeCategoryFilter === 'all' ? 'space-y-20 sm:space-y-28' : 'space-y-8 sm:space-y-12'}`}>
+      {/* =========================================================================
+          CABEÇALHO DA CATEGORIA SELECIONADA (ESTILO GYMSHARK)
+          Substitui o banner gigante e exibe a categoria no topo!
+         ========================================================================= */}
+      {activeCategoryFilter !== 'all' && (
+        <div className="border-b border-gray-200 bg-gray-50/70 pt-6 pb-8 sm:pt-10 sm:pb-10 animate-fadeIn">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8">
+            <nav className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveCategoryFilter('all');
+                  if (typeof window !== 'undefined') {
+                    window.history.pushState({}, '', '/?cat=all');
+                  }
+                }}
+                className="hover:text-black transition cursor-pointer"
+              >
+                {lang === 'pt' ? 'Início' : 'Home'}
+              </button>
+              <span>/</span>
+              <span className="text-gray-900 font-extrabold">{currentCategoryName}</span>
+            </nav>
+
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div>
+                <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-gray-950">
+                  {currentCategoryName}
+                </h1>
+                <p className="text-xs sm:text-sm text-gray-600 font-medium mt-1.5 max-w-2xl leading-relaxed">
+                  {currentCategoryDesc}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-gray-700 uppercase tracking-wider bg-white border border-gray-200 px-3 py-1.5 rounded-xs shadow-xs">
+                  {filteredProducts.length} {lang === 'pt' ? 'peças encontradas' : 'pieces found'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCategoryFilter('all');
+                    if (typeof window !== 'undefined') {
+                      window.history.pushState({}, '', '/?cat=all');
+                    }
+                  }}
+                  className="text-xs font-bold text-gray-800 hover:text-gold underline underline-offset-4 uppercase tracking-wider transition cursor-pointer"
+                >
+                  {lang === 'pt' ? '← Ver todas as peças' : '← View all pieces'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* =========================================================================
           1. HERO BANNER FULL-BLEED (CARROSSEL DINÂMICO & ALTO IMPACTO ATHLETIC LUXURY)
+          Exibido APENAS na tela principal
          ========================================================================= */}
-      {(() => {
+      {activeCategoryFilter === 'all' && (() => {
         const slide = activeHeroSlides.length > 0
           ? activeHeroSlides[currentHeroSlide % activeHeroSlides.length]
           : null;
@@ -702,60 +820,62 @@ export default function HomePage() {
 
       {/* =========================================================================
           2. GYMSHARK CATEGORY VISUAL RAIL (TALL CARDS WITH GRADIENT & ATHLETIC POSE)
-          ========================================================================= */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-8 space-y-6 pt-10 sm:pt-14">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b-2 border-deep-black pb-3">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-ultra text-gold block">
-              {t('cat.title')}
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-deep-black mt-0.5">
-              {lang === 'pt' ? 'ESCOLHA POR MODELAGEM' : 'SHOP BY SILHOUETTE'}
-            </h2>
-          </div>
-          <button
-            onClick={() => {
-              setActiveCategoryFilter('all');
-              const el = document.getElementById('vitrine');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }}
-            className="text-[11px] font-black uppercase tracking-widest text-deep-black hover:text-gold flex items-center gap-2 transition group"
-          >
-            <span>{lang === 'pt' ? 'VER TODA A COLEÇÃO' : 'VIEW ALL SILHOUETTES'}</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-          {categoriesData.map((cat) => (
+         ========================================================================= */}
+      {activeCategoryFilter === 'all' && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-8 space-y-6 pt-10 sm:pt-14">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b-2 border-deep-black pb-3">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-ultra text-gold block">
+                {t('cat.title')}
+              </span>
+              <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-deep-black mt-0.5">
+                {lang === 'pt' ? 'ESCOLHA POR MODELAGEM' : 'SHOP BY SILHOUETTE'}
+              </h2>
+            </div>
             <button
-              key={cat.key}
               onClick={() => {
-                setActiveCategoryFilter(cat.key as any);
+                setActiveCategoryFilter('all');
                 const el = document.getElementById('vitrine');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="group relative aspect-[4/5] overflow-hidden bg-deep-black text-left border border-deep-black/10 transition-all hover:border-gold hover:shadow-luxury cursor-pointer"
+              className="text-[11px] font-black uppercase tracking-widest text-deep-black hover:text-gold flex items-center gap-2 transition group"
             >
-              <img
-                src={cat.image}
-                alt={lang === 'pt' ? cat.namePt : cat.nameEn}
-                className="absolute inset-0 w-full h-full object-cover opacity-85 transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-deep-black via-deep-black/30 to-transparent" />
-              
-              <div className="relative z-10 h-full flex flex-col justify-end p-4 text-white space-y-1">
-                <span className="text-[9px] font-black tracking-widest text-gold uppercase block">
-                  {lang === 'pt' ? cat.descPt : cat.descEn}
-                </span>
-                <h3 className="text-sm sm:text-base font-black uppercase tracking-tight group-hover:text-gold transition">
-                  {lang === 'pt' ? cat.namePt : cat.nameEn}
-                </h3>
-              </div>
+              <span>{lang === 'pt' ? 'VER TODA A COLEÇÃO' : 'VIEW ALL SILHOUETTES'}</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
             </button>
-          ))}
-        </div>
-      </section>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            {categoriesData.map((cat) => (
+              <button
+                key={cat.key}
+                onClick={() => {
+                  setActiveCategoryFilter(cat.key as any);
+                  const el = document.getElementById('vitrine');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="group relative aspect-[4/5] overflow-hidden bg-deep-black text-left border border-deep-black/10 transition-all hover:border-gold hover:shadow-luxury cursor-pointer"
+              >
+                <img
+                  src={cat.image}
+                  alt={lang === 'pt' ? cat.namePt : cat.nameEn}
+                  className="absolute inset-0 w-full h-full object-cover opacity-85 transition-transform duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-deep-black via-deep-black/30 to-transparent" />
+                
+                <div className="relative z-10 h-full flex flex-col justify-end p-4 text-white space-y-1">
+                  <span className="text-[9px] font-black tracking-widest text-gold uppercase block">
+                    {lang === 'pt' ? cat.descPt : cat.descEn}
+                  </span>
+                  <h3 className="text-sm sm:text-base font-black uppercase tracking-tight group-hover:text-gold transition">
+                    {lang === 'pt' ? cat.namePt : cat.nameEn}
+                  </h3>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* =========================================================================
           3. GYMSHARK SIGNATURE PRODUCT GRID (QUICK-ADD SIZE BAR, HOVER SWAP, SWATCHES)
@@ -1230,7 +1350,7 @@ export default function HomePage() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2.5 sm:gap-4 lg:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
                 {filteredProducts.map((product) => {
                   const isHovered = hoveredProduct === product.id;
                   const isSpoiler = isProductSpoiler(product);
@@ -1375,7 +1495,7 @@ export default function HomePage() {
 
                         {/* ASSINATURA GYMSHARK: GAVETA DE QUICK ADD DE TAMANHOS NO HOVER */}
                         <div
-                          className={`hidden sm:block absolute bottom-0 left-0 right-0 z-20 bg-deep-black/95 backdrop-blur-md border-t border-gold/30 p-3 transition-all duration-300 transform ${
+                          className={`hidden sm:block absolute bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 transition-all duration-300 transform shadow-lg ${
                             isHovered || wasJustAdded
                               ? 'translate-y-0 opacity-100'
                               : 'translate-y-full opacity-0 pointer-events-none'
@@ -1385,16 +1505,16 @@ export default function HomePage() {
                             <div className="text-center py-1">
                               <Link
                                 href={`/produto/${product.slug}`}
-                                className="py-2.5 px-3 bg-gold hover:bg-white text-deep-black text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition text-center cursor-pointer shadow-xs"
+                                className="py-2 px-3 bg-black hover:bg-gold text-white hover:text-black text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition text-center cursor-pointer shadow-xs rounded-xs"
                               >
-                                <span>{lang === 'pt' ? '👀 VER SPOILER DA PEÇA' : '👀 VIEW SPOILER'}</span>
+                                <span>{lang === 'pt' ? 'VER SPOILER DA PEÇA' : 'VIEW SPOILER'}</span>
                                 <ArrowRight className="w-3.5 h-3.5" />
                               </Link>
                             </div>
                           ) : wasJustAdded ? (
                             <div className="text-center py-1 space-y-1">
-                              <div className="flex items-center justify-center gap-1.5 text-gold text-xs font-black uppercase tracking-wider">
-                                <Check className="w-4 h-4 text-gold stroke-[3]" />
+                              <div className="flex items-center justify-center gap-1.5 text-emerald-700 text-xs font-bold uppercase tracking-wider">
+                                <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
                                 <span>
                                   {quickAddedItem?.limitReached
                                     ? (lang === 'pt'
@@ -1405,75 +1525,39 @@ export default function HomePage() {
                               </div>
                               <Link
                                 href="/checkout"
-                                className="text-[9px] font-black uppercase tracking-widest text-white hover:text-gold block underline underline-offset-2"
+                                className="text-[10px] font-bold uppercase tracking-widest text-black hover:text-gold block underline underline-offset-2"
                               >
                                 {t('gymshark.viewBag')} →
                               </Link>
                             </div>
                           ) : (
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-white/70">
-                                <span className="text-gold flex items-center gap-1">
-                                  <Zap className="w-3 h-3 text-gold" /> {t('gymshark.quickAdd')}
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                <span className="text-gray-900 font-extrabold flex items-center gap-1">
+                                  <Zap className="w-3 h-3 text-gold fill-gold" /> {t('gymshark.quickAdd')}
                                 </span>
-                                <span>{lang === 'pt' ? 'GRADE EM ESTOQUE' : 'IN STOCK SIZES'}</span>
+                                <span>{lang === 'pt' ? 'TAMANHOS' : 'SIZES'}</span>
                               </div>
 
                               {/* Botões de Tamanhos Rápidos: SOMENTE TAMANHOS COM ESTOQUE */}
-                              <div className="grid grid-cols-3 gap-1.5">
+                              <div className="grid grid-cols-4 gap-1.5">
                                 {selectableSizes.map((size) => {
                                   const upperSz = size.toUpperCase();
                                   const displaySz = lang === 'pt'
                                     ? (upperSz === 'S' || upperSz === 'P' ? 'P' : upperSz === 'M' ? 'M' : upperSz === 'L' || upperSz === 'G' ? 'G' : upperSz === 'XL' || upperSz === 'GG' ? 'GG' : size)
                                     : size;
-                                  const szVar = getCardVariantFor(product, size, activeColor);
-                                  const rawSzStock = szVar
-                                    ? Math.max(0, Number(szVar.stock_quantity ?? szVar.stock ?? 0))
-                                    : Math.max(0, Number(product.stock ?? 0));
-                                  const szHeldByOthers = getReservedQtyForCandidate(otherHoldsByKey, {
-                                    sku: szVar?.sku,
-                                    slug: product.slug,
-                                    size,
-                                    color: szVar?.color || activeColor,
-                                  });
-                                  const szStock = Math.max(0, rawSzStock - szHeldByOthers);
-                                  const szInBag = getCartItemQty(cartItemsSnapshot, {
-                                    id: product.id,
-                                    slug: product.slug,
-                                    sku: szVar?.sku || `${product.slug}-${size}`,
-                                    size,
-                                    color: szVar?.color || activeColor,
-                                  });
-                                  const isSzMaxed = false;
                                   return (
                                     <button
                                       key={size}
                                       type="button"
-                                      disabled={isSzMaxed}
                                       onClick={(e) => {
                                         setCardSelectedSizes((prev) => ({ ...prev, [product.id]: size }));
-                                        if (isSzMaxed) {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          if (typeof window !== 'undefined') {
-                                            window.dispatchEvent(new Event('ana_open_cart_drawer'));
-                                          }
-                                          return;
-                                        }
                                         handleQuickAdd(product.id, size, e, activeColor);
                                       }}
-                                      className={`py-1.5 text-xs font-black uppercase border transition-all flex items-center justify-center ${
-                                        isSzMaxed
-                                          ? 'bg-emerald-600/80 text-white border-emerald-400 cursor-not-allowed'
-                                          : 'bg-white/10 hover:bg-gold hover:text-deep-black text-white border-white/20 active:scale-95 cursor-pointer'
-                                      }`}
-                                      title={
-                                        isSzMaxed
-                                          ? (lang === 'pt' ? `Máx. no carrinho (${szInBag}/${szStock})` : `Max in bag (${szInBag}/${szStock})`)
-                                          : `Add size ${size} directly to bag`
-                                      }
+                                      className="py-1.5 text-xs font-bold uppercase border border-gray-300 bg-white hover:bg-black hover:text-white text-gray-900 transition-all flex items-center justify-center active:scale-95 cursor-pointer rounded-xs shadow-2xs"
+                                      title={`Add size ${size} directly to bag`}
                                     >
-                                      {isSzMaxed ? `✓ ${displaySz}` : displaySz}
+                                      {displaySz}
                                     </button>
                                   );
                                 })}
@@ -1483,242 +1567,113 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* 2. Informações do Produto com GRADE DE TAMANHO EM DESTAQUE */}
-                      <div className="p-2 sm:p-4 flex-1 flex flex-col justify-between space-y-2 sm:space-y-3 bg-white">
-                        <div>
-                          {/* Swatches de Cores (Bolinhas) */}
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-1 sm:gap-1.5">
-                              {product.colors.map((color, cIdx) => {
-                                const matchingVar = Array.isArray(product.variants)
-                                  ? product.variants.find(
-                                      (v: any) =>
-                                        v.color?.toLowerCase() === color.name.toLowerCase() &&
-                                        (v.image || (Array.isArray(v.images) && v.images.length > 0))
-                                    )
-                                  : null;
-                                const colorImg = matchingVar
-                                  ? (Array.isArray(matchingVar.images) && matchingVar.images.length > 0 ? matchingVar.images[0] : matchingVar.image)
-                                  : null;
-                                const isColorSelected = activeColor.toLowerCase() === color.name.toLowerCase();
+                      {/* 2. Informações do Produto (Estilo Gymshark Ultra Clean) */}
+                      <div className="p-2.5 sm:p-3.5 flex flex-col justify-between space-y-1.5 bg-white">
+                        {/* Swatches de Cores + Avaliação */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            {product.colors.slice(0, 4).map((color, cIdx) => {
+                              const matchingVar = Array.isArray(product.variants)
+                                ? product.variants.find(
+                                    (v: any) =>
+                                      v.color?.toLowerCase() === color.name.toLowerCase() &&
+                                      (v.image || (Array.isArray(v.images) && v.images.length > 0))
+                                  )
+                                : null;
+                              const colorImg = matchingVar
+                                ? (Array.isArray(matchingVar.images) && matchingVar.images.length > 0 ? matchingVar.images[0] : matchingVar.image)
+                                : null;
+                              const isColorSelected = activeColor.toLowerCase() === color.name.toLowerCase();
 
-                                return (
-                                  <button
-                                    type="button"
-                                    key={cIdx}
-                                    onMouseEnter={() => {
-                                      if (colorImg) {
-                                        setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
-                                      }
-                                    }}
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      setCardSelectedColors((prev) => ({ ...prev, [product.id]: color.name }));
-                                      if (colorImg) {
-                                        setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
-                                      }
-                                    }}
-                                    className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-deep-black/30 shadow-2xs cursor-pointer transition hover:scale-125 ${
-                                      isColorSelected ? 'ring-2 ring-offset-1 ring-deep-black scale-110' : ''
-                                    }`}
-                                    style={{ backgroundColor: color.hex }}
-                                    title={translateColorName(color.name, lang)}
-                                    aria-label={translateColorName(color.name, lang)}
-                                  />
-                                );
-                              })}
-                            </div>
-
-                            <div className="flex items-center gap-0.5 sm:gap-1 text-[9px] sm:text-[11px] font-bold text-deep-black/60">
-                              <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-gold text-gold" />
-                              <span className="text-deep-black font-black">{product.rating.toFixed(1)}</span>
-                              <span className="hidden xs:inline">({product.reviewsCount})</span>
-                            </div>
-                          </div>
-
-                          {/* Título do Produto */}
-                          <Link href={`/produto/${product.slug}`}>
-                            <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                              {isOutOfStock && (
-                                <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8.5px] font-black uppercase tracking-wider shrink-0 shadow-xs">
-                                  {lang === 'pt' ? 'ESGOTADO' : 'SOLD OUT'}
-                                </span>
-                              )}
-                              <h3 className="text-xs sm:text-sm font-bold sm:font-black uppercase tracking-wide text-deep-black group-hover:text-gold transition line-clamp-1">
-                              {translateProductTitle(product.title, lang)}
-                              </h3>
-                            </div>
-                          </Link>
-
-                          {/* TAMANHOS DISPONÍVEIS EM ESTOQUE (Exibição Imediata na Vitrine) */}
-                          <div className="mt-1.5 pt-1.5 sm:mt-2 sm:pt-2 border-t border-deep-black/10 flex items-center justify-between gap-1 flex-wrap">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-[7.5px] sm:text-[9px] font-bold uppercase tracking-wider text-deep-black/60 hidden xs:inline">
-                                {lang === 'pt' ? 'Tamanhos:' : 'Sizes:'}
-                              </span>
-                              {selectableSizes.length > 0 ? (
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  {selectableSizes.map((sz) => {
-                                    const displaySz = lang === 'pt'
-                                      ? (sz === 'S' ? 'P' : sz === 'L' ? 'G' : sz === 'XL' ? 'GG' : sz)
-                                      : sz;
-                                    const isSzActive = selectedCardSize === sz;
-                                    return (
-                                      <button
-                                        type="button"
-                                        key={sz}
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          setCardSelectedSizes((prev) => ({ ...prev, [product.id]: sz }));
-                                        }}
-                                        className={`text-[8px] sm:text-[10px] font-black px-1.5 py-0.5 sm:px-2.5 sm:py-1 border uppercase tracking-wider rounded-xs transition cursor-pointer ${
-                                          isSzActive
-                                            ? 'border-deep-black bg-deep-black text-gold shadow-xs ring-1 ring-gold'
-                                            : 'border-deep-black/25 bg-neutral-50 text-deep-black hover:border-deep-black'
-                                        }`}
-                                        title={`${lang === 'pt' ? 'Selecionar tamanho' : 'Select size'} ${displaySz}`}
-                                      >
-                                        {displaySz}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <span className="text-[9px] font-bold text-red-600 uppercase">
-                                  {lang === 'pt' ? 'Esgotado' : 'Sold out'}
-                                </span>
-                              )}
-                            </div>
-
-                            {inStockSizes.length > 0 && !isSpoiler && (
-                              <span className="text-[7.5px] sm:text-[8.5px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 sm:px-1.5 sm:py-0.5 border border-emerald-200 uppercase tracking-tight shrink-0 hidden sm:inline">
-                                {lang === 'pt' ? 'Pronta Entrega' : 'In Stock'}
+                              return (
+                                <button
+                                  type="button"
+                                  key={cIdx}
+                                  onMouseEnter={() => {
+                                    if (colorImg) {
+                                      setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
+                                    }
+                                  }}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setCardSelectedColors((prev) => ({ ...prev, [product.id]: color.name }));
+                                    if (colorImg) {
+                                      setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
+                                    }
+                                  }}
+                                  className={`w-3.5 h-3.5 rounded-full border border-gray-300 transition-all hover:scale-125 ${
+                                    isColorSelected ? 'ring-2 ring-offset-1 ring-deep-black scale-110' : ''
+                                  }`}
+                                  style={{ backgroundColor: color.hex }}
+                                  title={translateColorName(color.name, lang)}
+                                  aria-label={translateColorName(color.name, lang)}
+                                />
+                              );
+                            })}
+                            {product.colors.length > 4 && (
+                              <span className="text-[10px] text-gray-500 font-medium">
+                                +{product.colors.length - 4}
                               </span>
                             )}
                           </div>
-                        </div>
 
-                        {isProductInCombo(product) && !isSpoiler && !isOutOfStock && (
-                          <Link
-                            href={`/produto/${product.slug}`}
-                            className="p-1 sm:p-2 bg-emerald-50 border border-emerald-500/70 text-emerald-950 block hover:bg-emerald-100/80 transition rounded-xs"
-                          >
-                            <div className="flex items-center gap-1 text-[7.5px] sm:text-[9.5px] font-black uppercase tracking-wider text-emerald-800">
-                              <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-600 shrink-0" />
-                              <span>{translateBadgeText(comboPromo?.badge_text || 'COMBO 3 PEÇAS', lang)}</span>
-                            </div>
-                            <p className="text-[9.5px] font-bold text-emerald-950 leading-tight hidden sm:block mt-0.5">
-                              {lang === 'pt'
-                                ? `Esta peça participa da promoção: ${Number(comboPromo?.required_quantity) || 3} peças pelo valor $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (válido no Zelle, Venmo ou Cash App). No cartão/Afterpay/Affirm vale o preço normal.`
-                                : `This piece is part of our promo: ${Number(comboPromo?.required_quantity) || 3} pieces for $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (valid on Zelle, Venmo or Cash App only; regular price on Card/Afterpay/Affirm).`}
-                            </p>
-                          </Link>
-                        )}
-
-                        {/* Preço em Dólar ($) e Frete Fixo $9.90 */}
-                        <div className="pt-1.5 sm:pt-2.5 border-t border-deep-black/10 flex items-baseline justify-between gap-1 flex-wrap">
-                          <div>
-                            <div className="flex items-baseline gap-1 sm:gap-2">
-                              <span className="text-xs sm:text-base font-black text-deep-black uppercase tracking-wider">
-                                ${product.price.toFixed(2)}
-                              </span>
-                              {product.originalPrice && product.originalPrice > product.price && (
-                                <div className="flex items-center gap-1 sm:gap-1.5">
-                                  <span className="text-xs text-deep-black/40 line-through font-bold">
-                                    ${product.originalPrice.toFixed(2)}
-                                  </span>
-                                  <span className="text-[8.5px] font-black bg-red-600 text-white px-1.5 py-0.5">
-                                    -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                            <span className="text-[7.5px] sm:text-[9px] block text-deep-black/60 font-bold uppercase tracking-wider">
-                              {lang === 'pt' ? 'FRETE GRÁTIS $250+ • FIXO $9.90' : 'FREE US SHIPPING $250+ • FLAT $9.90'}
-                            </span>
+                          <div className="flex items-center gap-1 text-[11px] font-semibold text-gray-700">
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                            <span>{product.rating.toFixed(1)}</span>
                           </div>
-
-                          <span
-                            className={`text-[8px] sm:text-[10px] font-bold tracking-wide px-1.5 py-0.5 sm:px-2.5 sm:py-1 border shrink-0 hidden xs:inline ${
-                              isSpoiler
-                                ? 'bg-deep-black text-gold border-gold shadow-sm font-black'
-                                : 'bg-white text-deep-black border-deep-black'
-                            }`}
-                          >
-                            {isSpoiler
-                              ? (lang === 'pt' ? '👀 Spoiler • Em breve' : '👀 Spoiler • Coming soon')
-                              : (lang === 'pt' ? 'Em estoque' : 'In stock')}
-                          </span>
                         </div>
 
-                        {/* Botão Direto ADICIONAR NO CARRINHO sem precisar abrir o produto */}
-                        {!isSpoiler && selectedCardSize && (() => {
-                          const displaySelectedSz = lang === 'pt'
-                            ? (selectedCardSize === 'S' ? 'P' : selectedCardSize === 'L' ? 'G' : selectedCardSize === 'XL' ? 'GG' : selectedCardSize)
-                            : selectedCardSize;
-                          return (
-                            <div className="space-y-1">
-                              {selectedVariantStock === 1 && !isSelectedSizeMaxedInBag && !isSelectedHeldByOtherShopper && (
-                                <span className="block text-[8px] sm:text-[9.5px] font-black uppercase text-amber-700 tracking-wider text-center">
-                                  ⚠️ {lang === 'pt' ? 'Última unidade em estoque!' : 'Only 1 left in stock!'}
-                                </span>
-                              )}
+                        {/* Título & Categoria Fit Estilo Gymshark */}
+                        <Link href={`/produto/${product.slug}`} className="block group/title">
+                          <h3 className="text-xs sm:text-[13px] font-bold text-gray-900 group-hover/title:text-gold transition line-clamp-1 tracking-tight">
+                            {translateProductTitle(product.title, lang)}
+                          </h3>
+                          <p className="text-[11px] text-gray-500 font-medium tracking-normal mt-0.5 line-clamp-1">
+                            {lang === 'pt'
+                              ? `${product.categoryPt ? product.categoryPt.charAt(0).toUpperCase() + product.categoryPt.slice(1).toLowerCase() : 'Conjunto'} • Alta Compressão`
+                              : `${product.categoryEn ? product.categoryEn.charAt(0).toUpperCase() + product.categoryEn.slice(1).toLowerCase() : 'Activewear'} • High Compression`}
+                          </p>
+                        </Link>
+
+                        {/* Preço Gymshark (Preço em destaque + De/Por + Desconto) */}
+                        <div className="flex items-baseline gap-2 pt-1">
+                          <span className="text-sm sm:text-base font-extrabold text-gray-950">
+                            ${product.price.toFixed(2)}
+                          </span>
+                          {product.originalPrice && product.originalPrice > product.price && (
+                            <span className="text-xs text-gray-400 line-through font-medium">
+                              ${product.originalPrice.toFixed(2)}
+                            </span>
+                          )}
+                          {product.originalPrice && product.originalPrice > product.price && (
+                            <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1 py-0.2 rounded-xs">
+                              -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Mobile Quick Add Bar (Discreto e Rápido para Celular) */}
+                        <div className="sm:hidden pt-2 border-t border-gray-100 flex items-center gap-1 overflow-x-auto scrollbar-none">
+                          {selectableSizes.map((sz) => {
+                            const upperSz = sz.toUpperCase();
+                            const displaySz = lang === 'pt'
+                              ? (upperSz === 'S' || upperSz === 'P' ? 'P' : upperSz === 'M' ? 'M' : upperSz === 'L' || upperSz === 'G' ? 'G' : upperSz === 'XL' || upperSz === 'GG' ? 'GG' : sz)
+                              : sz;
+                            return (
                               <button
+                                key={sz}
                                 type="button"
-                                disabled={isSelectedHeldByOtherShopper || isSelectedSizeMaxedInBag}
                                 onClick={(e) => {
-                                  if (isSelectedHeldByOtherShopper || isSelectedSizeMaxedInBag) return;
-                                  handleQuickAdd(product.id, selectedCardSize, e, activeColor);
+                                  handleQuickAdd(product.id, sz, e, activeColor);
                                 }}
-                                className={`w-full py-1.5 sm:py-2.5 px-1.5 sm:px-3 text-[9px] sm:text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-1.5 transition-all shadow-xs border cursor-pointer ${
-                                  isSelectedHeldByOtherShopper
-                                    ? 'bg-amber-50 text-amber-950 border-amber-400 cursor-not-allowed'
-                                    : isSelectedSizeMaxedInBag
-                                    ? 'bg-emerald-50 text-emerald-900 border-emerald-600 cursor-not-allowed'
-                                    : wasJustAdded
-                                    ? 'bg-emerald-600 text-white border-emerald-700 cursor-pointer'
-                                    : 'bg-deep-black hover:bg-gold text-white hover:text-deep-black border-deep-black active:scale-[0.98] cursor-pointer'
-                                }`}
+                                className="flex-1 py-1 px-1.5 bg-gray-50 hover:bg-black hover:text-white border border-gray-200 text-gray-800 text-[10px] font-bold uppercase rounded-xs transition active:scale-95 text-center"
                               >
-                                {isSelectedHeldByOtherShopper ? (
-                                  <span className="truncate text-[8px] sm:text-[10px]">
-                                    {lang === 'pt'
-                                      ? '⏳ EM OUTRA SACOLA (LIBERA EM 3H)'
-                                      : '⏳ HELD IN BAG (RELEASES IN 3H)'}
-                                  </span>
-                                ) : isSelectedSizeMaxedInBag ? (
-                                  <span className="truncate text-[8px] sm:text-[10px] flex items-center justify-center gap-1">
-                                    <Check className="w-3 h-3 stroke-[3] text-emerald-700" />
-                                    <span>
-                                      {lang === 'pt'
-                                        ? `✓ MÁX. NO CARRINHO (${qtyInBagForSelected}/${selectedVariantStock})`
-                                        : `✓ MAX IN BAG (${qtyInBagForSelected}/${selectedVariantStock})`}
-                                    </span>
-                                  </span>
-                                ) : wasJustAdded ? (
-                                  <span className="truncate text-[8px] sm:text-[10px] flex items-center justify-center gap-1">
-                                    <Check className="w-3 h-3 stroke-[3]" />
-                                    <span>{lang === 'pt' ? 'ADICIONADO NO CARRINHO!' : 'ADDED TO BAG!'}</span>
-                                  </span>
-                                ) : (
-                                  <>
-                                    <ShoppingBag className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-                                    <span className="truncate sm:hidden">
-                                      {lang === 'pt' ? '+ CARRINHO' : '+ BAG'}
-                                    </span>
-                                    <span className="hidden sm:inline">
-                                      {lang === 'pt'
-                                        ? `ADICIONAR NO CARRINHO • ${displaySelectedSz}`
-                                        : `ADD TO BAG • ${selectedCardSize}`}
-                                    </span>
-                                  </>
-                                )}
+                                {displaySz}
                               </button>
-                            </div>
-                          );
-                        })()}
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   );
