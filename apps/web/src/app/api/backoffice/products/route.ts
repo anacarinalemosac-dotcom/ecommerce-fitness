@@ -212,7 +212,10 @@ export async function GET(req: NextRequest) {
         cost_price: resolvedCost,
         costPrice: resolvedCost,
         visible_online: meta.visible_online === true,
+        visibleOnline: meta.visible_online === true,
         is_draft: meta.is_draft === true || meta.visible_online === false,
+        isDraft: meta.is_draft === true || meta.visible_online === false,
+        status: meta.status || (meta.visible_online === true ? 'ACTIVE' : 'DRAFT'),
         visible_pos: meta.visible_pos !== false,
         featured_on_home: meta.featured_on_home === true || meta.featuredOnHome === true || (product as any).featured_on_home === true,
         featuredOnHome: meta.featured_on_home === true || meta.featuredOnHome === true || (product as any).featured_on_home === true,
@@ -360,7 +363,10 @@ export async function GET(req: NextRequest) {
         cost_price: resolvedCost,
         costPrice: resolvedCost,
         visible_online: meta.visible_online === true,
+        visibleOnline: meta.visible_online === true,
         is_draft: meta.is_draft === true || meta.visible_online === false,
+        isDraft: meta.is_draft === true || meta.visible_online === false,
+        status: meta.status || (meta.visible_online === true ? 'ACTIVE' : 'DRAFT'),
         visible_pos: meta.visible_pos !== false,
         featured_on_home: meta.featured_on_home === true || meta.featuredOnHome === true || (p as any).featured_on_home === true,
         featuredOnHome: meta.featured_on_home === true || meta.featuredOnHome === true || (p as any).featured_on_home === true,
@@ -1043,8 +1049,15 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
 
     // SUPORTE A ATUALIZAÇÃO EM MASSA (BULK UPDATE)
-    if (Array.isArray(body.ids) && body.ids.length > 0) {
-      const targetIds = body.ids.filter((tid: any) => typeof tid === 'string' && tid.trim());
+    const rawBulkIds = Array.isArray(body.ids)
+      ? body.ids
+      : Array.isArray(body.productIds)
+      ? body.productIds
+      : Array.isArray(body.targetIds)
+      ? body.targetIds
+      : [];
+    if (rawBulkIds.length > 0) {
+      const targetIds = rawBulkIds.filter((tid: any) => typeof tid === 'string' && tid.trim());
       if (targetIds.length === 0) {
         return NextResponse.json({ error: 'Nenhum ID válido fornecido para atualização em massa.' }, { status: 400 });
       }
@@ -1148,12 +1161,23 @@ export async function PATCH(req: NextRequest) {
         }
 
         // 4. Visibilidade / Rascunho
-        if (body.visible_online !== undefined) {
-          meta.visible_online = Boolean(body.visible_online);
-          meta.is_draft = !Boolean(body.visible_online);
+        if (body.visible_online !== undefined || body.visibleOnline !== undefined) {
+          const vis = Boolean(body.visible_online ?? body.visibleOnline);
+          meta.visible_online = vis;
+          meta.visibleOnline = vis;
+          meta.is_draft = !vis;
+          meta.isDraft = !vis;
+          meta.status = vis ? 'ACTIVE' : 'DRAFT';
         }
-        if (body.is_draft !== undefined) {
-          meta.is_draft = Boolean(body.is_draft);
+        if (body.is_draft !== undefined || body.isDraft !== undefined) {
+          const drf = Boolean(body.is_draft ?? body.isDraft);
+          meta.is_draft = drf;
+          meta.isDraft = drf;
+          if (drf) {
+            meta.visible_online = false;
+            meta.visibleOnline = false;
+            meta.status = 'DRAFT';
+          }
         }
         if (body.featured_on_home !== undefined || body.featuredOnHome !== undefined) {
           const val = Boolean(body.featured_on_home ?? body.featuredOnHome);
@@ -1311,12 +1335,23 @@ export async function PATCH(req: NextRequest) {
       meta = {};
     }
 
-    if (visible_online !== undefined) {
-      meta.visible_online = Boolean(visible_online);
-      meta.is_draft = !Boolean(visible_online);
+    if (visible_online !== undefined || body.visibleOnline !== undefined) {
+      const vis = Boolean(visible_online ?? body.visibleOnline);
+      meta.visible_online = vis;
+      meta.visibleOnline = vis;
+      meta.is_draft = !vis;
+      meta.isDraft = !vis;
+      meta.status = vis ? 'ACTIVE' : 'DRAFT';
     }
-    if (body.is_draft !== undefined) {
-      meta.is_draft = Boolean(body.is_draft);
+    if (body.is_draft !== undefined || body.isDraft !== undefined) {
+      const drf = Boolean(body.is_draft ?? body.isDraft);
+      meta.is_draft = drf;
+      meta.isDraft = drf;
+      if (drf) {
+        meta.visible_online = false;
+        meta.visibleOnline = false;
+        meta.status = 'DRAFT';
+      }
     }
     if (visible_pos !== undefined) {
       meta.visible_pos = Boolean(visible_pos);

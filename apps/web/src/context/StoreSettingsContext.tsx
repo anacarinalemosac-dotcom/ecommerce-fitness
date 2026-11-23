@@ -738,7 +738,23 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
           const firstVar = variants[0] || {};
           const totalStock = p.total_stock ?? variants.reduce((s: number, v: any) => s + (v.stock_quantity || 0), 0);
-          const isOnline = p.visible_online === true || meta.visible_online === true;
+          const isOnline =
+            (p.visible_online === true || meta.visible_online === true || p.visibleOnline === true || meta.visibleOnline === true) &&
+            p.visible_online !== false &&
+            meta.visible_online !== false &&
+            p.visibleOnline !== false &&
+            meta.visibleOnline !== false &&
+            !p.is_draft &&
+            !meta.is_draft &&
+            !p.isDraft &&
+            !meta.isDraft &&
+            p.status !== 'ARCHIVED' &&
+            p.status !== 'DRAFT' &&
+            p.status !== 'HIDDEN' &&
+            meta.status !== 'ARCHIVED' &&
+            meta.status !== 'DRAFT' &&
+            meta.status !== 'HIDDEN' &&
+            !meta.grouped_into;
           const isPos = p.visible_pos !== false && meta.visible_pos !== false;
 
           const isAllowBackorder =

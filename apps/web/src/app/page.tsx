@@ -404,8 +404,20 @@ export default function HomePage({
     (selectedFabricFilter !== 'all' ? 1 : 0);
 
   // Vitrine exibe estritamente produtos que estejam no ar (visibleOnline === true) E que tenham estoque real (> 0)
-  const onlineAndInStockProducts = (storeProducts && storeProducts.length > 0 ? storeProducts : FEATURED_PRODUCTS).filter((p) => {
-    const isOnline = p.visibleOnline === true && !p.isDraft && (p as any).status !== 'HIDDEN' && (p as any).status !== 'ARCHIVED';
+  const onlineAndInStockProducts = (storeProducts && storeProducts.length > 0 ? storeProducts : []).filter((p) => {
+    const isOnline =
+      p.visibleOnline === true &&
+      (p as any).visible_online !== false &&
+      (p as any).meta?.visible_online !== false &&
+      !p.isDraft &&
+      !(p as any).is_draft &&
+      !(p as any).meta?.is_draft &&
+      (p as any).status !== 'HIDDEN' &&
+      (p as any).status !== 'ARCHIVED' &&
+      (p as any).status !== 'DRAFT' &&
+      (p as any).status !== 'draft' &&
+      !(p as any).grouped_into &&
+      !(p as any).meta?.grouped_into;
     const totalStock = Number(p.stock ?? (Array.isArray(p.variants) ? p.variants.reduce((acc: number, v: any) => acc + (v.stock_quantity || 0), 0) : 0));
     return isOnline && totalStock > 0;
   });

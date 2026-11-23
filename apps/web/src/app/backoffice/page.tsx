@@ -865,8 +865,10 @@ export default function BackofficeDashboard() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          ids: selectedCatalogIds,
           productIds: selectedCatalogIds,
           visible_online: newVisibility,
+          is_draft: !newVisibility,
         }),
       });
 
