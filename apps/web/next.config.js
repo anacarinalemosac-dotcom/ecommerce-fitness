@@ -15,18 +15,6 @@ const nextConfig = {
       },
     ],
   },
-  async rewrites() {
-    return [
-      {
-        source: '/conjuntos',
-        destination: '/?cat=sets',
-      },
-      {
-        source: '/sets',
-        destination: '/?cat=sets',
-      },
-    ];
-  },
 }
 
 module.exports = nextConfig

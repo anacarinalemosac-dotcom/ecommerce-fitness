@@ -146,11 +146,15 @@ const SIZE_FILTERS = [
   { id: 'UN', labelPt: 'Tamanho Único (One Size)', labelEn: 'Tamanho Único (One Size)', match: ['UN', 'ONE SIZE', 'TAMANHO UNICO', 'TAMANHO ÚNICO', 'U'] },
 ];
 
-export default function HomePage() {
+export default function HomePage({
+  initialCategory = 'all',
+}: {
+  initialCategory?: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' | 'spoiler';
+} = {}) {
   const { lang, t } = useLanguage();
   const { products: storeProducts, siteInfo, siteImages } = useStoreSettings();
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' | 'spoiler'>('all');
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' | 'spoiler'>(initialCategory);
   const [selectedColorFilter, setSelectedColorFilter] = useState<string>('all');
   const [selectedSizeFilter, setSelectedSizeFilter] = useState<string>('all');
   const [selectedFabricFilter, setSelectedFabricFilter] = useState<string>('all');
@@ -295,6 +299,11 @@ export default function HomePage() {
     window.addEventListener('ana_filter_category', handleCategoryEvent);
 
     try {
+      const pathname = typeof window !== 'undefined' ? window.location.pathname.toLowerCase() : '';
+      if (pathname.includes('/conjuntos') || pathname.includes('/sets')) {
+        setActiveCategoryFilter('sets');
+        return;
+      }
       const params = new URLSearchParams(window.location.search);
       const rawCat = params.get('cat') || params.get('categoria') || params.get('category');
       if (rawCat) {

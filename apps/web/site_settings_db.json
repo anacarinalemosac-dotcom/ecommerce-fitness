@@ -1,6 +1,5 @@
 {
   "storeName": "ANA FITNESS WEAR",
-  "metaPixelId": "2201109947470495",
   "phone": "+1 (978) 798-7934",
   "whatsapp": "19787987934",
   "instagram": "@anafitnessweareua",
@@ -153,6 +152,7 @@
   "returnPolicyText": "Você tem até 30 dias corridos após o recebimento para solicitar troca ou devolução. As peças devem estar em perfeito estado, sem uso, com as etiquetas originais afixadas e na embalagem original.",
   "shippingPolicyText": "Enviamos para todos os 50 estados dos Estados Unidos via USPS Priority Mail com taxa fixa de $9.99. O prazo de postagem para pronta-entrega é de até 24h úteis. Peças confeccionadas sob medida possuem prazo de produção informado na compra.",
   "contactText": "Nosso atendimento oficial está disponível de Segunda a Sexta, das 9h às 18h (EST). WhatsApp: +1 (978) 798-7934 • E-mail: anafitweareua@gmail.com • Leominster, MA.",
+  "metaPixelId": "2201109947470495",
   "googleAnalyticsId": "",
   "googleTagManagerId": "",
   "tiktokPixelId": "",
@@ -175,10 +175,10 @@
     "logoUrl": "/logo-ana-fitness.png",
     "symbolUrl": "/symbol-ana-fitness.png",
     "categoryImages": {
-      "sets": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794313586030-kxs3id.png",
+      "sets": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791762020569-9ppee.jpeg",
       "rompers": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791762039158-erloxq.JPG",
-      "jumpsuits": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794313575906-5jfowc.jpeg",
-      "tops": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1794313566377-doidy5.jpeg",
+      "jumpsuits": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791762070285-u80542.PNG",
+      "tops": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791762084979-6ppue2.png",
       "preorder": "https://grmlmouqkixvfxbdifrc.supabase.co/storage/v1/object/public/products/1791762128172-yn8e.png"
     },
     "communityImages": [
