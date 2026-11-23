@@ -93,7 +93,7 @@ export default function ComboBuilderPage() {
   }, []);
 
   const requiredQty = promo?.required_quantity || 3;
-  const bundlePrice = promo?.bundle_price || 120.0;
+  const bundlePrice = promo?.bundle_price || 110.0;
   const promoProductIds = new Set((promo?.product_ids || []).map((id) => String(id).toLowerCase()));
   const promoProductSlugs = new Set((promo?.product_slugs || []).map((s) => String(s).toLowerCase()));
 
@@ -108,10 +108,13 @@ export default function ComboBuilderPage() {
     const isId = p.id && promoProductIds.has(String(p.id).toLowerCase());
     const isSlug = p.slug && promoProductSlugs.has(String(p.slug).toLowerCase());
     const isExplicitCombo = p.is_combo_item === true;
-    const isFallback =
-      promoProductIds.size === 0 &&
-      promoProductSlugs.size === 0 &&
-      (p.title?.toUpperCase().includes('SET') || p.title?.toUpperCase().includes('CONJUNTO'));
+    const isCategory =
+      Boolean(p.category) &&
+      ['sets', 'conjuntos', 'matching sets'].includes(String(p.category).toLowerCase());
+    const isTitleOrSlug =
+      Boolean(p.title && (p.title.toUpperCase().includes('SET') || p.title.toUpperCase().includes('CONJUNTO'))) ||
+      Boolean(p.slug && (p.slug.toLowerCase().includes('set') || p.slug.toLowerCase().includes('conjunto')));
+    const isFallback = isCategory || isTitleOrSlug;
     return isId || isSlug || isExplicitCombo || isFallback;
   });
 
@@ -254,17 +257,17 @@ export default function ComboBuilderPage() {
           <div className="flex flex-wrap items-center justify-center gap-4 text-[11px] font-bold uppercase text-gold pt-2">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>FRETE FIXO $9.90 OU RETIRADA GRÁTIS</span>
+              <span>3 CONJUNTOS POR $110 + FRETE NO CHECKOUT</span>
             </span>
             <span>•</span>
             <span className="flex items-center gap-1.5 text-emerald-300">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>EXCLUSIVO PARA ZELLE, VENMO OU CASH APP</span>
+              <span>VÁLIDO PARA TODAS AS FORMAS DE PAGAMENTO</span>
             </span>
             <span>•</span>
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>CARTÃO / AFTERPAY / AFFIRM: VALOR NORMAL</span>
+              <span>CARTÃO, PARCELADO, ZELLE, VENMO E CASH APP</span>
             </span>
           </div>
         </div>
@@ -272,10 +275,10 @@ export default function ComboBuilderPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 space-y-10">
         {/* Aviso de Regra de Pagamento do Combo */}
-        <div className="bg-amber-50 border-2 border-amber-400 px-5 py-3.5 text-amber-950 text-xs sm:text-sm font-bold flex items-center gap-2.5 shadow-xs">
-          <span className="text-base shrink-0">⚠️</span>
+        <div className="bg-emerald-50 border-2 border-emerald-500 px-5 py-3.5 text-emerald-950 text-xs sm:text-sm font-bold flex items-center gap-2.5 shadow-xs">
+          <Sparkles className="w-5 h-5 text-emerald-600 shrink-0" />
           <span>
-            REGRA DO COMBO: A promoção é válida <strong>exclusivamente para pagamentos via Zelle, Venmo ou Cash App</strong>. Em compras no Cartão, Apple Pay, Afterpay ou Affirm, prevalece o valor normal dos produtos.
+            PROMOÇÃO ESPECIAL: Leve quaisquer 3 conjuntos fitness participantes por apenas <strong>$110.00</strong>! O frete é calculado e cobrado no final do checkout. <strong>Promoção válida para todas as formas de pagamento</strong> (Cartão de Crédito, Parcelamento em 4x, Zelle, Venmo e Cash App).
           </span>
         </div>
 
@@ -289,8 +292,8 @@ export default function ComboBuilderPage() {
               </h2>
               <p className="text-xs text-deep-black/60 font-medium">
                 {isComboComplete
-                  ? '🎉 Combo completo! No checkout, selecione Zelle, Venmo ou Cash App para pagar o valor promocional.'
-                  : `Selecione mais ${requiredQty - filledCount} conjunto(s) abaixo para completar seu combo (válido no Zelle, Venmo ou Cash App).`}
+                  ? '🎉 Combo completo! No checkout, o valor promocional de $110 será aplicado com frete calculado no final.'
+                  : `Selecione mais ${requiredQty - filledCount} conjunto(s) abaixo para completar seu combo de 3 conjuntos por $110.`}
               </p>
             </div>
 
@@ -409,12 +412,12 @@ export default function ComboBuilderPage() {
               {isComboComplete && discountAmount > 0 && (
                 <p className="text-xs text-emerald-400 font-bold uppercase flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-emerald-400" />
-                  <span>VOCÊ ECONOMIZA ${discountAmount.toFixed(2)} ($120 NO ZELLE/VENMO OU $129,90 NO AFTERPAY/CARTÃO)!</span>
+                  <span>VOCÊ ECONOMIZA ${discountAmount.toFixed(2)} COM O COMBO DE $110 (FRETE CALCULADO NO CHECKOUT)!</span>
                 </p>
               )}
               {!isComboComplete && (
                 <p className="text-[11px] text-white/70 uppercase">
-                  Complete os {requiredQty} slots para destravar o valor de $120 no Zelle/Venmo ou $129,90 no cartão/Afterpay!
+                  Complete os {requiredQty} slots para destravar a promoção de 3 conjuntos por $110 (válido para todas as formas de pagamento)!
                 </p>
               )}
             </div>

@@ -437,7 +437,7 @@ export function calculateComboDiscount(
   promo: any,
   paymentMethod?: string | null
 ): ComboDiscountResult {
-  const defaultBundlePrice = Number(promo?.bundle_price || 120.0);
+  const defaultBundlePrice = Number(promo?.bundle_price || 110.0);
 
   const defaultRes: ComboDiscountResult = {
     hasCombo: false,
@@ -446,7 +446,7 @@ export function calculateComboDiscount(
     participatingCount: 0,
     neededForNextCombo: promo?.required_quantity || 3,
     bundleTargetPrice: defaultBundlePrice,
-    promoTitle: promo?.title || 'Promoção Especial de Combo',
+    promoTitle: promo?.title || 'Combo Especial: 3 Conjuntos por $110',
     ineligibleByPaymentMethod: false,
     rawPotentialDiscount: 0,
   };
@@ -456,7 +456,7 @@ export function calculateComboDiscount(
   }
 
   const reqQty = Number(promo.required_quantity) || 3;
-  const bundlePrice = Number(promo.bundle_price || 120.0);
+  const bundlePrice = Number(promo.bundle_price || 110.0);
   const promoProductIds = new Set((promo.product_ids || []).map((id: string) => String(id).toLowerCase()));
   const promoProductSlugs = new Set((promo.product_slugs || []).map((s: string) => String(s).toLowerCase()));
 
@@ -467,11 +467,13 @@ export function calculateComboDiscount(
     const isIdMatch = it.id && promoProductIds.has(String(it.id).toLowerCase());
     const isSlugMatch = it.slug && promoProductSlugs.has(String(it.slug).toLowerCase());
     const isExplicitCombo = it.is_combo_item === true;
-    // Se o lojista cadastrou ids específicos, verifica correspondência; se não cadastrou nenhum id, considera itens que são sets/conjuntos
-    const isFallbackMatch =
-      promoProductIds.size === 0 &&
-      promoProductSlugs.size === 0 &&
-      (it.title?.toUpperCase().includes('SET') || it.title?.toUpperCase().includes('CONJUNTO'));
+    const isCategoryMatch =
+      Boolean((it as any).category) &&
+      ['sets', 'conjuntos', 'matching sets'].includes(String((it as any).category).toLowerCase());
+    const isNameMatch =
+      Boolean(it.title && (it.title.toUpperCase().includes('SET') || it.title.toUpperCase().includes('CONJUNTO'))) ||
+      Boolean(it.slug && (it.slug.toLowerCase().includes('set') || it.slug.toLowerCase().includes('conjunto')));
+    const isFallbackMatch = isCategoryMatch || isNameMatch;
 
     if (isIdMatch || isSlugMatch || isExplicitCombo || isFallbackMatch) {
       const q = Math.max(1, Number(it.quantity) || 1);

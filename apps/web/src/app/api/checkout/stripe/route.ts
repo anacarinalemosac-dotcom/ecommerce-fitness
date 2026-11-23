@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
     const netItemsAmount = Math.max(0, grossItemsAmount - effectiveDiscountAmount);
     // Regra oficial Ana Fitness Wear:
     // Para compras normais sem combo a partir de $250, o frete é grátis ($0.00).
-    // Para combo parcelado em gateways (Afterpay, Affirm, Cartão), SEMPRE cobra $120.00 + $9.90 de frete (Total $129.90).
+    // Para combos promocionais, o frete USPS ($9.90 / flat rate) é cobrado no total final, exceto se for Retirada no Showroom (PICKUP).
     // O frete só é $0.00 no combo se for Retirada no Showroom (PICKUP).
     const isOverFreeShippingThreshold = !isComboOrder && netItemsAmount >= 250;
     const finalShippingFee = isPickup

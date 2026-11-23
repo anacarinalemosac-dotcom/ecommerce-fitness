@@ -20,11 +20,11 @@ export interface ComboPromoConfig {
 
 const DEFAULT_CONFIG: ComboPromoConfig = {
   active: true,
-  title: 'Promoção Especial de Combo',
+  title: 'Combo Especial: 3 Conjuntos por $110',
   required_quantity: 3,
-  bundle_price: 120.0,
-  badge_text: 'COMBO 3 PEÇAS',
-  description: 'Selecione quaisquer 3 conjuntos participantes e garanta o valor promocional de combo no fechamento do pedido!',
+  bundle_price: 110.0,
+  badge_text: 'COMBO 3 POR $110',
+  description: 'Selecione quaisquer 3 conjuntos participantes por apenas $110! Frete calculado no checkout. Válido para todas as formas de pagamento.',
   product_ids: [],
   product_slugs: [],
 };
@@ -319,7 +319,7 @@ export async function POST(req: NextRequest) {
         ...current,
         ...incoming,
         required_quantity: Number(incoming.required_quantity) || 3,
-        bundle_price: Number(incoming.bundle_price) || 120.0,
+        bundle_price: Number(incoming.bundle_price) || 110.0,
         product_ids: incomingIds,
         product_slugs: derivedSlugs,
         updated_at: new Date().toISOString(),

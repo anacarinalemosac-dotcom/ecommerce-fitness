@@ -785,12 +785,12 @@ export default function PublicClientCatalogPage() {
                       {isCatalogItemInCombo(item) && item.totalStock > 0 && (
                         <div className="p-2 bg-emerald-50 border-2 border-emerald-500 text-emerald-950 text-[10px] font-bold leading-snug space-y-0.5">
                           <span className="text-[9px] font-black uppercase tracking-wider text-emerald-800 block">
-                            ✨ {translateBadgeText(comboPromo?.badge_text || 'COMBO 3 PEÇAS', lang)}
+                            ✨ {translateBadgeText(comboPromo?.badge_text || 'COMBO 3 POR $110', lang)}
                           </span>
                           <p>
                             {lang === 'pt'
-                              ? `Esta peça participa da promoção: ${Number(comboPromo?.required_quantity) || 3} peças pelo valor $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (válido no Zelle, Venmo ou Cash App). No cartão/Afterpay/Affirm vale o preço normal.`
-                              : `This piece qualifies for our promo: ${Number(comboPromo?.required_quantity) || 3} pieces for $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (valid on Zelle, Venmo or Cash App only; regular price on Card/Afterpay/Affirm).`}
+                              ? `Esta peça participa da promoção: ${Number(comboPromo?.required_quantity) || 3} conjuntos por $${Number(comboPromo?.bundle_price || 110).toFixed(2)} + frete no checkout (válido para todas as formas de pagamento).`
+                              : `This piece qualifies for our promo: ${Number(comboPromo?.required_quantity) || 3} sets for $${Number(comboPromo?.bundle_price || 110).toFixed(2)} + shipping at checkout (valid for all payment methods).`}
                           </p>
                         </div>
                       )}

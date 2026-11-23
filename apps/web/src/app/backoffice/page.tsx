@@ -309,11 +309,11 @@ export default function BackofficeDashboard() {
   // Configuração da Promoção de Combo (3 por $X)
   const [comboPromo, setComboPromo] = useState<any>({
     active: true,
-    title: 'Promoção Especial de Combo',
+    title: 'Combo Especial: 3 Conjuntos por $110',
     required_quantity: 3,
-    bundle_price: 120.0,
-    badge_text: 'COMBO 3 PEÇAS',
-    description: 'Selecione quaisquer 3 conjuntos participantes e feche o combo pelo valor promocional configurado!',
+    bundle_price: 110.0,
+    badge_text: 'COMBO 3 POR $110',
+    description: 'Selecione quaisquer 3 conjuntos participantes por apenas $110! Frete cobrado no checkout. Válido para todas as formas de pagamento.',
     product_ids: [],
     product_slugs: [],
   });

@@ -380,8 +380,8 @@ export function SideCartDrawer() {
                     <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
                     <span>
                       {lang === 'pt'
-                        ? `${translateBadgeText(comboPromo.title || 'Combo', lang)} ativo: $120 na retirada ou $129,90 com frete USPS (4x de $32.48 sem juros)!`
-                        : `${translateBadgeText(comboPromo.title || 'Combo', lang)} active: $120 for pickup or $129.90 with USPS shipping (4x $32.48 interest-free)!`}
+                        ? `${translateBadgeText(comboPromo.title || 'Combo', lang)} ativo: $${comboResult.bundleTargetPrice.toFixed(2)} (${comboResult.completedCombos * (comboPromo.required_quantity || 3)} conjuntos) + frete no checkout!`
+                        : `${translateBadgeText(comboPromo.title || 'Combo', lang)} active: $${comboResult.bundleTargetPrice.toFixed(2)} (${comboResult.completedCombos * (comboPromo.required_quantity || 3)} sets) + shipping at checkout!`}
                     </span>
                   </>
                 ) : comboResult.participatingCount > 0 ? (
@@ -389,8 +389,8 @@ export function SideCartDrawer() {
                     <Sparkles className="w-4 h-4 text-gold shrink-0" />
                     <span>
                       {lang === 'pt'
-                        ? `Falta(m) ${comboResult.neededForNextCombo} peça(s) participante(s) para o ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 120).toFixed(2)})!`
-                        : `Add ${comboResult.neededForNextCombo} more combo item(s) to unlock ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 120).toFixed(2)})!`}
+                        ? `Falta(m) ${comboResult.neededForNextCombo} peça(s) participante(s) para o ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 110).toFixed(2)})!`
+                        : `Add ${comboResult.neededForNextCombo} more combo item(s) to unlock ${translateBadgeText(comboPromo.badge_text || 'Combo', lang)} ($${Number(comboPromo.bundle_price || 110).toFixed(2)})!`}
                     </span>
                   </>
                 ) : null}

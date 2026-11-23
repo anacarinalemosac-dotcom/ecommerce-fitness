@@ -622,6 +622,7 @@ export function translateBadgeText(badge: string, lang: StoreLang): string {
       .replace(/MAXIMUM SUPPORT/gi, 'ALTA SUSTENTAÇÃO')
       .replace(/HIGH SUPPORT/gi, 'ALTA SUSTENTAÇÃO')
       .replace(/COMBO 3 PIECES/gi, 'COMBO 3 PEÇAS')
+      .replace(/COMBO 3 FOR \$?110/gi, 'COMBO 3 POR $110')
       .replace(/SOLD OUT/gi, 'ESGOTADO');
   } else {
     return b
@@ -632,6 +633,7 @@ export function translateBadgeText(badge: string, lang: StoreLang): string {
       .replace(/ALTA PERFORMANCE/gi, 'HIGH PERFORMANCE')
       .replace(/ALTA SUSTENTAÇÃO/gi, 'HIGH SUPPORT')
       .replace(/COMBO 3 PEÇAS/gi, '3-PIECE COMBO')
+      .replace(/COMBO 3 POR \$?110/gi, '3 SETS FOR $110')
       .replace(/ESGOTADO/gi, 'SOLD OUT');
   }
 }
