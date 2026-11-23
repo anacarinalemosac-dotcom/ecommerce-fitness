@@ -726,24 +726,27 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       .catch(() => {});
   }, []);
 
-  const isItemInCombo = (pId?: string, pSlug?: string, pTitle?: string) => {
+  const isItemInCombo = (pId?: string, pSlug?: string, pTitle?: string, pCat?: string) => {
     if (!comboPromo?.active) return false;
+    const catNorm = String(pCat || '').toLowerCase();
+    if (catNorm === 'sets' || catNorm === 'conjuntos' || catNorm.includes('set') || catNorm.includes('conjunto')) return true;
+    const tUpper = String(pTitle || '').toUpperCase();
+    if (tUpper.includes('SET') || tUpper.includes('CONJUNTO') || tUpper.includes('KIT')) return true;
+    const sLower = String(pSlug || '').toLowerCase();
+    if (sLower.includes('set') || sLower.includes('conjunto')) return true;
     const promoIds = (comboPromo.product_ids || []).map((id: string) => String(id).toLowerCase());
     const promoSlugs = (comboPromo.product_slugs || []).map((s: string) => String(s).toLowerCase());
     const idNorm = String(pId || '').toLowerCase();
     const slugNorm = String(pSlug || '').toLowerCase();
 
-    if (promoIds.length > 0 || promoSlugs.length > 0) {
-      return Boolean((idNorm && promoIds.includes(idNorm)) || (slugNorm && promoSlugs.includes(slugNorm)));
-    }
-    const tUpper = (pTitle || '').toUpperCase();
-    return tUpper.includes('SET') || tUpper.includes('CONJUNTO') || tUpper.includes('KIT');
+    return Boolean((idNorm && promoIds.includes(idNorm)) || (slugNorm && promoSlugs.includes(slugNorm)));
   };
 
   const isParticipatingInCombo = isItemInCombo(
     (dynamicProduct as any)?.id || (productData as any)?.id,
     slug,
-    productData?.title
+    productData?.title || (dynamicProduct as any)?.title,
+    (productData as any)?.category || (dynamicProduct as any)?.category
   );
 
   // Opção de Entrega (Alo Yoga style): Envio vs Retirada no Showroom
@@ -1582,8 +1585,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   </div>
                   <p className="text-xs font-bold text-emerald-950 leading-relaxed">
                     {lang === 'pt'
-                      ? `Esta peça participa da promoção: ${Number(comboPromo?.required_quantity) || 3} peças pelo valor $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (somente via Zelle, Venmo ou Cash App). No cartão, Afterpay ou Affirm entra o preço normal.`
-                      : `This item is part of our combo deal: ${Number(comboPromo?.required_quantity) || 3} pieces for $${Number(comboPromo?.bundle_price || 120).toFixed(2)} (valid on Zelle, Venmo or Cash App only; regular price applies on Card, Afterpay or Affirm).`}
+                      ? `Esta peça participa da promoção: ${Number(comboPromo?.required_quantity) || 3} Conjuntos por apenas $${Number(comboPromo?.bundle_price || 110).toFixed(2)} (sai a $36,66 cada conjunto!). Válido para todas as formas de pagamento (Cartão, Afterpay, Zelle, etc.). Desconto aplicado automaticamente na sua sacola.`
+                      : `This piece qualifies for our bundle deal: ${Number(comboPromo?.required_quantity) || 3} Sets for only $${Number(comboPromo?.bundle_price || 110).toFixed(2)} ($36.66 each set!). Valid for all payment methods (Card, Afterpay, Zelle, etc.). Discount applied automatically in your shopping bag.`}
                   </p>
                 </div>
               </div>

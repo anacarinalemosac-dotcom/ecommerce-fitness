@@ -2,7 +2,7 @@
 
 import { REAL_DEFAULT_PRODUCTS } from '../lib/defaultProductsCatalog';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
@@ -242,21 +242,29 @@ export default function HomePage() {
 
   const isProductInCombo = (p: any): boolean => {
     if (!comboPromo?.active || !p) return false;
+    if (p.is_combo_item === true) return true;
+    const cat = String(p.categoryKey || p.categoryPt || p.categoryEn || p.category || '').toLowerCase();
+    if (cat === 'sets' || cat === 'conjuntos' || cat.includes('set') || cat.includes('conjunto')) return true;
+    const titleUpper = String(p.title || '').toUpperCase();
+    if (titleUpper.includes('SET') || titleUpper.includes('CONJUNTO') || titleUpper.includes('KIT')) return true;
+    const sLower = String(p.slug || '').toLowerCase();
+    if (sLower.includes('set') || sLower.includes('conjunto')) return true;
     const promoIds = (comboPromo.product_ids || []).map((id: string) => String(id).toLowerCase());
     const promoSlugs = (comboPromo.product_slugs || []).map((s: string) => String(s).toLowerCase());
     const prodId = String(p.id || '').toLowerCase();
     const prodSlug = String(p.slug || '').toLowerCase();
 
-    if (promoIds.length > 0 || promoSlugs.length > 0) {
-      return Boolean(
-        (prodId && promoIds.includes(prodId)) ||
-        (prodSlug && promoSlugs.includes(prodSlug)) ||
-        p.is_combo_item === true
-      );
-    }
-    const tUpper = (p.title || '').toUpperCase();
-    return tUpper.includes('SET') || tUpper.includes('CONJUNTO') || tUpper.includes('KIT');
+    return Boolean(
+      (prodId && promoIds.includes(prodId)) ||
+      (prodSlug && promoSlugs.includes(prodSlug))
+    );
   };
+
+  const comboUnitsInCart = useMemo(() => {
+    return cartItemsSnapshot
+      .filter((it: any) => isProductInCombo(it))
+      .reduce((sum: number, it: any) => sum + (Number(it.quantity) || 1), 0);
+  }, [cartItemsSnapshot, comboPromo]);
 
   const activeHeroSlides = (siteInfo.heroBanners && siteInfo.heroBanners.length > 0)
     ? siteInfo.heroBanners.filter((b) => b.active !== false)
@@ -288,9 +296,12 @@ export default function HomePage() {
 
     try {
       const params = new URLSearchParams(window.location.search);
-      const cat = params.get('cat');
-      if (cat) {
-        const mappedCat = cat === 'new' ? 'all' : (cat === 'preorder' ? 'spoiler' : (cat as any));
+      const rawCat = params.get('cat') || params.get('categoria') || params.get('category');
+      if (rawCat) {
+        const catLower = rawCat.toLowerCase();
+        const mappedCat = (catLower === 'sets' || catLower === 'conjuntos')
+          ? 'sets'
+          : (catLower === 'new' ? 'all' : (catLower === 'preorder' ? 'spoiler' : (catLower as any)));
         setActiveCategoryFilter(mappedCat);
         if (mappedCat === 'all') {
           setTimeout(() => {
@@ -573,13 +584,17 @@ export default function HomePage() {
   return (
     <div className={`bg-white selection:bg-deep-black selection:text-gold ${activeCategoryFilter === 'all' ? 'space-y-20 sm:space-y-28' : 'space-y-8 sm:space-y-12'}`}>
       {/* =========================================================================
-          CABEÇALHO DA CATEGORIA SELECIONADA (ESTILO GYMSHARK)
-          Substitui o banner gigante e exibe a categoria no topo!
+          CABEÇALHO DA CATEGORIA SELECIONADA OU BANNER ESPECIAL DO COMBO 3 POR $110
          ========================================================================= */}
-      {activeCategoryFilter !== 'all' && (
-        <div className="border-b border-gray-200 bg-gray-50/70 pt-6 pb-8 sm:pt-10 sm:pb-10 animate-fadeIn">
-          <div className="max-w-7xl mx-auto px-4 sm:px-8">
-            <nav className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-3">
+      {activeCategoryFilter === 'sets' ? (
+        <div className="border-b border-gold/30 bg-neutral-950 text-white pt-6 pb-8 sm:pt-8 sm:pb-10 animate-fadeIn relative overflow-hidden">
+          {/* Luzes e gradientes de fundo luxury */}
+          <div className="absolute -right-20 -top-20 w-96 h-96 bg-gold/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -left-20 -bottom-20 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-8 relative z-10 space-y-6">
+            {/* Breadcrumb simples */}
+            <nav className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
               <button
                 type="button"
                 onClick={() => {
@@ -588,28 +603,153 @@ export default function HomePage() {
                     window.history.pushState({}, '', '/?cat=all');
                   }
                 }}
-                className="hover:text-black transition cursor-pointer"
+                className="hover:text-gold transition cursor-pointer"
               >
                 {lang === 'pt' ? 'Início' : 'Home'}
               </button>
               <span>/</span>
-              <span className="text-gray-900 font-extrabold">{currentCategoryName}</span>
+              <span className="text-gold font-extrabold">{currentCategoryName}</span>
+              <span>/</span>
+              <span className="text-amber-400 font-black">🔥 {comboPromo?.badge_text || 'PROMO 3 POR $110'}</span>
             </nav>
 
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-              <div>
-                <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-gray-950">
-                  {currentCategoryName}
+            {/* Grid Principal do Banner de Promoção */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-3 max-w-2xl">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-amber-500 via-gold to-amber-500 text-gray-950 font-black text-[10px] sm:text-xs uppercase tracking-widest rounded-xs shadow-md">
+                  <Flame className="w-3.5 h-3.5 fill-current animate-pulse text-gray-950" />
+                  <span>{lang === 'pt' ? 'PROMOÇÃO EXCLUSIVA DE CONJUNTOS' : 'EXCLUSIVE SETS PROMOTION'}</span>
+                  <span>•</span>
+                  <span>{comboPromo?.badge_text || '3 POR $110'}</span>
+                </div>
+
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-white leading-none">
+                  {lang === 'pt' ? 'LEVE 3 CONJUNTOS POR ' : 'GET 3 SETS FOR '}
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-gold to-amber-200">
+                    $110
+                  </span>
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-600 font-medium mt-1.5 max-w-2xl leading-relaxed">
-                  {currentCategoryDesc}
+
+                <p className="text-xs sm:text-sm text-gray-300 font-medium leading-relaxed">
+                  {lang === 'pt'
+                    ? 'Escolha quaisquer 3 conjuntos desta página e o desconto entra automaticamente na sua sacola: sai a apenas $36,66 cada conjunto! Economize mais de $54 nas suas peças favoritas. Promoção válida para todas as formas de pagamento (Cartão de Crédito, Afterpay 4x, Klarna, Affirm, Zelle, Venmo). Frete calculado no checkout.'
+                    : 'Pick any 3 sets on this page and the bundle discount applies automatically in your bag: only $36.66 per set! Save over $54. Valid for all payment methods (Credit Card, Afterpay 4x, Klarna, Affirm, Zelle, Venmo). Flat shipping calculated at checkout.'}
                 </p>
+
+                <div className="flex flex-wrap items-center gap-2.5 pt-1 text-[10px] sm:text-[11px] font-bold text-gray-200">
+                  <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-xs border border-white/15">
+                    <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />
+                    <span>{lang === 'pt' ? 'Desconto Automático no Carrinho' : 'Auto Discount in Bag'}</span>
+                  </span>
+                  <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-xs border border-white/15">
+                    <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />
+                    <span>{lang === 'pt' ? 'Todas as Peças Abaixo Participam' : 'All Sets Below Qualify'}</span>
+                  </span>
+                  <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-xs border border-white/15">
+                    <Truck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{lang === 'pt' ? 'Frete no Checkout' : 'Shipping at Checkout'}</span>
+                  </span>
+                </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-gray-700 uppercase tracking-wider bg-white border border-gray-200 px-3 py-1.5 rounded-xs shadow-xs">
-                  {filteredProducts.length} {lang === 'pt' ? 'peças encontradas' : 'pieces found'}
-                </span>
+              {/* Box Interativo de Slots do Combo */}
+              <div className="bg-white/10 border-2 border-gold/40 p-4 sm:p-5 rounded-xs backdrop-blur-md lg:w-96 shrink-0 space-y-3.5 shadow-2xl">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-200 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-gold" />
+                    <span>{lang === 'pt' ? 'SEU COMBO 3 POR $110:' : 'YOUR 3 FOR $110 COMBO:'}</span>
+                  </span>
+                  <span className="text-xs font-black text-gold bg-gold/20 px-2 py-0.5 rounded-xs border border-gold/40">
+                    {comboUnitsInCart} / 3 {lang === 'pt' ? 'conjuntos' : 'sets'}
+                  </span>
+                </div>
+
+                {/* Slots Visuais 1, 2, 3 */}
+                <div className="grid grid-cols-3 gap-2">
+                  {[0, 1, 2].map((slotIdx) => {
+                    const isFilled = (comboUnitsInCart % 3 === 0 && comboUnitsInCart > 0) || (comboUnitsInCart % 3 > slotIdx);
+                    return (
+                      <div
+                        key={slotIdx}
+                        className={`p-2.5 rounded-xs border text-center transition-all flex flex-col items-center justify-center gap-1 min-h-[66px] ${
+                          isFilled
+                            ? 'bg-emerald-950/80 border-emerald-400 text-emerald-300 shadow-lg ring-1 ring-emerald-400/60'
+                            : 'bg-black/40 border-dashed border-white/20 text-gray-400'
+                        }`}
+                      >
+                        {isFilled ? (
+                          <>
+                            <div className="w-5 h-5 rounded-full bg-emerald-500 text-gray-950 flex items-center justify-center font-black text-[11px] shadow-sm">
+                              ✓
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-tight text-white">
+                              {lang === 'pt' ? `Conjunto ${slotIdx + 1}` : `Set ${slotIdx + 1}`}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-base font-bold leading-none text-gold/70">+</span>
+                            <span className="text-[9px] font-semibold uppercase tracking-tight text-gray-400">
+                              {lang === 'pt' ? `Escolher ${slotIdx + 1}º` : `Pick #${slotIdx + 1}`}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Mensagens de Feedback em Tempo Real */}
+                {comboUnitsInCart === 0 && (
+                  <p className="text-[11px] text-gray-300 font-medium text-center leading-snug">
+                    {lang === 'pt'
+                      ? '👇 Clique no tamanho do seu conjunto abaixo para iniciar o combo'
+                      : '👇 Pick your sizes below to start your combo'}
+                  </p>
+                )}
+                {comboUnitsInCart % 3 === 1 && (
+                  <p className="text-[11px] text-amber-300 font-bold text-center leading-snug">
+                    {lang === 'pt'
+                      ? '⚡ 1 conjunto escolhido! Faltam 2 para ativar a promoção de $110.'
+                      : '⚡ 1 set picked! Add 2 more to unlock the $110 deal.'}
+                  </p>
+                )}
+                {comboUnitsInCart % 3 === 2 && (
+                  <p className="text-[11px] text-amber-300 font-black text-center leading-snug animate-pulse">
+                    {lang === 'pt'
+                      ? '🔥 Falta apenas 1 conjunto para você pagar só $110 no total!'
+                      : '🔥 Only 1 more set to pay just $110 total!'}
+                  </p>
+                )}
+                {comboUnitsInCart > 0 && comboUnitsInCart % 3 === 0 && (
+                  <div className="space-y-2 pt-1">
+                    <p className="text-[11px] text-emerald-300 font-black text-center">
+                      {lang === 'pt'
+                        ? '🎉 COMBO COMPLETO! Desconto de 3 por $110 ativo!'
+                        : '🎉 COMBO COMPLETE! 3 for $110 deal active!'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new Event('ana_toggle_cart_drawer'));
+                        }
+                      }}
+                      className="w-full py-2.5 bg-gradient-to-r from-amber-400 via-gold to-amber-400 hover:from-white hover:to-white text-gray-950 font-black text-xs uppercase tracking-wider transition shadow-lg cursor-pointer text-center block animate-bounce"
+                    >
+                      {lang === 'pt' ? 'Ver Carrinho com Desconto →' : 'View Bag with Discount →'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        activeCategoryFilter !== 'all' && (
+          <div className="border-b border-gray-200 bg-gray-50/70 pt-6 pb-8 sm:pt-10 sm:pb-10 animate-fadeIn">
+            <div className="max-w-7xl mx-auto px-4 sm:px-8">
+              <nav className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -618,14 +758,45 @@ export default function HomePage() {
                       window.history.pushState({}, '', '/?cat=all');
                     }
                   }}
-                  className="text-xs font-bold text-gray-800 hover:text-gold underline underline-offset-4 uppercase tracking-wider transition cursor-pointer"
+                  className="hover:text-black transition cursor-pointer"
                 >
-                  {lang === 'pt' ? '← Ver todas as peças' : '← View all pieces'}
+                  {lang === 'pt' ? 'Início' : 'Home'}
                 </button>
+                <span>/</span>
+                <span className="text-gray-900 font-extrabold">{currentCategoryName}</span>
+              </nav>
+
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                  <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-gray-950">
+                    {currentCategoryName}
+                  </h1>
+                  <p className="text-xs sm:text-sm text-gray-600 font-medium mt-1.5 max-w-2xl leading-relaxed">
+                    {currentCategoryDesc}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-gray-700 uppercase tracking-wider bg-white border border-gray-200 px-3 py-1.5 rounded-xs shadow-xs">
+                    {filteredProducts.length} {lang === 'pt' ? 'peças encontradas' : 'pieces found'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveCategoryFilter('all');
+                      if (typeof window !== 'undefined') {
+                        window.history.pushState({}, '', '/?cat=all');
+                      }
+                    }}
+                    className="text-xs font-bold text-gray-800 hover:text-gold underline underline-offset-4 uppercase tracking-wider transition cursor-pointer"
+                  >
+                    {lang === 'pt' ? '← Ver todas as peças' : '← View all pieces'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )
       )}
 
       {/* =========================================================================
@@ -1356,6 +1527,7 @@ export default function HomePage() {
                   const isSpoiler = isProductSpoiler(product);
                   const isFavorited = !!wishlist[product.id];
                   const wasJustAdded = quickAddedItem?.id === product.id;
+                  const isComboItem = isProductInCombo(product);
 
                   // Badges promocionais: nunca exibe sobre spoiler
                   const showTopPromoBadge = !isSpoiler && Boolean(product.badgeEn && product.badgeEn !== 'PRE-ORDER' && product.badgePt !== 'PRÉ-VENDA' && product.badgePt !== 'SPOILER');
@@ -1451,13 +1623,21 @@ export default function HomePage() {
                             </span>
                           </div>
                         )}
-                        {showTopPromoBadge && !isOutOfStock && (
+                        {!isOutOfStock && (
                           <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1 z-10 pointer-events-none">
-                            <span
-                              className={`text-[7.5px] sm:text-[9px] uppercase tracking-widest px-1.5 py-0.5 sm:px-2.5 sm:py-1 font-black shadow-sm ${product.badgeStyle}`}
-                            >
-                              {translateBadgeText(lang === 'pt' ? product.badgePt : product.badgeEn, lang)}
-                            </span>
+                            {isComboItem && (
+                              <span className="text-[7.5px] sm:text-[9px] uppercase tracking-widest px-2 py-0.5 sm:px-2.5 sm:py-1 font-black shadow-md bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-gray-950 border border-amber-600 flex items-center gap-1 animate-pulse">
+                                <Flame className="w-3 h-3 fill-current text-gray-950 shrink-0" />
+                                <span>{comboPromo?.badge_text || (lang === 'pt' ? 'PROMO 3 POR $110' : '3 FOR $110')}</span>
+                              </span>
+                            )}
+                            {showTopPromoBadge && !isComboItem && (
+                              <span
+                                className={`text-[7.5px] sm:text-[9px] uppercase tracking-widest px-1.5 py-0.5 sm:px-2.5 sm:py-1 font-black shadow-sm ${product.badgeStyle}`}
+                              >
+                                {translateBadgeText(lang === 'pt' ? product.badgePt : product.badgeEn, lang)}
+                              </span>
+                            )}
                           </div>
                         )}
 
@@ -1653,7 +1833,28 @@ export default function HomePage() {
                           )}
                         </div>
 
+                        {/* Tag Destacada de Promoção 3 por $110 */}
+                        {isComboItem && !isOutOfStock && (
+                          <div className="mt-1.5 py-1 px-2 bg-gradient-to-r from-amber-500/15 via-gold/20 to-amber-500/15 border border-amber-500/40 rounded-xs flex items-center justify-between gap-1 text-[9.5px] font-bold text-amber-950">
+                            <span className="flex items-center gap-1 font-extrabold text-amber-900 truncate">
+                              <Flame className="w-3 h-3 text-amber-600 fill-amber-500 shrink-0" />
+                              <span>{comboPromo?.badge_text || (lang === 'pt' ? 'PROMO 3 POR $110' : '3 FOR $110')}</span>
+                            </span>
+                            <span className="text-[8.5px] font-black uppercase tracking-tight bg-deep-black text-gold px-1.5 py-0.5 rounded-2xs shrink-0">
+                              {lang === 'pt' ? 'SAI A $36,66 CADA' : '$36.66 EACH'}
+                            </span>
+                          </div>
+                        )}
+
                         {/* Mobile Quick Add Bar (Discreto e Rápido para Celular) */}
+                        {isComboItem && !isOutOfStock && (
+                          <div className="sm:hidden pt-1 pb-0.5 text-center">
+                            <span className="text-[9px] font-black uppercase tracking-tight text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-xs border border-amber-400/80 inline-flex items-center gap-1 shadow-2xs">
+                              <Flame className="w-2.5 h-2.5 fill-amber-600 text-amber-700 shrink-0" />
+                              <span>{lang === 'pt' ? 'Adicionar ao Combo 3 por $110' : 'Add to 3 for $110 Combo'}</span>
+                            </span>
+                          </div>
+                        )}
                         <div className="sm:hidden pt-2 border-t border-gray-100 flex items-center gap-1 overflow-x-auto scrollbar-none">
                           {selectableSizes.map((sz) => {
                             const upperSz = sz.toUpperCase();
