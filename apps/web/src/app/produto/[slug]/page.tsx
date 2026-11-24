@@ -30,6 +30,7 @@ import {
   translateBadgeText,
   translateDescriptionText,
 } from '../../../lib/translateFitness';
+import { getSwatchStyle } from '@/lib/colorUtils';
 import {
   Star,
   ShieldCheck,
@@ -329,10 +330,20 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       );
     };
 
+    const isValidProductMediaUrl = (url?: string | null) => {
+      if (!url || typeof url !== 'string') return false;
+      const lower = url.toLowerCase().trim();
+      return (
+        !lower.includes('symbol-ana-fitness.png') &&
+        !lower.includes('logo-ana-fitness.png') &&
+        !lower.includes('ana-fitness-logo')
+      );
+    };
+
     const mediaList: Array<{ type: 'image' | 'video'; url: string; label: string; color?: string }> = [];
 
     // 1. Foto principal (apenas fotos reais)
-    if (dynamicProduct.primaryImage && !isVideoUrl(dynamicProduct.primaryImage)) {
+    if (dynamicProduct.primaryImage && isValidProductMediaUrl(dynamicProduct.primaryImage) && !isVideoUrl(dynamicProduct.primaryImage)) {
       mediaList.push({
         type: 'image',
         url: dynamicProduct.primaryImage,
@@ -344,6 +355,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     // 2. Foto secundária (apenas fotos reais)
     if (
       dynamicProduct.secondaryImage &&
+      isValidProductMediaUrl(dynamicProduct.secondaryImage) &&
       !isVideoUrl(dynamicProduct.secondaryImage) &&
       !mediaList.some((m) => m.url === dynamicProduct.secondaryImage)
     ) {
@@ -358,7 +370,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     // 3. Imagens da galeria
     if (dynamicProduct.galleryImages && dynamicProduct.galleryImages.length > 0) {
       dynamicProduct.galleryImages.forEach((img: string, idx: number) => {
-        if (img && !mediaList.some((m) => m.url === img)) {
+        if (img && isValidProductMediaUrl(img) && !mediaList.some((m) => m.url === img)) {
           const type: 'image' | 'video' = isVideoUrl(img) ? 'video' : 'image';
           mediaList.push({
             type,
@@ -373,7 +385,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     // 4. Mídias estruturadas (imagens e vídeos explícitos)
     if (Array.isArray((dynamicProduct as any).media_list)) {
       (dynamicProduct as any).media_list.forEach((m: any, idx: number) => {
-        if (m?.url) {
+        if (m?.url && isValidProductMediaUrl(m.url)) {
           const type: 'image' | 'video' = (m.type === 'video' || isVideoUrl(m.url)) ? 'video' : 'image';
           const existing = mediaList.find((med) => med.url === m.url);
           if (existing) {
@@ -399,7 +411,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       (Array.isArray(dynamicProduct.variants) ? dynamicProduct.variants.find((v: any) => v.video_url)?.video_url : null) ||
       null;
 
-    if (resolvedVideoUrl) {
+    if (resolvedVideoUrl && isValidProductMediaUrl(resolvedVideoUrl)) {
       const existing = mediaList.find((m) => m.url === resolvedVideoUrl);
       if (existing) {
         existing.type = 'video';
@@ -430,13 +442,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     if (Array.isArray(dynamicProduct.variants) && dynamicProduct.variants.length > 0) {
       variantsList = dynamicProduct.variants.map((v: any, idx: number) => {
         const cName = v.color || 'Preto Ônix';
-        const defaultHex =
-          cName.toLowerCase().includes('ouro') || cName.toLowerCase().includes('gold') ? '#D4AF37' :
-          cName.toLowerCase().includes('amarel') ? '#FBBF24' :
-          cName.toLowerCase().includes('branc') || cName.toLowerCase().includes('white') ? '#FFFFFF' :
-          cName.toLowerCase().includes('vinho') || cName.toLowerCase().includes('marsala') ? '#800020' :
-          cName.toLowerCase().includes('verd') ? '#2E4F4F' : '#0A0A0A';
-
         let varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
         if (!varImg && Array.isArray((dynamicProduct as any).media_list)) {
           const mMatch = (dynamicProduct as any).media_list.find(
@@ -445,7 +450,10 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           if (mMatch?.url) varImg = mMatch.url;
         }
 
-        if (varImg) {
+        const swatch = getSwatchStyle(cName, varImg);
+        const defaultHex = v.color_hex || (swatch.background.startsWith('#') ? swatch.background : '#111111');
+
+        if (varImg && isValidProductMediaUrl(varImg)) {
           const existingMedia = mediaList.find((m) => m.url === varImg);
           if (existingMedia) {
             existingMedia.color = cName;
@@ -461,7 +469,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           color: cName,
           colorNamePt: cName,
           colorNameEn: cName,
-          colorHex: v.color_hex || defaultHex,
+          colorHex: defaultHex,
           price: Number(v.price) || dynamicProduct.price,
           originalPrice: dynamicProduct.originalPrice,
           stock: Number(v.stock_quantity ?? v.stock ?? 0),
@@ -564,26 +572,46 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     };
   }
 
-  // Lista de cores únicas extraídas das variantes
-  const availableColorsMap = new Map<string, { name: string; hex: string; image?: string }>();
+  // Lista de cores únicas extraídas das variantes com suporte a miniaturas e gradientes
+  const availableColorsMap = new Map<string, { name: string; hex: string; image?: string; background?: string }>();
   (productData.variants || []).forEach((v: Variant) => {
     if (v.color && !availableColorsMap.has(v.color.toLowerCase())) {
+      const swatch = getSwatchStyle(v.color, v.image);
       availableColorsMap.set(v.color.toLowerCase(), {
         name: v.color,
-        hex: v.colorHex || '#0A0A0A',
+        hex: v.colorHex || (swatch.background.startsWith('#') ? swatch.background : '#111111'),
+        background: swatch.background,
         image: v.image,
       });
     }
   });
   (productData.colors || []).forEach((c: any) => {
     if (c.name && !availableColorsMap.has(c.name.toLowerCase())) {
+      const swatch = getSwatchStyle(c.name, c.image);
       availableColorsMap.set(c.name.toLowerCase(), {
         name: c.name,
-        hex: c.hex || '#0A0A0A',
+        hex: c.hex || (swatch.background.startsWith('#') ? swatch.background : '#111111'),
+        background: swatch.background,
+        image: c.image,
       });
     }
   });
   const availableColors = Array.from(availableColorsMap.values());
+
+  const findImageForColor = (colorName: string): string | undefined => {
+    const lower = colorName.trim().toLowerCase();
+    const vMatch = (productData.variants || []).find(
+      (v: Variant) => v.color && v.color.trim().toLowerCase() === lower && v.image && !v.image.includes('symbol-ana-fitness.png')
+    );
+    if (vMatch?.image) return vMatch.image;
+
+    const mMatch = (productData.media || []).find(
+      (m: any) => m.color && m.color.trim().toLowerCase() === lower && m.url && !m.url.includes('symbol-ana-fitness.png') && m.type !== 'video'
+    );
+    if (mMatch?.url) return mMatch.url;
+
+    return undefined;
+  };
 
   // 1. Identifica separadamente se a peça está ESGOTADA (estoque 0) vs SPOILER explícito
   const totalStock =
@@ -678,6 +706,15 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     }
   }, [inStockVariant?.image]);
   const [isZoomed, setIsZoomed] = useState(false);
+
+  // Rolagem suave e automática para manter a miniatura ativa sempre visível
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const activeThumb = document.getElementById(`product-thumb-${selectedMediaIdx}`);
+    if (activeThumb) {
+      activeThumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+  }, [selectedMediaIdx]);
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
   const [cartItemsSnapshot, setCartItemsSnapshot] = useState<CartItem[]>([]);
   const [otherHoldsByKey, setOtherHoldsByKey] = useState<Record<string, number>>({});
@@ -1249,19 +1286,21 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
         {/* COLUNA ESQUERDA: A PEÇA (GALERIA + DESCRIÇÃO EMBAIXO DA PEÇA) */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="flex flex-col-reverse sm:flex-row gap-4">
-            <div className="flex sm:flex-col gap-3 overflow-x-auto sm:overflow-visible shrink-0 pb-2 sm:pb-0">
+          <div className="flex flex-col-reverse sm:flex-row gap-4 items-start">
+            <div className="flex sm:flex-col gap-2.5 overflow-x-auto sm:overflow-y-auto sm:overflow-x-hidden shrink-0 pb-2 sm:pb-0 sm:max-h-[580px] lg:max-h-[700px] pr-1.5 scrollbar-thin scrollbar-thumb-neutral-300 hover:scrollbar-thumb-black scroll-smooth">
               {productData.media.map((item: any, idx: number) => (
                 <button
                   key={idx}
+                  id={`product-thumb-${idx}`}
+                  type="button"
                   onClick={() => {
                     setSelectedMediaIdx(idx);
                     setIsZoomed(false);
                   }}
-                  className={`w-16 h-20 sm:w-20 sm:h-24 overflow-hidden border-2 transition-all relative shrink-0 ${
+                  className={`w-16 h-20 sm:w-20 sm:h-24 overflow-hidden border-2 rounded-xs transition-all relative shrink-0 cursor-pointer ${
                     selectedMediaIdx === idx
-                      ? 'border-deep-black ring-2 ring-gold'
-                      : 'border-deep-black/10 opacity-70 hover:opacity-100'
+                      ? 'border-deep-black ring-2 ring-gold shadow-md scale-[1.02]'
+                      : 'border-neutral-200 opacity-70 hover:opacity-100 hover:border-neutral-400'
                   }`}
                 >
                   {item.type === 'video' ? (
@@ -1283,10 +1322,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                       alt={item.label}
                       className="w-full h-full object-contain p-0.5 bg-neutral-50"
                       onError={(e) => {
-                        const t = e.currentTarget;
-                        if (!t.src.includes('symbol-ana-fitness.png')) {
-                          t.src = '/symbol-ana-fitness.png';
-                        }
+                        e.currentTarget.style.display = 'none';
                       }}
                     />
                   )}
@@ -1423,34 +1459,61 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             </div>
           </div>
 
-          {/* Seletor de Cores (Círculos Limpos Alo Yoga) */}
+          {/* Seletor de Cores (Miniatura da Foto Real com Fallback Gradiente / Hex) */}
           <div className="space-y-2">
-            <div className="text-xs">
-              <span className="text-neutral-500 uppercase tracking-wider text-[11px] font-bold">
-                {lang === 'pt' ? 'Cor: ' : 'Color: '}
-              </span>
-              <span className="text-black font-bold uppercase text-[11px]">{translateColorName(selectedColor, lang)}</span>
+            <div className="flex items-center justify-between text-xs">
+              <div>
+                <span className="text-neutral-500 uppercase tracking-wider text-[11px] font-bold">
+                  {lang === 'pt' ? 'Cor: ' : 'Color: '}
+                </span>
+                <span className="text-black font-black uppercase text-[12px] ml-1">
+                  {translateColorName(selectedColor, lang)}
+                </span>
+              </div>
+              {availableColors.length > 1 && (
+                <span className="text-[11px] text-neutral-400 font-medium">
+                  {availableColors.length} {lang === 'pt' ? 'opções' : 'options'}
+                </span>
+              )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
-              {availableColors.map((col) => {
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              {availableColors.map((col: any) => {
                 const isSelected = selectedColor.toLowerCase() === col.name.toLowerCase();
-                const isWhite = col.hex.toLowerCase() === '#ffffff' || col.hex.toLowerCase() === '#fff';
+                const colorImg = col.image || findImageForColor(col.name);
+                const swatch = getSwatchStyle(col.name, colorImg);
+                const bgStyle = col.background || swatch.background;
+
                 return (
                   <button
                     key={col.name}
                     type="button"
                     onClick={() => handleSelectColor(col.name)}
                     title={translateColorName(col.name, lang)}
-                    className={`w-7 h-7 rounded-full transition-all relative flex items-center justify-center cursor-pointer ${
+                    aria-label={translateColorName(col.name, lang)}
+                    className={`group relative w-11 h-11 rounded-full transition-all flex items-center justify-center cursor-pointer overflow-hidden border ${
                       isSelected
-                        ? 'ring-2 ring-offset-2 ring-black scale-105'
-                        : 'hover:scale-105 opacity-80 hover:opacity-100'
+                        ? 'ring-2 ring-offset-2 ring-black scale-110 shadow-md border-black'
+                        : 'hover:scale-105 opacity-85 hover:opacity-100 border-neutral-300 hover:border-black'
                     }`}
-                    style={{ backgroundColor: col.hex, border: '1px solid rgba(0,0,0,0.15)' }}
+                    style={{ background: bgStyle }}
                   >
+                    {colorImg ? (
+                      <img
+                        src={colorImg}
+                        alt={col.name}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : null}
+
+                    {/* Indicador de Seleção com Checkmark */}
                     {isSelected && (
-                      <Check className={`w-3.5 h-3.5 ${isWhite ? 'text-black' : 'text-white'}`} strokeWidth={3} />
+                      <div className="absolute inset-0 bg-black/40 backdrop-blur-[0.5px] flex items-center justify-center">
+                        <Check className="w-4 h-4 text-white drop-shadow stroke-[3]" />
+                      </div>
                     )}
                   </button>
                 );

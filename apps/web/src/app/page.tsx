@@ -1,6 +1,7 @@
 'use client';
 
 import { REAL_DEFAULT_PRODUCTS } from '../lib/defaultProductsCatalog';
+import { getSwatchStyle } from '@/lib/colorUtils';
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -1813,8 +1814,9 @@ export default function HomePage({
                                 : null;
                               const colorImg = matchingVar
                                 ? (Array.isArray(matchingVar.images) && matchingVar.images.length > 0 ? matchingVar.images[0] : matchingVar.image)
-                                : null;
+                                : (color as any).image;
                               const isColorSelected = activeColor.toLowerCase() === color.name.toLowerCase();
+                              const swatch = getSwatchStyle(color.name, colorImg);
 
                               return (
                                 <button
@@ -1833,13 +1835,24 @@ export default function HomePage({
                                       setCardImageOverrides((prev) => ({ ...prev, [product.id]: colorImg }));
                                     }
                                   }}
-                                  className={`w-3.5 h-3.5 rounded-full border border-gray-300 transition-all hover:scale-125 ${
-                                    isColorSelected ? 'ring-2 ring-offset-1 ring-deep-black scale-110' : ''
+                                  className={`w-4 h-4 rounded-full border border-gray-300 transition-all hover:scale-125 overflow-hidden relative flex items-center justify-center shrink-0 ${
+                                    isColorSelected ? 'ring-2 ring-offset-1 ring-deep-black scale-110 shadow-xs' : ''
                                   }`}
-                                  style={{ backgroundColor: color.hex }}
+                                  style={{ background: swatch.background }}
                                   title={translateColorName(color.name, lang)}
                                   aria-label={translateColorName(color.name, lang)}
-                                />
+                                >
+                                  {colorImg && (
+                                    <img
+                                      src={colorImg}
+                                      alt=""
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                  )}
+                                </button>
                               );
                             })}
                             {product.colors.length > 4 && (

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useStoreSettings } from '@/context/StoreSettingsContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { getSwatchStyle } from '@/lib/colorUtils';
 import {
   translateProductTitle,
   translateColorName,
@@ -735,7 +736,7 @@ export default function PublicClientCatalogPage() {
                       <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-deep-black/85 backdrop-blur-xs text-white px-2 py-1 border border-white/20">
                         <span
                           className="w-2.5 h-2.5 rounded-full border border-white/40 shrink-0"
-                          style={{ backgroundColor: item.colorHex }}
+                          style={{ background: getSwatchStyle(item.colorName, item.imageUrl).background }}
                         />
                         <span className="text-[9px] font-black uppercase tracking-wider line-clamp-1">
                           {translateColorName(item.colorName, lang)}

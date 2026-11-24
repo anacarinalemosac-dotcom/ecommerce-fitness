@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { translateEnToPt, translatePtToEn, isPortugueseText } from '../lib/translateFitness';
 import { REAL_DEFAULT_PRODUCTS } from '../lib/defaultProductsCatalog';
+import { getSwatchStyle } from '../lib/colorUtils';
 
 export interface AdminUser {
   isLoggedIn: boolean;
@@ -525,13 +526,8 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
           variants.forEach((v: any) => {
             if (v.color) {
-              const defaultHex =
-                v.color.toLowerCase().includes('ouro') || v.color.toLowerCase().includes('gold') ? '#D4AF37' :
-                v.color.toLowerCase().includes('amarel') ? '#FBBF24' :
-                v.color.toLowerCase().includes('branc') || v.color.toLowerCase().includes('white') ? '#FFFFFF' :
-                v.color.toLowerCase().includes('vinho') || v.color.toLowerCase().includes('marsala') ? '#800020' :
-                v.color.toLowerCase().includes('verd') ? '#2E4F4F' : '#0A0A0A';
-              colorsMap.set(v.color, v.color_hex || defaultHex);
+              const swatch = getSwatchStyle(v.color);
+              colorsMap.set(v.color, v.color_hex || swatch.background);
             }
             if (v.size) {
               sizesSet.add(v.size);
@@ -721,8 +717,20 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             categoryKey = 'spoiler';
           }
 
-          const colors = Array.from(colorsMap.entries()).map(([name, hex]) => ({ name, hex }));
-          if (colors.length === 0) colors.push({ name: 'Preto Ônix', hex: '#0A0A0A' });
+          const colors: Array<{ name: string; hex: string; image?: string }> = Array.from(colorsMap.entries()).map(([name, hex]) => {
+            const matchingVar = variants.find(
+              (v: any) => v.color && v.color.trim().toLowerCase() === name.trim().toLowerCase()
+            );
+            const varImg = Array.isArray(matchingVar?.images) && matchingVar.images.length > 0
+              ? matchingVar.images[0]
+              : matchingVar?.image;
+            return {
+              name,
+              hex,
+              image: varImg || undefined,
+            };
+          });
+          if (colors.length === 0) colors.push({ name: 'Preto Ônix', hex: '#111111' });
 
           // Se houver uma variação com estoque > 0, coloca a cor dela em primeiro lugar no array de cores
           if (effectiveInStockVariant?.color) {
