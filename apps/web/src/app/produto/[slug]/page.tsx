@@ -1452,7 +1452,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         </div>
 
         {/* DETALHES DA PEÇA & COMPRA (PAINEL STICKY ESTILO ALO YOGA) */}
-        <div className="lg:col-span-5 lg:sticky lg:top-24 self-start space-y-5 bg-white lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto pr-1 scrollbar-none">
+        <div className="lg:col-span-5 lg:sticky lg:top-24 self-start space-y-5 bg-white">
           {/* Categoria & Título */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
