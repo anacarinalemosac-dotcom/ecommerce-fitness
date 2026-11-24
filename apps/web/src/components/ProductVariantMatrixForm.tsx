@@ -42,12 +42,14 @@ import {
   TrendingUp,
   Loader2,
   Copy,
+  Printer,
 } from 'lucide-react';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import { supabase } from '../lib/supabase';
 import { translateEnToPt, translatePtToEn, isPortugueseText } from '../lib/translateFitness';
 import { sortVariantsByColorAndSize, sortSizesList } from '../lib/variantSortUtils';
 import { FormattedDescription } from './FormattedDescription';
+import { ProductStockPrintModal } from './ProductStockPrintModal';
 
 export interface VariantRow {
   id?: string;
@@ -204,6 +206,7 @@ export function ProductVariantMatrixForm({
     null
   );
   const [hasDraftRestored, setHasDraftRestored] = useState(false);
+  const [showStockPrintModal, setShowStockPrintModal] = useState(false);
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) return;
@@ -1864,6 +1867,17 @@ export function ProductVariantMatrixForm({
               <span>DUPLICAR PRODUTO</span>
             </button>
           )}
+
+          {/* Botão Imprimir Estoque / Ficha de Conferência */}
+          <button
+            type="button"
+            onClick={() => setShowStockPrintModal(true)}
+            className="px-3.5 py-2 bg-neutral-900 hover:bg-gold hover:text-deep-black text-white border-2 border-deep-black font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+            title="Imprimir relação e ficha de conferência de estoque físico deste produto"
+          >
+            <Printer className="w-3.5 h-3.5 text-gold" />
+            <span>IMPRIMIR ESTOQUE</span>
+          </button>
 
           {onCancel && (
             <button
@@ -3950,6 +3964,16 @@ export function ProductVariantMatrixForm({
                 <Clock className="w-3.5 h-3.5 text-gold" />
                 <span>SALVAR COMO RASCUNHO (OCULTO)</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setShowStockPrintModal(true)}
+                className="w-full py-2.5 bg-neutral-900 hover:bg-gold hover:text-deep-black text-white font-black text-[11px] uppercase tracking-wider transition flex items-center justify-center gap-1.5 border border-gold/40 cursor-pointer shadow-xs"
+                title="Imprimir relação e ficha de conferência de estoque físico deste produto"
+              >
+                <Printer className="w-3.5 h-3.5 text-gold" />
+                <span>IMPRIMIR FICHA DE ESTOQUE</span>
+              </button>
             </div>
           </div>
         </div>
@@ -4175,6 +4199,24 @@ export function ProductVariantMatrixForm({
           </div>
         </div>
       )}
+
+      {/* Modal de Impressão e Conferência de Estoque */}
+      <ProductStockPrintModal
+        isOpen={showStockPrintModal}
+        onClose={() => setShowStockPrintModal(false)}
+        product={{
+          id: initialProduct?.id,
+          title: title || initialProduct?.title || 'Produto sem título',
+          slug: slug || initialProduct?.slug,
+          sku: generalSku || initialProduct?.sku || variants[0]?.sku,
+          category: subcategory || initialProduct?.category,
+          price: defaultPrice || initialProduct?.price,
+          cost_price: defaultCostPrice || initialProduct?.cost_price,
+          variants,
+          primary_image: mediaList.find((m) => m.type === 'image')?.url || initialProduct?.primary_image || initialProduct?.primaryImage,
+          images: mediaList.filter((m) => m.type === 'image').map((m) => m.url),
+        }}
+      />
     </form>
   );
 }

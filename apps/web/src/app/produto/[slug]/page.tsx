@@ -69,7 +69,9 @@ import {
   Shirt,
   Store,
   MapPin,
+  Printer,
 } from 'lucide-react';
+import { ProductStockPrintModal } from '@/components/ProductStockPrintModal';
 
 interface Variant {
   id: string;
@@ -636,6 +638,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   // Estados de seleção
   const [selectedColor, setSelectedColor] = useState(initialColor);
   const [selectedMediaIdx, setSelectedMediaIdx] = useState(0);
+  const [showStockPrintModal, setShowStockPrintModal] = useState(false);
 
   // Sincroniza selectedColor quando o produto dinâmico carrega suas variações reais do banco
   useEffect(() => {
@@ -1407,9 +1410,20 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         <div className="lg:col-span-5 space-y-5 bg-white">
           {/* Categoria & Título */}
           <div className="space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 block">
-              {translateCategoryName(lang === 'pt' ? productData.categoryPt : productData.categoryEn, lang)} • {lang === 'pt' ? 'ALTA PERFORMANCE' : 'HIGH PERFORMANCE'}
-            </span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 block">
+                {translateCategoryName(lang === 'pt' ? productData.categoryPt : productData.categoryEn, lang)} • {lang === 'pt' ? 'ALTA PERFORMANCE' : 'HIGH PERFORMANCE'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowStockPrintModal(true)}
+                className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase text-neutral-600 hover:text-black bg-neutral-100 hover:bg-gold/20 px-2 py-0.5 border border-neutral-300 hover:border-black transition rounded-xs cursor-pointer"
+                title="Imprimir relação e ficha de conferência de estoque físico deste produto"
+              >
+                <Printer className="w-3 h-3 text-gold" />
+                <span>{lang === 'pt' ? 'Imprimir Estoque' : 'Print Inventory'}</span>
+              </button>
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
               {isOutOfStock && (
                 <span className="px-2 py-0.5 bg-red-600 text-white text-[9px] font-black uppercase tracking-wider">
@@ -2330,6 +2344,33 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           productTitle={productData.title}
         />
       )}
+
+      {/* Modal de Impressão e Conferência de Estoque */}
+      <ProductStockPrintModal
+        isOpen={showStockPrintModal}
+        onClose={() => setShowStockPrintModal(false)}
+        product={{
+          id: productData.id,
+          title: productData.title,
+          slug: slug,
+          sku: currentVariant?.sku || productData.sku,
+          category: productData.categoryPt || productData.categoryKey,
+          price: productData.price,
+          cost_price: 12,
+          variants: productData.variants?.map((v: any) => ({
+            id: v.id,
+            sku: v.sku,
+            color: v.color,
+            colorHex: v.colorHex,
+            size: v.size,
+            stock_quantity: v.stock !== undefined ? v.stock : v.stock_quantity,
+            price: v.price,
+            image: v.image,
+          })),
+          primary_image: productData.media?.[0]?.url,
+          images: productData.media?.map((m: any) => m.url),
+        }}
+      />
     </div>
   );
 }

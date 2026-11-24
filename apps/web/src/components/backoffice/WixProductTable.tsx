@@ -24,7 +24,9 @@ import {
   Radio,
   Layers,
   Star,
+  Printer,
 } from 'lucide-react';
+import { ProductStockPrintModal } from '../ProductStockPrintModal';
 
 interface WixProductTableProps {
   products: any[];
@@ -131,6 +133,7 @@ export function WixProductTable({
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [openActionRowId, setOpenActionRowId] = useState<string | null>(null);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+  const [printStockTargetProduct, setPrintStockTargetProduct] = useState<any | null>(null);
 
   const isAllSelected =
     products.length > 0 && products.every((p: any) => selectedCatalogIds.includes(p.id));
@@ -897,6 +900,19 @@ export function WixProductTable({
                               type="button"
                               onClick={() => {
                                 setOpenActionRowId(null);
+                                setPrintStockTargetProduct(item);
+                              }}
+                              className="w-full px-3.5 py-2 hover:bg-amber-50 text-neutral-900 flex items-center gap-2 font-bold"
+                              title="Imprimir relação e ficha de conferência de estoque deste produto"
+                            >
+                              <Printer className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Imprimir estoque</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionRowId(null);
                                 onEditProduct(item);
                               }}
                               className="w-full px-3.5 py-2 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
@@ -1000,6 +1016,14 @@ export function WixProductTable({
           </table>
         </div>
       </div>
+
+      {/* Modal de Impressão e Conferência de Estoque */}
+      <ProductStockPrintModal
+        isOpen={Boolean(printStockTargetProduct)}
+        onClose={() => setPrintStockTargetProduct(null)}
+        product={printStockTargetProduct}
+        allProducts={products}
+      />
     </div>
   );
 }
