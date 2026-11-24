@@ -108,14 +108,7 @@ export default function ComboBuilderPage() {
     const isId = p.id && promoProductIds.has(String(p.id).toLowerCase());
     const isSlug = p.slug && promoProductSlugs.has(String(p.slug).toLowerCase());
     const isExplicitCombo = p.is_combo_item === true;
-    const isCategory =
-      Boolean(p.category) &&
-      ['sets', 'conjuntos', 'matching sets'].includes(String(p.category).toLowerCase());
-    const isTitleOrSlug =
-      Boolean(p.title && (p.title.toUpperCase().includes('SET') || p.title.toUpperCase().includes('CONJUNTO'))) ||
-      Boolean(p.slug && (p.slug.toLowerCase().includes('set') || p.slug.toLowerCase().includes('conjunto')));
-    const isFallback = isCategory || isTitleOrSlug;
-    return isId || isSlug || isExplicitCombo || isFallback;
+    return isId || isSlug || isExplicitCombo;
   });
 
   // Aplica filtro de busca e tamanho

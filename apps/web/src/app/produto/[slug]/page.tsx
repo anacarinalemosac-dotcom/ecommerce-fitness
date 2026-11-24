@@ -70,6 +70,10 @@ import {
   Store,
   MapPin,
   Printer,
+  ChevronUp,
+  ChevronDown,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import { ProductStockPrintModal } from '@/components/ProductStockPrintModal';
 
@@ -639,6 +643,20 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [selectedColor, setSelectedColor] = useState(initialColor);
   const [selectedMediaIdx, setSelectedMediaIdx] = useState(0);
   const [showStockPrintModal, setShowStockPrintModal] = useState(false);
+  const [openAccordion, setOpenAccordion] = useState<string | null>('fit');
+
+  // Filtra fotos válidas excluindo logos de fallback e placeholders
+  const cleanMediaList = useMemo(() => {
+    return (productData.media || []).filter((m: any) => {
+      if (!m || !m.url) return false;
+      const lower = String(m.url).toLowerCase().trim();
+      if (lower.includes('symbol-ana-fitness.png') || lower.includes('logo') || lower.includes('placeholder')) return false;
+      return true;
+    });
+  }, [productData.media]);
+
+  const safeMedia = cleanMediaList.length > 0 ? cleanMediaList : (productData.media || []);
+  const activeMediaItem = safeMedia[selectedMediaIdx] || safeMedia[0];
 
   // Sincroniza selectedColor quando o produto dinâmico carrega suas variações reais do banco
   useEffect(() => {
@@ -784,17 +802,12 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
   const isItemInCombo = (pId?: string, pSlug?: string, pTitle?: string, pCat?: string) => {
     if (!comboPromo?.active) return false;
-    const catNorm = String(pCat || '').toLowerCase();
-    if (catNorm === 'sets' || catNorm === 'conjuntos' || catNorm.includes('set') || catNorm.includes('conjunto')) return true;
-    const tUpper = String(pTitle || '').toUpperCase();
-    if (tUpper.includes('SET') || tUpper.includes('CONJUNTO') || tUpper.includes('KIT')) return true;
-    const sLower = String(pSlug || '').toLowerCase();
-    if (sLower.includes('set') || sLower.includes('conjunto')) return true;
     const promoIds = (comboPromo.product_ids || []).map((id: string) => String(id).toLowerCase());
     const promoSlugs = (comboPromo.product_slugs || []).map((s: string) => String(s).toLowerCase());
     const idNorm = String(pId || '').toLowerCase();
     const slugNorm = String(pSlug || '').toLowerCase();
 
+    // Controle 100% manual da lojista: apenas produtos explicitamente marcados participam do combo
     return Boolean((idNorm && promoIds.includes(idNorm)) || (slugNorm && promoSlugs.includes(slugNorm)));
   };
 
@@ -1285,60 +1298,96 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         </nav>
       </div>
 
-      {/* Grid Principal: Galeria Lateral + Painel de Compra */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
-        {/* COLUNA ESQUERDA: A PEÇA (GALERIA + DESCRIÇÃO EMBAIXO DA PEÇA) */}
+      {/* Grid Principal: Galeria Lateral + Painel de Compra Estilo Alo Yoga */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+        {/* COLUNA ESQUERDA: A PEÇA (GALERIA EMBUTIDA COM ROLAGEM SUAVE) */}
         <div className="lg:col-span-7 space-y-6">
           <div className="flex flex-col-reverse sm:flex-row gap-4 items-start">
-            <div className="flex sm:flex-col gap-2.5 overflow-x-auto sm:overflow-y-auto sm:overflow-x-hidden shrink-0 pb-2 sm:pb-0 sm:max-h-[580px] lg:max-h-[700px] pr-1.5 scrollbar-thin scrollbar-thumb-neutral-300 hover:scrollbar-thumb-black scroll-smooth">
-              {productData.media.map((item: any, idx: number) => (
+            {/* Trilho de Miniaturas Embutido (Estilo Alo Yoga com Navegação Contida) */}
+            <div className="relative shrink-0 flex flex-col items-center w-full sm:w-auto">
+              {safeMedia.length > 5 && (
                 <button
-                  key={idx}
-                  id={`product-thumb-${idx}`}
                   type="button"
                   onClick={() => {
-                    setSelectedMediaIdx(idx);
-                    setIsZoomed(false);
+                    const el = document.getElementById('product-thumbs-scroll');
+                    if (el) el.scrollBy({ top: -160, behavior: 'smooth' });
                   }}
-                  className={`w-16 h-20 sm:w-20 sm:h-24 overflow-hidden border-2 rounded-xs transition-all relative shrink-0 cursor-pointer ${
-                    selectedMediaIdx === idx
-                      ? 'border-deep-black ring-2 ring-gold shadow-md scale-[1.02]'
-                      : 'border-neutral-200 opacity-70 hover:opacity-100 hover:border-neutral-400'
-                  }`}
+                  className="hidden sm:flex items-center justify-center w-full py-1 text-neutral-400 hover:text-black bg-neutral-100 hover:bg-neutral-200 text-xs transition mb-1 rounded-xs cursor-pointer z-10"
+                  aria-label="Rolar fotos para cima"
                 >
-                  {item.type === 'video' ? (
-                    <div className="w-full h-full bg-deep-black flex flex-col items-center justify-center text-gold gap-1 p-1 text-center relative overflow-hidden group">
-                      <video
-                        src={item.url}
-                        className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none"
-                        muted
-                        playsInline
-                      />
-                      <div className="relative z-10 flex flex-col items-center justify-center bg-black/80 px-1 py-1 border border-gold/40 rounded-xs">
-                        <Video className="w-4 h-4 text-gold animate-pulse drop-shadow" />
-                        <span className="text-[7px] font-black uppercase tracking-wider text-white">VÍDEO</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <img
-                      src={item.url}
-                      alt={item.label}
-                      className="w-full h-full object-contain p-0.5 bg-neutral-50"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  )}
+                  <ChevronUp className="w-4 h-4" />
                 </button>
-              ))}
+              )}
+
+              <div
+                id="product-thumbs-scroll"
+                className="flex sm:flex-col gap-2.5 overflow-x-auto sm:overflow-y-auto shrink-0 pb-2 sm:pb-0 h-auto sm:h-[580px] lg:h-[640px] max-h-[640px] pr-1.5 scrollbar-thin scrollbar-thumb-neutral-300 hover:scrollbar-thumb-black scroll-smooth"
+                style={{ maxHeight: '640px' }}
+              >
+                {safeMedia.map((item: any, idx: number) => (
+                  <button
+                    key={idx}
+                    id={`product-thumb-${idx}`}
+                    type="button"
+                    onClick={() => {
+                      setSelectedMediaIdx(idx);
+                      setIsZoomed(false);
+                    }}
+                    className={`w-16 h-20 sm:w-20 sm:h-24 overflow-hidden border-2 rounded-xs transition-all relative shrink-0 cursor-pointer bg-neutral-100 ${
+                      selectedMediaIdx === idx
+                        ? 'border-black ring-2 ring-black shadow-md scale-[1.02]'
+                        : 'border-neutral-200 opacity-70 hover:opacity-100 hover:border-neutral-400'
+                    }`}
+                  >
+                    {item.type === 'video' ? (
+                      <div className="w-full h-full bg-deep-black flex flex-col items-center justify-center text-gold gap-1 p-1 text-center relative overflow-hidden group">
+                        <video
+                          src={item.url}
+                          className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none"
+                          muted
+                          playsInline
+                        />
+                        <div className="relative z-10 flex flex-col items-center justify-center bg-black/80 px-1 py-1 border border-gold/40 rounded-xs">
+                          <Video className="w-4 h-4 text-gold animate-pulse drop-shadow" />
+                          <span className="text-[7px] font-black uppercase tracking-wider text-white">VÍDEO</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <img
+                        src={item.url}
+                        alt={item.label}
+                        className="w-full h-full object-cover bg-neutral-50"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {safeMedia.length > 5 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('product-thumbs-scroll');
+                    if (el) el.scrollBy({ top: 160, behavior: 'smooth' });
+                  }}
+                  className="hidden sm:flex items-center justify-center w-full py-1 text-neutral-400 hover:text-black bg-neutral-100 hover:bg-neutral-200 text-xs transition mt-1 rounded-xs cursor-pointer z-10"
+                  aria-label="Rolar fotos para baixo"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              )}
             </div>
 
-            <div className="flex-1 relative aspect-[3/4] sm:aspect-[4/5] lg:aspect-[2/3] max-h-[750px] bg-[#fbfbfb] overflow-hidden border border-neutral-200 group flex items-center justify-center">
-              {productData.media[selectedMediaIdx]?.type === 'video' ? (
+            {/* Foto Principal com Zoom e Proporção Editorial Alo Yoga */}
+            <div className="flex-1 relative aspect-[3/4] sm:aspect-[4/5] lg:aspect-[3/4] max-h-[640px] bg-neutral-50 overflow-hidden border border-neutral-200 group flex items-center justify-center rounded-xs">
+              {activeMediaItem?.type === 'video' ? (
                 <div className="relative w-full h-full bg-black flex items-center justify-center">
                   <video
-                    key={productData.media[selectedMediaIdx].url}
-                    src={productData.media[selectedMediaIdx].url}
+                    key={activeMediaItem.url}
+                    src={activeMediaItem.url}
                     controls
                     autoPlay
                     loop
@@ -1353,24 +1402,21 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   </div>
                 </div>
               ) : (
-                <div className="relative w-full h-full flex items-center justify-center p-2 sm:p-4">
+                <div className="relative w-full h-full flex items-center justify-center p-1 sm:p-2">
                   <img
-                    src={productData.media[selectedMediaIdx]?.url}
+                    src={activeMediaItem?.url}
                     alt={productData.title}
                     className="w-full h-full object-contain"
                     onError={(e) => {
-                      const t = e.currentTarget;
-                      if (!t.src.includes('symbol-ana-fitness.png')) {
-                        t.src = '/symbol-ana-fitness.png';
-                      }
+                      e.currentTarget.style.display = 'none';
                     }}
                   />
-                  {productData.media.some((m: any) => m.type === 'video') && (
+                  {safeMedia.some((m: any) => m.type === 'video') && (
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        const vidIdx = productData.media.findIndex((m: any) => m.type === 'video');
+                        const vidIdx = safeMedia.findIndex((m: any) => m.type === 'video');
                         if (vidIdx >= 0) {
                           setSelectedMediaIdx(vidIdx);
                           setIsZoomed(false);
@@ -1403,11 +1449,10 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               )}
             </div>
           </div>
-
         </div>
 
-        {/* DETALHES DA PEÇA & COMPRA (ALO YOGA STYLE CLEAN LUXURY BUY BOX) */}
-        <div className="lg:col-span-5 space-y-5 bg-white">
+        {/* DETALHES DA PEÇA & COMPRA (PAINEL STICKY ESTILO ALO YOGA) */}
+        <div className="lg:col-span-5 lg:sticky lg:top-24 self-start space-y-5 bg-white lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto pr-1 scrollbar-none">
           {/* Categoria & Título */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
@@ -1837,6 +1882,103 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
               <span>{lang === 'pt' ? 'Dúvidas sobre tamanho ou tecido? Fale com a Ana no WhatsApp' : 'Questions on size or fit? Chat on WhatsApp'}</span>
             </a>
+          </div>
+
+          {/* =========================================================================
+              ACORDEÕES MINIMALISTAS LUXO (ESTILO ALO YOGA)
+             ========================================================================= */}
+          <div className="border-t border-neutral-200 pt-3 space-y-0 divide-y divide-neutral-200">
+            {/* Acordeão 1: MODELAGEM & CAIMENTO (FIT & DETAILS) */}
+            <div className="py-2.5">
+              <button
+                type="button"
+                onClick={() => setOpenAccordion(openAccordion === 'fit' ? null : 'fit')}
+                className="w-full flex items-center justify-between text-left text-xs font-bold uppercase tracking-wider text-neutral-900 hover:text-black py-1 cursor-pointer"
+              >
+                <span>{lang === 'pt' ? 'Modelagem & Caimento' : 'Fit & Fabrication'}</span>
+                {openAccordion === 'fit' ? <Minus className="w-3.5 h-3.5 text-neutral-600" /> : <Plus className="w-3.5 h-3.5 text-neutral-600" />}
+              </button>
+              {openAccordion === 'fit' && (
+                <div className="pt-2 text-xs text-neutral-600 leading-relaxed space-y-1.5 animate-fadeIn">
+                  <p>
+                    <strong className="text-black font-semibold">{lang === 'pt' ? 'Caimento:' : 'Fit:'}</strong>{' '}
+                    {lang === 'pt' ? (productData.fitPt || 'Modelagem anatômica que abraça o corpo com compressão inteligente.') : (productData.fitEn || 'Anatomical compression fit that sculpts and flatters.')}
+                  </p>
+                  <p>
+                    <strong className="text-black font-semibold">{lang === 'pt' ? 'Sustentação do Busto:' : 'Cup Support:'}</strong>{' '}
+                    {productData.cupsType === 'fixed'
+                      ? (lang === 'pt' ? 'Bojo anatômico embutido costurado que não sai do lugar.' : 'Built-in contour cups.')
+                      : productData.cupsType === 'none'
+                      ? (lang === 'pt' ? 'Sem bojo, forro duplo de alta compressão (zero transparência).' : 'Unpadded, double-lined coverage.')
+                      : (lang === 'pt' ? 'Acompanha bojo removível incluso.' : 'Removable cups included.')}
+                  </p>
+                  <p>
+                    <strong className="text-black font-semibold">{lang === 'pt' ? 'Cós Anatômico:' : 'Waistband:'}</strong>{' '}
+                    {lang === 'pt' ? 'Cós duplo de média/alta compressão que não enrola nem desce.' : 'Stay-put waistband that holds without rolling.'}
+                  </p>
+                  <p>
+                    <strong className="text-black font-semibold">{lang === 'pt' ? 'Zero Transparência:' : 'Squat-Proof:'}</strong>{' '}
+                    {lang === 'pt' ? '100% à prova de agachamentos sob iluminação forte.' : '100% squat-proof under direct gym light.'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Acordeão 2: COMPOSIÇÃO & CUIDADOS (FABRIC & CARE) */}
+            <div className="py-2.5">
+              <button
+                type="button"
+                onClick={() => setOpenAccordion(openAccordion === 'fabric' ? null : 'fabric')}
+                className="w-full flex items-center justify-between text-left text-xs font-bold uppercase tracking-wider text-neutral-900 hover:text-black py-1 cursor-pointer"
+              >
+                <span>{lang === 'pt' ? 'Composição & Cuidados' : 'Fabric & Care'}</span>
+                {openAccordion === 'fabric' ? <Minus className="w-3.5 h-3.5 text-neutral-600" /> : <Plus className="w-3.5 h-3.5 text-neutral-600" />}
+              </button>
+              {openAccordion === 'fabric' && (
+                <div className="pt-2 text-xs text-neutral-600 leading-relaxed space-y-1.5 animate-fadeIn">
+                  <p>
+                    <strong className="text-black font-semibold">{lang === 'pt' ? 'Composição:' : 'Fabric:'}</strong>{' '}
+                    {productData.composition || productData.material || (lang === 'pt' ? 'Poliamida Premium com Elastano LYCRA® de alta densidade.' : 'Premium Polyamide with high-density LYCRA® Spandex.')}
+                  </p>
+                  <p>
+                    <strong className="text-black font-semibold">{lang === 'pt' ? 'Toque:' : 'Handfeel:'}</strong>{' '}
+                    {lang === 'pt' ? 'Toque macio amanteigado (buttery-soft) de secagem ultra-rápida e alta respirabilidade.' : 'Buttery-soft luxury handfeel with breathable micro-fibers.'}
+                  </p>
+                  <p>
+                    <strong className="text-black font-semibold">{lang === 'pt' ? 'Lavagem:' : 'Care:'}</strong>{' '}
+                    {lang === 'pt' ? 'Lavar em água fria no ciclo delicado. Não usar amaciante. Secar à sombra.' : 'Machine wash cold on gentle cycle. Do not bleach. Lay flat to dry.'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Acordeão 3: ENVIO & DEVOLUÇÕES (SHIPPING & RETURNS) */}
+            <div className="py-2.5">
+              <button
+                type="button"
+                onClick={() => setOpenAccordion(openAccordion === 'shipping' ? null : 'shipping')}
+                className="w-full flex items-center justify-between text-left text-xs font-bold uppercase tracking-wider text-neutral-900 hover:text-black py-1 cursor-pointer"
+              >
+                <span>{lang === 'pt' ? 'Envio & Trocas' : 'Shipping & Returns'}</span>
+                {openAccordion === 'shipping' ? <Minus className="w-3.5 h-3.5 text-neutral-600" /> : <Plus className="w-3.5 h-3.5 text-neutral-600" />}
+              </button>
+              {openAccordion === 'shipping' && (
+                <div className="pt-2 text-xs text-neutral-600 leading-relaxed space-y-1.5 animate-fadeIn">
+                  <p>
+                    <strong className="text-black font-semibold">{lang === 'pt' ? 'Envio Todos os EUA:' : 'US Shipping:'}</strong>{' '}
+                    {lang === 'pt' ? 'Frete fixo $9.90 para qualquer endereço nos Estados Unidos com código de rastreamento via USPS/UPS. Despacho rápido em até 24h úteis.' : 'Flat rate shipping $9.90 all US addresses with tracking. Ships within 24 business hours.'}
+                  </p>
+                  <p>
+                    <strong className="text-black font-semibold">{lang === 'pt' ? 'Retirada Grátis em Showroom:' : 'Free Showroom Pickup:'}</strong>{' '}
+                    {lang === 'pt' ? '126 First St, Apt 01, Leominster, MA 01453. Disponível para retirada imediata sem custo de frete.' : 'Available for immediate free pickup in Leominster, MA.'}
+                  </p>
+                  <p>
+                    <strong className="text-black font-semibold">{lang === 'pt' ? '30 Dias de Garantia:' : '30-Day Exchange:'}</strong>{' '}
+                    {lang === 'pt' ? 'Garantia total para troca de tamanho ou cor sem complicações.' : '30-day hassle-free exchange guarantee.'}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

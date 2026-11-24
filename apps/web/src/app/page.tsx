@@ -150,12 +150,12 @@ const SIZE_FILTERS = [
 export default function HomePage({
   initialCategory = 'all',
 }: {
-  initialCategory?: 'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' | 'spoiler';
+  initialCategory?: 'all' | 'combo' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' | 'spoiler';
 } = {}) {
   const { lang, t } = useLanguage();
   const { products: storeProducts, siteInfo, siteImages } = useStoreSettings();
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' | 'spoiler'>(initialCategory);
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'combo' | 'sets' | 'rompers' | 'jumpsuits' | 'tops' | 'jackets' | 'preorder' | 'spoiler'>(initialCategory);
   const [selectedColorFilter, setSelectedColorFilter] = useState<string>('all');
   const [selectedSizeFilter, setSelectedSizeFilter] = useState<string>('all');
   const [selectedFabricFilter, setSelectedFabricFilter] = useState<string>('all');
@@ -478,7 +478,9 @@ export default function HomePage({
         if (!isStarred) return false;
       }
 
-      if (activeCategoryFilter !== 'all' && p.categoryKey !== activeCategoryFilter) {
+      if (activeCategoryFilter === 'combo') {
+        if (!isProductInCombo(p)) return false;
+      } else if (activeCategoryFilter !== 'all' && p.categoryKey !== activeCategoryFilter) {
         return false;
       }
     }
@@ -547,6 +549,12 @@ export default function HomePage({
     : COMMUNITY_POSTS;
 
   const currentCategoryDetails = {
+    combo: {
+      namePt: 'PROMOÇÃO COMBO 3 POR $110',
+      nameEn: 'BUNDLE DEALS: 3 FOR $110',
+      descPt: 'Selecione quaisquer 3 conjuntos desta seleção promocional por apenas $110! Desconto aplicado automaticamente.',
+      descEn: 'Pick any 3 participating matching sets for only $110! Discount applied automatically.',
+    },
     sets: {
       namePt: 'CONJUNTOS FITNESS',
       nameEn: 'WORKOUT SETS',
@@ -604,7 +612,7 @@ export default function HomePage({
       {/* =========================================================================
           CABEÇALHO DA CATEGORIA SELECIONADA OU BANNER ESPECIAL DO COMBO 3 POR $110
          ========================================================================= */}
-      {activeCategoryFilter === 'sets' ? (
+      {activeCategoryFilter === 'combo' ? (
         <div className="border-b border-gold/30 bg-neutral-950 text-white pt-6 pb-8 sm:pt-8 sm:pb-10 animate-fadeIn relative overflow-hidden">
           {/* Luzes e gradientes de fundo luxury */}
           <div className="absolute -right-20 -top-20 w-96 h-96 bg-gold/15 rounded-full blur-3xl pointer-events-none" />
@@ -1111,7 +1119,7 @@ export default function HomePage({
               <button
                 type="button"
                 onClick={() => {
-                  setActiveCategoryFilter('sets');
+                  setActiveCategoryFilter('combo');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="px-5 py-2.5 bg-gradient-to-r from-amber-400 via-gold to-amber-400 hover:from-white hover:to-white text-gray-950 font-black text-xs uppercase tracking-wider transition shadow-md shrink-0 flex items-center justify-center gap-2 cursor-pointer"
@@ -1126,7 +1134,8 @@ export default function HomePage({
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
             {[
               { id: 'all', labelPt: 'TODAS AS PEÇAS', labelEn: 'ALL PIECES' },
-              { id: 'sets', labelPt: comboPromo?.active ? '🔥 CONJUNTOS (3 POR $110)' : 'CONJUNTOS', labelEn: comboPromo?.active ? '🔥 SETS (3 FOR $110)' : 'SETS' },
+              { id: 'combo', labelPt: '🔥 COMBO (3 POR $110)', labelEn: '🔥 BUNDLE (3 FOR $110)' },
+              { id: 'sets', labelPt: 'CONJUNTOS', labelEn: 'SETS' },
               { id: 'rompers', labelPt: 'MACAQUINHOS', labelEn: 'ROMPERS' },
               { id: 'jumpsuits', labelPt: 'MACACÕES', labelEn: 'JUMPSUITS' },
               { id: 'tops', labelPt: 'TOPS', labelEn: 'TOPS' },
