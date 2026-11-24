@@ -31,6 +31,7 @@ import {
   translateDescriptionText,
 } from '../../../lib/translateFitness';
 import { getSwatchStyle } from '@/lib/colorUtils';
+import { sortVariantsByColorAndSize, sortSizesList } from '@/lib/variantSortUtils';
 import {
   Star,
   ShieldCheck,
@@ -512,6 +513,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       });
     }
 
+    variantsList = sortVariantsByColorAndSize(variantsList);
+
     const rawPtCandidate =
       (dynamicProduct.descriptionPt && isPortugueseText(dynamicProduct.descriptionPt) ? dynamicProduct.descriptionPt : '') ||
       (dynamicProduct.description && isPortugueseText(dynamicProduct.description) ? dynamicProduct.description : '') ||
@@ -664,12 +667,9 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     if (colorInStock.length > 0) {
       const set = new Set<string>();
       colorInStock.forEach((v: Variant) => {
-        if (v.size) set.add(v.size.toUpperCase());
+        if (v.size) set.add(v.size);
       });
-      const sizeOrder: Record<string, number> = { S: 1, P: 1, M: 2, L: 3, G: 3, XL: 4, GG: 4 };
-      return Array.from(set).sort(
-        (a, b) => (sizeOrder[a] || 99) - (sizeOrder[b] || 99)
-      );
+      return sortSizesList(Array.from(set));
     }
 
     // Se temos variantes cadastradas no produto e nenhuma desta cor tem estoque, o tamanho nesta cor é vazio

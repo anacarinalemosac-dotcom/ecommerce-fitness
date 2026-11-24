@@ -46,6 +46,7 @@ import {
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import { supabase } from '../lib/supabase';
 import { translateEnToPt, translatePtToEn, isPortugueseText } from '../lib/translateFitness';
+import { sortVariantsByColorAndSize, sortSizesList } from '../lib/variantSortUtils';
 import { FormattedDescription } from './FormattedDescription';
 
 export interface VariantRow {
@@ -629,7 +630,7 @@ export function ProductVariantMatrixForm({
           });
         });
 
-        setVariants(loadedVariants);
+        setVariants(sortVariantsByColorAndSize(loadedVariants));
 
         // Preço padrão das variantes
         if (loadedVariants[0]) {
@@ -876,7 +877,7 @@ export function ProductVariantMatrixForm({
       });
     });
 
-    setVariants(generated);
+    setVariants(sortVariantsByColorAndSize(generated));
   };
 
   // Gerenciamento de Cores
@@ -1637,10 +1638,12 @@ export function ProductVariantMatrixForm({
         costPrice: numCost,
         price: finalSellingPrice,
         defaultPrice: finalSellingPrice,
-        variants: variantsWithPromoPrice.map((vr) => ({
-          ...vr,
-          id: isActuallyDuplicate ? undefined : vr.id,
-        })),
+        variants: sortVariantsByColorAndSize(
+          variantsWithPromoPrice.map((vr) => ({
+            ...vr,
+            id: isActuallyDuplicate ? undefined : vr.id,
+          }))
+        ),
         visible_online: isOnline,
         visible_pos: visiblePos,
         featured_on_home: featuredOnHome,
@@ -1662,7 +1665,7 @@ export function ProductVariantMatrixForm({
         })),
         video_url: productVideoUrl || null,
         colors,
-        sizes: selectedSizes,
+        sizes: sortSizesList(selectedSizes),
       };
 
       const res = await fetch('/api/backoffice/products', {

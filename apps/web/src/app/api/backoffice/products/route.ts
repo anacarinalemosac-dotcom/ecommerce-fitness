@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { syncProductToTikTokShop } from '@/lib/tiktokShopService';
+import { sortVariantsByColorAndSize, sortSizesList } from '@/lib/variantSortUtils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -24,8 +25,8 @@ function reconcileProductVariants(dbVariants: any[], metaVariants: any[]) {
   const dbList = Array.isArray(dbVariants) ? dbVariants : [];
   const metaList = Array.isArray(metaVariants) ? metaVariants : [];
 
-  if (metaList.length === 0) return dbList;
-  if (dbList.length === 0) return metaList;
+  if (metaList.length === 0) return sortVariantsByColorAndSize(dbList);
+  if (dbList.length === 0) return sortVariantsByColorAndSize(metaList);
 
   // Mapa de variantes por combinação (cor, tamanho)
   const map = new Map<string, any>();
@@ -44,7 +45,7 @@ function reconcileProductVariants(dbVariants: any[], metaVariants: any[]) {
     }
   });
 
-  return Array.from(map.values());
+  return sortVariantsByColorAndSize(Array.from(map.values()));
 }
 
 import fs from 'fs';
@@ -195,7 +196,7 @@ export async function GET(req: NextRequest) {
 
       const variantSizes = effectiveVariants.map((v: any) => v.size).filter(Boolean);
       const metaSizes = Array.isArray(meta.sizes) ? meta.sizes.filter(Boolean) : [];
-      const resolvedSizes = Array.from(new Set([...metaSizes, ...variantSizes]));
+      const resolvedSizes = sortSizesList(Array.from(new Set([...metaSizes, ...variantSizes])));
 
       const enrichedProduct = {
         ...product,
@@ -223,7 +224,7 @@ export async function GET(req: NextRequest) {
         material: meta.material || '',
         materials: Array.isArray(meta.materials) ? meta.materials : (meta.material ? [meta.material] : []),
         sizeGuide: meta.sizeGuide || meta.size_guide || '',
-        variants: (effectiveVariants || []).map((v: any) => {
+        variants: sortVariantsByColorAndSize(effectiveVariants || []).map((v: any) => {
           let varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
           if (!varImg && Array.isArray(meta.media_list) && v.color) {
             const mMatch = meta.media_list.find((m: any) => m.associatedColor && m.associatedColor.trim().toLowerCase() === v.color.trim().toLowerCase());
@@ -346,7 +347,7 @@ export async function GET(req: NextRequest) {
 
       const variantSizes = effectiveVariants.map((v: any) => v.size).filter(Boolean);
       const metaSizes = Array.isArray(meta.sizes) ? meta.sizes.filter(Boolean) : [];
-      const resolvedSizes = Array.from(new Set([...metaSizes, ...variantSizes]));
+      const resolvedSizes = sortSizesList(Array.from(new Set([...metaSizes, ...variantSizes])));
 
       return {
         ...p,
@@ -374,7 +375,7 @@ export async function GET(req: NextRequest) {
         material: meta.material || '',
         materials: Array.isArray(meta.materials) ? meta.materials : (meta.material ? [meta.material] : []),
         sizeGuide: meta.sizeGuide || meta.size_guide || '',
-        variants: effectiveVariants.map((v: any) => {
+        variants: sortVariantsByColorAndSize(effectiveVariants).map((v: any) => {
           let varImg = Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : v.image;
           if (!varImg && Array.isArray(meta.media_list) && v.color) {
             const mMatch = meta.media_list.find((m: any) => m.associatedColor && m.associatedColor.trim().toLowerCase() === v.color.trim().toLowerCase());
@@ -652,8 +653,8 @@ export async function POST(req: NextRequest) {
       media_list: Array.isArray(media_list) ? media_list : [],
       video_url: video_url || (Array.isArray(media_list) ? media_list.find((m: any) => m.type === 'video')?.url : null) || null,
       colors: Array.isArray(colors) ? colors : [],
-      sizes: Array.isArray(sizes) ? sizes : [],
-      variants: Array.isArray(variants) ? variants : [], // Persistência dupla no JSON da descrição
+      sizes: Array.isArray(sizes) ? sortSizesList(sizes) : [],
+      variants: Array.isArray(variants) ? sortVariantsByColorAndSize(variants) : [], // Persistência dupla no JSON da descrição
       cost_price: parsedExplicitCost,
     };
     const structuredDescription = JSON.stringify(metadataPayload);

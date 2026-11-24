@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { translateEnToPt, translatePtToEn, isPortugueseText } from '../lib/translateFitness';
 import { REAL_DEFAULT_PRODUCTS } from '../lib/defaultProductsCatalog';
 import { getSwatchStyle } from '../lib/colorUtils';
+import { sortVariantsByColorAndSize, sortSizesList } from '../lib/variantSortUtils';
 
 export interface AdminUser {
   isLoggedIn: boolean;
@@ -867,7 +868,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             secondaryImage: allImages.find((img) => img !== (!isVideoUrl(meta.primary_image) ? meta.primary_image : allImages[0])) || allImages[1] || allImages[0] || 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=900&q=80',
             galleryImages: allImages,
             colors,
-            sizes,
+            sizes: sortSizesList(sizes),
             sizeStock: sizeStockMap,
             stock: totalStock,
             allowBackorder: isAllowBackorder,
@@ -878,7 +879,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             cupsType: cupsType,
             sku: firstVar.sku || 'ANA-001',
             barcode: firstVar.barcode || '789100000001',
-            variants,
+            variants: sortVariantsByColorAndSize(variants),
             composition: meta.composition || '',
             sizeGuide: meta.sizeGuide || '',
             tags: meta.tags || [],

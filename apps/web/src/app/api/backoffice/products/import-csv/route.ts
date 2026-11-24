@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
+import { sortVariantsByColorAndSize, sortSizesList } from '@/lib/variantSortUtils';
 import * as XLSX from 'xlsx';
 
 export interface CSVRowData {
@@ -304,9 +305,10 @@ export async function POST(req: NextRequest) {
     let variantsCreated = 0;
     let variantsUpdated = 0;
 
-    // 3. Processamento Atômico de Produtos e Matrizes SKU
+    // 3. Processamento Atômico de Produtos e Matrizes SKU (Agrupado por Cor e Ordenado P, M, G, GG)
     for (const [prodTitle, prodRows] of Array.from(productGroups.entries())) {
-      const firstRow = prodRows[0];
+      const sortedRows = sortVariantsByColorAndSize(prodRows);
+      const firstRow = sortedRows[0];
       const prodSlug = prodTitle
         .toLowerCase()
         .normalize('NFD')
@@ -394,8 +396,8 @@ export async function POST(req: NextRequest) {
         productsCreated++;
       }
 
-      // Processa cada variação deste produto
-      for (const row of prodRows) {
+      // Processa cada variação deste produto em ordem estrita de cor e tamanho
+      for (const row of sortedRows) {
         // Se image_url estiver vazia, armazena array vazio permitindo inserção posterior
         const imageArray = row.image_url && row.image_url.trim().length > 0
           ? [row.image_url.trim()]

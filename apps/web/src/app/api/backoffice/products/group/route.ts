@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
+import { sortVariantsByColorAndSize, sortSizesList } from '@/lib/variantSortUtils';
 import fs from 'fs';
 import path from 'path';
 
@@ -194,18 +195,23 @@ export async function POST(req: NextRequest) {
       if (vData) finalVars = vData;
     } catch (_) {}
 
+    // ORDENAÇÃO ESTRITA: Agrupa por cor e coloca tamanhos juntos em ordem crescente (PP, P, M, G, GG, XGG)
+    finalVars = sortVariantsByColorAndSize(finalVars);
+
     const totalStock = finalVars.length > 0
       ? finalVars.reduce((acc: number, v: any) => acc + (Number(v.stock_quantity) || 0), 0)
       : Math.max(1, Number(masterProd.stock || 1));
 
-    const consolidatedSizes = Array.from(
-      new Set([
-        ...(finalVars.map((v: any) => v.size).filter(Boolean)),
-        ...(masterMeta.sizes || []),
-      ])
+    const consolidatedSizes = sortSizesList(
+      Array.from(
+        new Set([
+          ...(finalVars.map((v: any) => v.size).filter(Boolean)),
+          ...(masterMeta.sizes || []),
+        ])
+      )
     );
 
-    // 6. Atualiza o produto principal
+    // 6. Atualiza o produto principal com cores, tamanhos e variantes estritamente ordenados
     const finalTitle = (newTitle || masterProd.title).trim();
     masterMeta.colors = consolidatedColors;
     masterMeta.sizes = consolidatedSizes.length > 0 ? consolidatedSizes : ['ONE SIZE'];
