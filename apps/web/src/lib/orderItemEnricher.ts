@@ -348,6 +348,31 @@ export async function decrementProductStockAfterSale(
       }
     }
 
+    // 3. Fallback: locate variant by (product_id + size + color)
+    if (!targetVariantId && (it.size || it.color)) {
+      try {
+        let q = supabaseServer.from('product_variants').select('id, product_id, sku, size, color, stock_quantity');
+        if (targetProductId) {
+          q = q.eq('product_id', targetProductId);
+        }
+        if (it.size) {
+          q = q.eq('size', String(it.size).trim().toUpperCase());
+        }
+        const { data: candidateVars } = await q;
+        if (Array.isArray(candidateVars) && candidateVars.length > 0) {
+          const match = it.color
+            ? candidateVars.find((cv: any) => normalizeStr(cv.color) === normalizeStr(it.color)) || candidateVars[0]
+            : candidateVars[0];
+          if (match) {
+            targetVariantId = match.id;
+            targetProductId = match.product_id;
+            targetSku = match.sku;
+            currentStock = Number(match.stock_quantity) || 0;
+          }
+        }
+      } catch (_) {}
+    }
+
     if (targetVariantId) {
       const newStock = Math.max(0, currentStock - qty);
       try {
@@ -378,10 +403,16 @@ export async function decrementProductStockAfterSale(
               meta.variants = meta.variants.map((mv: any) => {
                 const sameId = mv.id && mv.id === targetVariantId;
                 const sameSku = targetSku && mv.sku && mv.sku.toUpperCase() === targetSku.toUpperCase();
+                const exactSizeColor =
+                  Boolean(it.size) &&
+                  Boolean(it.color) &&
+                  String(mv.size || '').toUpperCase() === String(it.size).toUpperCase() &&
+                  normalizeStr(mv.color) === normalizeStr(it.color);
                 const sameSizeColor =
                   (!it.size || String(mv.size || '').toUpperCase() === String(it.size).toUpperCase()) &&
                   (!it.color || normalizeStr(mv.color) === normalizeStr(it.color));
-                if (sameId || sameSku || (meta.variants.length === 1 && sameSizeColor)) {
+
+                if (sameId || sameSku || exactSizeColor || (meta.variants.length === 1 && sameSizeColor)) {
                   matchedAny = true;
                   return {
                     ...mv,
