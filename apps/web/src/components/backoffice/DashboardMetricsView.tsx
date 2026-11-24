@@ -1078,8 +1078,10 @@ export function DashboardMetricsView({
                     {cartStats.abandonedCarts.map((c: any, cIdx: number) => {
                       const summaryText = c.items?.map((it: any) => `${it.title} (${it.size})`).join(', ') || 'peças da sua sacola';
                       const waText = `Olá${c.customerName ? ` ${c.customerName}` : ''}! Vi que você escolheu ${summaryText} na Ana Fitness Wear mas não concluiu o pedido. Posso te ajudar a finalizar com envio rápido dos Correios ou tirar alguma dúvida sobre o tamanho?`;
-                      const waPhone = (c.customerPhone || '19787987934').replace(/\D/g, '');
-                      const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(waText)}`;
+                      const rawPhone = String(c.customerPhone || '').replace(/\D/g, '');
+                      const cleanPhone = rawPhone.length === 10 ? `1${rawPhone}` : rawPhone;
+                      const hasValidPhone = cleanPhone.length >= 10 && cleanPhone !== '19787987934';
+                      const waUrl = hasValidPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waText)}` : '';
 
                       return (
                         <div key={cIdx} className="pt-2.5 first:pt-0 space-y-1.5">
@@ -1113,16 +1115,36 @@ export function DashboardMetricsView({
                           </div>
 
                           {/* Botão de Recuperação no WhatsApp */}
-                          <div className="pt-1">
-                            <a
-                              href={waUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-[10px] uppercase tracking-wider rounded-xs transition shadow-2xs"
-                            >
-                              <MessageCircle className="w-3.5 h-3.5 text-deep-black" />
-                              <span>Recuperar Venda no WhatsApp</span>
-                            </a>
+                          <div className="pt-1 flex items-center gap-2">
+                            {hasValidPhone ? (
+                              <a
+                                href={waUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#25D366] hover:bg-[#1ebd5b] text-deep-black font-black text-[10px] uppercase tracking-wider rounded-xs transition shadow-2xs"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5 text-deep-black" />
+                                <span>Recuperar Venda no WhatsApp</span>
+                              </a>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-gray-400 italic">Sem WhatsApp</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                                      navigator.clipboard.writeText(waText);
+                                      alert('Mensagem copiada para a área de transferência!');
+                                    }
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[10px] uppercase tracking-wider rounded-xs transition"
+                                  title="Copiar mensagem de recuperação"
+                                >
+                                  <Copy className="w-3 h-3 text-gray-600" />
+                                  <span>Copiar Texto</span>
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

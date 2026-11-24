@@ -306,10 +306,10 @@ export const DEFAULT_HERO_BANNERS: HeroBannerSlide[] = [
 
 export const DEFAULT_ANNOUNCEMENT_BAR: AnnouncementBarConfig = {
   active: true,
-  textPt: 'Não estamos conseguindo atualizar nossos produtos no site devido à alta demanda de venda. Entre em contato com nosso WhatsApp para saber mais sobre quais produtos temos disponível: (978) 798-7934',
-  textEn: 'Due to high order volume, we are unable to update all products on the site in real-time. Please contact our WhatsApp to check available inventory: (978) 798-7934',
-  link: 'https://wa.me/19787987934?text=Ol%C3%A1%21%20Gostaria%20de%20saber%20quais%20produtos%20est%C3%A3o%20dispon%C3%ADveis%20%C3%A0%20pronta%20entrega.',
-  badgeText: '⚠️ ALTA DEMANDA',
+  textPt: '🔥 PROMOÇÃO ESPECIAL: Leve quaisquer 3 Conjuntos por apenas $110! Desconto automático no carrinho para todas as formas de pagamento.',
+  textEn: '🔥 SPECIAL PROMO: Get any 3 Matching Sets for only $110! Automatic discount in bag for all payment methods.',
+  link: '/conjuntos',
+  badgeText: '🔥 3 POR $110',
   bgColor: '#0A0A0A',
   textColor: '#D4AF37',
 };

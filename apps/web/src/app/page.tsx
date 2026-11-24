@@ -1087,11 +1087,45 @@ export default function HomePage({
             </div>
           </div>
 
+          {/* Banner de Destaque da Promoção 3 por $110 na Vitrine da Home */}
+          {activeCategoryFilter === 'all' && (
+            <div className="bg-gradient-to-r from-neutral-950 via-gray-900 to-neutral-950 text-white p-4 sm:p-5 border-2 border-gold/60 shadow-lg rounded-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-gradient-to-r from-amber-500 to-gold text-deep-black font-black text-[9px] sm:text-[10px] uppercase tracking-widest rounded-2xs">
+                  <Flame className="w-3 h-3 fill-current animate-pulse text-deep-black" />
+                  <span>{lang === 'pt' ? 'PROMOÇÃO ATIVA' : 'ACTIVE PROMO'}</span>
+                  <span>•</span>
+                  <span>{comboPromo?.badge_text || '3 POR $110'}</span>
+                </div>
+                <h3 className="text-lg sm:text-2xl font-black uppercase tracking-tight text-white flex items-center gap-2">
+                  <span>{lang === 'pt' ? 'LEVE 3 CONJUNTOS POR APENAS' : 'GET 3 SETS FOR ONLY'}</span>
+                  <span className="text-amber-400 font-black">$110</span>
+                </h3>
+                <p className="text-xs text-gray-300">
+                  {lang === 'pt'
+                    ? 'Monte seu combo com quaisquer 3 conjuntos participantes por apenas $36,66 cada! Válido para todas as formas de pagamento.'
+                    : 'Mix and match any 3 participating sets for just $36.66 each! Valid for all payment methods.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveCategoryFilter('sets');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-400 via-gold to-amber-400 hover:from-white hover:to-white text-gray-950 font-black text-xs uppercase tracking-wider transition shadow-md shrink-0 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>{lang === 'pt' ? 'VER CONJUNTOS DA PROMOÇÃO' : 'SHOP PROMO SETS'}</span>
+                <span>→</span>
+              </button>
+            </div>
+          )}
+
           {/* Gymshark Category Filter Pills */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
             {[
               { id: 'all', labelPt: 'TODAS AS PEÇAS', labelEn: 'ALL PIECES' },
-              { id: 'sets', labelPt: 'CONJUNTOS', labelEn: 'SETS' },
+              { id: 'sets', labelPt: comboPromo?.active ? '🔥 CONJUNTOS (3 POR $110)' : 'CONJUNTOS', labelEn: comboPromo?.active ? '🔥 SETS (3 FOR $110)' : 'SETS' },
               { id: 'rompers', labelPt: 'MACAQUINHOS', labelEn: 'ROMPERS' },
               { id: 'jumpsuits', labelPt: 'MACACÕES', labelEn: 'JUMPSUITS' },
               { id: 'tops', labelPt: 'TOPS', labelEn: 'TOPS' },

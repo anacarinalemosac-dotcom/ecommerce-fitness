@@ -606,6 +606,22 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [selectedColor, setSelectedColor] = useState(initialColor);
   const [selectedMediaIdx, setSelectedMediaIdx] = useState(0);
 
+  // Sincroniza selectedColor quando o produto dinâmico carrega suas variações reais do banco
+  useEffect(() => {
+    if (Array.isArray(productData?.variants) && productData.variants.length > 0) {
+      const hasCurrentColor = productData.variants.some(
+        (v: Variant) => v.color && v.color.trim().toLowerCase() === selectedColor.trim().toLowerCase()
+      );
+      if (!hasCurrentColor) {
+        const inStock = productData.variants.find((v: Variant) => Number(v.stock) > 0);
+        const fallback = inStock?.color || availableColors[0]?.name || productData.variants[0]?.color;
+        if (fallback) {
+          setSelectedColor(fallback);
+        }
+      }
+    }
+  }, [productData?.variants, availableColors, selectedColor]);
+
   // Grade ESTRITA de tamanhos com estoque real disponível (> 0)
   // Se tiver um conjunto com apenas P e G, vai aparecer APENAS P e G no tamanho. M e GG com estoque zero NÃO aparecem.
   // Se a peça for spoiler ou estoque zero, a lista fica vazia e a compra é bloqueada.

@@ -165,6 +165,14 @@ export function findMatchingProductAndVariant(
 
   let matchedVar =
     (!isGenericSku ? variants.find((v) => v.sku?.toUpperCase() === itemSku.toUpperCase()) : undefined) ||
+    (!isGenericSku
+      ? variants.find(
+          (v) =>
+            v.sku &&
+            (v.sku.toUpperCase().startsWith(itemSku.toUpperCase()) ||
+              itemSku.toUpperCase().startsWith(v.sku.toUpperCase()))
+        )
+      : undefined) ||
     (targetSize && targetColor
       ? variants.find((v) => v.size === targetSize && normalizeStr(v.color) === targetColor)
       : undefined) ||
@@ -207,19 +215,28 @@ export function enrichOrderItemsWithCatalog<T extends Record<string, any>>(
       resolvedColor = parsed.color || matchedVar?.color || resolvedColor;
     } else {
       if (parsed.size && (!resolvedSize || resolvedSize === 'M')) resolvedSize = parsed.size;
-      if (parsed.color && (!resolvedColor || resolvedColor === 'Preto Ônix' || resolvedColor === 'Padrão')) resolvedColor = parsed.color;
+      if (parsed.color && (!resolvedColor || resolvedColor === 'Preto Ônix' || resolvedColor === 'Preto Onix' || resolvedColor === 'Padrão')) resolvedColor = parsed.color;
       if (!resolvedSize && matchedVar?.size) resolvedSize = matchedVar.size;
-      if (!resolvedColor && matchedVar?.color) resolvedColor = matchedVar.color;
+      if ((!resolvedColor || resolvedColor === 'Preto Ônix' || resolvedColor === 'Preto Onix' || resolvedColor === 'Padrão') && matchedVar?.color) {
+        resolvedColor = matchedVar.color;
+      }
     }
 
-    // Double-check against registered variants: if item says 'M'/'Preto Ônix' but matched product does NOT have that, trust matchedVar!
+    // Double-check against registered variants: se a cor atual é genérica ou não existe no produto cadastrado, confia na variação do banco!
     if (matchedProd && matchedProd.variants.length > 0 && matchedVar) {
       const hasCurrentCombo = matchedProd.variants.some(
         (v) => v.size === resolvedSize && normalizeStr(v.color) === normalizeStr(resolvedColor)
       );
-      if (!hasCurrentCombo && (wasGenericSku || resolvedSize === 'M' || normalizeStr(resolvedColor) === 'preto ônix')) {
-        resolvedSize = matchedVar.size || resolvedSize;
-        resolvedColor = matchedVar.color || resolvedColor;
+      const isBogusColor =
+        !resolvedColor ||
+        normalizeStr(resolvedColor) === 'preto ônix' ||
+        normalizeStr(resolvedColor) === 'preto onix' ||
+        normalizeStr(resolvedColor) === 'padrão' ||
+        normalizeStr(resolvedColor) === 'padrao';
+
+      if (!hasCurrentCombo || isBogusColor) {
+        if (matchedVar.color) resolvedColor = matchedVar.color;
+        if (matchedVar.size) resolvedSize = matchedVar.size;
       }
     }
 
